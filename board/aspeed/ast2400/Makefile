@@ -11,7 +11,7 @@
 
 include $(TOPDIR)/config.mk
 
-LIB	= $(obj)lib$(BOARD).a
+LIB	= $(obj)lib$(BOARD).o
 
 COBJS   := ast2400.o flash.o flash_spi.o pci.o crc32.o slt.o regtest.o vfun.o vhace.o crt.o videotest.o mactest.o hactest.o mictest.o
 
@@ -28,17 +28,13 @@ OBJS    := $(addprefix $(obj),$(COBJS))
 SOBJS   := $(addprefix $(obj),$(SOBJS))
 
 $(LIB): $(obj).depend $(OBJS) $(SOBJS)
-	$(AR) $(ARFLAGS) $@ $(OBJS) $(SOBJS)
+	$(call cmd_link_o_target, $(OBJS) $(SOBJS))
 
-clean:
-	rm -f $(SOBJS) $(OBJS)
-
-distclean:	clean
-	rm -f $(LIB) core *.bak $(obj).depend
+#########################################################################
 
 # defines $(obj).depend target
 include $(SRCTREE)/rules.mk
 
-sinclude .depend
+sinclude $(obj).depend
 
 #########################################################################

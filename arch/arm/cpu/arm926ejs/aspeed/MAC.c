@@ -16,7 +16,7 @@ static const char ThisFile[] = "MAC.c";
 #ifdef SLT_UBOOT
   #include <common.h>
   #include <command.h>
-  #include <COMMINF.H>
+  #include "COMMINF.H"
   #include "STDUBOOT.H"
 #endif
 #ifdef SLT_DOS
@@ -2081,5 +2081,3 @@ char TestingLoop (ULONG loop_checknum) {
 	
 	return(0);
 } // End char TestingLoop (ULONG loop_checknum)
-
-

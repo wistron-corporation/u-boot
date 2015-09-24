@@ -13,11 +13,11 @@ static const char ThisFile[] = "PLLTEST.c";
 
 #include "SWFUNC.H"
 
-#include <COMMINF.H>
-#include <STDUBOOT.H>
-#include <TYPEDEF.H>
-#include <IO.H>
-#include <PLLTESTU.H>
+#include "COMMINF.H"
+#include "STDUBOOT.H"
+#include "TYPEDEF.H"
+#include "IO.H"
+#include "PLLTESTU.H"
 
 /*
  * static
@@ -407,5 +407,3 @@ int pll_function(int argc, char *argv[])
         return (ERR_FATAL);
     }
 }
-
-

@@ -19,11 +19,11 @@ int isspace ( char c )
 {
     if ( ( c == ' ' ) || ( c == 9 ) || ( c == 13 ) )
         return 1;
-    
+
     return 0;
 }
 
-/* 
+/*
  * strtoul.c --
  *
  *  Source code for the "strtoul" library procedure.
@@ -111,7 +111,7 @@ strtoul(char *string, char **endPtr, int base)
      * If no base was provided, pick one from the leading characters
      * of the string.
      */
-    
+
     if (base == 0)
     {
     if (*p == '0') {
@@ -219,17 +219,6 @@ int atoi( char s[] )
         ans = ( 10 * ans ) + ( s[i] - '0' );
 
     return ans;
-} 
-
-// -----------------------------------------------------------------------------
-/* rand:return pseudo-random integer on 0...32767 */
-int rand(void)
-{
-    static unsigned long int next = 1;
-    
-    next = next * 1103515245 + 12345; 
-
-    return (unsigned int) ( next / 65536 ) % 32768;
 }
 
 #endif // End SLT_UBOOT
