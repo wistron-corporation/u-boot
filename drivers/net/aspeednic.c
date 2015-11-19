@@ -471,8 +471,8 @@ int aspeednic_initialize(bd_t *bis)
   struct eth_device*  dev;
 
 #if defined(CONFIG_AST2300_FPGA_2) || defined(CONFIG_AST2300) || defined(CONFIG_AST3100) || defined(CONFIG_AST2400)
-//AST2300
 //MAC1 CLOCK/RESET/PHY_LINK/MDC_MDIO in SCU
+#ifdef CONFIG_MAC1_ENABLE
   SCURegister = le32_to_cpu(*(volatile u_long *)(SCU_BASE + SCU_RESET_CONTROL));
   *(volatile u_long *)(SCU_BASE + SCU_RESET_CONTROL) = cpu_to_le32(SCURegister | 0x800);
   udelay(100);
@@ -493,6 +493,7 @@ int aspeednic_initialize(bd_t *bis)
 #ifdef CONFIG_MAC1_PHY_LINK_INTERRUPT
   SCURegister = le32_to_cpu(*(volatile u_long *)(SCU_BASE + SCU_MULTIFUNCTION_PIN_CTL1_REG));
   *(volatile u_long *)(SCU_BASE + SCU_MULTIFUNCTION_PIN_CTL1_REG) = cpu_to_le32(SCURegister | (MAC1_PHY_LINK));
+#endif
 #endif
 
 //MAC2 CLOCK/RESET/PHY_LINK/MDC_MDIO

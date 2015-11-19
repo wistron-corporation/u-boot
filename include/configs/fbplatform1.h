@@ -1,6 +1,5 @@
 /*
- * (C) Copyright 2004
- * Peter Chen <peterc@socle-tech.com.tw>
+ * Copyright 2015-present Facebook. All Rights Reserved.
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License as
@@ -21,12 +20,15 @@
 #ifndef __CONFIG_H
 #define __CONFIG_H
 
+/* Uncommit the following line to enable JTAG in u-boot */
+//#define CONFIG_ASPEED_ENABLE_JTAG
+
 /*
  * High Level Configuration Options
  * (easy to change)
  */
 //#define CONFIG_INIT_CRITICAL			/* define for U-BOOT 1.1.1 */
-#undef  CONFIG_INIT_CRITICAL			/* undef for  U-BOOT 1.1.4 */ 
+#undef  CONFIG_INIT_CRITICAL			/* undef for  U-BOOT 1.1.4 */
 //#define CONFIG_FPGA_ASPEED	1
 #define CONFIG_ARM926EJS	1		/* This is an arm926ejs CPU */
 #define	CONFIG_ASPEED		1
@@ -44,7 +46,9 @@
 #define CONFIG_CRT_DISPLAY	1		/* undef if not support CRT */
 
 //#define CONFIG_USE_IRQ				/* we don't need IRQ/FIQ stuff */
-#define CONFIG_MISC_INIT_R 
+#define CONFIG_MISC_INIT_R
+
+#define CONFIG_FBPLATFORM1
 
 /*
  * DRAM Config
@@ -53,7 +57,7 @@
  *    CONFIG_DRAM_512MBIT    // 512M bit
  *    CONFIG_DRAM_1GBIT      // 1G   bit (default)
  *    CONFIG_DRAM_2GBIT      // 2G   bit
- *    CONFIG_DRAM_4GBIT      // 4G   bit 
+ *    CONFIG_DRAM_4GBIT      // 4G   bit
  * 2. DRAM Speed             //
  *    CONFIG_DRAM_336        // 336MHz (DDR-667)
  *    CONFIG_DRAM_408        // 408MHz (DDR-800) (default)
@@ -65,7 +69,7 @@
  *    CONFIG_DRAM_UART_OUT   // enable output message at UART5
  *    CONFIG_DRAM_UART_38400 // set the UART baud rate to 38400, default is 115200
  */
- 
+
 //1. DRAM Size
 //#define    CONFIG_DRAM_512MBIT
 #define    CONFIG_DRAM_1GBIT
@@ -84,20 +88,26 @@
 
 
 
-/* 
+/*
  * Environment Config
  */
 #define CONFIG_CMDLINE_TAG	 1		/* enable passing of ATAGs	*/
 #define CONFIG_SETUP_MEMORY_TAGS 1
 #define CONFIG_INITRD_TAG	 1
-#define	CONFIG_BOOTARGS 	"debug console=ttyS0,115200n8 ramdisk_size=16384 root=/dev/ram rw init=/linuxrc mem=80M"
+#define	CONFIG_BOOTARGS 	"debug console=ttyS0,57600n8 root=/dev/ram rw"
 #define CONFIG_UPDATE           "tftp 40800000 ast2400.scr; so 40800000'"
 
 #define CONFIG_BOOTDELAY	3		/* autoboot after 3 seconds	*/
+#define CONFIG_AUTOBOOT_KEYED
+#define CONFIG_AUTOBOOT_PROMPT		\
+	"autoboot in %d seconds (stop with 'Delete' key)...\n", bootdelay
+#define CONFIG_AUTOBOOT_STOP_STR	"\x1b\x5b\x33\x7e" /* 'Delete', ESC[3~ */
+#define CONFIG_ZERO_BOOTDELAY_CHECK
+
 #ifdef CONFIG_FLASH_AST2300
 #define CONFIG_BOOTCOMMAND	"bootm 20080000 20300000"
 #else
-#ifdef	CONFIG_SYS_FLASH_CFI 
+#ifdef	CONFIG_SYS_FLASH_CFI
 #define CONFIG_BOOTCOMMAND	"bootm 10080000 10300000"
 #else
 #define CONFIG_BOOTCOMMAND	"bootm 14080000 14300000"
@@ -114,6 +124,7 @@
 #define CONFIG_CMD_DFL
 #define CONFIG_CMD_ENV
 #define CONFIG_CMD_FLASH
+#define CONFIG_CMD_MII
 #define CONFIG_CMD_NET
 #define CONFIG_CMD_PING
 #define CONFIG_CMD_I2C
@@ -121,7 +132,7 @@
 #define CONFIG_CMD_NETTEST
 #define CONFIG_CMD_SLT
 
-/* 
+/*
  * CPU Setting
  */
 #define CPU_CLOCK_RATE		18000000	/* 16.5 MHz clock for the ARM core */
@@ -143,8 +154,8 @@
  * Memory Configuration
  */
 #define CONFIG_NR_DRAM_BANKS	1	   	/* we have 1 bank of DRAM */
-#define PHYS_SDRAM_1		0x40000000 	/* SDRAM Bank #1 */
-#define PHYS_SDRAM_1_SIZE	0x4000000 	/* 64 MB */
+#define PHYS_SDRAM_1		  0x40000000 	/* SDRAM Bank #1 */
+#define PHYS_SDRAM_1_SIZE	0x8000000 	/* 128 MB */
 
 #define CONFIG_SYS_SDRAM_BASE	0x40000000
 
@@ -198,13 +209,14 @@
 #define CONFIG_SYS_MAX_FLASH_SECT	(1024)		/* max number of sectors on one chip */
 
 #define CONFIG_ENV_IS_IN_FLASH		1
-#define CONFIG_ENV_OFFSET		0x7F0000 	/* environment starts here  */
-#define CONFIG_ENV_SIZE			0x010000 	/* Total Size of Environment Sector */
+#define CONFIG_ENV_OFFSET		0x60000 	/* environment starts here  */
+#define CONFIG_ENV_SIZE			0x20000 	/* Total Size of Environment Sector */
+#define CONFIG_ASPEED_WRITE_DEFAULT_ENV
 #endif
 
 #endif
 
-#define __LITTLE_ENDIAN
+#define __LITTLE_ENDIAN                 1
 
 #define CONFIG_MONITOR_BASE		TEXT_BASE
 #define CONFIG_MONITOR_LEN		(192 << 10)
@@ -227,28 +239,31 @@
 #define CONFIG_SYS_MEMTEST_START	0x40000000	/* memtest works on	*/
 #define CONFIG_SYS_MEMTEST_END		0x44FFFFFF	/* 256 MB in DRAM	*/
 
-#define	CONFIG_SYS_CLKS_IN_HZ		/* everything, incl board info, in Hz */
-#undef	CONFIG_SYS_CLKS_IN_HZ		/* everything, incl board info, in Hz */
-
 #define CONFIG_SYS_LOAD_ADDR		0x43000000	/* default load address */
 
 #define CONFIG_SYS_TIMERBASE		0x1E782000	/* use timer 1 */
-#define CONFIG_SYS_HZ			(1*1000*1000)	/* use external clk (1M) */
+#define CONFIG_SYS_HZ			      1000
+#define CONFIG_ASPEED_TIMER_CLK (1*1000*1000) /* use external clk (1M) */
 
 /*
  * Serial Configuration
  */
 #define CONFIG_SYS_NS16550
 #define CONFIG_SYS_NS16550_SERIAL
-#define CONFIG_SYS_NS16550_REG_SIZE	4
+#define CONFIG_SYS_NS16550_MEM32
+#define CONFIG_SYS_NS16550_REG_SIZE	-4
 #define CONFIG_SYS_NS16550_CLK		24000000
 #define CONFIG_SYS_NS16550_COM1		0x1e783000
 #define CONFIG_SYS_NS16550_COM2		0x1e784000
+#define CONFIG_SYS_NS16550_COM3		0x1e78e000
 #define	CONFIG_SYS_LOADS_BAUD_CHANGE
-#define CONFIG_SERIAL1			1
 #define CONFIG_CONS_INDEX		2
-#define CONFIG_BAUDRATE			115200
+#define CONFIG_BAUDRATE			57600
 #define CONFIG_SYS_BAUDRATE_TABLE	{ 9600, 19200, 38400, 57600, 115200 }
+#define CONFIG_ASPEED_COM 0x1e784000 // COM2(UART5)
+#define CONFIG_ASPEED_COM_IER (CONFIG_ASPEED_COM + 0x4)
+#define CONFIG_ASPEED_COM_IIR (CONFIG_ASPEED_COM + 0x8)
+#define CONFIG_ASPEED_COM_LCR (CONFIG_ASPEED_COM + 0xc)
 
 /*
  * USB device configuration
@@ -277,17 +292,18 @@
 #define CONFIG_SYS_I2C_EEPROM_ADDR_LEN 	2
 #define CONFIG_SYS_I2C_EEPROM_ADDR 	0xa0
 
+#define __BYTE_ORDER __LITTLE_ENDIAN
+#define __LITTLE_ENDIAN_BITFIELD
+
 /*
  * NIC configuration
  */
-#define __BYTE_ORDER __LITTLE_ENDIAN
-#define __LITTLE_ENDIAN_BITFIELD
-#define CONFIG_MAC_PARTITION
 #define CONFIG_ASPEEDNIC
+#define CONFIG_NET_MULTI
 #define CONFIG_MAC1_ENABLE
-#define CONFIG_MAC1_PHY_LINK_INTERRUPT
-#define CONFIG_MAC2_ENABLE
-#define CONFIG_MAC2_PHY_LINK_INTERRUPT
+//#define CONFIG_MAC1_PHY_LINK_INTERRUPT
+//#define CONFIG_MAC2_ENABLE
+//#define CONFIG_MAC2_PHY_LINK_INTERRUPT
 /*
 *-------------------------------------------------------------------------------
 * NOTICE: MAC1 and MAC2 now have their own seperate PHY configuration.
@@ -306,17 +322,20 @@
 * 3: Reserved
 *-------------------------------------------------------------------------------
 */
-#define CONFIG_MAC1_PHY_SETTING		0
+#define CONFIG_MAC1_PHY_SETTING		2
 #define CONFIG_MAC2_PHY_SETTING		0
+#define CONFIG_ASPEED_MAC_NUMBER  1
+#define CONFIG_ASPEED_MAC_CONFIG  1 // config MAC1
+#define _PHY_SETTING_CONCAT(mac) CONFIG_MAC##mac##_PHY_SETTING
+#define _GET_MAC_PHY_SETTING(mac) _PHY_SETTING_CONCAT(mac)
+#define CONFIG_ASPEED_MAC_PHY_SETTING \
+  _GET_MAC_PHY_SETTING(CONFIG_ASPEED_MAC_CONFIG)
 #define CONFIG_MAC_INTERFACE_CLOCK_DELAY	0x2255
-#define CONFIG_NET_MULTI
-#define CONFIG_ETHACT			aspeednic#0
-#define CONFIG_GATEWAYIP		192.168.0.1
-#define CONFIG_NETMASK			255.255.255.0
-#define CONFIG_IPADDR			192.168.0.45
-#define CONFIG_SERVERIP			192.168.0.81
-#define CONFIG_ETHADDR			00:C0:A8:12:34:56
-#define CONFIG_ETH1ADDR			00:C0:A8:12:34:57
+#define CONFIG_RANDOM_MACADDR
+//#define CONFIG_GATEWAYIP 192.168.0.1
+//#define CONFIG_NETMASK   255.255.255.0
+//#define CONFIG_IPADDR    192.168.0.45
+//#define CONFIG_SERVERIP  192.168.0.81
 
 /*
  * SLT
@@ -325,5 +344,10 @@
 #define CONFIG_SLT
 #define CFG_CMD_SLT		(CFG_CMD_VIDEOTEST | CFG_CMD_MACTEST | CFG_CMD_HACTEST | CFG_CMD_MICTEST)
 */
+
+#define CONFIG_SYS_INIT_SP_ADDR	(CONFIG_SYS_SDRAM_BASE + 0x1000 - GENERATED_GBL_DATA_SIZE)
+
+#define CONFIG_ASPEED_ENABLE_WATCHDOG
+#define CONFIG_ASPEED_WATCHDOG_TIMEOUT (5*60) // 5m
 
 #endif	/* __CONFIG_H */

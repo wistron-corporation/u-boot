@@ -194,15 +194,27 @@ int ast1070_calibration()
 static void watchdog_init()
 {
 #ifdef CONFIG_ASPEED_ENABLE_WATCHDOG
-#define AST_WDT_BASE 0x1e785000
+#define AST_WDT1_BASE 0x1e785000
+#define AST_WDT2_BASE 0x1e785020
 #define AST_WDT_CLK (1*1000*1000) /* 1M clock source */
   u32 reload = AST_WDT_CLK * CONFIG_ASPEED_WATCHDOG_TIMEOUT;
+#ifdef CONFIG_ASPEED_ENABLE_DUAL_BOOT_WATCHDOG
+  /* dual boot watchdog is enabled */
   /* set the reload value */
-  __raw_writel(reload, AST_WDT_BASE + 0x04);
+  reload = AST_WDT_CLK * CONFIG_ASPEED_WATCHDOG_DUAL_BOOT_TIMEOUT;
+  /* set the reload value */
+  __raw_writel(reload, AST_WDT2_BASE + 0x04);
   /* magic word to reload */
-  __raw_writel(0x4755, AST_WDT_BASE + 0x08);
+  __raw_writel(0x4755, AST_WDT2_BASE + 0x08);
+  printf("Dual boot watchdog: %us\n", CONFIG_ASPEED_WATCHDOG_DUAL_BOOT_TIMEOUT);
+#endif
+  reload = AST_WDT_CLK * CONFIG_ASPEED_WATCHDOG_TIMEOUT;
+  /* set the reload value */
+  __raw_writel(reload, AST_WDT1_BASE + 0x04);
+  /* magic word to reload */
+  __raw_writel(0x4755, AST_WDT1_BASE + 0x08);
   /* start the watchdog with 1M clk src and reset whole chip */
-  __raw_writel(0x33, AST_WDT_BASE + 0x0c);
+  __raw_writel(0x33, AST_WDT1_BASE + 0x0c);
   printf("Watchdog: %us\n", CONFIG_ASPEED_WATCHDOG_TIMEOUT);
 #endif
 }

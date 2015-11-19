@@ -333,10 +333,45 @@ set_MPLL:
     and r1, r2, r1
     str r1, [r0]
 
+/* Yosemite Platform specific Initialization */
+#ifdef CONFIG_YOSEMITE
+/*
+ * Disable WDT2 before the 2nd SPI flash is tried
+ * TODO: Need to detect booting from 2nd flash and recover
+ */
+    ldr r0, =0x1e78502c
+    mov r1, #0x0
+    str r1, [r0]
+
+/* Use GPIOE2/GPIOE3 to select BMC Output on debug console */
+    ldr r1, =0x0C
+    ldr r0, =0x1e780024
+    str r1, [r0]
+
+    ldr r0, =0x1e780020
+    str r1, [r0]
+
+    ldr r1, = 0x80
+    ldr r0, =0x1e780084
+    str r1, [r0]
+
+
+    ldr r1, = 0x80
+    ldr r0, =0x1e780080
+    str r1, [r0]
+
+    ldr r1, = 0x0
+    ldr r0, =0x1e780080
+    str r1, [r0]
+#endif
+
 /* Debug - UART console message */
+// Enable UART3/4 only for non-yosemite platform
+#ifndef CONFIG_YOSEMITE
     ldr r0, =0x1e6e2080
     ldr r1, =0xFFFF0000                          @ enable UART3 and UART4
     str r1, [r0]
+#endif
 
     ldr r0, =CONFIG_ASPEED_COM_LCR
     mov r1, #0x83
