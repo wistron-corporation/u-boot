@@ -16,9 +16,9 @@ static const char ThisFile[] = "NCSI.c";
 #ifdef SLT_UBOOT
   #include <common.h>
   #include <command.h>
-  #include <COMMINF.H>
-  #include <NCSI.H>
-  #include <IO.H>
+  #include "COMMINF.H"
+  #include "NCSI.H"
+  #include "IO.H"
 #endif
 #ifdef SLT_DOS
   #include <stdio.h>

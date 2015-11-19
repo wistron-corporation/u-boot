@@ -16,6 +16,7 @@
 #include <malloc.h>
 #include <net.h>
 #include <pci.h>
+#include <linux/mii.h>
 
 
 /*
@@ -53,7 +54,6 @@
 #define MAC1_MDC                 (1 << 30)
 #define MAC1_PHY_LINK            (1 << 0)
 #define MAC2_MDC_MDIO            (1 << 2)
-#define MAC1_PHY_LINK            (1 << 0)
 #define MAC2_PHY_LINK            (1 << 1)
 #else
 #define MAC2_MDC_MDIO            (1 << 20)
@@ -68,6 +68,9 @@ unsigned int aspeednic_iobase[1] = {CONFIG_MACREG_BASE};
 unsigned int aspeednic_iobase[CONFIG_ASPEED_MAC_NUMBER] = {
   0x1E660000, 0x1E680000};
 #endif
+
+/* PHY address */
+static u8 g_phy_addr = 0;
 
 #undef DEBUG_SROM
 #undef DEBUG_SROM2
@@ -249,6 +252,7 @@ struct de4x5_desc {
 #define PHYID_RTL8201EL     0x001cc810
 #define PHYID_RTL8211         0x001cc910
 #define PHYID_BCM54612E             0x03625E6A
+#define PHYID_BCM54616S             0x03625D12
 
 //NCSI define & structure
 //NC-SI Command Packet
@@ -410,6 +414,12 @@ static void  aspeednic_halt(struct eth_device* dev);
 static void  set_mac_address (struct eth_device* dev, bd_t* bis);
 static void  phy_write_register (struct eth_device* dev, u8 PHY_Register, u8 PHY_Address, u16 PHY_Data);
 static u16   phy_read_register (struct eth_device* dev, u8 PHY_Register, u8 PHY_Address);
+#if defined(CONFIG_MII) || defined(CONFIG_CMD_MII)
+static int faraday_mdio_read(const char *devname, uint8_t addr, uint8_t reg,
+                             uint16_t *value);
+static int faraday_mdio_write(const char *devname, uint8_t addr, uint8_t reg,
+                              uint16_t value);
+#endif
 static void  set_mac_control_register(struct eth_device* dev);
 
 #if defined(CONFIG_E500)
@@ -456,7 +466,7 @@ void NCSI_Struct_Initialize(void)
 
 int aspeednic_initialize(bd_t *bis)
 {
-  int               card_number = 0;
+  int               card_number = CONFIG_ASPEED_MAC_CONFIG - 1;
   unsigned int    iobase, SCURegister;
   struct eth_device*  dev;
 
@@ -538,7 +548,7 @@ int aspeednic_initialize(bd_t *bis)
 
   dev->iobase = iobase;
 
-  if (CONFIG_MAC1_PHY_SETTING >= 1) {
+  if (CONFIG_ASPEED_MAC_PHY_SETTING >= 1) {
 //NCSI Struct Initialize
     NCSI_Struct_Initialize();
   }
@@ -556,20 +566,22 @@ int aspeednic_initialize(bd_t *bis)
   dev->recv   = aspeednic_recv;
 
   /* Ensure we're not sleeping. */
-  if (CONFIG_MAC1_PHY_SETTING >= 1) {
+  if (CONFIG_ASPEED_MAC_PHY_SETTING >= 1) {
     udelay(2000000); //2.0 sec
   }
   else {
     udelay(10 * 1000);
   }
 
-
   dev->init(dev, bis);
 
   eth_register(dev);
 
+#if defined(CONFIG_MII) || defined(CONFIG_CMD_MII)
+  miiphy_register(dev->name, faraday_mdio_read, faraday_mdio_write);
+#endif
 
-  return card_number;
+  return 1;
 }
 
 void Calculate_Checksum(unsigned char *buffer_base, int Length)
@@ -1114,11 +1126,37 @@ void Set_Link (struct eth_device* dev)
   Retry = 0;
 }
 
+static void aspeednic_probe_phy(struct eth_device *dev)
+{
+  u8 phy_addr;
+  u16 phy_id;
+
+  /* assume it as 0 */
+  g_phy_addr = 0;
+
+  /* Check if the PHY is up to snuff..., max phy addr is 0x1f */
+  for (phy_addr = 0; phy_addr <= 0x1f; phy_addr++) {
+    phy_id = phy_read_register(dev, MII_PHYSID1, phy_addr);
+    /*
+     * When it is unable to found PHY,
+     * the interface usually return 0xffff or 0x0000
+     */
+    if (phy_id != 0xffff && phy_id != 0x0) {
+      g_phy_addr = phy_addr;
+      break;
+    }
+  }
+  printf("%s: PHY at 0x%02x\n", dev->name, phy_addr);
+}
+
 static int aspeednic_init(struct eth_device* dev, bd_t* bis)
 {
   unsigned long i, Package_Found = 0, Channel_Found = 0, Re_Send = 0, Link_Status;
 
   RESET_DE4X5(dev);
+
+  aspeednic_probe_phy(dev);
+
   set_mac_address (dev, bis);
   set_mac_control_register (dev);
 
@@ -1149,7 +1187,7 @@ static int aspeednic_init(struct eth_device* dev, bd_t* bis)
   tx_new = 0;
   rx_new = 0;
 
-  if (CONFIG_MAC1_PHY_SETTING >= 1) {
+  if (CONFIG_ASPEED_MAC_PHY_SETTING >= 1) {
 //NCSI Start
 //DeSelect Package/ Select Package
     for (i = 0; i < 4; i++) {
@@ -1313,58 +1351,23 @@ static void aspeednic_halt(struct eth_device* dev)
 
 static void set_mac_address (struct eth_device* dev, bd_t* bis)
 {
-  unsigned char  mac_address[6]; // 6 bytes mac address
-  unsigned char  ethaddress[20]; // string for setenv function
-  char *s;
-  int i, env;                // env variable 0: eeprom, 1: environment parameters
-
-  s = getenv ("eeprom");
-  env = (s && (*s == 'y')) ? 0 : 1;
-
-  if (env == 0) {
-    env = 1;
-    eeprom_init ();
-    eeprom_read (0xA0, 0, mac_address, 6);
-
-    for (i = 0; i < 6; i++) {
-      if (mac_address[i] != 0xFF) {
-        env = 0;  //Suppose not all 0xFF is valid
-      }
-    }
+  if (!eth_getenv_enetaddr_by_index("eth", 0, dev->enetaddr)) {
+    eth_random_enetaddr(dev->enetaddr);
   }
 
-  if (env == 0) { // EEPROM
-    sprintf (ethaddress, "%02X:%02X:%02X:%02X:%02X:%02X", mac_address[0], mac_address[1], mac_address[2], mac_address[3], mac_address[4], mac_address[5]);
-    setenv ("ethaddr", ethaddress);
-    OUTL(dev, ((mac_address[2] << 24) | (mac_address[3] << 16) | (mac_address[4] << 8) | mac_address[5]), MAC_LADR_REG);
-    OUTL(dev, ((mac_address[0] << 8) | mac_address[1]), MAC_MADR_REG);
-    if (CONFIG_MAC1_PHY_SETTING >= 1) {
-      for (i = 0; i < 6; i++) {
-        NCSI_Request.SA[i] = mac_address[i];
-      }
-    }
+  OUTL(dev, ((dev->enetaddr[2] << 24) | (dev->enetaddr[3] << 16)
+             | (dev->enetaddr[4] << 8) | dev->enetaddr[5]), MAC_LADR_REG);
+  OUTL(dev, ((dev->enetaddr[0] << 8) | dev->enetaddr[1]), MAC_MADR_REG);
+  if (CONFIG_ASPEED_MAC_PHY_SETTING >= 1) {
+    memcpy(NCSI_Request.SA, dev->enetaddr, 6);
   }
-  else { // Environment Parameters
-    OUTL(dev, ((bis->bi_enetaddr[2] << 24) | (bis->bi_enetaddr[3] << 16) | (bis->bi_enetaddr[4] << 8) | bis->bi_enetaddr[5]), MAC_LADR_REG);
-    OUTL(dev, ((bis->bi_enetaddr[0] << 8) | bis->bi_enetaddr[1]), MAC_MADR_REG);
-    if (CONFIG_MAC1_PHY_SETTING >= 1) {
-      for (i = 0; i < 6; i++) {
-        NCSI_Request.SA[i] = bis->bi_enetaddr[i];
-      }
-    }
-  }
-
 }
-
 
 static u16 phy_read_register (struct eth_device* dev, u8 PHY_Register, u8 PHY_Address)
 {
   u32 Data, Status = 0, Loop_Count = 0, PHY_Ready = 1;
   u16 Return_Data;
 
-#ifdef  REALTEK_PHY_SUPPORT
-  PHY_Address = 0x01;
-#endif
 //20us * 100 = 2ms > (1 / 2.5Mhz) * 0x34
   OUTL(dev, (PHY_Register << 21) + (PHY_Address << 16) + MIIRD + MDC_CYCTHR, PHYCR_REG);
   do {
@@ -1378,7 +1381,6 @@ static u16 phy_read_register (struct eth_device* dev, u8 PHY_Register, u8 PHY_Ad
   } while (Status == MIIRD);
 
   if (PHY_Ready == 0) {
-    printf ("PHY NOT REDAY ");
     return 0;
   }
   Data = INL (dev, PHYDATA_REG);
@@ -1392,9 +1394,6 @@ static void phy_write_register (struct eth_device* dev, u8 PHY_Register, u8 PHY_
 {
   u32 Status = 0, Loop_Count = 0, PHY_Ready = 1;
 
-#ifdef  REALTEK_PHY_SUPPORT
-  PHY_Address = 0x01;
-#endif
 //20us * 100 = 2ms > (1 / 2.5Mhz) * 0x34
   OUTL(dev, PHY_Data, PHYDATA_REG);
   OUTL(dev, (PHY_Register << 21) + (PHY_Address << 16) + MIIWR + MDC_CYCTHR, PHYCR_REG);
@@ -1407,31 +1406,66 @@ static void phy_write_register (struct eth_device* dev, u8 PHY_Register, u8 PHY_
       break;
     }
   } while (Status == MIIWR);
-  if (PHY_Ready == 0) {
-    printf ("PHY NOT REDAY ");
-  }
 }
+
+#if defined(CONFIG_MII) || defined(CONFIG_CMD_MII)
+
+static int faraday_mdio_read(
+  const char *devname, uint8_t addr, uint8_t reg, uint16_t *value)
+{
+  int ret = 0;
+  struct eth_device *dev;
+
+  dev = eth_get_dev_by_name(devname);
+  if (dev == NULL) {
+    printf("%s: no such device\n", devname);
+    ret = -1;
+  } else {
+    *value = phy_read_register(dev, reg, addr);
+  }
+
+  return ret;
+}
+
+static int faraday_mdio_write(
+  const char *devname, uint8_t addr, uint8_t reg, uint16_t value)
+{
+  int ret = 0;
+  struct eth_device *dev;
+
+  dev = eth_get_dev_by_name(devname);
+  if (dev == NULL) {
+    printf("%s: no such device\n", devname);
+    ret = -1;
+  } else {
+    phy_write_register(dev, reg, addr, value);
+  }
+
+  return ret;
+}
+
+#endif    /* #if defined(CONFIG_MII) || defined(CONFIG_CMD_MII) */
 
 static void set_mac_control_register (struct eth_device* dev)
 {
   unsigned long MAC_CR_Register = 0;
-  unsigned long   Loop_Count = 0, PHY_Ready = 1, Chip_ID;
+  unsigned int   Loop_Count = 0, PHY_Ready = 1, Chip_ID;
   u16    PHY_Status, PHY_Speed, PHY_Duplex, Resolved_Status = 0, Advertise, Link_Partner;
 
-  if (CONFIG_MAC1_PHY_SETTING >= 1) {
+  if (CONFIG_ASPEED_MAC_PHY_SETTING >= 1) {
     MAC_CR_Register = SPEED_100M_MODE_bit | RX_BROADPKT_bit | FULLDUP_bit | RXMAC_EN_bit | RXDMA_EN_bit | TXMAC_EN_bit | TXDMA_EN_bit | CRC_APD_bit;
   }
   else {
     MAC_CR_Register = SPEED_100M_MODE_bit | FULLDUP_bit | RXMAC_EN_bit | RXDMA_EN_bit | TXMAC_EN_bit | TXDMA_EN_bit | CRC_APD_bit;
   }
 
-  if (CONFIG_MAC1_PHY_SETTING != 2) {
-    Chip_ID = ((phy_read_register (dev, 0x02, 0)) << 16);
-    Chip_ID |= (phy_read_register (dev, 0x03, 0) & 0xffff);
+  if (CONFIG_ASPEED_MAC_PHY_SETTING != 2) {
+    Chip_ID = ((phy_read_register (dev, 0x02, g_phy_addr)) << 16);
+    Chip_ID |= (phy_read_register (dev, 0x03, g_phy_addr) & 0xffff);
     if (((Chip_ID & PHYID_VENDOR_MASK) == PHYID_VENDOR_BROADCOM) ||
         ((Chip_ID & PHYID_VENDOR_MODEL_MASK) == PHYID_RTL8201EL)) {
-      Advertise = phy_read_register (dev, 0x04, 0);
-      Link_Partner = phy_read_register (dev, 0x05, 0);
+      Advertise = phy_read_register (dev, 0x04, g_phy_addr);
+      Link_Partner = phy_read_register (dev, 0x05, g_phy_addr);
       Advertise = (Advertise & PHY_SPEED_DUPLEX_MASK);
       Link_Partner = (Link_Partner & PHY_SPEED_DUPLEX_MASK);
       if ((Advertise & Link_Partner) & PHY_100M_DUPLEX) {
@@ -1456,7 +1490,8 @@ static void set_mac_control_register (struct eth_device* dev)
 //Max waiting time = (20 + 2)ms * 250(PHY_LOOP) = 5.5s
       do {
         udelay (20000);
-        Resolved_Status = (phy_read_register (dev, 0x11, 0) & RESOLVED_BIT);
+        Resolved_Status = (phy_read_register (dev, 0x11, g_phy_addr)
+                           & RESOLVED_BIT);
         Loop_Count++;
         if (Loop_Count >= PHY_LOOP) {
           PHY_Ready = 0;
@@ -1466,7 +1501,7 @@ static void set_mac_control_register (struct eth_device* dev)
       } while (Resolved_Status != RESOLVED_BIT);
 
       if (PHY_Ready == 1) {
-        PHY_Status = phy_read_register (dev, 0x11, 0);
+        PHY_Status = phy_read_register (dev, 0x11, g_phy_addr);
         PHY_Speed = (PHY_Status & PHY_SPEED_MASK) >> 14;
         PHY_Duplex = (PHY_Status & PHY_DUPLEX_MASK) >> 13;
 
@@ -1485,40 +1520,54 @@ static void set_mac_control_register (struct eth_device* dev)
       }
 //LED Control
 //              if (Chip_ID == 0x1C) {
-//                  PHY_Status = phy_read_register (dev, 0x18, 0);
-//                phy_write_register (dev, 0x18, 0, (PHY_Status | 0x09));
+//                  PHY_Status = phy_read_register (dev, 0x18, g_phy_addr);
+//                phy_write_register (dev, 0x18, g_phy_addr, (PHY_Status | 0x09));
 //              }
 //LED Control D[0], D[6]
 //              if (Chip_ID == 0x141) {
-//                  PHY_Status = phy_read_register (dev, 0x18, 0);
-//                phy_write_register (dev, 0x18, 0, ((PHY_Status & ~(0x41)) | 0x01));
+//                  PHY_Status = phy_read_register (dev, 0x18, g_phy_addr);
+//                phy_write_register (dev, 0x18, g_phy_addr, ((PHY_Status & ~(0x41)) | 0x01));
 //              }
     }
-    else if (Chip_ID == PHYID_BCM54612E )  {
-      phy_write_register ( dev, 0x1C, 1, 0x8C00 ); // Disable GTXCLK Clock Delay Enable
-      phy_write_register ( dev, 0x18, 1, 0xF0E7 ); // Disable RGMII RXD to RXC Skew
-
-      Advertise = phy_read_register (dev, 0x04, 1);
-      Link_Partner = phy_read_register (dev, 0x05, 1);
-      Advertise = (Advertise & PHY_SPEED_DUPLEX_MASK);
-      Link_Partner = (Link_Partner & PHY_SPEED_DUPLEX_MASK);
-      if ((Advertise & Link_Partner) & PHY_100M_DUPLEX) {
-        MAC_CR_Register |= SPEED_100M_MODE_bit;
-        MAC_CR_Register |= FULLDUP_bit;
+    else if (Chip_ID == PHYID_BCM54612E || Chip_ID == PHYID_BCM54616S) {
+      // Disable GTXCLK Clock Delay Enable
+      phy_write_register( dev, 0x1C, g_phy_addr, 0x8C00);
+      // Disable RGMII RXD to RXC Skew
+      phy_write_register( dev, 0x18, g_phy_addr, 0xF0E7);
+      // First Switch shadow register selector
+      phy_write_register(dev, 0x1C, g_phy_addr, 0x2000);
+      PHY_Status = phy_read_register(dev, 0x1C, g_phy_addr);
+      PHY_Duplex = (PHY_Status & 0x0080);
+      switch (PHY_Status & 0x0018) {
+      case 0x0000:
+        PHY_Speed = SPEED_1000M;
+        break;
+      case 0x0008:
+        PHY_Speed = SPEED_100M;
+        break;
+      case 0x0010:
+        PHY_Speed = SPEED_10M;
+        break;
+      default:
+        PHY_Speed = SPEED_100M;
+        break;
       }
-      else if ((Advertise & Link_Partner) & PHY_100M_HALF) {
-        MAC_CR_Register |= SPEED_100M_MODE_bit;
+      if (PHY_Speed == SPEED_1000M) {
+        MAC_CR_Register |= GMAC_MODE_bit;
+      } else {
+        MAC_CR_Register &= ~GMAC_MODE_bit;
+        if (PHY_Speed == SPEED_100M) {
+          MAC_CR_Register |= SPEED_100M_MODE_bit;
+        } else {
+          MAC_CR_Register &= ~SPEED_100M_MODE_bit;
+        }
+      }
+      if (PHY_Duplex) {
+        MAC_CR_Register |= FULLDUP_bit;
+      } else {
         MAC_CR_Register &= ~FULLDUP_bit;
       }
-      else if ((Advertise & Link_Partner) & PHY_10M_DUPLEX) {
-        MAC_CR_Register &= ~SPEED_100M_MODE_bit;
-        MAC_CR_Register |= FULLDUP_bit;
-      }
-      else if ((Advertise & Link_Partner) & PHY_10M_HALF) {
-        MAC_CR_Register &= ~SPEED_100M_MODE_bit;
-        MAC_CR_Register &= ~FULLDUP_bit;
-      }
-    }else {
+    } else {
       printf("Unknow Chip_ID %x\n",Chip_ID);
     }
   }

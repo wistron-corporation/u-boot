@@ -16,12 +16,17 @@
  */
 
 #include <common.h>
-#include <arm926ejs.h>
+
+#if CONFIG_ASPEED_TIMER_CLK < CONFIG_SYS_HZ
+#error "CONFIG_ASPEED_TIMER_CLK must be as large as CONFIG_SYS_HZ"
+#endif
 
 #define TIMER_LOAD_VAL 0xffffffff
+#define CLK_PER_HZ (CONFIG_ASPEED_TIMER_CLK / CONFIG_SYS_HZ)
 
 /* macro to read the 32 bit timer */
-#define READ_TIMER (*(volatile ulong *)(CONFIG_SYS_TIMERBASE+0))
+#define READ_CLK (*(volatile ulong *)(CONFIG_SYS_TIMERBASE + 0))
+#define READ_TIMER (READ_CLK / CLK_PER_HZ)
 
 static ulong timestamp;
 static ulong lastdec;
@@ -57,27 +62,25 @@ void set_timer (ulong t)
 }
 
 /* delay x useconds AND perserve advance timstamp value */
-void udelay (unsigned long usec)
+void __udelay (unsigned long usec)
 {
-	ulong tmo, tmp;
+  ulong last = READ_CLK;
+  ulong clks;
+  ulong elapsed = 0;
 
-	if(usec >= 1000){		/* if "big" number, spread normalization to seconds */
-		tmo = usec / 1000;	/* start to normalize for usec to ticks per sec */
-		tmo *= CONFIG_SYS_HZ;		/* find number of "ticks" to wait to achieve target */
-		tmo /= 1000;		/* finish normalize. */
-	}else{				/* else small number, don't kill it prior to HZ multiply */
-		tmo = usec * CONFIG_SYS_HZ;
-		tmo /= (1000*1000);
-	}
+  /* translate usec to clocks */
+  clks = (usec / 1000) * CLK_PER_HZ;
+  clks += (usec % 1000) * CLK_PER_HZ / 1000;
 
-	tmp = get_timer (0);		/* get current timestamp */
-	if( (tmo + tmp + 1) < tmp )	/* if setting this fordward will roll time stamp */
-		reset_timer_masked ();	/* reset "advancing" timestamp to 0, set lastdec value */
-	else
-		tmo += tmp;		/* else, set advancing stamp wake up time */
-
-	while (get_timer_masked () < tmo)/* loop till event */
-		/*NOP*/;
+  while (clks > elapsed) {
+    ulong now = READ_CLK;
+    if (now <= last) {
+      elapsed += last - now;
+    } else {
+      elapsed += TIMER_LOAD_VAL - (now - last);
+    }
+    last = now;
+  }
 }
 
 void reset_timer_masked (void)
@@ -100,7 +103,7 @@ ulong get_timer_masked (void)
 		 * (TLV-now) amount of time after passing though -1
 		 * nts = new "advancing time stamp"...it could also roll and cause problems.
 		 */
-		timestamp += lastdec + TIMER_LOAD_VAL - now;
+		timestamp += lastdec + (TIMER_LOAD_VAL / CLK_PER_HZ) - now;
 	}
 	lastdec = now;
 
@@ -110,25 +113,7 @@ ulong get_timer_masked (void)
 /* waits specified delay value and resets timestamp */
 void udelay_masked (unsigned long usec)
 {
-	ulong tmo;
-	ulong endtime;
-	signed long diff;
-
-	if (usec >= 1000) {		/* if "big" number, spread normalization to seconds */
-		tmo = usec / 1000;	/* start to normalize for usec to ticks per sec */
-		tmo *= CONFIG_SYS_HZ;		/* find number of "ticks" to wait to achieve target */
-		tmo /= 1000;		/* finish normalize. */
-	} else {			/* else small number, don't kill it prior to HZ multiply */
-		tmo = usec * CONFIG_SYS_HZ;
-		tmo /= (1000*1000);
-	}
-
-	endtime = get_timer_masked () + tmo;
-
-	do {
-		ulong now = get_timer_masked ();
-		diff = endtime - now;
-	} while (diff >= 0);
+  __udelay(usec);
 }
 
 /*
@@ -146,8 +131,5 @@ unsigned long long get_ticks(void)
  */
 ulong get_tbclk (void)
 {
-	ulong tbclk;
-
-	tbclk = CONFIG_SYS_HZ;
-	return tbclk;
+	return CONFIG_SYS_HZ;
 }

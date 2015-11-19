@@ -13,9 +13,9 @@ static const char ThisFile[] = "PLLTEST.c";
 
 #include "SWFUNC.H"
 
-#include <COMMINF.H>
-#include <TYPEDEF.H>
-#include <IO.H>
+#include "COMMINF.H"
+#include "TYPEDEF.H"
+#include "IO.H"
 
 #define ASTCHIP_2400    0
 #define ASTCHIP_2300    1

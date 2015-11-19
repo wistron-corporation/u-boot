@@ -19,9 +19,9 @@ static const char ThisFile[] = "MACTEST.c";
   #include <post.h>
   #include <malloc.h>
   #include <net.h>
-  #include <COMMINF.H>
-  #include <STDUBOOT.H>
-  #include <IO.H>
+  #include "COMMINF.H"
+  #include "STDUBOOT.H"
+  #include "IO.H"
 #else
   #include <stdlib.h>
   #include <string.h>
@@ -1212,4 +1212,3 @@ Find_Err_IOMargin:;
     return(Finish_Check(0));
    
 }
-

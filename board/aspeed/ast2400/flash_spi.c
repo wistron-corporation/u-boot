@@ -23,7 +23,7 @@
  */
 
 /* The DEBUG define must be before common to enable debugging */
-/* #define DEBUG	*/
+/* #define DEBUG */
 
 #include <common.h>
 #include <asm/processor.h>
@@ -68,6 +68,7 @@ flash_info_t flash_info[CONFIG_SYS_MAX_FLASH_BANKS];		/* FLASH chips info */
 /* Support Flash ID */
 #define STM25P64		0x172020
 #define STM25P128		0x182020
+#define N25Q128			0x18ba20
 #define N25Q256			0x19ba20
 #define N25Q512			0x20ba20
 #define S25FL064A		0x160201
@@ -581,7 +582,7 @@ static ulong flash_get_size (ulong base, int banknum)
         ulID = ((ulong)ch[0]) | ((ulong)ch[1] << 8) | ((ulong)ch[2] << 16) ;        
         info->flash_id = ulID;
         
-        //printf("SPI Flash ID: %x \n", ulID);
+        printf("SPI Flash ID: %x \n", ulID);
 
         /* init default */        
         info->iomode = IOMODEx1;
@@ -617,6 +618,19 @@ static ulong flash_get_size (ulong base, int banknum)
             ReadClk  = 50;
             break;
             
+        case N25Q128:
+	    info->sector_count = 256;
+	    info->size = 0x1000000;        	
+            erase_region_size  = 0x10000;
+            info->readcmd = 0x0b;            
+            info->dualport = 0;
+            info->dummybyte = 1;
+            info->buffersize = 256;            
+            WriteClk = 50;
+            EraseClk = 20;
+            ReadClk  = 50;
+	    break;
+
         case N25Q256:
 	    info->sector_count = 256;
 	    info->size = 0x1000000;        	
@@ -1051,8 +1065,7 @@ AST2300 A0 SPI can't run faster than 50Mhz
             } /* JDEC */        
         }
         				
-        debug ("erase_region_count = %d erase_region_size = %d\n",
-		erase_region_count, erase_region_size);
+        debug ("erase_region_size = %d\n", erase_region_size);
 
 	sector = base;			
 	for (j = 0; j < info->sector_count; j++) {
