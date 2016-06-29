@@ -399,7 +399,7 @@ static int   aspeednic_init(struct eth_device* dev, bd_t* bis);
 static int   aspeednic_send(struct eth_device* dev, void *packet, int length);
 static int   aspeednic_recv(struct eth_device* dev);
 static void  aspeednic_halt(struct eth_device* dev);
-static void  set_mac_address (struct eth_device* dev, bd_t* bis);
+static int   aspeednic_write_hwaddr(struct eth_device* dev);
 static void  phy_write_register (struct eth_device* dev, u8 PHY_Register, u8 PHY_Address, u16 PHY_Data);
 static u16   phy_read_register (struct eth_device* dev, u8 PHY_Register, u8 PHY_Address);
 #if defined(CONFIG_MII) || defined(CONFIG_CMD_MII)
@@ -547,6 +547,7 @@ int aspeednic_initialize(bd_t *bis)
 	dev->halt = aspeednic_halt;
 	dev->send = aspeednic_send;
 	dev->recv = aspeednic_recv;
+	dev->write_hwaddr = aspeednic_write_hwaddr;
 
 	/* Ensure we're not sleeping. */
 	if (CONFIG_ASPEED_MAC_PHY_SETTING >= 1) {
@@ -1140,7 +1141,7 @@ static int aspeednic_init(struct eth_device* dev, bd_t* bis)
 
 	aspeednic_probe_phy(dev);
 
-	set_mac_address(dev, bis);
+	aspeednic_write_hwaddr(dev);
 	set_mac_control_register(dev);
 
 	for (i = 0; i < NUM_RX_DESC; i++) {
@@ -1350,7 +1351,7 @@ static void aspeednic_halt(struct eth_device* dev)
 	STOP_MAC(dev);
 }
 
-static void set_mac_address (struct eth_device* dev, bd_t* bis)
+static int aspeednic_write_hwaddr(struct eth_device* dev)
 {
 	if (!eth_getenv_enetaddr_by_index("eth", 0, dev->enetaddr)) {
 		net_random_ethaddr(dev->enetaddr);
@@ -1362,6 +1363,8 @@ static void set_mac_address (struct eth_device* dev, bd_t* bis)
 	if (CONFIG_ASPEED_MAC_PHY_SETTING >= 1) {
 		memcpy(NCSI_Request.SA, dev->enetaddr, 6);
 	}
+
+	return 0;
 }
 
 static u16 phy_read_register (struct eth_device* dev, u8 PHY_Register, u8 PHY_Address)
