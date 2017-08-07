@@ -124,6 +124,22 @@ flash_info_t flash_info[CONFIG_SYS_MAX_FLASH_BANKS];		/* FLASH chips info */
 /* specificspi */
 #define SpecificSPI_N25Q512	0x00000001
 
+#ifdef CONFIG_FLASH_CFI_MTD
+static uint flash_verbose=1;
+void flash_set_verbose(uint v)
+{
+	flash_verbose = v;
+}
+
+unsigned long flash_sector_size(flash_info_t *info, flash_sect_t sect)
+{
+	if (sect != (info->sector_count - 1))
+		return info->start[sect + 1] - info->start[sect];
+	else
+		return info->start[0] + info->size - info->start[sect];
+}
+#endif
+
 /*-----------------------------------------------------------------------*/
 static u32 ast_spi_calculate_divisor(u32 max_speed_hz)
 {
@@ -1370,6 +1386,10 @@ unsigned long flash_init (void)
 		       CONFIG_ENV_ADDR_REDUND,
 		       CONFIG_ENV_ADDR_REDUND + CONFIG_ENV_SIZE_REDUND - 1,
 		       flash_get_info(CONFIG_ENV_ADDR_REDUND));
+#endif
+
+#ifdef CONFIG_FLASH_CFI_MTD
+	cfi_mtd_init();
 #endif
 
 	return (size);
