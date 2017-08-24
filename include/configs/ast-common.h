@@ -84,6 +84,18 @@
 #define CONFIG_SYS_MAXARGS		16
 #define CONFIG_SYS_BARGSIZE		CONFIG_SYS_CBSIZE
 
+/*
+ * Optional MTD and UBI support
+ */
+#ifdef MTDPARTS_DEFAULT
+#define CONFIG_FLASH_CFI_MTD
+#define CONFIG_CMD_UBI
+#define CONFIG_RBTREE
+#define CONFIG_MTD_DEVICE
+#define CONFIG_MTD_PARTITIONS
+#define CONFIG_CMD_MTDPARTS
+#endif
+
 #define CONFIG_BOOTARGS			"console=ttyS4,115200n8 root=/dev/ram rw"
 
 #define CONFIG_AST_SPI_NOR    /* AST SPI NOR Flash */
