@@ -31,8 +31,10 @@
 #define READ_CLK (*(volatile ulong *)(AST_TIMER_BASE + 0))
 #define READ_TIMER (READ_CLK / CLK_PER_HZ)
 
-static ulong timestamp;
-static ulong lastdec;
+DECLARE_GLOBAL_DATA_PTR;
+
+#define timestamp gd->arch.tbl
+#define lastdec gd->arch.lastinc
 
 int timer_init (void)
 {
