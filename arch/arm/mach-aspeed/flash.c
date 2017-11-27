@@ -1009,7 +1009,7 @@ static ulong flash_get_size (ulong base, flash_info_t *info)
 			info->readcmd = 0x0b;
 			info->dualport = 0;
 			info->dummybyte = 1;
-			info->buffersize = 512;
+			info->buffersize = 256;
 			WriteClk = 50;
 			EraseClk = 20;
 			ReadClk  = 50;
