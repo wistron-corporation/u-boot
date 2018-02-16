@@ -108,11 +108,7 @@
 #define CONFIG_ENV_OFFSET		0x60000	/* environment starts here  */
 #define CONFIG_ENV_SIZE			0x20000	/* Total Size of Environment Sector */
 
-#define CONFIG_BOOTCOMMAND	\
-	"fdt addr 20080000; " \
-	"if fdt get value ramdisk_conf /configurations/conf@1 ramdisk; then " \
-	"    bootm 20080000; else bootm 20080000 20300000; " \
-	"fi"
+#define CONFIG_BOOTCOMMAND		"bootm 20080000"
 #define CONFIG_ENV_OVERWRITE
 
 #define ASPEED_ENV_SETTINGS \
