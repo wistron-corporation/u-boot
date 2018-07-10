@@ -1,0 +1,12 @@
+if SOC_IBM_FSP2
+
+config SYS_BOARD
+	default "fsp2"
+
+config SYS_VENDOR
+	default "ibm"
+
+config SYS_CONFIG_NAME
+	default "ibm_fsp2"
+
+endif
