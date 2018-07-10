@@ -8,6 +8,8 @@
 #ifndef __LINUX_MII_H__
 #define __LINUX_MII_H__
 
+#define MII_SHADOW          0x1c	/* Shadow regs on BMC54616S    */
+
 /* Generic MII registers. */
 
 #define MII_BMCR	    0x00	/* Basic mode control register */

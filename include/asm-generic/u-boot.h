@@ -68,6 +68,12 @@ typedef struct bd_info {
 	unsigned long bi_flbfreq;	/* Flexbus Freq in MHz */
 #endif
 
+//TODO : REMOV THIS
+#if defined(CONFIG_47x)
+        int             bi_phynum[4];           /* Determines phy mapping */                                            
+        int             bi_phymode[4];          /* Determines phy mode */
+#endif
+
 #ifdef CONFIG_HAS_ETH1
 	unsigned char   bi_enet1addr[6];	/* OLD: see README.enetaddr */
 #endif

@@ -147,6 +147,17 @@ config PHY_VITESSE
 config PHY_XILINX
 	bool "Xilinx Ethernet PHYs support"
 
+config PHY_FSP2
+	bool "fsp2 Ethernet PHYs support"
+
+if PHY_FSP2
+
+config PHY1_ADDR
+	int "PHY mac addr"
+	default 2
+endif
+
+
 config PHY_FIXED
 	bool "Fixed-Link PHY"
 	depends on DM_ETH

@@ -214,6 +214,11 @@ config RTL8169
 config SMC911X
 	bool "SMSC LAN911x and LAN921x controller driver"
 
+config IBM_EMAC4
+	select PHYLIB
+	select PHY_FSP2
+	bool "emac 4"
+
 if SMC911X
 
 config SMC911X_BASE
