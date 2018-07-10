@@ -542,6 +542,12 @@ config MPC8XX_CONS
 	depends on 8xx
 	default y
 
+config UART750
+	bool "UART750 serial driver for 4xx ppc"
+	depends on 47x
+	help
+	  Serial driver for PPC 4xx based platforms.
+
 choice
 	prompt "Console port"
 	default 8xx_CONS_SMC1
