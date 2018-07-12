@@ -17,8 +17,8 @@
  *
  * Gary Hsu, <gary_hsu@aspeedtech.com>
  *
- * Version     : 16
- * Release date: 2017.06.19
+ * Version     : 18
+ * Release date: 2017.10.27
  *
  * Priority of fix item:
  * [P1] = critical
@@ -75,6 +75,10 @@
  *    |2017.06.19 : 3.[P2] Add initial sequence for LPC controller
  *    |2017.06.19 : 4.[P2] Add initial full-chip reset option
  *    |2017.06.19 : 5.[P3] Add 10ms delay after DDR reset
+ * V17|2017.09.25 : 1.[P1] Modify DDR4 side ODT value from 60ohm to 48ohm.
+ *    |2017.09.25 : 2.[P1] Add Hynix DDR4 frequency slow down option.
+ * V18|2017.10.26 : 1.[P3] Include the modification of DDR4 side ODT value in V17 into the option of Hynix DDR4 configuration.
+ *    |2017.10.26 : 2.[P2] Enhance initial sequence for LPC controller
  * Note: Read timing report is only a reference, it is not a solid rule for stability.
  *
  * Optional define variable
@@ -94,6 +98,13 @@
  *    CONFIG_FIRMWARE_2ND_BOOT (Removed)
  * 6. Enable DRAM extended temperature range mode
  *    CONFIG_DRAM_EXT_TEMP
+ * 7. Select WDT_Full mode for power up initial reset
+ *    ASTMMC_INIT_RESET_MODE_FULL
+ * 8. Hynix DDR4 options
+ *    CONFIG_DDR4_SUPPORT_HYNIX   // Enable this when Hynix DDR4 included in the BOM
+ *    CONFIG_DDR4_HYNIX_SET_1536
+ *    CONFIG_DDR4_HYNIX_SET_1488
+ *    CONFIG_DDR4_HYNIX_SET_1440  // Default
  ******************************************************************************
  */
 
@@ -106,8 +117,8 @@
   Free registers:
   r0, r1, r2, r3, r6, r7, r8, r9, r10, r11
  ******************************************************************************/
-#define ASTMMC_INIT_VER      0x10                @ 8bit verison number
-#define ASTMMC_INIT_DATE     0x20170619          @ Release date
+#define ASTMMC_INIT_VER      0x12                @ 8bit verison number
+#define ASTMMC_INIT_DATE     0x20171027          @ Release date
 
 /******************************************************************************
   BMC side DDR IO driving manual mode fine-tuning, used to improve CK/CKN Vix violation.
@@ -129,6 +140,19 @@
   Use WDT_Full may clear the initial result of prior initial code.
  ******************************************************************************/
 //#define ASTMMC_INIT_RESET_MODE_FULL
+
+/******************************************************************************
+  There is a compatibility issue for Hynix DDR4 SDRAM.
+  Hynix DDR4 SDRAM is more weak on noise margin compared to Micron and Samsung DDR4.
+  To well support Hynix DDR4, it requlres to slow down the DDR4 operating frequency
+  from 1600Mbps to 1536/1488/1440 Mbps. The target frequency that can be used depends
+  on the MB layout. Customer can find the appropriate frequency for their products.
+  Below are the new defined parameters for the Hynix DDR4 supporting.
+ ******************************************************************************/
+#define CONFIG_DDR4_SUPPORT_HYNIX              @ Enable this when Hynix DDR4 included in the BOM
+//#define CONFIG_DDR4_HYNIX_SET_1536
+//#define CONFIG_DDR4_HYNIX_SET_1488
+#define CONFIG_DDR4_HYNIX_SET_1440
 
 #define ASTMMC_REGIDX_010    0x00
 #define ASTMMC_REGIDX_014    0x04
@@ -210,7 +234,11 @@ TIME_TABLE_DDR4_1600:
     .word   0x08000000       @ 0x020
     .word   0x00000400       @ 0x024
     .word   0x00000410       @ 0x02C
-    .word   0x00000101       @ 0x030
+#ifdef CONFIG_DDR4_SUPPORT_HYNIX
+    .word   0x00000501       @ 0x030             @ ODT = 48 ohm
+#else
+    .word   0x00000101       @ 0x030             @ ODT = 60 ohm
+#endif
     .word   0x00000024       @ 0x214
     .word   0x03002900       @ 0x2E0
     .word   0x0E0000A0       @ 0x2E4
@@ -377,6 +405,14 @@ start_first_reset:
     ldr   r0, =0x1e787018                        @ read clear
     ldr   r1, [r0]
     ldr   r0, =0x1e787008                        @ read clear
+    ldr   r1, [r0]
+    ldr   r0, =0x1e78301c                        @ read clear
+    ldr   r1, [r0]
+    ldr   r0, =0x1e78d01c                        @ read clear
+    ldr   r1, [r0]
+    ldr   r0, =0x1e78e01c                        @ read clear
+    ldr   r1, [r0]
+    ldr   r0, =0x1e78f01c                        @ read clear
     ldr   r1, [r0]
     ldr   r0, =0x1e788020
     str   r2, [r0]
@@ -641,22 +677,49 @@ bypass_USB_init:
     orr   r1, r1, #0x40
     str   r1, [r0]
 
+    ldr   r0, =0x1e6e2070                        @ Load strap register
+    ldr   r3, [r0]
+
     /* Set M-PLL */
 #if   defined (CONFIG_DRAM_1333)
     ldr   r2, =0xC48066C0                        @ load PLL parameter for 24Mhz CLKIN (330)
 #else
     ldr   r2, =0x93002400                        @ load PLL parameter for 24Mhz CLKIN (396)
+#if   defined (CONFIG_DDR4_SUPPORT_HYNIX)
+    mov   r1, r3, lsr #24                        @ Check DDR4
+    tst   r1, #0x01
+    beq   bypass_mpll_hynix_mode_1
+#if   defined (CONFIG_DDR4_HYNIX_SET_1536)
+    ldr   r2, =0x930023E0                        @ load PLL parameter for 24Mhz CLKIN (384)
+#elif defined (CONFIG_DDR4_HYNIX_SET_1488)
+    ldr   r2, =0x930023C0                        @ load PLL parameter for 24Mhz CLKIN (372)
+#else
+    ldr   r2, =0x930023A0                        @ load PLL parameter for 24Mhz CLKIN (360)
+#endif
+bypass_mpll_hynix_mode_1:
+#endif
 #endif
 
-    ldr   r0, =0x1e6e2070                        @ Check CLKIN = 25MHz
-    ldr   r1, [r0]
-    mov   r1, r1, lsr #23
+    mov   r1, r3, lsr #23                        @ Check CLKIN = 25MHz
     tst   r1, #0x01
     beq   set_MPLL
 #if   defined (CONFIG_DRAM_1333)
     ldr   r2, =0xC4806680                        @ load PLL parameter for 25Mhz CLKIN (331)
 #else
     ldr   r2, =0x930023E0                        @ load PLL parameter for 25Mhz CLKIN (400)
+#if   defined (CONFIG_DDR4_SUPPORT_HYNIX)
+    mov   r1, r3, lsr #24                        @ Check DDR4
+    tst   r1, #0x01
+    beq   bypass_mpll_hynix_mode_2
+#if   defined (CONFIG_DDR4_HYNIX_SET_1536)
+    ldr   r2, =0x930023C0                        @ load PLL parameter for 24Mhz CLKIN (387.5)
+#elif defined (CONFIG_DDR4_HYNIX_SET_1488)
+    ldr   r2, =0x930023A0                        @ load PLL parameter for 24Mhz CLKIN (375)
+#else
+    ldr   r2, =0x93002380                        @ load PLL parameter for 24Mhz CLKIN (362.5)
+#endif
+bypass_mpll_hynix_mode_2:
+#endif
 #endif
     ldr   r0, =0x1e6e2160                        @ set 24M Jitter divider (HPLL=825MHz)
     ldr   r1, =0x00011320
