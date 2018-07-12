@@ -48,6 +48,12 @@
  * Modified list from v0.60
  * EC1. Modify DDR2 init preliminary size to 1Gbit, and BL=4.
  *
+ * Modified list from v0.61
+ * EC1. Set for wide screen supporting, 0x1e6e2040[0] = 1
+ *
+ * Modified list from v0.62
+ * EC1. Clear MCR04[10] = 0 before doing DRAM initial
+ *
  * Optional define variable
  * 1. DRAM Speed             //
  *    CONFIG_DRAM_336        // 336MHz (DDR-667)
@@ -422,6 +428,8 @@ delay_0:
 
     /* Reset MMC */
     ldr r1, =0x00000000
+    ldr r0, =0x1e6e0004
+    str r1, [r0]
     ldr r0, =0x1e6e0034
     str r1, [r0]
     ldr r0, =0x1e6e0018
@@ -454,7 +462,7 @@ delay_1:
     str r1, [r0]
 
     ldr r0, =0x1e6e0008
-    ldr r1, =0x0090040f                          /* VGA */
+    ldr r1, =0x0090040f                          /* VGA : remember to clear MCR04[10] = 0 */
     str r1, [r0]
 
     ldr r0, =0x1e6e0018
@@ -2555,7 +2563,7 @@ set_scratch:
     /*Set Scratch register Bit 6 after ddr initial finished */
     ldr r0, =0x1e6e2040
     ldr r1, [r0]
-    orr r1, r1, #0x40
+    orr r1, r1, #0x41
     str r1, [r0]
 
 /* Debug - UART console message */
