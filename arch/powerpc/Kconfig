@@ -34,11 +34,15 @@ config 8xx
 	bool "MPC8xx"
 	imply CMD_REGINFO
 
+config 47x
+	bool "47x"
+
 endchoice
 
 source "arch/powerpc/cpu/mpc83xx/Kconfig"
 source "arch/powerpc/cpu/mpc85xx/Kconfig"
 source "arch/powerpc/cpu/mpc86xx/Kconfig"
 source "arch/powerpc/cpu/mpc8xx/Kconfig"
+source "arch/powerpc/cpu/47x/Kconfig"
 
 endmenu
