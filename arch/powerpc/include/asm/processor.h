@@ -89,9 +89,15 @@
 
 /* Special Purpose Registers (SPRNs)*/
 
+/* PPC4xx Architecture is BOOK-E */
+#if defined(CONFIG_47x)
+#define CONFIG_BOOKE
+#endif
+
 #define SPRN_CCR0	0x3B3	/* Core Configuration Register 0 */
 #ifdef CONFIG_BOOKE
 #define SPRN_CCR1	0x378	/* Core Configuration Register for 440 only */
+#define   CCR1_TCS_MASK	0x00000300
 #endif
 #define SPRN_CDBCR	0x3D7	/* Cache Debug Control Register */
 #define SPRN_CTR	0x009	/* Count Register */
@@ -167,6 +173,10 @@
 #define	SPRN_DBDR	0x3f3		/* Debug Data Register */
 #endif
 #define SPRN_DBSR	0x130		/* Book E Debug Status Register */
+#define   DBSR_MRR_MASK	    0x30000000	/* MRR Mask */
+#define   DBSR_MRR_SYS	    0x30000000	/* MRR System */
+#define   DBSR_MRR_CHIP	    0x20000000	/* MRR Chip */
+#define   DBSR_MRR_CORE	    0x10000000	/* MRR Core */
 #define   DBSR_IC	    0x08000000	/* Book E Instruction Completion  */
 #define   DBSR_TIE	    0x01000000	/* Book E Trap Instruction Event */
 #endif /* CONFIG_BOOKE */
@@ -420,6 +430,7 @@
 #define     WRS_CORE		1		/* WDT forced core reset */
 #define     WRS_CHIP		2		/* WDT forced chip reset */
 #define     WRS_SYSTEM		3		/* WDT forced system reset */
+#define   TSR_WRS_MASK(x)	(((x)>>28)&0x3)
 #define   TSR_PIS		0x08000000	/* PIT Interrupt Status */
 #define   TSR_FIS		0x04000000	/* FIT Interrupt Status */
 #define SPRN_UMMCR0	0x3A8	/* User Monitor Mode Control Register 0 */
@@ -562,10 +573,18 @@
 #define SPRN_PID1	0x279	/* Process ID Register 1 */
 #define SPRN_PID2	0x27a	/* Process ID Register 2 */
 #define SPRN_MCSR	0x23c	/* Machine Check Syndrome register */
+#if defined(CONFIG_47x)
+#define SPRN_MCSR_C	0x33c	/* Machine Check Syndrome register (Clear) */
+#endif
 #define SPRN_MCAR	0x23d	/* Machine Check Address register */
 #define MCSR_MCS	0x80000000	/* Machine Check Summary */
 #define MCSR_IB		0x40000000	/* Instruction PLB Error */
+#if defined(CONFIG_47x)
+#define MCSR_DRB	0x20000000	/* Data Read PLB Error */
+#define MCSR_DWB	0x10000000	/* Data Write PLB Error */
+#else
 #define MCSR_DB		0x20000000	/* Data PLB Error */
+#endif /* defined(CONFIG_47x) */
 #define MCSR_TLBP	0x08000000	/* TLB Parity Error */
 #define MCSR_ICP	0x04000000	/* I-Cache Parity Error */
 #define MCSR_DCSP	0x02000000	/* D-Cache Search Parity Error */
@@ -754,7 +773,7 @@
 #define MAS7	SPRN_MAS7
 #define MAS8 	SPRN_MAS8
 
-#if defined(CONFIG_MPC85xx)
+#if defined(CONFIG_47x) || defined(CONFIG_MPC85xx)
 #define DAR_DEAR DEAR
 #else
 #define DAR_DEAR DAR
@@ -878,63 +897,7 @@
 #define PVR_E600_MIN(pvr)	(((pvr) >> 0) & 0xFF)	 /* Minor revision */
 
 /* Processor Version Numbers */
-
-#define PVR_403GA	0x00200000
-#define PVR_403GB	0x00200100
-#define PVR_403GC	0x00200200
-#define PVR_403GCX	0x00201400
-#define PVR_405GP	0x40110000
-#define PVR_405GP_RB	0x40110040
-#define PVR_405GP_RC	0x40110082
-#define PVR_405GP_RD	0x401100C4
-#define PVR_405GP_RE	0x40110145  /* same as pc405cr rev c */
-#define PVR_405EP_RA	0x51210950
-#define PVR_405GPR_RB	0x50910951
-#define PVR_405EZ_RA	0x41511460
-#define PVR_405EXR2_RA	0x12911471 /* 405EXr rev A/B without Security */
-#define PVR_405EX1_RA	0x12911477 /* 405EX rev A/B with Security */
-#define PVR_405EXR1_RC	0x1291147B /* 405EXr rev C with Security */
-#define PVR_405EXR2_RC	0x12911479 /* 405EXr rev C without Security */
-#define PVR_405EX1_RC	0x1291147F /* 405EX rev C with Security */
-#define PVR_405EX2_RC	0x1291147D /* 405EX rev C without Security */
-#define PVR_405EXR1_RD	0x12911472 /* 405EXr rev D with Security */
-#define PVR_405EXR2_RD	0x12911470 /* 405EXr rev D without Security */
-#define PVR_405EX1_RD	0x12911475 /* 405EX rev D with Security */
-#define PVR_405EX2_RD	0x12911473 /* 405EX rev D without Security */
-#define PVR_440GP_RB	0x40120440
-#define PVR_440GP_RC	0x40120481
-#define PVR_440EP_RA	0x42221850
-#define PVR_440EP_RB	0x422218D3 /* 440EP rev B and 440GR rev A have same PVR */
-#define PVR_440EP_RC	0x422218D4 /* 440EP rev C and 440GR rev B have same PVR */
-#define PVR_440GR_RA	0x422218D3 /* 440EP rev B and 440GR rev A have same PVR */
-#define PVR_440GR_RB	0x422218D4 /* 440EP rev C and 440GR rev B have same PVR */
-#define PVR_440EPX1_RA	0x216218D0 /* 440EPX rev A with Security / Kasumi */
-#define PVR_440EPX2_RA	0x216218D4 /* 440EPX rev A without Security / Kasumi */
-#define PVR_440GRX1_RA	0x216218D0 /* 440GRX rev A with Security / Kasumi */
-#define PVR_440GRX2_RA	0x216218D4 /* 440GRX rev A without Security / Kasumi */
-#define PVR_440GX_RA	0x51B21850
-#define PVR_440GX_RB	0x51B21851
-#define PVR_440GX_RC	0x51B21892
-#define PVR_440GX_RF	0x51B21894
-#define PVR_405EP_RB	0x51210950
-#define PVR_440SP_6_RAB	0x53221850 /* 440SP rev A&B with RAID 6 support enabled	*/
-#define PVR_440SP_RAB	0x53321850 /* 440SP rev A&B without RAID 6 support	*/
-#define PVR_440SP_6_RC	0x53221891 /* 440SP rev C with RAID 6 support enabled	*/
-#define PVR_440SP_RC	0x53321891 /* 440SP rev C without RAID 6 support	*/
-#define PVR_440SPe_6_RA	0x53421890 /* 440SPe rev A with RAID 6 support enabled	*/
-#define PVR_440SPe_RA	0x53521890 /* 440SPe rev A without RAID 6 support	*/
-#define PVR_440SPe_6_RB	0x53421891 /* 440SPe rev B with RAID 6 support enabled	*/
-#define PVR_440SPe_RB	0x53521891 /* 440SPe rev B without RAID 6 support	*/
-#define PVR_460EX_SE_RA	0x130218A2 /* 460EX rev A with Security Engine	  */
-#define PVR_460EX_RA	0x130218A3 /* 460EX rev A without Security Engine */
-#define PVR_460EX_RB	0x130218A4 /* 460EX rev B with and without Sec Eng*/
-#define PVR_460GT_SE_RA	0x130218A0 /* 460GT rev A with Security Engine	  */
-#define PVR_460GT_RA	0x130218A1 /* 460GT rev A without Security Engine */
-#define PVR_460GT_RB	0x130218A5 /* 460GT rev B with and without Sec Eng*/
-#define PVR_460SX_RA    0x13541800 /* 460SX rev A                   */
-#define PVR_460SX_RA_V1 0x13541801 /* 460SX rev A Variant 1 Security disabled */
-#define PVR_460GX_RA    0x13541802 /* 460GX rev A                   */
-#define PVR_460GX_RA_V1 0x13541803 /* 460GX rev A Variant 1 Security disabled */
+#define PVR_476FSP2	0x7FF520C0 /* FSP-2 DD1.0 */
 #define PVR_APM821XX_RA 0x12C41C80 /* APM821XX rev A */
 #define PVR_601		0x00010000
 #define PVR_602		0x00050000
@@ -1074,6 +1037,8 @@
 #define SVR_P1012	0x80E501
 #define SVR_P1013	0x80E700
 #define SVR_P1014	0x80F101
+#define SVR_P1015	0x80E502
+#define SVR_P1016	0x80E503
 #define SVR_P1017	0x80F700
 #define SVR_P1020	0x80E400
 #define SVR_P1021	0x80E401
@@ -1086,6 +1051,7 @@
 #define SVR_P2040	0x821000
 #define SVR_P2041	0x821001
 #define SVR_P3041	0x821103
+#define SVR_P3060	0x820002
 #define SVR_P4040	0x820100
 #define SVR_P4080	0x820000
 #define SVR_P5010	0x822100
@@ -1124,9 +1090,11 @@
 #define SVR_8641D	0x809001
 
 #define SVR_9130	0x860001
+#define SVR_9130_E	0x860801
 #define SVR_9131	0x860000
 #define SVR_9132	0x861000
 #define SVR_9232	0x861400
+#define SVR_9131_E	0x860800
 
 #define SVR_Unknown	0xFFFFFF
 
@@ -1154,6 +1122,21 @@ n:
 #define mtspr(rn, v)	asm volatile("mtspr " stringify(rn) ",%0" : : "r" (v))
 
 #define tlbie(v)	asm volatile("tlbie %0 \n sync" : : "r" (v))
+
+#if !defined(__ASSEMBLY__)
+static inline void mtdcrx(unsigned long offset, unsigned long value)
+{
+	asm volatile ("mtdcrx %0,%1" : : "r" (offset), "r" (value));
+}
+
+static inline unsigned long mfdcrx(unsigned long offset)
+{
+	unsigned long rval;
+	asm volatile ("mfdcrx %0,%1" : "=r" (rval) : "r" (offset));
+	return rval;
+}
+
+#endif /* __ASSEMBLY__ */
 
 /* Segment Registers */
 

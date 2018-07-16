@@ -10,5 +10,12 @@
 #define INTERRUPT_H
 
 void external_interrupt(struct pt_regs *regs);
+void pic_irq_disable(unsigned int vec);
+void pic_enable(void);
+void pic_irq_ack(unsigned int vec);
+void pic_irq_enable(unsigned int vec);
+void interrupt_run_handler(int vec);
+void interrupt_init_cpu(unsigned *decrementer_count);
+void timer_interrupt_cpu(struct pt_regs *regs);
 
 #endif

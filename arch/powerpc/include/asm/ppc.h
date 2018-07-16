@@ -28,6 +28,9 @@
 #include <mpc83xx.h>
 #include <asm/immap_83xx.h>
 #endif
+#ifdef	CONFIG_47x
+#include <asm/ppc4xx.h>
+#endif
 #ifdef CONFIG_SOC_DA8XX
 #include <asm/arch/hardware.h>
 #endif
@@ -58,7 +61,17 @@ static inline uint get_svr(void)
 	return mfspr(SVR);
 }
 
-#if defined(CONFIG_MPC85xx)	|| \
+uint get_pvr(void);
+uint get_svr(void);
+uint rd_ic_cst(void);
+void wr_ic_cst(uint);
+void wr_ic_adr(uint);
+uint rd_dc_cst(void);
+void wr_dc_cst(uint);
+void wr_dc_adr(uint);
+
+#if defined(CONFIG_47x)	|| \
+	defined(CONFIG_MPC85xx)	|| \
 	defined(CONFIG_MPC86xx)	|| \
 	defined(CONFIG_MPC83xx)
 unsigned char	in8(unsigned int);
