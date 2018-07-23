@@ -10,8 +10,8 @@
  *    1. 2012/12/29 Ryan Chen Create
  *
  ******************************************************************************/
-#ifndef __AST_SDMC_H
-#define __AST_SDMC_H
+#ifndef __AST_REGS_SDMC_H
+#define __AST_REGS_SDMC_H
 
 /*
  *  Register for SDMC

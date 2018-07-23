@@ -10,8 +10,8 @@
  *    1. 2012/12/29 Ryan Chen Create
  *
  ******************************************************************************/
-#ifndef __AST_AHBC_H
-#define __AST_AHBC_H
+#ifndef __AST_REGS_AHBC_H
+#define __AST_REGS_AHBC_H
 
 #include <asm/arch/aspeed.h>
 
