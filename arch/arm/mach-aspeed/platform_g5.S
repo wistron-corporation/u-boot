@@ -149,7 +149,7 @@
   on the MB layout. Customer can find the appropriate frequency for their products.
   Below are the new defined parameters for the Hynix DDR4 supporting.
  ******************************************************************************/
-#define CONFIG_DDR4_SUPPORT_HYNIX              @ Enable this when Hynix DDR4 included in the BOM
+//#define CONFIG_DDR4_SUPPORT_HYNIX              @ Enable this when Hynix DDR4 included in the BOM
 //#define CONFIG_DDR4_HYNIX_SET_1536
 //#define CONFIG_DDR4_HYNIX_SET_1488
 #define CONFIG_DDR4_HYNIX_SET_1440
