@@ -72,6 +72,12 @@ struct soc_id {
 
 #define SOC_ID(str, rev) { .name = str, .rev_id = rev, }
 
+/*
+ * The values for the silicon revision IDs shown below are from
+ * the ASPEED Technology document "AST2500/AST2520 Integrated
+ * Remote Management Processor A2 Datasheet", v1.6, pp 373-374.
+ */
+
 static struct soc_id soc_map_table[] = {
 	SOC_ID("AST1100/AST2050-A0", 0x00000200),
 	SOC_ID("AST1100/AST2050-A1", 0x00000201),
@@ -100,6 +106,10 @@ static struct soc_id soc_map_table[] = {
 	SOC_ID("AST2510-A1", 0x04010103),
 	SOC_ID("AST2520-A1", 0x04010203),
 	SOC_ID("AST2530-A1", 0x04010403),
+	SOC_ID("AST2500-A2", 0x04030303),
+	SOC_ID("AST2510-A2", 0x04030103),
+	SOC_ID("AST2520-A2", 0x04030203),
+	SOC_ID("AST2530-A2", 0x04030403),
 };
 
 void ast_scu_init_eth(u8 num)
@@ -232,6 +242,38 @@ u32 ast_get_h_pll_clk(void)
 			(SCU_H_PLL_GET_PNUM(h_pll_set) + 1);
 	}
 	debug("h_pll = %d\n", clk);
+	return clk;
+}
+
+/*
+ * The source code for ast_get_m_pll_clk() is adapted from
+ * the file "arch/arm/mach-aspeed/ast-bmc-scu.c" contained
+ * in the bootloader portion of the ASPEED AST2500 SDK, v4.05
+ */
+
+u32 ast_get_m_pll_clk(void)
+{
+	u32 clk = 0;
+	u32 m_pll_set = ast_scu_read(AST_SCU_M_PLL);
+
+	if (m_pll_set & SCU_M_PLL_OFF)
+		return 0;
+
+	/* Programming */
+	clk = ast_get_clk_source();
+	if (m_pll_set & SCU_M_PLL_BYPASS) {
+		return clk;
+	} else {
+		/* P = SCU20[13:18]
+		 * M = SCU20[5:12]
+		 * N = SCU20[0:4]
+		 * mpll = 24MHz * [(M+1) /(N+1)] / (P+1)
+		 */
+		clk = ((clk * (SCU_M_PLL_GET_MNUM(m_pll_set) + 1)) /
+			   (SCU_M_PLL_GET_NNUM(m_pll_set) + 1)) /
+			(SCU_M_PLL_GET_PDNUM(m_pll_set) + 1);
+	}
+	debug("m_pll = %d\n", clk);
 	return clk;
 }
 

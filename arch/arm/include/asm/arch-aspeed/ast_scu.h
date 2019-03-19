@@ -37,6 +37,7 @@ extern void ast_scu_get_who_init_dram(void);
 
 extern u32 ast_get_clk_source(void);
 extern u32 ast_get_h_pll_clk(void);
+extern u32 ast_get_m_pll_clk(void);
 extern u32 ast_get_ahbclk(void);
 
 extern u32 ast_scu_get_vga_memsize(void);
