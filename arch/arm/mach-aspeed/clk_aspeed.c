@@ -11,7 +11,7 @@
 int ast_get_clk(struct udevice **devp)
 {
 	return uclass_get_device_by_driver(UCLASS_CLK,
-			DM_GET_DRIVER(aspeed_ast2600_scu), devp);
+			DM_GET_DRIVER(aspeed_scu), devp);
 }
 
 void *ast_get_scu(void)
