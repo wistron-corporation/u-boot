@@ -10,7 +10,7 @@
 #include <reset-uclass.h>
 #include <wdt.h>
 #include <asm/io.h>
-#include <asm/arch/scu_ast2500.h>
+#include <asm/arch/scu_aspeed.h>
 #include <asm/arch/wdt.h>
 
 struct aspeed_reset_priv {
@@ -84,6 +84,7 @@ static int aspeed_reset_probe(struct udevice *dev)
 
 static const struct udevice_id aspeed_reset_ids[] = {
 	{ .compatible = "aspeed,ast2500-reset" },
+	{ .compatible = "aspeed,ast2600-reset" },
 	{ }
 };
 
@@ -92,8 +93,8 @@ struct reset_ops aspeed_reset_ops = {
 	.request = aspeed_reset_request,
 };
 
-U_BOOT_DRIVER(ast2500_reset) = {
-	.name		= "ast2500_reset",
+U_BOOT_DRIVER(aspeed_reset) = {
+	.name		= "aspeed_reset",
 	.id		= UCLASS_RESET,
 	.of_match = aspeed_reset_ids,
 	.probe = aspeed_reset_probe,

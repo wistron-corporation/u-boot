@@ -6,7 +6,7 @@
 #include <common.h>
 #include <dm.h>
 #include <asm/io.h>
-#include <asm/arch/scu_ast2600.h>
+#include <asm/arch/scu_aspeed.h>
 
 int ast_get_clk(struct udevice **devp)
 {
@@ -16,7 +16,7 @@ int ast_get_clk(struct udevice **devp)
 
 void *ast_get_scu(void)
 {
-	struct ast2600_clk_priv *priv;
+	struct aspeed_clk_priv *priv;
 	struct udevice *dev;
 	int ret;
 
@@ -26,6 +26,6 @@ void *ast_get_scu(void)
 
 	priv = dev_get_priv(dev);
 
-	return priv->scu;
+	return priv->regs;
 }
 
