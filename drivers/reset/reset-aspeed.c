@@ -49,7 +49,7 @@ static int ast2500_reset_assert(struct reset_ctl *reset_ctl)
 	reset_mask = ast_reset_mask_from_flags(reset_ctl->id);
 	reset_sdram = reset_mode == WDT_CTRL_RESET_SOC &&
 		(reset_mask & WDT_RESET_SDRAM);
-
+#if 0
 	if (reset_sdram) {
 		ast_scu_unlock(priv->scu);
 		setbits_le32(&priv->scu->sysreset_ctrl1,
@@ -61,7 +61,7 @@ static int ast2500_reset_assert(struct reset_ctl *reset_ctl)
 	} else {
 		ret = wdt_expire_now(priv->wdt, reset_ctl->id);
 	}
-
+#endif
 	return ret;
 }
 

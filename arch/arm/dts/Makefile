@@ -674,7 +674,9 @@ dtb-$(CONFIG_ARCH_BCM63158) += \
 dtb-$(CONFIG_ARCH_BCM6858) += \
 	bcm968580xref.dtb
 
-dtb-$(CONFIG_ARCH_ASPEED) += ast2500-evb.dtb
+dtb-$(CONFIG_ARCH_ASPEED) += \
+	ast2500-evb.dtb \
+	ast2600-evb.dtb
 
 dtb-$(CONFIG_ARCH_STI) += stih410-b2260.dtb
 

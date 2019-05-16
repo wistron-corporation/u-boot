@@ -114,11 +114,9 @@ static int ast_i2c_probe(struct udevice *dev)
 	 * Only needs to be done once, but doing it for every
 	 * device does not hurt.
 	 */
-	scu = ast_get_scu();
-	ast_scu_unlock(scu);
-	clrbits_le32(&scu->sysreset_ctrl1, SCU_SYSRESET_I2C);
-	ast_scu_lock(scu);
 
+	//TODO scu reset and get clk
+	
 	ast_i2c_init_bus(dev);
 
 	return 0;

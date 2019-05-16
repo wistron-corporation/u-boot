@@ -18,6 +18,21 @@ config ASPEED_AST2500
 	  It is used as Board Management Controller on many server boards,
 	  which is enabled by support of LPC and eSPI peripherals.
 
+config ASPEED_AST2600
+	bool "Support Aspeed AST2600 SoC"
+	depends on DM_RESET
+	select SYS_ARCH_TIMER
+	select CPU_V7A
+	select CPU_V7_HAS_NONSEC
+	select ARCH_SUPPORT_PSCI
+	select EXPERT
+	help
+	  The Aspeed AST2600 is a ARM-based SoC with Cortex-A7 CPU.
+	  It is used as Board Management Controller on many server boards,
+	  which is enabled by support of LPC and eSPI peripherals.
+
 source "arch/arm/mach-aspeed/ast2500/Kconfig"
+
+source "arch/arm/mach-aspeed/ast2600/Kconfig"
 
 endif
