@@ -13,15 +13,15 @@
 #include <asm/arch/scu_ast2500.h>
 #include <asm/arch/wdt.h>
 
-struct ast2500_reset_priv {
+struct aspeed_reset_priv {
 	/* WDT used to perform resets. */
 	struct udevice *wdt;
 	struct ast2500_scu *scu;
 };
 
-static int ast2500_ofdata_to_platdata(struct udevice *dev)
+static int aspeed_ofdata_to_platdata(struct udevice *dev)
 {
-	struct ast2500_reset_priv *priv = dev_get_priv(dev);
+	struct aspeed_reset_priv *priv = dev_get_priv(dev);
 	int ret;
 
 	ret = uclass_get_device_by_phandle(UCLASS_WDT, dev, "aspeed,wdt",
@@ -34,9 +34,9 @@ static int ast2500_ofdata_to_platdata(struct udevice *dev)
 	return 0;
 }
 
-static int ast2500_reset_assert(struct reset_ctl *reset_ctl)
+static int aspeed_reset_assert(struct reset_ctl *reset_ctl)
 {
-	struct ast2500_reset_priv *priv = dev_get_priv(reset_ctl->dev);
+	struct aspeed_reset_priv *priv = dev_get_priv(reset_ctl->dev);
 	u32 reset_mode, reset_mask;
 	bool reset_sdram;
 	int ret;
@@ -65,7 +65,7 @@ static int ast2500_reset_assert(struct reset_ctl *reset_ctl)
 	return ret;
 }
 
-static int ast2500_reset_request(struct reset_ctl *reset_ctl)
+static int aspeed_reset_request(struct reset_ctl *reset_ctl)
 {
 	debug("%s(reset_ctl=%p) (dev=%p, id=%lu)\n", __func__, reset_ctl,
 	      reset_ctl->dev, reset_ctl->id);
@@ -73,31 +73,31 @@ static int ast2500_reset_request(struct reset_ctl *reset_ctl)
 	return 0;
 }
 
-static int ast2500_reset_probe(struct udevice *dev)
+static int aspeed_reset_probe(struct udevice *dev)
 {
-	struct ast2500_reset_priv *priv = dev_get_priv(dev);
+	struct aspeed_reset_priv *priv = dev_get_priv(dev);
 
 	priv->scu = ast_get_scu();
 
 	return 0;
 }
 
-static const struct udevice_id ast2500_reset_ids[] = {
+static const struct udevice_id aspeed_reset_ids[] = {
 	{ .compatible = "aspeed,ast2500-reset" },
 	{ }
 };
 
-struct reset_ops ast2500_reset_ops = {
-	.rst_assert = ast2500_reset_assert,
-	.request = ast2500_reset_request,
+struct reset_ops aspeed_reset_ops = {
+	.rst_assert = aspeed_reset_assert,
+	.request = aspeed_reset_request,
 };
 
 U_BOOT_DRIVER(ast2500_reset) = {
 	.name		= "ast2500_reset",
 	.id		= UCLASS_RESET,
-	.of_match = ast2500_reset_ids,
-	.probe = ast2500_reset_probe,
-	.ops = &ast2500_reset_ops,
-	.ofdata_to_platdata = ast2500_ofdata_to_platdata,
-	.priv_auto_alloc_size = sizeof(struct ast2500_reset_priv),
+	.of_match = aspeed_reset_ids,
+	.probe = aspeed_reset_probe,
+	.ops = &aspeed_reset_ops,
+	.ofdata_to_platdata = aspeed_ofdata_to_platdata,
+	.priv_auto_alloc_size = sizeof(struct aspeed_reset_priv),
 };
