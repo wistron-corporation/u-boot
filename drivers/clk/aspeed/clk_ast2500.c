@@ -511,7 +511,7 @@ static int aspeed_clk_probe(struct udevice *dev)
 	struct aspeed_clk_priv *priv = dev_get_priv(dev);
 
 	priv->regs = devfdt_get_addr_ptr(dev);
-	printf("clk priv->regs %x n\", priv->regs);
+
 	if (IS_ERR(priv->regs))
 		return PTR_ERR(priv->regs);
 
