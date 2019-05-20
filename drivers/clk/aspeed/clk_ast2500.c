@@ -1,55 +1,15 @@
 // SPDX-License-Identifier: GPL-2.0
 /*
- * Copyright (C) ASPEED Technology Inc.
- * Ryan Chen <ryan_chen@aspeedtech.com>
+ * (C) Copyright 2016 Google, Inc
  */
 
 #include <common.h>
 #include <clk-uclass.h>
 #include <dm.h>
 #include <asm/io.h>
-#include <asm/arch/scu_aspeed.h>
+#include <asm/arch/scu_ast2500.h>
 #include <dm/lists.h>
 #include <dt-bindings/clock/ast2500-scu.h>
-
-/* register */
-#define ASPEED_STRAP		0x70
-#define SCU_HWSTRAP_VGAMEM_SHIFT	2
-#define SCU_HWSTRAP_VGAMEM_MASK		(3 << SCU_HWSTRAP_VGAMEM_SHIFT)
-#define SCU_HWSTRAP_MAC1_RGMII		(1 << 6)
-#define SCU_HWSTRAP_MAC2_RGMII		(1 << 7)
-#define SCU_HWSTRAP_DDR4		(1 << 24)
-#define SCU_HWSTRAP_CLKIN_25MHZ		(1 << 23)
-
-#define ASPEED_CLK_SELECT	0x08
-#define SCU_PCLK_DIV_SHIFT		23
-#define SCU_PCLK_DIV_MASK		(7 << SCU_PCLK_DIV_SHIFT)
-
-#define ASPEED_MSIC2		0x4C	
-#define SCU_MISC2_RGMII_HPLL		(1 << 23)
-#define SCU_MISC2_RGMII_CLKDIV_SHIFT	20
-#define SCU_MISC2_RGMII_CLKDIV_MASK	(3 << SCU_MISC2_RGMII_CLKDIV_SHIFT)
-#define SCU_MISC2_RMII_MPLL		(1 << 19)
-#define SCU_MISC2_RMII_CLKDIV_SHIFT	16
-#define SCU_MISC2_RMII_CLKDIV_MASK	(3 << SCU_MISC2_RMII_CLKDIV_SHIFT)
-#define SCU_MISC2_UARTCLK_SHIFT		24
-
-#define ASPEED_MPLL_PARAMETER	0x20
-#define SCU_MPLL_DENUM_SHIFT		0
-#define SCU_MPLL_DENUM_MASK		0x1f
-#define SCU_MPLL_NUM_SHIFT		5
-#define SCU_MPLL_NUM_MASK		(0xff << SCU_MPLL_NUM_SHIFT)
-#define SCU_MPLL_POST_SHIFT		13
-#define SCU_MPLL_POST_MASK		(0x3f << SCU_MPLL_POST_SHIFT)
-
-#define ASPEED_HPLL_PARAMETER	0x24
-#define SCU_HPLL_DENUM_SHIFT		0
-#define SCU_HPLL_DENUM_MASK		0x1f
-#define SCU_HPLL_NUM_SHIFT		5
-#define SCU_HPLL_NUM_MASK		(0xff << SCU_HPLL_NUM_SHIFT)
-#define SCU_HPLL_POST_SHIFT		13
-#define SCU_HPLL_POST_MASK		(0x3f << SCU_HPLL_POST_SHIFT)
-
 
 /*
  * MAC Clock Delay settings, taken from Aspeed SDK
@@ -79,36 +39,18 @@ DECLARE_GLOBAL_DATA_PTR;
  * D-PLL and D2-PLL have extra divider (OD + 1), which is not
  * yet needed and ignored by clock configurations.
  */
-struct aspeed_div_config {
+struct ast2500_div_config {
 	unsigned int num;
 	unsigned int denum;
 	unsigned int post_div;
 };
 
-static u32 aspeed_get_clkin(struct aspeed_clk_priv *priv)
-{
-	switch(priv->version) {
-		case AST2400:
-		case AST2500:
-			return readl(priv->regs + ASPEED_STRAP) & SCU_HWSTRAP_CLKIN_25MHZ
-					? 25 * 1000 * 1000 : 24 * 1000 * 1000;
-			break;
-		case AST2600:
-			return 25000000;
-			break;
-	}
-	return 0;
-}
-
 /*
  * Get the rate of the M-PLL clock from input clock frequency and
  * the value of the M-PLL Parameter Register.
  */
-static u32 aspeed_get_mpll_rate(struct aspeed_clk_priv *priv)
+static ulong ast2500_get_mpll_rate(ulong clkin, u32 mpll_reg)
 {
-	u32 clkin = aspeed_get_clkin(priv);
-	u32 mpll_reg = readl(priv->regs + ASPEED_MPLL_PARAMETER);
-
 	const ulong num = (mpll_reg & SCU_MPLL_NUM_MASK) >> SCU_MPLL_NUM_SHIFT;
 	const ulong denum = (mpll_reg & SCU_MPLL_DENUM_MASK)
 			>> SCU_MPLL_DENUM_SHIFT;
@@ -122,10 +64,8 @@ static u32 aspeed_get_mpll_rate(struct aspeed_clk_priv *priv)
  * Get the rate of the H-PLL clock from input clock frequency and
  * the value of the H-PLL Parameter Register.
  */
-static ulong aspeed_get_hpll_rate(struct aspeed_clk_priv *priv)
+static ulong ast2500_get_hpll_rate(ulong clkin, u32 hpll_reg)
 {
-	ulong clkin = aspeed_get_clkin(priv);
-	u32 hpll_reg = readl(priv->regs + ASPEED_HPLL_PARAMETER);
 	const ulong num = (hpll_reg & SCU_HPLL_NUM_MASK) >> SCU_HPLL_NUM_SHIFT;
 	const ulong denum = (hpll_reg & SCU_HPLL_DENUM_MASK)
 			>> SCU_HPLL_DENUM_SHIFT;
@@ -135,6 +75,11 @@ static ulong aspeed_get_hpll_rate(struct aspeed_clk_priv *priv)
 	return (clkin * ((num + 1) / (denum + 1))) / (post_div + 1);
 }
 
+static ulong ast2500_get_clkin(struct ast2500_scu *scu)
+{
+	return readl(&scu->hwstrap) & SCU_HWSTRAP_CLKIN_25MHZ
+			? 25 * 1000 * 1000 : 24 * 1000 * 1000;
+}
 
 /**
  * Get current rate or uart clock
@@ -144,10 +89,10 @@ static ulong aspeed_get_hpll_rate(struct aspeed_clk_priv *priv)
  *
  * @return current setting for uart clock rate
  */
-static ulong aspeed_get_uart_clk_rate(struct aspeed_clk_priv *priv, int uart_index)
+static ulong ast2500_get_uart_clk_rate(struct ast2500_scu *scu, int uart_index)
 {
 	/*
-	 * ast2600 datasheet is very confusing when it comes to UART clocks,
+	 * ast2500 datasheet is very confusing when it comes to UART clocks,
 	 * especially when CLKIN = 25 MHz. The settings are in
 	 * different registers and it is unclear how they interact.
 	 *
@@ -155,21 +100,22 @@ static ulong aspeed_get_uart_clk_rate(struct aspeed_clk_priv *priv, int uart_ind
 	 */
 	ulong uart_clkin;
 
-	if (readl(priv->regs + ASPEED_MSIC2) &
+	if (readl(&scu->misc_ctrl2) &
 	    (1 << (uart_index - 1 + SCU_MISC2_UARTCLK_SHIFT)))
 		uart_clkin = 192 * 1000 * 1000;
 	else
 		uart_clkin = 24 * 1000 * 1000;
 
-	if (readl(priv->regs + ASPEED_MSIC2) & SCU_MISC_UARTCLK_DIV13)
+	if (readl(&scu->misc_ctrl1) & SCU_MISC_UARTCLK_DIV13)
 		uart_clkin /= 13;
 
 	return uart_clkin;
 }
 
-static ulong aspeed_clk_get_rate(struct clk *clk)
+static ulong ast2500_clk_get_rate(struct clk *clk)
 {
-	struct aspeed_clk_priv *priv = dev_get_priv(clk->dev);
+	struct ast2500_clk_priv *priv = dev_get_priv(clk->dev);
+	ulong clkin = ast2500_get_clkin(priv->scu);
 	ulong rate;
 
 	switch (clk->id) {
@@ -179,35 +125,50 @@ static ulong aspeed_clk_get_rate(struct clk *clk)
 		 * This ignores dynamic/static slowdown of ARMCLK and may
 		 * be inaccurate.
 		 */
-		rate = aspeed_get_hpll_rate(priv);
-	
+		rate = ast2500_get_hpll_rate(clkin,
+					     readl(&priv->scu->h_pll_param));
 		break;
 	case MCLK_DDR:
-		rate = aspeed_get_mpll_rate(priv);
+		rate = ast2500_get_mpll_rate(clkin,
+					     readl(&priv->scu->m_pll_param));
 		break;
 	case BCLK_PCLK:
 		{
-			ulong apb_div = 4 + 4 * ((readl(priv->regs + ASPEED_CLK_SELECT)
+			ulong apb_div = 4 + 4 * ((readl(&priv->scu->clk_sel1)
 						  & SCU_PCLK_DIV_MASK)
 						 >> SCU_PCLK_DIV_SHIFT);
-			rate = aspeed_get_hpll_rate(priv);
+			rate = ast2500_get_hpll_rate(clkin,
+						     readl(&priv->
+							   scu->h_pll_param));
 			rate = rate / apb_div;
 		}
 		break;
+	case BCLK_HCLK:
+		{
+			ulong ahb_div = 1 + ((readl(&priv->scu->hwstrap)
+					      & SCU_HWSTRAP_AXIAHB_DIV_MASK)
+					     >> SCU_HWSTRAP_AXIAHB_DIV_SHIFT);
+			ulong axi_div = 2;
+
+			rate = ast2500_get_hpll_rate(
+				clkin, readl(&priv->scu->h_pll_param));
+			rate = rate / axi_div / ahb_div;
+		}
+		break;
 	case PCLK_UART1:
-		rate = aspeed_get_uart_clk_rate(priv, 1);
+		rate = ast2500_get_uart_clk_rate(priv->scu, 1);
 		break;
 	case PCLK_UART2:
-		rate = aspeed_get_uart_clk_rate(priv, 2);
+		rate = ast2500_get_uart_clk_rate(priv->scu, 2);
 		break;
 	case PCLK_UART3:
-		rate = aspeed_get_uart_clk_rate(priv, 3);
+		rate = ast2500_get_uart_clk_rate(priv->scu, 3);
 		break;
 	case PCLK_UART4:
-		rate = aspeed_get_uart_clk_rate(priv, 4);
+		rate = ast2500_get_uart_clk_rate(priv->scu, 4);
 		break;
 	case PCLK_UART5:
-		rate = aspeed_get_uart_clk_rate(priv, 5);
+		rate = ast2500_get_uart_clk_rate(priv->scu, 5);
 		break;
 	default:
 		return -ENOENT;
@@ -216,25 +177,25 @@ static ulong aspeed_clk_get_rate(struct clk *clk)
 	return rate;
 }
 
-struct aspeed_clock_config {
+struct ast2500_clock_config {
 	ulong input_rate;
 	ulong rate;
-	struct aspeed_div_config cfg;
+	struct ast2500_div_config cfg;
 };
 
-static const struct aspeed_clock_config aspeed_clock_config_defaults[] = {
+static const struct ast2500_clock_config ast2500_clock_config_defaults[] = {
 	{ 24000000, 250000000, { .num = 124, .denum = 1, .post_div = 5 } },
 };
 
-static bool aspeed_get_clock_config_default(ulong input_rate,
+static bool ast2500_get_clock_config_default(ulong input_rate,
 					     ulong requested_rate,
-					     struct aspeed_div_config *cfg)
+					     struct ast2500_div_config *cfg)
 {
 	int i;
 
-	for (i = 0; i < ARRAY_SIZE(aspeed_clock_config_defaults); i++) {
-		const struct aspeed_clock_config *default_cfg =
-			&aspeed_clock_config_defaults[i];
+	for (i = 0; i < ARRAY_SIZE(ast2500_clock_config_defaults); i++) {
+		const struct ast2500_clock_config *default_cfg =
+			&ast2500_clock_config_defaults[i];
 		if (default_cfg->input_rate == input_rate &&
 		    default_cfg->rate == requested_rate) {
 			*cfg = default_cfg->cfg;
@@ -255,8 +216,8 @@ static bool aspeed_get_clock_config_default(ulong input_rate,
  *
  * @return The clock rate, when the resulting div_config is used.
  */
-static ulong aspeed_calc_clock_config(ulong input_rate, ulong requested_rate,
-				       struct aspeed_div_config *cfg)
+static ulong ast2500_calc_clock_config(ulong input_rate, ulong requested_rate,
+				       struct ast2500_div_config *cfg)
 {
 	/*
 	 * The assumption is that kHz precision is good enough and
@@ -264,15 +225,15 @@ static ulong aspeed_calc_clock_config(ulong input_rate, ulong requested_rate,
 	 */
 	const ulong input_rate_khz = input_rate / 1000;
 	const ulong rate_khz = requested_rate / 1000;
-	const struct aspeed_div_config max_vals = *cfg;
-	struct aspeed_div_config it = { 0, 0, 0 };
+	const struct ast2500_div_config max_vals = *cfg;
+	struct ast2500_div_config it = { 0, 0, 0 };
 	ulong delta = rate_khz;
 	ulong new_rate_khz = 0;
 
 	/*
 	 * Look for a well known frequency first.
 	 */
-	if (aspeed_get_clock_config_default(input_rate, requested_rate, cfg))
+	if (ast2500_get_clock_config_default(input_rate, requested_rate, cfg))
 		return requested_rate;
 
 	for (; it.denum <= max_vals.denum; ++it.denum) {
@@ -303,45 +264,48 @@ static ulong aspeed_calc_clock_config(ulong input_rate, ulong requested_rate,
 	return new_rate_khz * 1000;
 }
 
-static u32 aspeed_configure_ddr(struct aspeed_clk_priv *priv, ulong rate)
+static ulong ast2500_configure_ddr(struct ast2500_scu *scu, ulong rate)
 {
-	u32 clkin = aspeed_get_clkin(priv);
+	ulong clkin = ast2500_get_clkin(scu);
 	u32 mpll_reg;
-	struct aspeed_div_config div_cfg = {
+	struct ast2500_div_config div_cfg = {
 		.num = (SCU_MPLL_NUM_MASK >> SCU_MPLL_NUM_SHIFT),
 		.denum = (SCU_MPLL_DENUM_MASK >> SCU_MPLL_DENUM_SHIFT),
 		.post_div = (SCU_MPLL_POST_MASK >> SCU_MPLL_POST_SHIFT),
 	};
 
-	aspeed_calc_clock_config(clkin, rate, &div_cfg);
+	ast2500_calc_clock_config(clkin, rate, &div_cfg);
 
-	mpll_reg = readl(priv->regs + ASPEED_MPLL_PARAMETER);
+	mpll_reg = readl(&scu->m_pll_param);
 	mpll_reg &= ~(SCU_MPLL_POST_MASK | SCU_MPLL_NUM_MASK
 		      | SCU_MPLL_DENUM_MASK);
 	mpll_reg |= (div_cfg.post_div << SCU_MPLL_POST_SHIFT)
 	    | (div_cfg.num << SCU_MPLL_NUM_SHIFT)
 	    | (div_cfg.denum << SCU_MPLL_DENUM_SHIFT);
 
-	writel(mpll_reg, priv->regs + ASPEED_MPLL_PARAMETER);
+	ast_scu_unlock(scu);
+	writel(mpll_reg, &scu->m_pll_param);
+	ast_scu_lock(scu);
 
-	return aspeed_get_mpll_rate(priv);
+	return ast2500_get_mpll_rate(clkin, mpll_reg);
 }
 
-static u32 aspeed_configure_mac(struct aspeed_clk_priv *priv, int index)
+static ulong ast2500_configure_mac(struct ast2500_scu *scu, int index)
 {
-	u32 clkin = aspeed_get_clkin(priv);
-	u32 hpll_rate = aspeed_get_hpll_rate(priv);
+	ulong clkin = ast2500_get_clkin(scu);
+	ulong hpll_rate = ast2500_get_hpll_rate(clkin,
+						readl(&scu->h_pll_param));
 	ulong required_rate;
 	u32 hwstrap;
 	u32 divisor;
 	u32 reset_bit;
 	u32 clkstop_bit;
-#if 0
+
 	/*
 	 * According to data sheet, for 10/100 mode the MAC clock frequency
 	 * should be at least 25MHz and for 1000 mode at least 100MHz
 	 */
-	hwstrap = readl(priv->regs + ASPEED_STRAP);
+	hwstrap = readl(&scu->hwstrap);
 	if (hwstrap & (SCU_HWSTRAP_MAC1_RGMII | SCU_HWSTRAP_MAC2_RGMII))
 		required_rate = 100 * 1000 * 1000;
 	else
@@ -372,7 +336,8 @@ static u32 aspeed_configure_mac(struct aspeed_clk_priv *priv, int index)
 		return -EINVAL;
 	}
 
-	clrsetbits_le32(priv->regs + ASPEED_CLK_SELECT, SCU_MACCLK_MASK,
+	ast_scu_unlock(scu);
+	clrsetbits_le32(&scu->clk_sel1, SCU_MACCLK_MASK,
 			((divisor - 2) / 2) << SCU_MACCLK_SHIFT);
 
 	/*
@@ -389,11 +354,13 @@ static u32 aspeed_configure_mac(struct aspeed_clk_priv *priv, int index)
 	writel((RGMII2_TXCK_DUTY << SCU_CLKDUTY_RGMII2TXCK_SHIFT)
 	       | (RGMII1_TXCK_DUTY << SCU_CLKDUTY_RGMII1TXCK_SHIFT),
 	       &scu->clk_duty_sel);
-#endif
+
+	ast_scu_lock(scu);
+
 	return required_rate;
 }
 
-static ulong aspeed_configure_d2pll(struct aspeed_clk_priv *priv, ulong rate)
+static ulong ast2500_configure_d2pll(struct ast2500_scu *scu, ulong rate)
 {
 	/*
 	 * The values and the meaning of the next three
@@ -402,7 +369,6 @@ static ulong aspeed_configure_d2pll(struct aspeed_clk_priv *priv, ulong rate)
 	 * TODO(clg@kaod.org): the SIP and SIC values depend on the
 	 * Numerator value
 	 */
-	 
 	const u32 d2_pll_ext_param = 0x2c;
 	const u32 d2_pll_sip = 0x11;
 	const u32 d2_pll_sic = 0x18;
@@ -411,14 +377,15 @@ static ulong aspeed_configure_d2pll(struct aspeed_clk_priv *priv, ulong rate)
 	    | (RMII_RXCLK_IDLY << SCU_MICDS_MAC2RMII_RDLY_SHIFT)
 	    | (RGMII_TXCLK_ODLY << SCU_MICDS_MAC1RGMII_TXDLY_SHIFT)
 	    | (RGMII_TXCLK_ODLY << SCU_MICDS_MAC2RGMII_TXDLY_SHIFT);
-	struct aspeed_div_config div_cfg = {
+	struct ast2500_div_config div_cfg = {
 		.num = SCU_D2PLL_NUM_MASK >> SCU_D2PLL_NUM_SHIFT,
 		.denum = SCU_D2PLL_DENUM_MASK >> SCU_D2PLL_DENUM_SHIFT,
 		.post_div = SCU_D2PLL_POST_MASK >> SCU_D2PLL_POST_SHIFT,
 	};
-	ulong clkin = aspeed_get_clkin(priv);
+	ulong clkin = ast2500_get_clkin(scu);
 	ulong new_rate;
-#if 0
+
+	ast_scu_unlock(scu);
 	writel((d2_pll_ext_param << SCU_D2PLL_EXT1_PARAM_SHIFT)
 	       | SCU_D2PLL_EXT1_OFF
 	       | SCU_D2PLL_EXT1_RESET, &scu->d2_pll_ext_param[0]);
@@ -430,7 +397,7 @@ static ulong aspeed_configure_d2pll(struct aspeed_clk_priv *priv, ulong rate)
 	clrsetbits_le32(&scu->misc_ctrl1, SCU_MISC_D2PLL_OFF,
 			SCU_MISC_GCRT_USB20CLK);
 
-	new_rate = aspeed_calc_clock_config(clkin, rate, &div_cfg);
+	new_rate = ast2500_calc_clock_config(clkin, rate, &div_cfg);
 	writel((d2_pll_sip << SCU_D2PLL_SIP_SHIFT)
 	       | (d2_pll_sic << SCU_D2PLL_SIC_SHIFT)
 	       | (div_cfg.num << SCU_D2PLL_NUM_SHIFT)
@@ -450,22 +417,24 @@ static ulong aspeed_configure_d2pll(struct aspeed_clk_priv *priv, ulong rate)
 	writel(clk_delay_settings | SCU_MICDS_RGMIIPLL, &scu->mac_clk_delay);
 	writel(clk_delay_settings, &scu->mac_clk_delay_100M);
 	writel(clk_delay_settings, &scu->mac_clk_delay_10M);
-#endif
+
+	ast_scu_lock(scu);
+
 	return new_rate;
 }
 
-static ulong aspeed_clk_set_rate(struct clk *clk, ulong rate)
+static ulong ast2500_clk_set_rate(struct clk *clk, ulong rate)
 {
-	struct aspeed_clk_priv *priv = dev_get_priv(clk->dev);
+	struct ast2500_clk_priv *priv = dev_get_priv(clk->dev);
 
 	ulong new_rate;
 	switch (clk->id) {
 	case PLL_MPLL:
 	case MCLK_DDR:
-		new_rate = aspeed_configure_ddr(priv, rate);
+		new_rate = ast2500_configure_ddr(priv->scu, rate);
 		break;
 	case PLL_D2PLL:
-		new_rate = aspeed_configure_d2pll(priv, rate);
+		new_rate = ast2500_configure_d2pll(priv->scu, rate);
 		break;
 	default:
 		return -ENOENT;
@@ -474,9 +443,9 @@ static ulong aspeed_clk_set_rate(struct clk *clk, ulong rate)
 	return new_rate;
 }
 
-static int aspeed_clk_enable(struct clk *clk)
+static int ast2500_clk_enable(struct clk *clk)
 {
-	struct aspeed_clk_priv *priv = dev_get_priv(clk->dev);
+	struct ast2500_clk_priv *priv = dev_get_priv(clk->dev);
 
 	switch (clk->id) {
 	/*
@@ -485,13 +454,13 @@ static int aspeed_clk_enable(struct clk *clk)
 	 * through hardware strapping.
 	 */
 	case PCLK_MAC1:
-		aspeed_configure_mac(priv, 1);
+		ast2500_configure_mac(priv->scu, 1);
 		break;
 	case PCLK_MAC2:
-		aspeed_configure_mac(priv, 2);
+		ast2500_configure_mac(priv->scu, 2);
 		break;
 	case PLL_D2PLL:
-		aspeed_configure_d2pll(priv, D2PLL_DEFAULT_RATE);
+		ast2500_configure_d2pll(priv->scu, D2PLL_DEFAULT_RATE);
 		break;
 	default:
 		return -ENOENT;
@@ -500,27 +469,24 @@ static int aspeed_clk_enable(struct clk *clk)
 	return 0;
 }
 
-struct clk_ops aspeed_clk_ops = {
-	.get_rate = aspeed_clk_get_rate,
-	.set_rate = aspeed_clk_set_rate,
-	.enable = aspeed_clk_enable,
+struct clk_ops ast2500_clk_ops = {
+	.get_rate = ast2500_clk_get_rate,
+	.set_rate = ast2500_clk_set_rate,
+	.enable = ast2500_clk_enable,
 };
 
-static int aspeed_clk_probe(struct udevice *dev)
+static int ast2500_clk_probe(struct udevice *dev)
 {
-	struct aspeed_clk_priv *priv = dev_get_priv(dev);
+	struct ast2500_clk_priv *priv = dev_get_priv(dev);
 
-	priv->regs = devfdt_get_addr_ptr(dev);
-
-	if (IS_ERR(priv->regs))
-		return PTR_ERR(priv->regs);
-
-	priv->version = dev_get_driver_data(dev);
+	priv->scu = devfdt_get_addr_ptr(dev);
+	if (IS_ERR(priv->scu))
+		return PTR_ERR(priv->scu);
 
 	return 0;
 }
 
-static int aspeed_clk_bind(struct udevice *dev)
+static int ast2500_clk_bind(struct udevice *dev)
 {
 	int ret;
 
@@ -532,18 +498,17 @@ static int aspeed_clk_bind(struct udevice *dev)
 	return 0;
 }
 
-static const struct udevice_id aspeed_clk_ids[] = {
-	{ .compatible = "aspeed,ast2500-scu", .data = AST2500},
-	{ .compatible = "aspeed,ast2600-scu", .data = AST2600},
+static const struct udevice_id ast2500_clk_ids[] = {
+	{ .compatible = "aspeed,ast2500-scu" },
 	{ }
 };
 
-U_BOOT_DRIVER(aspeed_scu) = {
-	.name		= "aspeed_scu",
+U_BOOT_DRIVER(aspeed_ast2500_scu) = {
+	.name		= "aspeed_ast2500_scu",
 	.id		= UCLASS_CLK,
-	.of_match	= aspeed_clk_ids,
-	.priv_auto_alloc_size = sizeof(struct aspeed_clk_priv),
-	.ops		= &aspeed_clk_ops,
-	.bind		= aspeed_clk_bind,
-	.probe		= aspeed_clk_probe,
+	.of_match	= ast2500_clk_ids,
+	.priv_auto_alloc_size = sizeof(struct ast2500_clk_priv),
+	.ops		= &ast2500_clk_ops,
+	.bind		= ast2500_clk_bind,
+	.probe		= ast2500_clk_probe,
 };
