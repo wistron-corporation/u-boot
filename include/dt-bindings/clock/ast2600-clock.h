@@ -1,6 +1,5 @@
 /* SPDX-License-Identifier: GPL-2.0+ */
 /*
- * Copyright 2016 Google Inc.
  */
 
 /* Core Clocks */
@@ -29,3 +28,15 @@
 #define PCLK_UART5	505
 #define PCLK_MAC1	506
 #define PCLK_MAC2	507
+
+
+
+#define ASPEED_CLK_UART1		46
+#define ASPEED_CLK_UART2		47
+#define ASPEED_CLK_UART3		48
+#define ASPEED_CLK_UART4		49
+#define ASPEED_CLK_UART5		50
+
+
+
+

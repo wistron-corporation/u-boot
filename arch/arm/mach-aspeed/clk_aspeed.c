@@ -6,17 +6,17 @@
 #include <common.h>
 #include <dm.h>
 #include <asm/io.h>
-#include <asm/arch/scu_ast2600.h>
+#include <asm/arch/scu_aspeed.h>
 
 int ast_get_clk(struct udevice **devp)
 {
 	return uclass_get_device_by_driver(UCLASS_CLK,
-			DM_GET_DRIVER(aspeed_ast2600_scu), devp);
+			DM_GET_DRIVER(aspeed_scu), devp);
 }
 
 void *ast_get_scu(void)
 {
-	struct ast2600_clk_priv *priv;
+	struct aspeed_clk_priv *priv;
 	struct udevice *dev;
 	int ret;
 
@@ -26,6 +26,6 @@ void *ast_get_scu(void)
 
 	priv = dev_get_priv(dev);
 
-	return priv->scu;
+	return priv->regs;
 }
 
