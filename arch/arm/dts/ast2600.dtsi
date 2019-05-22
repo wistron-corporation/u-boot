@@ -115,6 +115,68 @@
 					<0x40466000 0x2000>;
 		};
 
+		fmc: flash-controller@1e620000 {
+			reg = < 0x1e620000 0xc4
+				0x20000000 0x10000000 >;
+			#address-cells = <1>;
+			#size-cells = <0>;
+			compatible = "aspeed,ast2500-fmc";
+			status = "disabled";
+			interrupts = <19>;
+			flash@0 {
+				reg = < 0 >;
+				compatible = "jedec,spi-nor";
+				status = "disabled";
+			};
+			flash@1 {
+				reg = < 1 >;
+				compatible = "jedec,spi-nor";
+				status = "disabled";
+			};
+			flash@2 {
+				reg = < 2 >;
+				compatible = "jedec,spi-nor";
+				status = "disabled";
+			};
+		};
+
+		spi1: flash-controller@1e630000 {
+			reg = < 0x1e630000 0xc4
+				0x30000000 0x08000000 >;
+			#address-cells = <1>;
+			#size-cells = <0>;
+			compatible = "aspeed,ast2500-spi";
+			status = "disabled";
+			flash@0 {
+				reg = < 0 >;
+				compatible = "jedec,spi-nor";
+				status = "disabled";
+			};
+			flash@1 {
+				reg = < 1 >;
+				compatible = "jedec,spi-nor";
+				status = "disabled";
+			};
+		};
+
+		spi2: flash-controller@1e631000 {
+			reg = < 0x1e631000 0xc4
+				0x38000000 0x08000000 >;
+			#address-cells = <1>;
+			#size-cells = <0>;
+			compatible = "aspeed,ast2500-spi";
+			status = "disabled";
+			flash@0 {
+				reg = < 0 >;
+				compatible = "jedec,spi-nor";
+				status = "disabled";
+			};
+			flash@1 {
+				reg = < 1 >;
+				compatible = "jedec,spi-nor";
+				status = "disabled";
+			};
+		};
 
 		edac: sdram@1e6e0000 {
 			compatible = "aspeed,ast2600-sdram-edac";
@@ -122,15 +184,11 @@
 			interrupts = <GIC_SPI 0 IRQ_TYPE_LEVEL_HIGH>;
 		};
 
-		mac0: ftgmac@1e660000 {
-			compatible = "aspeed,ast2600-mac", "faraday,ftgmac100";
-			reg = <0x1e660000 0x180>, <0x1e650000 0x4>;
-			#address-cells = <1>;
-			#size-cells = <0>;
-			interrupts = <GIC_SPI 2 IRQ_TYPE_LEVEL_HIGH>;
-#if 0
-			phy-handle = <&phy0>;
-#endif
+		mac0: ethernet@1e660000 {
+			compatible = "aspeed,ast2500-mac", "faraday,ftgmac100";
+			reg = <0x1e660000 0x180>;
+			interrupts = <2>;
+			status = "disabled";
 		};
 
 		mac2: ftgmac@1e670000 {
