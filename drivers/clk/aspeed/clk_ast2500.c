@@ -283,9 +283,7 @@ static ulong ast2500_configure_ddr(struct ast2500_scu *scu, ulong rate)
 	    | (div_cfg.num << SCU_MPLL_NUM_SHIFT)
 	    | (div_cfg.denum << SCU_MPLL_DENUM_SHIFT);
 
-	ast_scu_unlock(scu);
 	writel(mpll_reg, &scu->m_pll_param);
-	ast_scu_lock(scu);
 
 	return ast2500_get_mpll_rate(clkin, mpll_reg);
 }
@@ -336,7 +334,6 @@ static ulong ast2500_configure_mac(struct ast2500_scu *scu, int index)
 		return -EINVAL;
 	}
 
-	ast_scu_unlock(scu);
 	clrsetbits_le32(&scu->clk_sel1, SCU_MACCLK_MASK,
 			((divisor - 2) / 2) << SCU_MACCLK_SHIFT);
 
@@ -354,8 +351,6 @@ static ulong ast2500_configure_mac(struct ast2500_scu *scu, int index)
 	writel((RGMII2_TXCK_DUTY << SCU_CLKDUTY_RGMII2TXCK_SHIFT)
 	       | (RGMII1_TXCK_DUTY << SCU_CLKDUTY_RGMII1TXCK_SHIFT),
 	       &scu->clk_duty_sel);
-
-	ast_scu_lock(scu);
 
 	return required_rate;
 }
@@ -385,7 +380,6 @@ static ulong ast2500_configure_d2pll(struct ast2500_scu *scu, ulong rate)
 	ulong clkin = ast2500_get_clkin(scu);
 	ulong new_rate;
 
-	ast_scu_unlock(scu);
 	writel((d2_pll_ext_param << SCU_D2PLL_EXT1_PARAM_SHIFT)
 	       | SCU_D2PLL_EXT1_OFF
 	       | SCU_D2PLL_EXT1_RESET, &scu->d2_pll_ext_param[0]);
@@ -417,8 +411,6 @@ static ulong ast2500_configure_d2pll(struct ast2500_scu *scu, ulong rate)
 	writel(clk_delay_settings | SCU_MICDS_RGMIIPLL, &scu->mac_clk_delay);
 	writel(clk_delay_settings, &scu->mac_clk_delay_100M);
 	writel(clk_delay_settings, &scu->mac_clk_delay_10M);
-
-	ast_scu_lock(scu);
 
 	return new_rate;
 }

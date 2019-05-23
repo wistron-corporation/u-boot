@@ -5,13 +5,20 @@
 
 #include <common.h>
 #include <dm.h>
+#include <dm/uclass.h>
 #include <asm/io.h>
 #include <asm/arch/scu_aspeed.h>
 
 int ast_get_clk(struct udevice **devp)
 {
+#ifdef CONFIG_ASPEED_AST2500	
 	return uclass_get_device_by_driver(UCLASS_CLK,
-			DM_GET_DRIVER(aspeed_scu), devp);
+			DM_GET_DRIVER(aspeed_ast2500_scu), devp);
+#elif CONFIG_ASPEED_AST2600
+	return uclass_get_device_by_driver(UCLASS_CLK,
+			DM_GET_DRIVER(aspeed_ast2600_scu), devp);
+#else
+#endif
 }
 
 void *ast_get_scu(void)
