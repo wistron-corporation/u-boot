@@ -92,9 +92,7 @@ static int ast2500_pinctrl_group_set(struct udevice *dev, unsigned selector,
 	else
 		ctrl_reg = &priv->scu->pinmux_ctrl[config->reg_num - 1];
 
-	ast_scu_unlock(priv->scu);
 	setbits_le32(ctrl_reg, config->ctrl_bit_mask);
-	ast_scu_lock(priv->scu);
 
 	return 0;
 }
