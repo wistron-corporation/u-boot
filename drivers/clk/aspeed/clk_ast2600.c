@@ -546,8 +546,8 @@ static const struct udevice_id ast2600_clk_ids[] = {
 	{ }
 };
 
-U_BOOT_DRIVER(aspeed_ast2600_scu) = {
-	.name		= "aspeed_ast2600_scu",
+U_BOOT_DRIVER(aspeed_scu) = {
+	.name		= "aspeed_scu",
 	.id		= UCLASS_CLK,
 	.of_match	= ast2600_clk_ids,
 	.priv_auto_alloc_size = sizeof(struct aspeed_clk_priv),
