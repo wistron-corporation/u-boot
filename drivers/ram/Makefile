@@ -14,3 +14,4 @@ obj-$(CONFIG_ARCH_ROCKCHIP) += rockchip/
 
 obj-$(CONFIG_K3_AM654_DDRSS) += k3-am654-ddrss.o
 obj-$(CONFIG_ARCH_MEDIATEK) += mediatek/
+obj-$(CONFIG_ARCH_ASPEED) += aspeed/
