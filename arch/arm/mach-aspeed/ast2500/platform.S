@@ -662,6 +662,9 @@ bypass_USB_init:
     ldr   r0, =0x1e6e0000
     ldr   r1, =0xFC600309
     str   r1, [r0]
+    
+    /* skip SDRAM initialization (will be done in C function) */
+    b     platform_exit
 
     /* Check Scratch Register Bit 6 */
     ldr   r0, =0x1e6e2040

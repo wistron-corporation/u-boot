@@ -62,7 +62,7 @@ int board_init(void)
 
 int dram_init(void)
 {
-#if 0
+#if 1
 	struct udevice *dev;
 	struct ram_info ram;
 	int ret;
