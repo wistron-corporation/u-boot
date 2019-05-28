@@ -62,7 +62,11 @@ int board_init(void)
 
 int dram_init(void)
 {
-#if 1
+        /*
+        this compile-option will be removed once the ast2600 SDRAM C
+        driver is ready
+        */
+#ifdef CONFIG_ASPEED_AST2500
 	struct udevice *dev;
 	struct ram_info ram;
 	int ret;
