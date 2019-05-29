@@ -51,8 +51,10 @@ static const struct {
 	},
 };
 
-#define SDRAM_MAX_SIZE		(2 * 1024 * 1024 * 1024)
-#define SDRAM_MIN_SIZE		(256 * 1024 * 1024)
+#define SDRAM_SIZE_1KB		(1024U)
+#define SDRAM_SIZE_1MB		(SDRAM_SIZE_1KB * SDRAM_SIZE_1KB)
+#define SDRAM_MIN_SIZE		(256 * SDRAM_SIZE_1MB)
+#define SDRAM_MAX_SIZE		(2048 * SDRAM_SIZE_1MB)
 
 DECLARE_GLOBAL_DATA_PTR;
 
@@ -206,11 +208,11 @@ static size_t ast2600_sdrammc_get_vga_mem_size(struct dram_info *info)
  */
 static void ast2600_sdrammc_calc_size(struct dram_info *info)
 {
-	/* The controller supports 128/256/512/1024 MB ram */
+	/* The controller supports 256/512/1024/2048 MB ram */
 	size_t ram_size = SDRAM_MIN_SIZE;
 	const int write_test_offset = 0x100000;
 	u32 test_pattern = 0xdeadbeef;
-	u32 cap_param = SDRAM_CONF_CAP_1024M;
+	u32 cap_param = SDRAM_CONF_CAP_2048M;
 	u32 refresh_timing_param = DDR4_TRFC;
 	const u32 write_addr_base = CONFIG_SYS_SDRAM_BASE + write_test_offset;
 
@@ -251,12 +253,12 @@ static void ast2600_sdrammc_calc_size(struct dram_info *info)
 static int ast2600_sdrammc_init_ddr4(struct dram_info *info)
 {
 	int i;
-	const u32 power_control = SDRAM_PCR_CKE_EN
+	const u32 power_ctrl = SDRAM_PCR_CKE_EN
 	    | (1 << SDRAM_PCR_CKE_DELAY_SHIFT)
 	    | (2 << SDRAM_PCR_TCKE_PW_SHIFT)
 	    | SDRAM_PCR_RESETN_DIS
 	    | SDRAM_PCR_RGAP_CTRL_EN | SDRAM_PCR_ODT_EN | SDRAM_PCR_ODT_EXT_EN;
-	const u32 conf = (SDRAM_CONF_CAP_1024M << SDRAM_CONF_CAP_SHIFT)
+	const u32 conf = (SDRAM_CONF_CAP_2048M << SDRAM_CONF_CAP_SHIFT)
 #ifdef CONFIG_DUALX8_RAM
 	    | SDRAM_CONF_DUALX8
 #endif
@@ -277,7 +279,7 @@ static int ast2600_sdrammc_init_ddr4(struct dram_info *info)
 		       &info->phy->phy[ddr4_phy_config.index[i]]);
 	}
 
-	writel(power_control, &info->regs->power_control);
+	writel(power_ctrl, &info->regs->power_ctrl);
 
 	ast2600_ddr_phy_init_process(info);
 
@@ -291,7 +293,7 @@ static int ast2600_sdrammc_init_ddr4(struct dram_info *info)
 	       | SDRAM_REFRESH_ZQCS_EN | (0x2f << SDRAM_REFRESH_PERIOD_SHIFT),
 	       &info->regs->refresh_timing);
 
-	setbits_le32(&info->regs->power_control,
+	setbits_le32(&info->regs->power_ctrl,
 		     SDRAM_PCR_AUTOPWRDN_EN | SDRAM_PCR_ODT_AUTO_ON);
 
 	ast2600_sdrammc_calc_size(info);
@@ -301,7 +303,8 @@ static int ast2600_sdrammc_init_ddr4(struct dram_info *info)
 		;
 	setbits_le32(&info->regs->config, SDRAM_CONF_CACHE_EN);
 
-	//writel(SDRAM_MISC_DDR4_TREFRESH, &info->regs->misc_control);
+#if 0
+	writel(SDRAM_MISC_DDR4_TREFRESH, &info->regs->misc_control);
 
 	/* Enable all requests except video & display */
 	writel(SDRAM_REQ_USB20_EHCI1
@@ -318,7 +321,7 @@ static int ast2600_sdrammc_init_ddr4(struct dram_info *info)
 	       | SDRAM_REQ_VIDEO_LOW_PRI_WRITE
 	       | SDRAM_REQ_2D_RW
 	       | SDRAM_REQ_MEMCHECK, &info->regs->req_limit_mask);
-
+#endif
 	return 0;
 }
 
@@ -380,11 +383,13 @@ static int ast2600_sdrammc_probe(struct udevice *dev)
 	ast2600_sdrammc_unlock(priv);
 
 	writel(SDRAM_PCR_MREQI_DIS | SDRAM_PCR_RESETN_DIS,
-	       &regs->power_control);
+	       &regs->power_ctrl);
 	writel(SDRAM_VIDEO_UNLOCK_KEY, &regs->gm_protection_key);
 
+#if 0
 	/* Mask all requests except CPU and AHB during PHY init */
 	writel(~(SDRAM_REQ_CPU | SDRAM_REQ_AHB), &regs->req_limit_mask);
+#endif
 
 	for (i = 0; i < ARRAY_SIZE(ddr_max_grant_params); ++i)
 		writel(ddr_max_grant_params[i], &regs->max_grant_len[i]);

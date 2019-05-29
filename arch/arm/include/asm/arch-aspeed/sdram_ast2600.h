@@ -57,10 +57,10 @@
 #define SDRAM_CONF_DUALX8		(1 << 13)
 #define SDRAM_CONF_CACHE_INIT_DONE	(1 << 19)
 
-#define SDRAM_CONF_CAP_128M		0
-#define SDRAM_CONF_CAP_256M		1
-#define SDRAM_CONF_CAP_512M		2
-#define SDRAM_CONF_CAP_1024M		3
+#define SDRAM_CONF_CAP_256M		0
+#define SDRAM_CONF_CAP_512M		1
+#define SDRAM_CONF_CAP_1024M		2
+#define SDRAM_CONF_CAP_2048M		3
 
 #define SDRAM_MISC_DDR4_TREFRESH	(1 << 3)
 
@@ -98,18 +98,18 @@
 #ifndef __ASSEMBLY__
 
 struct ast2600_sdrammc_regs {
-	u32 protection_key;
-	u32 config;
-	u32 gm_protection_key;
-	u32 refresh_timing;
-	u32 ac_timing[4];
-	u32 mr01_mode_setting;
-	u32 mr23_mode_setting;
-	u32 mr45_mode_setting;
-	u32 mr6_mode_setting;
-	u32 mode_setting_control;
-	u32 power_control;
-	u32 req_limit_mask;
+	u32 protection_key;		/* offset 0x00 */
+	u32 config;			/* offset 0x04 */
+	u32 gm_protection_key;		/* offset 0x08 */
+	u32 refresh_timing;		/* offset 0x0C */
+	u32 ac_timing[4];		/* offset 0x10 ~ 0x1C */
+	u32 mr01_mode_setting;		/* offset 0x20 */
+	u32 mr23_mode_setting;		/* offset 0x24 */
+	u32 mr45_mode_setting;		/* offset 0x28 */
+	u32 mr6_mode_setting;		/* offset 0x2C */
+	u32 mode_setting_control;	/* offset 0x30 */
+	u32 power_ctrl;			/* offset 0x34 */
+	u32 arbitration_ctrl;		/* offset 0x38 */
 	u32 pri_group_setting;
 	u32 max_grant_len[4];
 	u32 intr_ctrl;
