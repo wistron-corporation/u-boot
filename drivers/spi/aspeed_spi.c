@@ -82,6 +82,8 @@ struct aspeed_spi_regs {
 #define CE_CTRL_CLOCK_FREQ_MASK		0xf
 #define CE_CTRL_CLOCK_FREQ(div)						\
 	(((div) & CE_CTRL_CLOCK_FREQ_MASK) << CE_CTRL_CLOCK_FREQ_SHIFT)
+#define CE_G6_CTRL_CLOCK_FREQ(div)						\
+	((((div) & CE_CTRL_CLOCK_FREQ_MASK) << CE_CTRL_CLOCK_FREQ_SHIFT) | (((div) & 0xf0) << 20))
 #define CE_CTRL_DUMMY_LOW_SHIFT		6 /* 2 bits [7:6] */
 #define CE_CTRL_DUMMY_LOW_MASK		0x3
 #define CE_CTRL_DUMMY(dummy)						\
@@ -179,24 +181,50 @@ static struct aspeed_spi_flash *aspeed_spi_get_flash(struct udevice *dev)
 	return &priv->flashes[cs];
 }
 
-static u32 aspeed_spi_hclk_divisor(u32 hclk_rate, u32 max_hz)
+static u32 aspeed_spi_hclk_divisor(struct aspeed_spi_priv *priv, u32 max_hz)
 {
+	u32 hclk_rate = priv->hclk_rate;
 	/* HCLK/1 ..	HCLK/16 */
 	const u8 hclk_masks[] = {
 		15, 7, 14, 6, 13, 5, 12, 4, 11, 3, 10, 2, 9, 1, 8, 0
 	};
+	u8 base_div = 0;
+//	int done = 0;
+	u32 i, j;
+	u32 hclk_div_setting = 0;
 
-	u32 i;
+	//for ast2600 spi freq = hclk / (([27:24] * 16) + [11:8])
+	if (priv->new_ver) {
+		for (j = 0; j < ARRAY_SIZE(hclk_masks); i++) {
+			for (i = 0; i < ARRAY_SIZE(hclk_masks); i++) {
+				if (max_hz >= (hclk_rate / ((i + 1) + (j * 16)))) {
+					base_div = j * 16;
+//					done = 1;
+					break;
+				}
+			}
+//			if (done)
+//				break;
+			if( j == 0) break;	// todo check
+		}
 
-	for (i = 0; i < ARRAY_SIZE(hclk_masks); i++) {
-		if (max_hz >= (hclk_rate / (i + 1)))
-			break;
+		printf("hclk=%d required=%d base_div is %d (mask %x, base_div %x) speed=%d\n",
+			  hclk_rate, max_hz, i + 1, hclk_masks[i], base_div, hclk_rate / ((i + 1) + base_div));
+
+		hclk_div_setting = ((j << 4) | hclk_masks[i]);
+		
+	} else {
+		for (i = 0; i < ARRAY_SIZE(hclk_masks); i++) {
+			if (max_hz >= (hclk_rate / (i + 1)))
+				break;
+		}
+		debug("hclk=%d required=%d divisor is %d (mask %x) speed=%d\n",
+		      hclk_rate, max_hz, i + 1, hclk_masks[i], hclk_rate / (i + 1));
+
+		hclk_div_setting = hclk_masks[i];
 	}
 
-	debug("hclk=%d required=%d divisor is %d (mask %x) speed=%d\n",
-	      hclk_rate, max_hz, i + 1, hclk_masks[i], hclk_rate / (i + 1));
-
-	return hclk_masks[i];
+	return hclk_div_setting;
 }
 
 /*
@@ -255,7 +283,6 @@ static int aspeed_spi_timing_calibration(struct aspeed_spi_priv *priv)
 {
 	/* HCLK/5 .. HCLK/1 */
 	const u8 hclk_masks[] = { 13, 6, 14, 7, 15 };
-
 	u32 timing_reg = 0;
 	u32 checksum, gold_checksum;
 	int i, hcycle;
@@ -273,50 +300,95 @@ static int aspeed_spi_timing_calibration(struct aspeed_spi_priv *priv)
 	       &priv->regs->ce_ctrl[0]);
 
 	/* Increase HCLK freq */
-	for (i = 0; i < ARRAY_SIZE(hclk_masks); i++) {
-		u32 hdiv = 5 - i;
-		u32 hshift = (hdiv - 1) << 2;
-		bool pass = false;
-		u8 delay;
+	if (priv->new_ver) {
+		for (i = 0; i < ARRAY_SIZE(hclk_masks) - 1; i++) {
+			u32 hdiv = 5 - i;
+			u32 hshift = (hdiv - 1) << 2;
+			bool pass = false;
+			u8 delay;
 
-		if (priv->hclk_rate / hdiv > priv->max_hz) {
-			debug("skipping freq %ld\n", priv->hclk_rate / hdiv);
-			continue;
-		}
-
-		/* Increase HCLK cycles until read succeeds */
-		for (hcycle = 0; hcycle <= TIMING_DELAY_HCYCLE_MAX; hcycle++) {
-			/* Try first with a 4ns DI delay */
-			delay = TIMING_DELAY_DI_4NS | hcycle;
-			checksum = aspeed_spi_read_checksum(priv, hclk_masks[i],
-							    delay);
-			pass = (checksum == gold_checksum);
-			debug(" HCLK/%d, 4ns DI delay, %d HCLK cycle : %s\n",
-			      hdiv, hcycle, pass ? "PASS" : "FAIL");
-
-			/* Try again with more HCLK cycles */
-			if (!pass)
+			if (priv->hclk_rate / hdiv > priv->max_hz) {
+				debug("skipping freq %ld\n", priv->hclk_rate / hdiv);
 				continue;
+			}
 
-			/* Try without the 4ns DI delay */
-			delay = hcycle;
-			checksum = aspeed_spi_read_checksum(priv, hclk_masks[i],
-							    delay);
-			pass = (checksum == gold_checksum);
-			debug(" HCLK/%d,  no DI delay, %d HCLK cycle : %s\n",
-			      hdiv, hcycle, pass ? "PASS" : "FAIL");
+			/* Increase HCLK cycles until read succeeds */
+			for (hcycle = 0; hcycle <= TIMING_DELAY_HCYCLE_MAX; hcycle++) {
+				/* Try first with a 4ns DI delay */
+				delay = TIMING_DELAY_DI_4NS | hcycle;
+				checksum = aspeed_spi_read_checksum(priv, hclk_masks[i],
+								    delay);
+				pass = (checksum == gold_checksum);
+				printf(" HCLK/%d, 4ns DI delay, %d HCLK cycle : %s\n",
+				      hdiv, hcycle, pass ? "PASS" : "FAIL");
 
-			/* All good for this freq  */
-			if (pass)
-				break;
-		}
+				/* Try again with more HCLK cycles */
+				if (!pass)
+					continue;
 
-		if (pass) {
-			timing_reg &= ~(0xfu << hshift);
-			timing_reg |= delay << hshift;
+				/* Try without the 4ns DI delay */
+				delay = hcycle;
+				checksum = aspeed_spi_read_checksum(priv, hclk_masks[i],
+								    delay);
+				pass = (checksum == gold_checksum);
+				printf(" HCLK/%d,  no DI delay, %d HCLK cycle : %s\n",
+				      hdiv, hcycle, pass ? "PASS" : "FAIL");
+
+				/* All good for this freq  */
+				if (pass)
+					break;
+			}
+
+			if (pass) {
+				timing_reg &= ~(0xfu << hshift);
+				timing_reg |= delay << hshift;
+			}
+		}		
+	} else {
+		for (i = 0; i < ARRAY_SIZE(hclk_masks); i++) {
+			u32 hdiv = 5 - i;
+			u32 hshift = (hdiv - 1) << 2;
+			bool pass = false;
+			u8 delay;
+
+			if (priv->hclk_rate / hdiv > priv->max_hz) {
+				debug("skipping freq %ld\n", priv->hclk_rate / hdiv);
+				continue;
+			}
+
+			/* Increase HCLK cycles until read succeeds */
+			for (hcycle = 0; hcycle <= TIMING_DELAY_HCYCLE_MAX; hcycle++) {
+				/* Try first with a 4ns DI delay */
+				delay = TIMING_DELAY_DI_4NS | hcycle;
+				checksum = aspeed_spi_read_checksum(priv, hclk_masks[i],
+								    delay);
+				pass = (checksum == gold_checksum);
+				debug(" HCLK/%d, 4ns DI delay, %d HCLK cycle : %s\n",
+				      hdiv, hcycle, pass ? "PASS" : "FAIL");
+
+				/* Try again with more HCLK cycles */
+				if (!pass)
+					continue;
+
+				/* Try without the 4ns DI delay */
+				delay = hcycle;
+				checksum = aspeed_spi_read_checksum(priv, hclk_masks[i],
+								    delay);
+				pass = (checksum == gold_checksum);
+				debug(" HCLK/%d,  no DI delay, %d HCLK cycle : %s\n",
+				      hdiv, hcycle, pass ? "PASS" : "FAIL");
+
+				/* All good for this freq  */
+				if (pass)
+					break;
+			}
+
+			if (pass) {
+				timing_reg &= ~(0xfu << hshift);
+				timing_reg |= delay << hshift;
+			}
 		}
 	}
-
 	debug("Read Timing Compensation set to 0x%08x\n", timing_reg);
 	writel(timing_reg, &priv->regs->timings);
 
@@ -357,15 +429,17 @@ static int aspeed_spi_controller_init(struct aspeed_spi_priv *priv)
 				case 0:
 					flash->ahb_base = cs ? (void *)G6_SEGMENT_ADDR_START(seg_addr) :
 						priv->ahb_base;
+					printf("cs0 mem-map : %x ", (u32)flash->ahb_base);
 					break;
 				case 1:
 					flash->ahb_base = priv->flashes[0].ahb_base + 0x8000000;	//cs0 + 128Mb
+					printf("cs1 mem-map : %x ", (u32)flash->ahb_base);
 					break;
 				case 2:
 					flash->ahb_base = priv->flashes[0].ahb_base + 0xc000000;	//cs0 + 196Mb
+					printf("cs2 mem-map : %x ", (u32)flash->ahb_base);
 					break;
 			}
-
 			flash->cs = cs;
 			flash->ce_ctrl_user = CE_CTRL_USERMODE;
 			flash->ce_ctrl_fread = CE_CTRL_READMODE;
@@ -700,7 +774,6 @@ static int aspeed_spi_flash_init(struct aspeed_spi_priv *priv,
 {
 	struct spi_flash *spi_flash = dev_get_uclass_priv(dev);
 	struct spi_slave *slave = dev_get_parent_priv(dev);
-	u32 user_hclk;
 	u32 read_hclk;
 
 	/*
@@ -729,33 +802,27 @@ static int aspeed_spi_flash_init(struct aspeed_spi_priv *priv,
 
 	flash->spi = spi_flash;
 
-	/*
-	 * Tune the CE Control Register values for the modes the
-	 * driver will use:
-	 *   - USER command for specific SPI commands, write and
-	 *     erase.
-	 *   - FAST READ command mode for reads. The flash device is
-	 *     directly accessed through its AHB window.
-	 *
-	 * TODO(clg@kaod.org): introduce a DT property for writes ?
-	 */
-	user_hclk = 0;
+	flash->ce_ctrl_user = CE_CTRL_USERMODE;
 
-	flash->ce_ctrl_user = CE_CTRL_CLOCK_FREQ(user_hclk) |
-		CE_CTRL_USERMODE;
-
-	read_hclk = aspeed_spi_hclk_divisor(priv->hclk_rate, slave->speed);
+	read_hclk = aspeed_spi_hclk_divisor(priv, slave->speed);
 
 	if (slave->mode & (SPI_RX_DUAL | SPI_TX_DUAL)) {
 		debug("CS%u: setting dual data mode\n", flash->cs);
 		flash->iomode = CE_CTRL_IO_DUAL_DATA;
 	}
 
-	flash->ce_ctrl_fread = CE_CTRL_CLOCK_FREQ(read_hclk) |
-		flash->iomode |
-		CE_CTRL_CMD(flash->spi->read_opcode) |
-		CE_CTRL_DUMMY((flash->spi->read_dummy/8)) |
-		CE_CTRL_FREADMODE;
+	if(priv->new_ver) 
+		flash->ce_ctrl_fread = CE_G6_CTRL_CLOCK_FREQ(read_hclk) |
+			flash->iomode |
+			CE_CTRL_CMD(flash->spi->read_opcode) |
+			CE_CTRL_DUMMY((flash->spi->read_dummy/8)) |
+			CE_CTRL_FREADMODE;
+	else 
+		flash->ce_ctrl_fread = CE_CTRL_CLOCK_FREQ(read_hclk) |
+			flash->iomode |
+			CE_CTRL_CMD(flash->spi->read_opcode) |
+			CE_CTRL_DUMMY((flash->spi->read_dummy/8)) |
+			CE_CTRL_FREADMODE;
 
 	debug("CS%u: USER mode 0x%08x FREAD mode 0x%08x\n", flash->cs,
 	      flash->ce_ctrl_user, flash->ce_ctrl_fread);
@@ -890,8 +957,8 @@ static int aspeed_spi_probe(struct udevice *bus)
 		return -ENODEV;
 	}
 
-	if (device_is_compatible(bus, "aspeed,ast2500-fmc") || 
-			device_is_compatible(bus, "aspeed,ast2500-fmc")) {
+	if (device_is_compatible(bus, "aspeed,ast2600-fmc") || 
+			device_is_compatible(bus, "aspeed,ast2600-fmc")) {
 		priv->new_ver = 1;
 	}
 
