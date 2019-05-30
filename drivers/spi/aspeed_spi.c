@@ -112,6 +112,11 @@ struct aspeed_spi_regs {
 #define SEGMENT_ADDR_VALUE(start, end)					\
 	(((((start) >> 23) & 0xff) << 16) | ((((end) >> 23) & 0xff) << 24))
 
+#define G6_SEGMENT_ADDR_START(reg)		(reg & 0xffff)
+#define G6_SEGMENT_ADDR_END(reg)		((reg >> 16) & 0xffff)
+#define G6_SEGMENT_ADDR_VALUE(start, end)					\
+	((((start) >> 16) & 0xffff) | ((end) & 0xffff0000))
+
 /* DMA Control/Status Register */
 #define DMA_CTRL_DELAY_SHIFT		8
 #define DMA_CTRL_DELAY_MASK		0xf
@@ -344,35 +349,45 @@ static int aspeed_spi_controller_init(struct aspeed_spi_priv *priv)
 	 * Set safe default settings for each device. These will be
 	 * tuned after the SPI flash devices are probed.
 	 */
-	for (cs = 0; cs < priv->flash_count; cs++) {
-		struct aspeed_spi_flash *flash = &priv->flashes[cs];
-		u32 seg_addr = readl(&priv->regs->segment_addr[cs]);
-		if(!seg_addr) {
+	if (priv->new_ver) {
+		for (cs = 0; cs < priv->flash_count; cs++) {
+			struct aspeed_spi_flash *flash = &priv->flashes[cs];
+			u32 seg_addr = readl(&priv->regs->segment_addr[cs]);
 			switch(cs) {
+				case 0:
+					flash->ahb_base = cs ? (void *)G6_SEGMENT_ADDR_START(seg_addr) :
+						priv->ahb_base;
+					break;
 				case 1:
-					seg_addr = 0x54500000;
-					writel(seg_addr, &priv->regs->segment_addr[cs]);
+					priv->flashes[0].ahb_base + 0x8000000;	//cs0 + 128Mb
 					break;
 				case 2:
-					seg_addr = 0x58500000;
-					writel(seg_addr, &priv->regs->segment_addr[cs]);
-					break;					
+					priv->flashes[0].ahb_base + 0xc000000;	//cs0 + 196Mb
+					break;
 			}
+
+			flash->cs = cs;
+			flash->ce_ctrl_user = CE_CTRL_USERMODE;
+			flash->ce_ctrl_fread = CE_CTRL_READMODE;
 		}
-		/*
-		 * The start address of the AHB window of CE0 is
-		 * read-only and is the same as the address of the
-		 * overall AHB window of the controller for all flash
-		 * devices.
-		 */
-		flash->ahb_base = cs ? (void *)SEGMENT_ADDR_START(seg_addr) :
-			priv->ahb_base;
-
-		flash->cs = cs;
-		flash->ce_ctrl_user = CE_CTRL_USERMODE;
-		flash->ce_ctrl_fread = CE_CTRL_READMODE;
+	} else {
+		for (cs = 0; cs < priv->flash_count; cs++) {
+			struct aspeed_spi_flash *flash = &priv->flashes[cs];
+			u32 seg_addr = readl(&priv->regs->segment_addr[cs]);
+			/*
+			 * The start address of the AHB window of CE0 is
+			 * read-only and is the same as the address of the
+			 * overall AHB window of the controller for all flash
+			 * devices.
+			 */
+			flash->ahb_base = cs ? (void *)SEGMENT_ADDR_START(seg_addr) :
+				priv->ahb_base;
+		
+			flash->cs = cs;
+			flash->ce_ctrl_user = CE_CTRL_USERMODE;
+			flash->ce_ctrl_fread = CE_CTRL_READMODE;
+		}
 	}
-
 	return 0;
 }
 
@@ -667,9 +682,13 @@ static int aspeed_spi_flash_set_segment(struct aspeed_spi_priv *priv,
 	/* could be configured through the device tree */
 	flash->ahb_size = flash->spi->size;
 
-	seg_addr = SEGMENT_ADDR_VALUE((u32)flash->ahb_base,
-				      (u32)flash->ahb_base + flash->ahb_size);
-
+	if (priv->new_ver) {
+		seg_addr = G6_SEGMENT_ADDR_VALUE((u32)flash->ahb_base,
+					      (u32)flash->ahb_base + flash->ahb_size);
+	} else {
+		seg_addr = SEGMENT_ADDR_VALUE((u32)flash->ahb_base,
+						  (u32)flash->ahb_base + flash->ahb_size);
+	}
 	writel(seg_addr, &priv->regs->segment_addr[flash->cs]);
 
 	return 0;
