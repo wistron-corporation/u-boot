@@ -359,10 +359,10 @@ static int aspeed_spi_controller_init(struct aspeed_spi_priv *priv)
 						priv->ahb_base;
 					break;
 				case 1:
-					priv->flashes[0].ahb_base + 0x8000000;	//cs0 + 128Mb
+					flash->ahb_base = priv->flashes[0].ahb_base + 0x8000000;	//cs0 + 128Mb
 					break;
 				case 2:
-					priv->flashes[0].ahb_base + 0xc000000;	//cs0 + 196Mb
+					flash->ahb_base = priv->flashes[0].ahb_base + 0xc000000;	//cs0 + 196Mb
 					break;
 			}
 
