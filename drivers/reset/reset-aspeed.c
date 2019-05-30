@@ -10,8 +10,14 @@
 #include <reset-uclass.h>
 #include <wdt.h>
 #include <asm/io.h>
-#include <asm/arch/scu_aspeed.h>
+#ifdef CONFIG_ASPEED_AST2500
+#include <asm/arch/scu_ast2500.h>
+#endif
 #include <asm/arch/wdt.h>
+#ifdef CONFIG_ASPEED_AST2600
+#include <asm/arch/scu_ast2600.h>
+#endif
+
 
 struct aspeed_reset_priv {
 	/* WDT used to perform resets. */

@@ -8,7 +8,7 @@
 #include <dm/uclass.h>
 #include <asm/io.h>
 #ifdef CONFIG_ASPEED_AST2600
-#include <asm/arch/scu_aspeed.h>
+#include <asm/arch/scu_ast2600.h>
 #else
 #include <asm/arch/scu_ast2500.h>
 #endif
@@ -19,25 +19,16 @@ int ast_get_clk(struct udevice **devp)
                                            DM_GET_DRIVER(aspeed_scu), devp);
 }
 
+void *ast_get_scu(void)
+{
 #ifdef CONFIG_ASPEED_AST2600
-void *ast_get_scu(void)
-{
-	struct aspeed_clk_priv *priv;
-	struct udevice *dev;
-	int ret;
+	struct ast2600_clk_priv *priv;
+#endif
 
-	ret = ast_get_clk(&dev);
-	if (ret)
-		return ERR_PTR(ret);
-
-	priv = dev_get_priv(dev);
-
-	return priv->regs;
-}
-#else
-void *ast_get_scu(void)
-{
+#ifdef CONFIG_ASPEED_AST2500
 	struct ast2500_clk_priv *priv;
+#endif
+
 	struct udevice *dev;
 	int ret;
 
@@ -49,4 +40,4 @@ void *ast_get_scu(void)
 
 	return priv->scu;
 }
-#endif
+
