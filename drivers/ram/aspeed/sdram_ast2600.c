@@ -20,15 +20,15 @@
 #include <linux/kernel.h>
 #include <dt-bindings/clock/ast2600-clock.h>
 
-#if 1
-/* For FPGA */
+#define AST2600_SDRAMMC_FPGA
+#ifdef AST2600_SDRAMMC_FPGA
 #define DDR4_MR01_MODE		0x03010100
 #define DDR4_MR23_MODE		0x00000000
 #define DDR4_MR45_MODE		0x04C00000
 #define DDR4_MR6_MODE		0x00000050
 #define DDR4_TRFC		0x17263434
 #else
-/* For real chip */
+/* derived from model GDDR4-1600 */
 #define DDR4_MR01_MODE		0x03010510
 #define DDR4_MR23_MODE		0x00000000
 #define DDR4_MR45_MODE		0x04000000
@@ -36,9 +36,15 @@
 #define DDR4_TRFC               0x467299f1
 #endif
 
-#define PHY_CFG_SIZE		15
+#ifdef AST2600_SDRAMMC_FPGA
+static const u32 ddr4_ac_timing[4] = {0x030C0207, 0x04451133, 0x0E010200,
+                                      0x00000140};
+#else
+static const u32 ddr4_ac_timing[4] = {0x040e0307, 0x0f4711f1, 0x0e060304,
+                                      0x00001240};
+#endif
 
-static const u32 ddr4_ac_timing[3] = {0x63604e37, 0xe97afa99, 0x00019000};
+#define PHY_CFG_SIZE		15
 static const struct {
 	u32 index[PHY_CFG_SIZE];
 	u32 value[PHY_CFG_SIZE];
@@ -253,12 +259,10 @@ static void ast2600_sdrammc_calc_size(struct dram_info *info)
 static int ast2600_sdrammc_init_ddr4(struct dram_info *info)
 {
 	int i;
-	const u32 power_ctrl = SDRAM_PCR_CKE_EN
-	    | (1 << SDRAM_PCR_CKE_DELAY_SHIFT)
-	    | (2 << SDRAM_PCR_TCKE_PW_SHIFT)
-	    | SDRAM_PCR_RESETN_DIS
-	    | SDRAM_PCR_RGAP_CTRL_EN | SDRAM_PCR_ODT_EN | SDRAM_PCR_ODT_EXT_EN;
-	const u32 conf = (SDRAM_CONF_CAP_2048M << SDRAM_CONF_CAP_SHIFT)
+        const u32 power_ctrl = MCR34_CKE_EN | MCR34_RESETN_DIS |
+                               MCR34_RGAP_CTRL_EN | MCR34_ODT_EN |
+                               (0x1 << MCR34_ODT_EXT_SHIFT);
+        const u32 conf = (SDRAM_CONF_CAP_2048M << SDRAM_CONF_CAP_SHIFT)
 #ifdef CONFIG_DUALX8_RAM
 	    | SDRAM_CONF_DUALX8
 #endif
@@ -294,7 +298,7 @@ static int ast2600_sdrammc_init_ddr4(struct dram_info *info)
 	       &info->regs->refresh_timing);
 
 	setbits_le32(&info->regs->power_ctrl,
-		     SDRAM_PCR_AUTOPWRDN_EN | SDRAM_PCR_ODT_AUTO_ON);
+		     MCR34_AUTOPWRDN_EN | MCR34_ODT_AUTO_ON);
 
 	ast2600_sdrammc_calc_size(info);
 
@@ -382,7 +386,7 @@ static int ast2600_sdrammc_probe(struct udevice *dev)
 
 	ast2600_sdrammc_unlock(priv);
 
-	writel(SDRAM_PCR_MREQI_DIS | SDRAM_PCR_RESETN_DIS,
+	writel(MCR34_MREQI_DIS | MCR34_RESETN_DIS,
 	       &regs->power_ctrl);
 	writel(SDRAM_VIDEO_UNLOCK_KEY, &regs->gm_protection_key);
 
