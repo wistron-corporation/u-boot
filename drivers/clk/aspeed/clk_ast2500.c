@@ -1,6 +1,9 @@
 // SPDX-License-Identifier: GPL-2.0
 /*
  * (C) Copyright 2016 Google, Inc
+ *
+ * Copyright (C) ASPEED Technology Inc.
+ *
  */
 
 #include <common.h>
@@ -66,6 +69,7 @@ static ulong ast2500_get_mpll_rate(ulong clkin, u32 mpll_reg)
  */
 static ulong ast2500_get_hpll_rate(ulong clkin, u32 hpll_reg)
 {
+	/* F = clkin * [(M+1) / (N+1)] / (P + 1) */
 	const ulong num = (hpll_reg & SCU_HPLL_NUM_MASK) >> SCU_HPLL_NUM_SHIFT;
 	const ulong denum = (hpll_reg & SCU_HPLL_DENUM_MASK)
 			>> SCU_HPLL_DENUM_SHIFT;
@@ -119,14 +123,22 @@ static ulong ast2500_clk_get_rate(struct clk *clk)
 	ulong rate;
 
 	switch (clk->id) {
-	case PLL_HPLL:
-	case ARMCLK:
-		/*
-		 * This ignores dynamic/static slowdown of ARMCLK and may
-		 * be inaccurate.
-		 */
-		rate = ast2500_get_hpll_rate(clkin,
-					     readl(&priv->scu->h_pll_param));
+	//HPLL
+	case ASPEED_CLK_HPLL:
+		rate = ast2500_get_hpll_rate(clkin, readl(&priv->scu->h_pll_param));
+		break;
+	//HCLK
+	case ASPEED_CLK_AHB:
+		{
+			ulong ahb_div = 1 + ((readl(&priv->scu->hwstrap)
+					      & SCU_HWSTRAP_AXIAHB_DIV_MASK)
+					     >> SCU_HWSTRAP_AXIAHB_DIV_SHIFT);
+			ulong axi_div = 2;
+
+			rate = ast2500_get_hpll_rate(
+				clkin, readl(&priv->scu->h_pll_param));
+			rate = rate / axi_div / ahb_div;
+		}
 		break;
 	case MCLK_DDR:
 		rate = ast2500_get_mpll_rate(clkin,
@@ -141,18 +153,6 @@ static ulong ast2500_clk_get_rate(struct clk *clk)
 						     readl(&priv->
 							   scu->h_pll_param));
 			rate = rate / apb_div;
-		}
-		break;
-	case BCLK_HCLK:
-		{
-			ulong ahb_div = 1 + ((readl(&priv->scu->hwstrap)
-					      & SCU_HWSTRAP_AXIAHB_DIV_MASK)
-					     >> SCU_HWSTRAP_AXIAHB_DIV_SHIFT);
-			ulong axi_div = 2;
-
-			rate = ast2500_get_hpll_rate(
-				clkin, readl(&priv->scu->h_pll_param));
-			rate = rate / axi_div / ahb_div;
 		}
 		break;
 	case PCLK_UART1:

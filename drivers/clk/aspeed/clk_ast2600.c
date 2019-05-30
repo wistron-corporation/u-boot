@@ -417,15 +417,15 @@ static ulong ast2600_clk_get_rate(struct clk *clk)
 	ulong rate;
 
 	switch (clk->id) {
-	case PLL_HPLL:
-	case ARMCLK:
-		/*
-		 * This ignores dynamic/static slowdown of ARMCLK and may
-		 * be inaccurate.
-		 */
+	//HPLL
+	case ASPEED_CLK_HPLL:
 		rate = aspeed_get_hpll_rate(priv);
-	
 		break;
+	//HCLK
+	case ASPEED_CLK_AHB:
+		rate = aspeed_get_hpll_rate(priv);
+		break;
+	
 	case MCLK_DDR:
 		rate = aspeed_get_mpll_rate(priv);
 		break;
@@ -437,9 +437,6 @@ static ulong ast2600_clk_get_rate(struct clk *clk)
 			rate = aspeed_get_hpll_rate(priv);
 			rate = rate / apb_div;
 		}
-		break;
-	case BCLK_HCLK:
-		rate = aspeed_get_hpll_rate(priv);
 		break;
 	case PCLK_UART1:
 		rate = ast2600_get_uart_clk_rate(priv, 1);
@@ -453,7 +450,7 @@ static ulong ast2600_clk_get_rate(struct clk *clk)
 	case PCLK_UART4:
 		rate = ast2600_get_uart_clk_rate(priv, 4);
 		break;
-	case ASPEED_CLK_UART5:
+	case ASPEED_CLK_GATE_UART5CLK:
 		rate = ast2600_get_uart_clk_rate(priv, 5);
 		break;
 	default:
