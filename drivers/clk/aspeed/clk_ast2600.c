@@ -8,8 +8,8 @@
 #include <clk-uclass.h>
 #include <dm.h>
 #include <asm/io.h>
-#include <asm/arch/scu_aspeed.h>
 #include <dm/lists.h>
+#include <asm/arch/scu_ast2600.h>
 #include <dt-bindings/clock/ast2600-clock.h>
 
 /* register */
@@ -109,7 +109,7 @@ static u32 aspeed_get_mpll_rate(struct aspeed_clk_priv *priv)
  * Get the rate of the H-PLL clock from input clock frequency and
  * the value of the H-PLL Parameter Register.
  */
-static ulong aspeed_get_hpll_rate(struct aspeed_clk_priv *priv)
+static ulong ast2600_get_hpll_rate(struct aspeed_clk_priv *priv)
 {
 	ulong clkin = AST2600_CLK_IN;
 	u32 hpll_reg = readl(priv->regs + ASPEED_HPLL_PARAMETER);
@@ -287,7 +287,7 @@ static u32 aspeed_configure_ddr(struct aspeed_clk_priv *priv, ulong rate)
 static u32 aspeed_configure_mac(struct aspeed_clk_priv *priv, int index)
 {
 	u32 clkin = AST2600_CLK_IN;
-	u32 hpll_rate = aspeed_get_hpll_rate(priv);
+	u32 hpll_rate = ast2600_get_hpll_rate(priv);
 	ulong required_rate;
 	u32 hwstrap;
 	u32 divisor;
@@ -417,15 +417,24 @@ static ulong ast2600_clk_get_rate(struct clk *clk)
 	ulong rate;
 
 	switch (clk->id) {
-	case PLL_HPLL:
-	case ARMCLK:
-		/*
-		 * This ignores dynamic/static slowdown of ARMCLK and may
-		 * be inaccurate.
-		 */
-		rate = aspeed_get_hpll_rate(priv);
-	
+	//HPLL
+	case ASPEED_CLK_HPLL:
+		rate = ast2600_get_hpll_rate(priv);
 		break;
+	//HCLK
+	case ASPEED_CLK_AHB:
+		{
+			ulong ahb_div = 1 + ((readl(&priv->scu->hwstrap)
+					      & SCU_HWSTRAP_AXIAHB_DIV_MASK)
+					     >> SCU_HWSTRAP_AXIAHB_DIV_SHIFT);
+			ulong axi_div = 2;
+
+			rate = ast2600_get_hpll_rate(
+				clkin, readl(&priv->scu->h_pll_param));
+			rate = rate / axi_div / ahb_div;
+		}
+		break;
+	
 	case MCLK_DDR:
 		rate = aspeed_get_mpll_rate(priv);
 		break;
@@ -434,12 +443,9 @@ static ulong ast2600_clk_get_rate(struct clk *clk)
 			ulong apb_div = 4 + 4 * ((readl(priv->regs + ASPEED_CLK_SELECT)
 						  & SCU_PCLK_DIV_MASK)
 						 >> SCU_PCLK_DIV_SHIFT);
-			rate = aspeed_get_hpll_rate(priv);
+			rate = ast2600_get_hpll_rate(priv);
 			rate = rate / apb_div;
 		}
-		break;
-	case BCLK_HCLK:
-		rate = aspeed_get_hpll_rate(priv);
 		break;
 	case PCLK_UART1:
 		rate = ast2600_get_uart_clk_rate(priv, 1);
@@ -453,7 +459,7 @@ static ulong ast2600_clk_get_rate(struct clk *clk)
 	case PCLK_UART4:
 		rate = ast2600_get_uart_clk_rate(priv, 4);
 		break;
-	case ASPEED_CLK_UART5:
+	case ASPEED_CLK_GATE_UART5CLK:
 		rate = ast2600_get_uart_clk_rate(priv, 5);
 		break;
 	default:

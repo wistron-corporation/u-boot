@@ -1,6 +1,6 @@
 /* SPDX-License-Identifier: GPL-2.0+ */
 /*
- * Copyright (C) ASPEED Technology Inc.
+ * Copyright 2016 Google Inc.
  */
 
 /* Core Clocks */
@@ -54,30 +54,16 @@
 #define ASPEED_CLK_GATE_SDCLK           22
 #define ASPEED_CLK_GATE_LHCCLK          23
 #define ASPEED_CLK_GATE_SDEXTCLK        24
-#define ASPEED_CLK_GATE_EMMCCLK         25
-#define ASPEED_CLK_GATE_EMMCEXTCLK      26
-
-#define ASPEED_CLK_GATE_UART6CLK        27
-#define ASPEED_CLK_GATE_UART7CLK        28
-#define ASPEED_CLK_GATE_UART8CLK        29
-#define ASPEED_CLK_GATE_UART9CLK        30
-#define ASPEED_CLK_GATE_UART10CLK       31
-#define ASPEED_CLK_GATE_UART11CLK       32
-#define ASPEED_CLK_GATE_UART12CLK       33
-#define ASPEED_CLK_GATE_UART13CLK       34
-
-#define ASPEED_CLK_HPLL                 35
-#define ASPEED_CLK_AHB                  36
-#define ASPEED_CLK_APB                  37
-#define ASPEED_CLK_UART                 38
-#define ASPEED_CLK_SDIO                 39
-#define ASPEED_CLK_ECLK                 40
-#define ASPEED_CLK_ECLK_MUX             41
-#define ASPEED_CLK_LHCLK                42
-#define ASPEED_CLK_MAC                  43
-#define ASPEED_CLK_BCLK                 44
-#define ASPEED_CLK_MPLL                 45
-#define ASPEED_CLK_24M                  46
-#define ASPEED_CLK_EMMC                 47
-#define ASPEED_CLK_UARTX                48
+#define ASPEED_CLK_HPLL                 25
+#define ASPEED_CLK_AHB                  26
+#define ASPEED_CLK_APB                  27
+#define ASPEED_CLK_UART                 28
+#define ASPEED_CLK_SDIO                 29
+#define ASPEED_CLK_ECLK                 30
+#define ASPEED_CLK_ECLK_MUX             31
+#define ASPEED_CLK_LHCLK                32
+#define ASPEED_CLK_MAC                  33
+#define ASPEED_CLK_BCLK                 34
+#define ASPEED_CLK_MPLL                 35
+#define ASPEED_CLK_24M                  36
 

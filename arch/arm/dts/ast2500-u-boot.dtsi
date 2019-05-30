@@ -1,4 +1,4 @@
-#include <dt-bindings/clock/ast2500-scu.h>
+#include <dt-bindings/clock/ast2500-clock.h>
 #include <dt-bindings/reset/ast2500-reset.h>
 
 #include "ast2500.dtsi"
@@ -72,13 +72,13 @@
 };
 
 &fmc {
-	clocks = <&scu BCLK_HCLK>;
+	clocks = <&scu ASPEED_CLK_AHB>;
 };
 
 &spi1 {
-	clocks = <&scu BCLK_HCLK>;
+	clocks = <&scu ASPEED_CLK_AHB>;
 };
 
 &spi2 {
-	clocks = <&scu BCLK_HCLK>;
+	clocks = <&scu ASPEED_CLK_AHB>;
 };

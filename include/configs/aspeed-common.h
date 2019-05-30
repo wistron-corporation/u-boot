@@ -7,8 +7,17 @@
  * (C) Copyright 2016 Google, Inc
  */
 
-#ifndef __AST_COMMON_CONFIG_H
-#define __AST_COMMON_CONFIG_H
+#ifndef __ASPEED_COMMON_CONFIG_H
+#define __ASPEED_COMMON_CONFIG_H
+
+#include <asm/arch/platform.h>
+
+#define CONFIG_BOOTFILE		"all.bin"
+
+#define CONFIG_GATEWAYIP	192.168.0.1
+#define CONFIG_NETMASK		255.255.255.0
+#define CONFIG_IPADDR		192.168.0.45
+#define CONFIG_SERVERIP		192.168.0.81
 
 /* Misc CPU related */
 #define CONFIG_CMDLINE_TAG
@@ -18,13 +27,13 @@
 /* Enable cache controller */
 #define CONFIG_SYS_DCACHE_OFF
 
-#define CONFIG_SYS_SDRAM_BASE		0x80000000
+#define CONFIG_SYS_SDRAM_BASE		ASPEED_DRAM_BASE
 
 #ifdef CONFIG_PRE_CON_BUF_SZ
-#define CONFIG_SYS_INIT_RAM_ADDR	(0x1e720000 + CONFIG_PRE_CON_BUF_SZ)
+#define CONFIG_SYS_INIT_RAM_ADDR	(ASPEED_SRAM_BASE + CONFIG_PRE_CON_BUF_SZ)
 #define CONFIG_SYS_INIT_RAM_SIZE	(36*1024 - CONFIG_PRE_CON_BUF_SZ)
 #else
-#define CONFIG_SYS_INIT_RAM_ADDR	(0x1e720000)
+#define CONFIG_SYS_INIT_RAM_ADDR	(ASPEED_SRAM_BASE)
 #define CONFIG_SYS_INIT_RAM_SIZE	(36*1024)
 #endif
 
@@ -56,4 +65,4 @@
 	"spi_dma=yes\0" \
 	""
 
-#endif	/* __AST_COMMON_CONFIG_H */
+#endif	/* __ASPEED_COMMON_CONFIG_H */

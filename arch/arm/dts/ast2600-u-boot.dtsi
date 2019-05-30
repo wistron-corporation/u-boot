@@ -60,7 +60,7 @@
 #if 0
 	clock-frequency = <1846154>;
 #endif
-	clocks = <&scu ASPEED_CLK_UART5>;
+	clocks = <&scu ASPEED_CLK_GATE_UART5CLK>;
 };
 
 &mac0 {
@@ -72,13 +72,13 @@
 };
 
 &fmc {
-	clocks = <&scu BCLK_HCLK>;
+	clocks = <&scu ASPEED_CLK_AHB>;
 };
 
 &spi1 {
-	clocks = <&scu BCLK_HCLK>;
+	clocks = <&scu ASPEED_CLK_AHB>;
 };
 
 &spi2 {
-	clocks = <&scu BCLK_HCLK>;
+	clocks = <&scu ASPEED_CLK_AHB>;
 };
