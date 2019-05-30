@@ -7,8 +7,15 @@
  * (C) Copyright 2016 Google, Inc
  */
 
-#ifndef __AST_COMMON_CONFIG_H
-#define __AST_COMMON_CONFIG_H
+#ifndef __ASPEED_COMMON_CONFIG_H
+#define __ASPEED_COMMON_CONFIG_H
+
+#define CONFIG_BOOTFILE		"all.bin"
+
+#define CONFIG_GATEWAYIP	192.168.0.1
+#define CONFIG_NETMASK		255.255.255.0
+#define CONFIG_IPADDR		192.168.0.45
+#define CONFIG_SERVERIP		192.168.0.81
 
 /* Misc CPU related */
 #define CONFIG_CMDLINE_TAG
@@ -56,4 +63,4 @@
 	"spi_dma=yes\0" \
 	""
 
-#endif	/* __AST_COMMON_CONFIG_H */
+#endif	/* __ASPEED_COMMON_CONFIG_H */
