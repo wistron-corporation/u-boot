@@ -68,9 +68,8 @@ DECLARE_GLOBAL_DATA_PTR;
  * Bandwidth configuration parameters for different SDRAM requests.
  * These are hardcoded settings taken from Aspeed SDK.
  */
-static const u32 ddr_max_grant_params[4] = {
-	0x88448844, 0x24422288, 0x22222222, 0x22222222
-};
+static const u32 ddr_max_grant_params[4] = {0x44444444, 0x44444444, 0x44444444,
+                                            0x44444444};
 
 /*
  * These registers are not documented by Aspeed at all.
@@ -343,13 +342,45 @@ static void ast2600_sdrammc_lock(struct dram_info *info)
 		;
 }
 
+static void ast2600_sdrammc_common_init(struct ast2600_sdrammc_regs *regs)
+{
+	int i;
+
+        writel(SDRAM_VIDEO_UNLOCK_KEY, &regs->gm_protection_key);
+        writel(MCR34_MREQI_DIS | MCR34_RESETN_DIS, &regs->power_ctrl);
+        writel(0x10 << MCR38_RW_MAX_GRANT_CNT_RQ_SHIFT,
+               &regs->arbitration_ctrl);
+        writel(MCR3C_DEFAULT_MASK, &regs->req_limit_mask);
+
+        for (i = 0; i < ARRAY_SIZE(ddr_max_grant_params); ++i)
+                writel(ddr_max_grant_params[i], &regs->max_grant_len[i]);
+
+        setbits_le32(&regs->intr_ctrl, MCR50_RESET_ALL_INTR);
+
+        /* FIXME: the sample code does NOT match the datasheet */
+        writel(0x7FFFFFF, &regs->ecc_range_ctrl);
+
+        writel(0, &regs->ecc_test_ctrl);
+        writel(0, &regs->test_addr);
+        writel(0, &regs->test_fail_dq_bit);
+        writel(0, &regs->test_init_val);
+
+        writel(0xFFFFFFFF, &regs->req_input_ctrl);
+        writel(0, &regs->req_high_pri_ctrl);
+        udelay(500);
+
+	/* set capacity to the max size */
+	writel(0xFFFFFFFF, &regs->config);
+        clrsetbits_le32(&regs->config, SDRAM_CONF_CAP_MASK,
+                        SDRAM_CONF_CAP_2048M);
+}
+
 static int ast2600_sdrammc_probe(struct udevice *dev)
 {
 	struct reset_ctl reset_ctl;
 	struct dram_info *priv = (struct dram_info *)dev_get_priv(dev);
 	struct ast2600_sdrammc_regs *regs = priv->regs;
 	struct udevice *clk_dev;
-	int i;
 	int ret = clk_get_by_index(dev, 0, &priv->ddr_clk);
 
 	if (ret) {
@@ -385,21 +416,9 @@ static int ast2600_sdrammc_probe(struct udevice *dev)
 	}
 
 	ast2600_sdrammc_unlock(priv);
+	ast2600_sdrammc_common_init(regs);
 
-	writel(MCR34_MREQI_DIS | MCR34_RESETN_DIS,
-	       &regs->power_ctrl);
-	writel(SDRAM_VIDEO_UNLOCK_KEY, &regs->gm_protection_key);
-
-#if 0
-	/* Mask all requests except CPU and AHB during PHY init */
-	writel(~(SDRAM_REQ_CPU | SDRAM_REQ_AHB), &regs->req_limit_mask);
-#endif
-
-	for (i = 0; i < ARRAY_SIZE(ddr_max_grant_params); ++i)
-		writel(ddr_max_grant_params[i], &regs->max_grant_len[i]);
-
-	setbits_le32(&regs->intr_ctrl, SDRAM_ICR_RESET_ALL);
-
+	/* belows are NOT ready */
 	ast2600_sdrammc_init_phy(priv->phy);
 
 	if (readl(priv->scu + AST_SCU_HW_STRAP) & SCU_HWSTRAP_DDR3) {
@@ -409,7 +428,7 @@ static int ast2600_sdrammc_probe(struct udevice *dev)
 		ast2600_sdrammc_init_ddr4(priv);
 	}
 
-	clrbits_le32(&regs->intr_ctrl, SDRAM_ICR_RESET_ALL);
+	clrbits_le32(&regs->intr_ctrl, MCR50_RESET_ALL_INTR);
 	ast2600_sdrammc_lock(priv);
 
 	return 0;
