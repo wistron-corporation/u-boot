@@ -75,23 +75,14 @@ DECLARE_GLOBAL_DATA_PTR;
 static const u32 ddr_max_grant_params[4] = {0x44444444, 0x44444444, 0x44444444,
                                             0x44444444};
 
-/**
- * @brief	DDR-PHY registers
- *  
- * space: 0x1e6e0100 - 0x1e6e06ff (384 x 32-bit registers)
- * 	0100 - 03FF: setting
- * 	0400 - 06FF: status
- */
-struct ast2600_ddr_phy {
-	u32 phy[384];
-};
-
 struct dram_info {
 	struct ram_info info;
 	struct clk ddr_clk;
 	struct ast2600_sdrammc_regs *regs;
 	void __iomem *scu;
 	struct ast2600_ddr_phy *phy;
+	void __iomem *phy_setting;
+	void __iomem *phy_status;
 	ulong clock_rate;
 };
 
@@ -215,26 +206,89 @@ static void ast2600_sdrammc_calc_size(struct dram_info *info)
 /**
  * @brief	load DDR-PHY configurations table to the PHY registers
  * @param[in]	p_tbl - pointer to the configuration table
- * @param[in]	phy - pointer to the PHY registers
+ * @param[in]	info - pointer to the DRAM info struct
 */
-static void ast2600_sdramphy_init(u32 *p_tbl, struct ast2600_ddr_phy *phy)
+static void ast2600_sdramphy_init(u32 *p_tbl, struct dram_info *info)
 {
-	u32 w_size = sizeof(p_tbl[0]);
-	u32 offset = (p_tbl[0] - (u32)&phy->phy[0]) / w_size;
+	u32 reg_base = (u32)&info->phy_setting;
+	u32 addr = p_tbl[0];
         u32 data;
         int i = 1;
 
-        /* load PHY configuration table into MCR registers */
+	debug("%s:phy_base=0x%08x addr=0x%08x\n", __func__, reg_base, addr);	
+
+        /* load PHY configuration table into PHY-setting registers */
         while (1) {
+                if (addr < reg_base) {
+                        debug("invalid DDR-PHY addr: 0x%08x\n", addr);
+                        break;
+                }
                 data = p_tbl[i++];
+
                 if (DDR_PHY_TBL_END == data) {
                         break;
                 } else if (DDR_PHY_TBL_CHG_ADDR == data) {
-                        offset = (p_tbl[i++] - (u32)&phy->phy[0]) / w_size;
+                        addr = p_tbl[i++];
                 } else {
-			writel(data, &phy->phy[offset++]);
+                        writel(data, addr);
+                        addr += 4;
                 }
         }
+}
+
+static ast2600_sdramphy_show_status(struct dram_info *info)
+{
+        u32 value;
+        u32 reg_base = (u32)&info->phy_status;
+
+        debug("%s\n", __func__);
+
+        value = readl(reg_base + 0x00);
+        if (value & BIT(3)) {
+                debug("initial PVT calibration fail\n");
+        }
+        if (value & BIT(5)) {
+                debug("runtime calibration fail\n");
+        }
+
+        value = readl(reg_base + 0x30);
+        debug("IO PU = 0x%02x\n", value & 0xff);
+        debug("IO PD = 0x%02x\n", (value >> 16) & 0xff);
+
+        value = readl(reg_base + 0x88);
+        debug("PHY vref: 0x%02x_%02x\n", value & 0xff, (value >> 8) & 0xff);
+        value = readl(reg_base + 0x90);
+        debug("DDR vref: 0x%02x\n", value & 0x3f);
+
+        value = readl(reg_base + 0x40);
+        debug("MLB Gate training result: 0x%04x_%04x\n", value & 0xffff,
+              (value >> 16) & 0xffff);
+        value = readl(reg_base + 0x50);
+        debug("MLB Gate pass window: 0x%04x_%04x\n", value & 0xffff,
+              (value >> 16) & 0xffff);
+        value = readl(reg_base + 0x60);
+        debug("Rising  edge Read Data Eye Training Result      = 0x%x_%x\n",
+              value & 0xff, (value >> 8) & 0xff);
+
+        value = readl(reg_base + 0x68);
+        debug("Rising  edge Read Data Eye Training Pass Window = 0x%x_%x\n",
+              value & 0xff, (value >> 8) & 0xff);
+
+        value = readl(reg_base + 0xC0);
+        debug("Falling edge Read Data Eye Training Result      = 0x%x_%x\n",
+              value & 0xff, (value >> 8) & 0xff);
+
+        value = readl(reg_base + 0xC8);
+        debug("Falling edge Read Data Eye Training Pass Window = 0x%x_%x\n",
+              value & 0xff, (value >> 8) & 0xff);
+
+        value = readl(reg_base + 0x74);
+        debug("Write Data Eye fine Training Result             = %X_%X\n",
+              value & 0xff, (value >> 8) & 0xff);
+
+        value = readl(reg_base + 0x7C);
+        debug("Write Data Eye Training Pass Window             = 0x%x_%x\n",
+              value & 0xff, (value >> 8) & 0xff);
 }
 
 static int ast2600_sdrammc_init_ddr4(struct dram_info *info)
@@ -250,7 +304,7 @@ static int ast2600_sdrammc_init_ddr4(struct dram_info *info)
 	setbits_le32(&info->regs->config, SDRAM_CONF_DDR4);
 #endif	
 
-	ast2600_sdramphy_init(ast2600_sdramphy_config, info->phy);
+	ast2600_sdramphy_init(ast2600_sdramphy_config, info);
 	ast2600_sdramphy_kick_training(info);
 
 	writel(SDRAM_RESET_DLL_ZQCL_EN, &info->regs->refresh_timing);
@@ -412,6 +466,7 @@ static int ast2600_sdrammc_probe(struct udevice *dev)
 		ast2600_sdrammc_init_ddr4(priv);
 	}	
 
+	ast2600_sdramphy_show_status(priv);
 	ast2600_sdrammc_calc_size(priv);
 
 	clrbits_le32(&regs->intr_ctrl, MCR50_RESET_ALL_INTR);
@@ -431,7 +486,8 @@ static int ast2600_sdrammc_ofdata_to_platdata(struct udevice *dev)
 		return ret;
 
 	priv->regs = regmap_get_range(map, 0);
-	priv->phy = regmap_get_range(map, 1);
+	priv->phy_setting = regmap_get_range(map, 1);
+	priv->phy_status = regmap_get_range(map, 2);
 
 	priv->clock_rate = fdtdec_get_int(gd->fdt_blob, dev_of_offset(dev),
 					  "clock-frequency", 0);
