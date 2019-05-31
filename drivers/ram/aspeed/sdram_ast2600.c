@@ -44,6 +44,9 @@ static const u32 ddr4_ac_timing[4] = {0x040e0307, 0x0f4711f1, 0x0e060304,
                                       0x00001240};
 #endif
 
+#if 1
+#include "sdram_phy_ast2600.h"
+#else
 #define PHY_CFG_SIZE		15
 static const struct {
 	u32 index[PHY_CFG_SIZE];
@@ -56,6 +59,7 @@ static const struct {
 		0x9b000900, 0x0e400a00, 0x00100008, 0x3c183c3c, 0x00631e0e,
 	},
 };
+#endif
 
 #define SDRAM_SIZE_1KB		(1024U)
 #define SDRAM_SIZE_1MB		(SDRAM_SIZE_1KB * SDRAM_SIZE_1KB)
@@ -88,43 +92,20 @@ struct dram_info {
 	ulong clock_rate;
 };
 
-static int ast2600_sdrammc_init_phy(struct ast2600_ddr_phy *phy)
+static void ast2600_sdramphy_kick_training(struct dram_info *info)
 {
-	writel(0, &phy->phy[2]);
-	writel(0, &phy->phy[6]);
-	writel(0, &phy->phy[8]);
-	writel(0, &phy->phy[10]);
-	writel(0, &phy->phy[12]);
-	writel(0, &phy->phy[42]);
-	writel(0, &phy->phy[44]);
+        struct ast2600_sdrammc_regs *regs = info->regs;
+        u32 mask = SDRAM_PHYCTRL0_INIT | SDRAM_PHYCTRL0_PLL_LOCKED;
+        u32 data;
 
-	writel(0x86000000, &phy->phy[16]);
-	writel(0x00008600, &phy->phy[17]);
-	writel(0x80000000, &phy->phy[18]);
-	writel(0x80808080, &phy->phy[19]);
+        writel(0, &regs->phy_ctrl[0]);
+        udelay(2);
+        writel(SDRAM_PHYCTRL0_NRST | SDRAM_PHYCTRL0_INIT, &regs->phy_ctrl[0]);
 
-	return 0;
-}
-
-static void ast2600_ddr_phy_init_process(struct dram_info *info)
-{
-	struct ast2600_sdrammc_regs *regs = info->regs;
-
-	writel(0, &regs->phy_ctrl[0]);
-	writel(0x4040, &info->phy->phy[51]);
-
-	writel(SDRAM_PHYCTRL0_NRST | SDRAM_PHYCTRL0_INIT, &regs->phy_ctrl[0]);
-	while ((readl(&regs->phy_ctrl[0]) & SDRAM_PHYCTRL0_INIT))
-		;
-	writel(SDRAM_PHYCTRL0_NRST | SDRAM_PHYCTRL0_AUTO_UPDATE,
-	       &regs->phy_ctrl[0]);
-}
-
-static void ast2600_sdrammc_set_vref(struct dram_info *info, u32 vref)
-{
-	writel(0, &info->regs->phy_ctrl[0]);
-	writel((vref << 8) | 0x6, &info->phy->phy[48]);
-	ast2600_ddr_phy_init_process(info);
+        /* wait for (PLL_LOCKED == 1) and (INIT == 0) */
+        do {
+                data = readl(&regs->phy_ctrl[0]) & mask;
+        } while (SDRAM_PHYCTRL0_PLL_LOCKED != data);
 }
 
 static int ast2600_ddr_cbr_test(struct dram_info *info)
@@ -165,34 +146,6 @@ static int ast2600_ddr_cbr_test(struct dram_info *info)
 	writel(0, &regs->ecc_test_ctrl);
 
 	return ret;
-}
-
-static int ast2600_sdrammc_ddr4_calibrate_vref(struct dram_info *info)
-{
-	int i;
-	int vref_min = 0xff;
-	int vref_max = 0;
-	int range_size = 0;
-
-	for (i = 1; i < 0x40; ++i) {
-		int res;
-
-		ast2600_sdrammc_set_vref(info, i);
-		res = ast2600_ddr_cbr_test(info);
-		if (res < 0) {
-			if (range_size > 0)
-				break;
-		} else {
-			++range_size;
-			vref_min = min(vref_min, i);
-			vref_max = max(vref_max, i);
-		}
-	}
-
-	/* Pick average setting */
-	ast2600_sdrammc_set_vref(info, (vref_min + vref_max + 1) / 2);
-
-	return 0;
 }
 
 static size_t ast2600_sdrammc_get_vga_mem_size(struct dram_info *info)
@@ -254,43 +207,48 @@ static void ast2600_sdrammc_calc_size(struct dram_info *info)
 			((cap_param & SDRAM_CONF_CAP_MASK)
 			 << SDRAM_CONF_CAP_SHIFT));
 }
+/**
+ * @brief	load DDR-PHY configurations from table to PHY registers
+ * @param[in]	p_tbl - pointer to the configuration table
+ * @param[in]	phy - pointer to the PHY registers
+*/
+static void ast2600_sdramphy_init(u32 *p_tbl, struct ast2600_ddr_phy *phy)
+{
+	u32 w_size = sizeof(p_tbl[0]);
+	u32 offset = (p_tbl[0] - (u32)&phy->phy[0]) / w_size;
+        u32 data;
+        int i = 1;
+
+        /* load PHY configuration table into MCR registers */
+        while (1) {
+                data = p_tbl[i++];
+                if (DDR_PHY_TBL_END == data) {
+                        break;
+                } else if (DDR_PHY_TBL_CHG_ADDR == data) {
+                        offset = (p_tbl[i++] - (u32)&phy->phy[0]) / w_size;
+                } else {
+			writel(data, &phy->phy[offset++]);
+                }
+        }
+}
 
 static int ast2600_sdrammc_init_ddr4(struct dram_info *info)
 {
-	int i;
         const u32 power_ctrl = MCR34_CKE_EN | MCR34_RESETN_DIS |
                                MCR34_RGAP_CTRL_EN | MCR34_ODT_EN |
                                (0x1 << MCR34_ODT_EXT_SHIFT);
-        const u32 conf = (SDRAM_CONF_CAP_2048M << SDRAM_CONF_CAP_SHIFT)
+        const u32 conf = (SDRAM_CONF_CAP_2048M << SDRAM_CONF_CAP_SHIFT) |
 #ifdef CONFIG_DUALX8_RAM
-	    | SDRAM_CONF_DUALX8
+                         SDRAM_CONF_DUALX8 |
 #endif
-	    | SDRAM_CONF_SCRAMBLE | SDRAM_CONF_SCRAMBLE_PAT2 | SDRAM_CONF_DDR4;
-	int ret;
+                         SDRAM_CONF_SCRAMBLE | SDRAM_CONF_DDR4;
 
 	writel(conf, &info->regs->config);
-	for (i = 0; i < ARRAY_SIZE(ddr4_ac_timing); ++i)
-		writel(ddr4_ac_timing[i], &info->regs->ac_timing[i]);
-
-	writel(DDR4_MR01_MODE, &info->regs->mr01_mode_setting);
-	writel(DDR4_MR23_MODE, &info->regs->mr23_mode_setting);
-	writel(DDR4_MR45_MODE, &info->regs->mr45_mode_setting);
-	writel(DDR4_MR6_MODE, &info->regs->mr6_mode_setting);
-
-	for (i = 0; i < PHY_CFG_SIZE; ++i) {
-		writel(ddr4_phy_config.value[i],
-		       &info->phy->phy[ddr4_phy_config.index[i]]);
-	}
 
 	writel(power_ctrl, &info->regs->power_ctrl);
 
-	ast2600_ddr_phy_init_process(info);
-
-	ret = ast2600_sdrammc_ddr4_calibrate_vref(info);
-	if (ret < 0) {
-		debug("Vref calibration failed!\n");
-		return ret;
-	}
+	ast2600_sdramphy_init(ast2600_sdramphy_config, info->phy);
+	ast2600_sdramphy_kick_training(info);	
 
 	writel((1 << SDRAM_REFRESH_CYCLES_SHIFT)
 	       | SDRAM_REFRESH_ZQCS_EN | (0x2f << SDRAM_REFRESH_PERIOD_SHIFT),
@@ -301,12 +259,12 @@ static int ast2600_sdrammc_init_ddr4(struct dram_info *info)
 
 	ast2600_sdrammc_calc_size(info);
 
+#if 0
 	setbits_le32(&info->regs->config, SDRAM_CONF_CACHE_INIT_EN);
 	while (!(readl(&info->regs->config) & SDRAM_CONF_CACHE_INIT_DONE))
 		;
 	setbits_le32(&info->regs->config, SDRAM_CONF_CACHE_EN);
 
-#if 0
 	writel(SDRAM_MISC_DDR4_TREFRESH, &info->regs->misc_control);
 
 	/* Enable all requests except video & display */
@@ -373,6 +331,15 @@ static void ast2600_sdrammc_common_init(struct ast2600_sdrammc_regs *regs)
 	writel(0xFFFFFFFF, &regs->config);
         clrsetbits_le32(&regs->config, SDRAM_CONF_CAP_MASK,
                         SDRAM_CONF_CAP_2048M);
+
+	/* load controller setting */
+	for (i = 0; i < ARRAY_SIZE(ddr4_ac_timing); ++i)
+		writel(ddr4_ac_timing[i], &regs->ac_timing[i]);
+
+	writel(DDR4_MR01_MODE, &regs->mr01_mode_setting);
+	writel(DDR4_MR23_MODE, &regs->mr23_mode_setting);
+	writel(DDR4_MR45_MODE, &regs->mr45_mode_setting);
+	writel(DDR4_MR6_MODE, &regs->mr6_mode_setting);			
 }
 
 static int ast2600_sdrammc_probe(struct udevice *dev)
@@ -416,10 +383,7 @@ static int ast2600_sdrammc_probe(struct udevice *dev)
 	}
 
 	ast2600_sdrammc_unlock(priv);
-	ast2600_sdrammc_common_init(regs);
-
-	/* belows are NOT ready */
-	ast2600_sdrammc_init_phy(priv->phy);
+	ast2600_sdrammc_common_init(regs);	
 
 	if (readl(priv->scu + AST_SCU_HW_STRAP) & SCU_HWSTRAP_DDR3) {
 		debug("Unsupported DRAM3\n");
