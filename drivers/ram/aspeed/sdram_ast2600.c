@@ -75,12 +75,15 @@ DECLARE_GLOBAL_DATA_PTR;
 static const u32 ddr_max_grant_params[4] = {0x44444444, 0x44444444, 0x44444444,
                                             0x44444444};
 
-/*
- * These registers are not documented by Aspeed at all.
- * All writes and reads are taken pretty much as is from SDK.
+/**
+ * @brief	DDR-PHY registers
+ *  
+ * space: 0x1e6e0100 - 0x1e6e06ff (384 x 32-bit registers)
+ * 	0100 - 03FF: setting
+ * 	0400 - 06FF: status
  */
 struct ast2600_ddr_phy {
-	u32 phy[117];
+	u32 phy[384];
 };
 
 struct dram_info {
@@ -117,8 +120,10 @@ static int ast2600_ddr_cbr_test(struct dram_info *info)
 			| SDRAM_TEST_TWO_MODES;
 	int ret = 0;
 
+#if 0
 	writel((1 << SDRAM_REFRESH_CYCLES_SHIFT) |
 	       (0x5c << SDRAM_REFRESH_PERIOD_SHIFT), &regs->refresh_timing);
+#endif	       
 	writel((0xfff << SDRAM_TEST_LEN_SHIFT), &regs->test_addr);
 	writel(0xff00ff00, &regs->test_init_val);
 	writel(SDRAM_TEST_EN | (SDRAM_TEST_MODE_RW << SDRAM_TEST_MODE_SHIFT) |
@@ -208,7 +213,7 @@ static void ast2600_sdrammc_calc_size(struct dram_info *info)
 			 << SDRAM_CONF_CAP_SHIFT));
 }
 /**
- * @brief	load DDR-PHY configurations from table to PHY registers
+ * @brief	load DDR-PHY configurations table to the PHY registers
  * @param[in]	p_tbl - pointer to the configuration table
  * @param[in]	phy - pointer to the PHY registers
 */
@@ -234,30 +239,46 @@ static void ast2600_sdramphy_init(u32 *p_tbl, struct ast2600_ddr_phy *phy)
 
 static int ast2600_sdrammc_init_ddr4(struct dram_info *info)
 {
-        const u32 power_ctrl = MCR34_CKE_EN | MCR34_RESETN_DIS |
-                               MCR34_RGAP_CTRL_EN | MCR34_ODT_EN |
+        const u32 power_ctrl = MCR34_CKE_EN | MCR34_AUTOPWRDN_EN |
+                               MCR34_MREQ_BYPASS_DIS | MCR34_RESETN_DIS |
+                               MCR34_ODT_EN | MCR34_ODT_AUTO_ON |
                                (0x1 << MCR34_ODT_EXT_SHIFT);
-        const u32 conf = (SDRAM_CONF_CAP_2048M << SDRAM_CONF_CAP_SHIFT) |
+
 #ifdef CONFIG_DUALX8_RAM
-                         SDRAM_CONF_DUALX8 |
-#endif
-                         SDRAM_CONF_SCRAMBLE | SDRAM_CONF_DDR4;
-
-	writel(conf, &info->regs->config);
-
-	writel(power_ctrl, &info->regs->power_ctrl);
+	setbits_le32(&info->regs->config, SDRAM_CONF_DDR4 | SDRAM_CONF_DUALX8);
+#else
+	setbits_le32(&info->regs->config, SDRAM_CONF_DDR4);
+#endif	
 
 	ast2600_sdramphy_init(ast2600_sdramphy_config, info->phy);
-	ast2600_sdramphy_kick_training(info);	
+	ast2600_sdramphy_kick_training(info);
 
-	writel((1 << SDRAM_REFRESH_CYCLES_SHIFT)
-	       | SDRAM_REFRESH_ZQCS_EN | (0x2f << SDRAM_REFRESH_PERIOD_SHIFT),
-	       &info->regs->refresh_timing);
+	writel(SDRAM_RESET_DLL_ZQCL_EN, &info->regs->refresh_timing);
 
-	setbits_le32(&info->regs->power_ctrl,
-		     MCR34_AUTOPWRDN_EN | MCR34_ODT_AUTO_ON);
+        writel(MCR30_SET_MR(3), &info->regs->mode_setting_control);
+        writel(MCR30_SET_MR(6), &info->regs->mode_setting_control);
+        writel(MCR30_SET_MR(5), &info->regs->mode_setting_control);
+        writel(MCR30_SET_MR(4), &info->regs->mode_setting_control);
+        writel(MCR30_SET_MR(2), &info->regs->mode_setting_control);
+        writel(MCR30_SET_MR(1), &info->regs->mode_setting_control);
+        writel(MCR30_SET_MR(0) | MCR30_RESET_DLL_DELAY_EN,
+               &info->regs->mode_setting_control);
 
-	ast2600_sdrammc_calc_size(info);
+        writel(SDRAM_REFRESH_EN | SDRAM_RESET_DLL_ZQCL_EN |
+                   (0x5f << SDRAM_REFRESH_PERIOD_SHIFT),
+               &info->regs->refresh_timing);
+
+	/* wait self-refresh idle */
+        while (readl(&info->regs->power_ctrl) & MCR34_SELF_REFRESH_STATUS_MASK)
+                ;
+
+        writel(SDRAM_REFRESH_EN | SDRAM_LOW_PRI_REFRESH_EN |
+                   SDRAM_REFRESH_ZQCS_EN |
+                   (0x5f << SDRAM_REFRESH_PERIOD_SHIFT) |
+                   (0x42aa << SDRAM_REFRESH_PERIOD_ZQCS_SHIFT),
+               &info->regs->refresh_timing);
+
+	writel(power_ctrl, &info->regs->power_ctrl);
 
 #if 0
 	setbits_le32(&info->regs->config, SDRAM_CONF_CACHE_INIT_EN);
@@ -282,7 +303,7 @@ static int ast2600_sdrammc_init_ddr4(struct dram_info *info)
 	       | SDRAM_REQ_VIDEO_LOW_PRI_WRITE
 	       | SDRAM_REQ_2D_RW
 	       | SDRAM_REQ_MEMCHECK, &info->regs->req_limit_mask);
-#endif
+#endif	
 	return 0;
 }
 
@@ -328,7 +349,6 @@ static void ast2600_sdrammc_common_init(struct ast2600_sdrammc_regs *regs)
         udelay(500);
 
 	/* set capacity to the max size */
-	writel(0xFFFFFFFF, &regs->config);
         clrsetbits_le32(&regs->config, SDRAM_CONF_CAP_MASK,
                         SDRAM_CONF_CAP_2048M);
 
@@ -390,7 +410,9 @@ static int ast2600_sdrammc_probe(struct udevice *dev)
 		return -EINVAL;
 	} else {
 		ast2600_sdrammc_init_ddr4(priv);
-	}
+	}	
+
+	ast2600_sdrammc_calc_size(priv);
 
 	clrbits_le32(&regs->intr_ctrl, MCR50_RESET_ALL_INTR);
 	ast2600_sdrammc_lock(priv);
