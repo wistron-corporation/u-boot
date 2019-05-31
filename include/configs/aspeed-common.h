@@ -1,7 +1,6 @@
 /* SPDX-License-Identifier: GPL-2.0+ */
 /*
- * Copyright (C) 2012-2020  ASPEED Technology Inc.
- * Ryan Chen <ryan_chen@aspeedtech.com>
+ * Copyright (C) ASPEED Technology Inc.
  *
  * Copyright 2016 IBM Corporation
  * (C) Copyright 2016 Google, Inc

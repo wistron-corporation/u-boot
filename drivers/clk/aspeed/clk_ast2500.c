@@ -140,7 +140,8 @@ static ulong ast2500_clk_get_rate(struct clk *clk)
 			rate = rate / axi_div / ahb_div;
 		}
 		break;
-	case MCLK_DDR:
+	//mpll
+	case ASPEED_CLK_MPLL:
 		rate = ast2500_get_mpll_rate(clkin,
 					     readl(&priv->scu->m_pll_param));
 		break;
@@ -421,8 +422,8 @@ static ulong ast2500_clk_set_rate(struct clk *clk, ulong rate)
 
 	ulong new_rate;
 	switch (clk->id) {
-	case PLL_MPLL:
-	case MCLK_DDR:
+	//mpll
+	case ASPEED_CLK_MPLL:
 		new_rate = ast2500_configure_ddr(priv->scu, rate);
 		break;
 	case PLL_D2PLL:

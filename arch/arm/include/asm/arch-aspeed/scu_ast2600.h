@@ -1,6 +1,6 @@
 /* SPDX-License-Identifier: GPL-2.0+ */
 /*
- * ASPEED AST2500 FMC/SPI Controller driver
+ * Copyright (C) ASPEED Technology Inc.
  */
 
 #ifndef _ASM_ARCH_SCU_AST2600_H
@@ -290,9 +290,9 @@ struct ast2600_scu {
 	u32 pwr_save_wakeup_en2;/* 0x550 */
 	u32 pwr_save_wakeup_ctrl2;/* 0x554 */	
 	u32 reserve_0x558[2];	/* 0x558 */	
-	u32 intr1_ctrl_sts		/* 0x560 */ 
+	u32 intr1_ctrl_sts;		/* 0x560 */ 
 	u32 reserve_0x564[3];	/* 0x564 */
-	u32 intr2_ctrl_sts		/* 0x570 */
+	u32 intr2_ctrl_sts;		/* 0x570 */
 	u32 reserve_0x574[3];	/* 0x574 */
 	u32 reserve_0x580[4];	/* 0x580 */
 	u32 opt_ctrl;			/* 0x590 */

@@ -25,7 +25,7 @@
 		reg = <0x1e6e0000 0x174
 			0x1e6e0200 0x1d4 >;
 		#reset-cells = <1>;
-		clocks = <&scu PLL_MPLL>;
+		clocks = <&scu ASPEED_CLK_MPLL>;
 		resets = <&rst AST_RESET_SDRAM>;
 	};
 
