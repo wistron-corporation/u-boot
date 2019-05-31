@@ -10,14 +10,8 @@
 #include <reset-uclass.h>
 #include <wdt.h>
 #include <asm/io.h>
-#ifdef CONFIG_ASPEED_AST2500
 #include <asm/arch/scu_ast2500.h>
-#endif
 #include <asm/arch/wdt.h>
-#ifdef CONFIG_ASPEED_AST2600
-#include <asm/arch/scu_ast2600.h>
-#endif
-
 
 struct aspeed_reset_priv {
 	/* WDT used to perform resets. */
@@ -90,7 +84,6 @@ static int aspeed_reset_probe(struct udevice *dev)
 
 static const struct udevice_id aspeed_reset_ids[] = {
 	{ .compatible = "aspeed,ast2500-reset" },
-	{ .compatible = "aspeed,ast2600-reset" },
 	{ }
 };
 
