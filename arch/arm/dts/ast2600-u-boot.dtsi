@@ -1,5 +1,5 @@
 #include <dt-bindings/clock/ast2600-clock.h>
-#include <dt-bindings/reset/ast2500-reset.h>
+#include <dt-bindings/reset/ast2600-reset.h>
 
 #include "ast2600.dtsi"
 
