@@ -48,20 +48,18 @@
 	status = "okay";
 
 	phy-mode = "rgmii";
-#if 0
+
 	pinctrl-names = "default";
 	pinctrl-0 = <&pinctrl_mac1link_default &pinctrl_mdio1_default>;
-#endif
 };
 
 &mac1 {
 	status = "okay";
 
 	phy-mode = "rgmii";
-#if 0
+
 	pinctrl-names = "default";
 	pinctrl-0 = <&pinctrl_mac2link_default &pinctrl_mdio2_default>;
-#endif
 };
 
 &fmc {
