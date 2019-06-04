@@ -11,6 +11,7 @@
 #include <asm/arch/pinctrl.h>
 #include <asm/arch/scu_ast2600.h>
 #include <dm/pinctrl.h>
+#include "pinctrl-aspeed.h"
 
 /*
  * This driver works with very simple configuration that has the same name
@@ -31,66 +32,57 @@ static int ast2600_pinctrl_probe(struct udevice *dev)
 	return 0;
 }
 
-struct aspeed_sig_desc {
-	u32 offset;
-	u32 reg_set;	
-};
-
-struct ast2600_group_config {
-	char *group_name;
-	int ndescs;
-	const struct aspeed_sig_desc *descs;
-};
-
 static struct aspeed_sig_desc mac1_link[] = {
-	{ 0x410, BIT(4)	},
+	{ 0x410, BIT(4), 0	},
 };
 
 static struct aspeed_sig_desc mac2_link[] = {
-	{ 0x410, BIT(5)	},
+	{ 0x410, BIT(5), 0	},
 };
 
 static struct aspeed_sig_desc mac3_link[] = {
-	{ 0x410, BIT(6)	},
+	{ 0x410, BIT(6), 0	},
 };
 
 static struct aspeed_sig_desc mac4_link[] = {
-	{ 0x410, BIT(7)	},
+	{ 0x410, BIT(7), 0	},
 };
 
 static struct aspeed_sig_desc mdio1_link[] = {
-	{ 0x430, BIT(17)	},
+	{ 0x430, BIT(17), 0	},
 };
 
 static struct aspeed_sig_desc mdio2_link[] = {
-	{ 0x410, BIT(14) | BIT(13)	},
+	{ 0x410, BIT(14) | BIT(13), 0	},
 };
 
 static struct aspeed_sig_desc mdio3_link[] = {
-	{ 0x410, BIT(1) | BIT(0)	},
+	{ 0x410, BIT(1) | BIT(0), 0	},
 };
 
 static struct aspeed_sig_desc mdio4_link[] = {
-	{ 0x410, BIT(3) | BIT(2)	},
+	{ 0x410, BIT(3) | BIT(2), 0	},
 };
 
 //8bit mode offset 0x414 (21~18) 0x450 bit0: sd0 bit1: sd1,  bit3: sd0 8bits
-	//sdio1 414 (23~16) = 0, 4b4 (23~16) = 1, 450 bit1 = 1
+
 
 static struct aspeed_sig_desc sdio2_link[] = {
-	{ 0x4B4, GENMASK(23, 16)	},
-	{ 0x450, BIT(1)		},
-	{ 0x414, GENMASK(23, 16)	},
+	{ 0x4B4, GENMASK(23, 16), 0	},
+	{ 0x450, BIT(1), 0		},
+	{ 0x414, GENMASK(23, 16), 0	},
 };
 
+//sdio1 414 (23~16) = 0, 4b4 (23~16) = 1, 450 bit1 = 1
 static struct aspeed_sig_desc sdio1_link[] = {
-	{ 0x414, GENMASK(15, 8)	},
-	{ 0x450, BIT(0)	},
+	{ 0x414, GENMASK(15, 8), 0	},
+	{ 0x4b4, GENMASK(23, 16), 0	},
+	{ 0x450, BIT(0), 0	},
 };	
 
 static struct aspeed_sig_desc emmc_link[] = {
-	{ 0x400, GENMASK(31, 24) },
-	{ 0x404, GENMASK(3, 0) },
+	{ 0x400, GENMASK(31, 24), 0 },
+	{ 0x404, GENMASK(3, 0), 0 },
 };
 
 static const struct ast2600_group_config ast2600_groups[] = {
@@ -126,7 +118,7 @@ static int ast2600_pinctrl_group_set(struct udevice *dev, unsigned selector,
 				     unsigned func_selector)
 {
 	struct ast2600_pinctrl_priv *priv = dev_get_priv(dev);
-	const struct ast2600_group_config *config;
+	const struct aspeed_group_config *config;
 	const struct aspeed_sig_desc *descs;
 	u32 ctrl_reg = (u32)&priv->scu;
 
