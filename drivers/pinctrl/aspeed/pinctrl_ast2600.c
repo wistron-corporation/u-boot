@@ -85,7 +85,7 @@ static struct aspeed_sig_desc emmc_link[] = {
 	{ 0x404, GENMASK(3, 0), 0 },
 };
 
-static const struct ast2600_group_config ast2600_groups[] = {
+static const struct aspeed_group_config ast2600_groups[] = {
 	{ "MAC1LINK", 1, mac1_link },
 	{ "MAC2LINK", 1, mac2_link },
 	{ "MAC3LINK", 1, mac3_link },
