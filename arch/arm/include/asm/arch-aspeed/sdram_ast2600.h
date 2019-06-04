@@ -154,15 +154,7 @@ struct ast2600_sdrammc_regs {
 	u32 test_init_val;		/* offset 0x7C */
 	u32 req_input_ctrl;		/* offset 0x80 */
 	u32 req_high_pri_ctrl;		/* offset 0x84 */
-
-	u32 phy_debug_ctrl;
-	u32 phy_debug_data;
-	u32 reserved1[30];
-	u32 scu_passwd;
-	u32 reserved2[7];
-	u32 scu_mpll;
-	u32 reserved3[19];
-	u32 scu_hwstrap;
+	u32 reserved0[6];              /* offset 0x88 ~ 0x9C */
 };
 
 #endif  /* __ASSEMBLY__ */
