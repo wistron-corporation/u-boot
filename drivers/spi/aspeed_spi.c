@@ -181,7 +181,7 @@ static struct aspeed_spi_flash *aspeed_spi_get_flash(struct udevice *dev)
 	return &priv->flashes[cs];
 }
 
-static u32 aspeed_spi_hclk_divisor(struct aspeed_spi_priv *priv, u32 max_hz)
+static u32 aspeed_g6_spi_hclk_divisor(struct aspeed_spi_priv *priv, u32 max_hz)
 {
 	u32 hclk_rate = priv->hclk_rate;
 	/* HCLK/1 ..	HCLK/16 */
@@ -194,35 +194,48 @@ static u32 aspeed_spi_hclk_divisor(struct aspeed_spi_priv *priv, u32 max_hz)
 	u32 hclk_div_setting = 0;
 
 	//for ast2600 spi freq = hclk / (([27:24] * 16) + [11:8])
-	if (priv->new_ver) {
-		for (j = 0; j < ARRAY_SIZE(hclk_masks); i++) {
-			for (i = 0; i < ARRAY_SIZE(hclk_masks); i++) {
-				if (max_hz >= (hclk_rate / ((i + 1) + (j * 16)))) {
-					base_div = j * 16;
+	for (j = 0; j < ARRAY_SIZE(hclk_masks); i++) {
+		for (i = 0; i < ARRAY_SIZE(hclk_masks); i++) {
+			if (max_hz >= (hclk_rate / ((i + 1) + (j * 16)))) {
+				base_div = j * 16;
 //					done = 1;
-					break;
-				}
+				break;
 			}
+		}
 //			if (done)
 //				break;
-			if( j == 0) break;	// todo check
-		}
-
-		printf("hclk=%d required=%d base_div is %d (mask %x, base_div %x) speed=%d\n",
-			  hclk_rate, max_hz, i + 1, hclk_masks[i], base_div, hclk_rate / ((i + 1) + base_div));
-
-		hclk_div_setting = ((j << 4) | hclk_masks[i]);
-		
-	} else {
-		for (i = 0; i < ARRAY_SIZE(hclk_masks); i++) {
-			if (max_hz >= (hclk_rate / (i + 1)))
-				break;
-		}
-		debug("hclk=%d required=%d divisor is %d (mask %x) speed=%d\n",
-		      hclk_rate, max_hz, i + 1, hclk_masks[i], hclk_rate / (i + 1));
-
-		hclk_div_setting = hclk_masks[i];
+		if( j == 0) break;	// todo check
 	}
+
+	printf("hclk=%d required=%d base_div is %d (mask %x, base_div %x) speed=%d\n",
+		  hclk_rate, max_hz, i + 1, hclk_masks[i], base_div, hclk_rate / ((i + 1) + base_div));
+
+	hclk_div_setting = ((j << 4) | hclk_masks[i]);
+
+	return hclk_div_setting;
+
+}
+
+static u32 aspeed_spi_hclk_divisor(struct aspeed_spi_priv *priv, u32 max_hz)
+{
+	u32 hclk_rate = priv->hclk_rate;
+	/* HCLK/1 ..	HCLK/16 */
+	const u8 hclk_masks[] = {
+		15, 7, 14, 6, 13, 5, 12, 4, 11, 3, 10, 2, 9, 1, 8, 0
+	};
+	u8 base_div = 0;
+//	int done = 0;
+	u32 i, j;
+	u32 hclk_div_setting = 0;
+
+	for (i = 0; i < ARRAY_SIZE(hclk_masks); i++) {
+		if (max_hz >= (hclk_rate / (i + 1)))
+			break;
+	}
+	debug("hclk=%d required=%d divisor is %d (mask %x) speed=%d\n",
+	      hclk_rate, max_hz, i + 1, hclk_masks[i], hclk_rate / (i + 1));
+
+	hclk_div_setting = hclk_masks[i];
 
 	return hclk_div_setting;
 }
@@ -804,7 +817,10 @@ static int aspeed_spi_flash_init(struct aspeed_spi_priv *priv,
 
 	flash->ce_ctrl_user = CE_CTRL_USERMODE;
 
-	read_hclk = aspeed_spi_hclk_divisor(priv, slave->speed);
+	if(priv->new_ver)
+		read_hclk = aspeed_g6_spi_hclk_divisor(priv, slave->speed);
+	else
+		read_hclk = aspeed_spi_hclk_divisor(priv, slave->speed);
 
 	if (slave->mode & (SPI_RX_DUAL | SPI_TX_DUAL)) {
 		debug("CS%u: setting dual data mode\n", flash->cs);
