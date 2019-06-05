@@ -85,6 +85,7 @@ flash_info_t flash_info[CONFIG_SYS_MAX_FLASH_BANKS];		/* FLASH chips info */
 #define AT25DF161		0x02461F
 #define AT25DF321		0x01471F
 #define MT25QL01GB		0x21ba20
+#define W25M512JV		0x1971ef
 
 /* SPI Define */
 #define CS0_CTRL			0x10
@@ -1167,6 +1168,20 @@ static ulong flash_get_size (ulong base, flash_info_t *info)
 			info->buffersize = 256;
 			WriteClk = 50;
 			EraseClk = 25;
+			ReadClk  = 50;
+			info->address32 = 1;
+			break;
+
+		case W25M512JV:
+			info->sector_count = 512;
+			info->size = 0x2000000;
+			erase_region_size  = 0x10000;
+			info->readcmd = 0x0b;
+			info->dualport = 1;
+			info->dummybyte = 1;
+			info->buffersize = 256;
+			WriteClk = 50;
+			EraseClk = 20;
 			ReadClk  = 50;
 			info->address32 = 1;
 			break;
