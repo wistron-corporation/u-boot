@@ -360,12 +360,13 @@ static int ast2500_sdrammc_probe(struct udevice *dev)
 		return ret;
 	}
 
+#if 0
 	ret = reset_assert(&reset_ctl);
 	if (ret) {
 		debug("%s(): SDRAM reset failed: %u\n", __func__, ret);
 		return ret;
 	}
-
+#endif
 	ast2500_sdrammc_unlock(priv);
 
 	writel(SDRAM_PCR_MREQI_DIS | SDRAM_PCR_RESETN_DIS,

@@ -13,41 +13,40 @@
 #include <asm/arch/wdt.h>
 #include <asm/arch/scu_ast2600.h>
 
-struct aspeed_reset_priv {
+struct ast2600_reset_priv {
 	/* WDT used to perform resets. */
 	struct udevice *wdt;
 	struct ast2600_scu *scu;
 };
 
+static int ast2600_reset_deassert(struct reset_ctl *reset_ctl)
+{
+	struct ast2600_reset_priv *priv = dev_get_priv(reset_ctl->dev);
+	struct ast2600_scu *scu = priv->scu;
+
+	printf("ast2600_reset_assert reset_ctl->id %ld \n", reset_ctl->id);
+
+	if(reset_ctl->id >= 32)
+		writel(scu->sysreset_clr_ctrl2 , BIT(reset_ctl->id - 32));
+	else
+		writel(scu->sysreset_clr_ctrl1 , BIT(reset_ctl->id));
+
+	return 0;
+}
+
 static int ast2600_reset_assert(struct reset_ctl *reset_ctl)
 {
-	struct aspeed_reset_priv *priv = dev_get_priv(reset_ctl->dev);
-	u32 reset_mode, reset_mask;
-	bool reset_sdram;
-	int ret;
-	printf("ast2600_reset_assert reset_ctl->id %d \n", reset_ctl->id);
-	/*
-	 * To reset SDRAM, a specifal flag in SYSRESET register
-	 * needs to be enabled first
-	 */
-	reset_mode = ast_reset_mode_from_flags(reset_ctl->id);
-	reset_mask = ast_reset_mask_from_flags(reset_ctl->id);
-	reset_sdram = reset_mode == WDT_CTRL_RESET_SOC &&
-		(reset_mask & WDT_RESET_SDRAM);
-#if 0
-	if (reset_sdram) {
-		ast_scu_unlock(priv->scu);
-		setbits_le32(&priv->scu->sysreset_ctrl1,
-			     SCU_SYSRESET_SDRAM_WDT);
-		ret = wdt_expire_now(priv->wdt, reset_ctl->id);
-		clrbits_le32(&priv->scu->sysreset_ctrl1,
-			     SCU_SYSRESET_SDRAM_WDT);
-		ast_scu_lock(priv->scu);
-	} else {
-		ret = wdt_expire_now(priv->wdt, reset_ctl->id);
-	}
-#endif
-	return ret;
+	struct ast2600_reset_priv *priv = dev_get_priv(reset_ctl->dev);
+	struct ast2600_scu *scu = priv->scu;	
+
+	printf("ast2600_reset_assert reset_ctl->id %ld \n", reset_ctl->id);
+
+	if(reset_ctl->id >= 32)
+		writel(scu->sysreset_ctrl2 , BIT(reset_ctl->id - 32));
+	else
+		writel(scu->sysreset_ctrl1 , BIT(reset_ctl->id));
+
+	return 0;
 }
 
 static int ast2600_reset_request(struct reset_ctl *reset_ctl)
@@ -60,16 +59,30 @@ static int ast2600_reset_request(struct reset_ctl *reset_ctl)
 
 static int ast2600_reset_probe(struct udevice *dev)
 {
-	struct aspeed_reset_priv *priv = dev_get_priv(dev);
+	struct ast2600_reset_priv *priv = dev_get_priv(dev);
+	struct udevice *clk_dev;	
+	int ret = 0;
 
-	priv->scu = ast_get_scu();
+	/* find SCU base address from clock device */
+	ret = uclass_get_device_by_driver(UCLASS_CLK, DM_GET_DRIVER(aspeed_scu),
+                                          &clk_dev);
+    if (ret) {
+            debug("clock device not found\n");
+            return ret;
+    }
+
+	priv->scu = devfdt_get_addr_ptr(clk_dev);
+	if (IS_ERR(priv->scu)) {
+	        debug("%s(): can't get SCU\n", __func__);
+	        return PTR_ERR(priv->scu);
+	}
 
 	return 0;
 }
 
 static int aspeed_ofdata_to_platdata(struct udevice *dev)
 {
-	struct aspeed_reset_priv *priv = dev_get_priv(dev);
+	struct ast2600_reset_priv *priv = dev_get_priv(dev);
 	int ret;
 
 	ret = uclass_get_device_by_phandle(UCLASS_WDT, dev, "aspeed,wdt",
@@ -90,6 +103,7 @@ static const struct udevice_id aspeed_reset_ids[] = {
 
 struct reset_ops aspeed_reset_ops = {
 	.rst_assert = ast2600_reset_assert,
+	.rst_deassert = ast2600_reset_deassert,
 	.request = ast2600_reset_request,
 };
 
@@ -100,5 +114,5 @@ U_BOOT_DRIVER(aspeed_reset) = {
 	.probe = ast2600_reset_probe,
 	.ops = &aspeed_reset_ops,
 	.ofdata_to_platdata = aspeed_ofdata_to_platdata,
-	.priv_auto_alloc_size = sizeof(struct aspeed_reset_priv),
+	.priv_auto_alloc_size = sizeof(struct ast2600_reset_priv),
 };

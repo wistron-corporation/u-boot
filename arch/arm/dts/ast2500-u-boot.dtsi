@@ -26,7 +26,7 @@
 			0x1e6e0200 0x1d4 >;
 		#reset-cells = <1>;
 		clocks = <&scu ASPEED_CLK_MPLL>;
-		resets = <&rst AST_RESET_SDRAM>;
+		resets = <&rst ASPEED_RESET_SDRAM>;
 	};
 
 	ahb {
@@ -64,11 +64,11 @@
 };
 
 &mac0 {
-	clocks = <&scu PCLK_MAC1>, <&scu PLL_D2PLL>;
+	clocks = <&scu PCLK_MAC1>, <&scu ASPEED_CLK_D2PLL>;
 };
 
 &mac1 {
-	clocks = <&scu PCLK_MAC2>, <&scu PLL_D2PLL>;
+	clocks = <&scu PCLK_MAC2>, <&scu ASPEED_CLK_D2PLL>;
 };
 
 &fmc {
