@@ -24,11 +24,11 @@
 	status = "okay";
 };
 
-#if 0
+
 &sdrammc {
 	clock-frequency = <400000000>;
 };
-#endif
+
 &wdt1 {
 	u-boot,dm-pre-reloc;
 	status = "okay";

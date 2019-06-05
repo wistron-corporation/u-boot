@@ -6,6 +6,18 @@
 #ifndef _ASM_ARCH_SCU_AST2600_H
 #define _ASM_ARCH_SCU_AST2600_H
 
+/*
+ * register offset
+*/
+#define AST_SCU_CONFIG                  0x004
+#define AST_SCU_MPLL_PARAM		0x200
+#define AST_SCU_MPLL_EXT_PARAM		0x204
+#define AST_SCU_FPGA_PLL                0x400
+#define AST_SCU_HW_STRAP		0x500
+
+/*
+ * bit-field
+*/
 #define SCU_UNLOCK_VALUE		0x1688a8a8
 
 #define SCU_HWSTRAP_VGAMEM_SHIFT	2
@@ -14,6 +26,11 @@
 #define SCU_HWSTRAP_MAC2_RGMII		(1 << 7)
 #define SCU_HWSTRAP_DDR4		(1 << 24)
 #define SCU_HWSTRAP_CLKIN_25MHZ		(1 << 23)
+
+#define SCU_HWSTRAP_VGAMEM_SHIFT	13
+#define SCU_HWSTRAP_VGAMEM_MASK		(3 << SCU_HWSTRAP_VGAMEM_SHIFT)
+
+#define SCU_HWSTRAP_DDR3		(1 << 25)
 
 #define SCU_MPLL_DENUM_SHIFT		0
 #define SCU_MPLL_DENUM_MASK		0x1f

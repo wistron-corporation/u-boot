@@ -330,6 +330,7 @@ static int ast2500_sdrammc_probe(struct udevice *dev)
 	struct reset_ctl reset_ctl;
 	struct dram_info *priv = (struct dram_info *)dev_get_priv(dev);
 	struct ast2500_sdrammc_regs *regs = priv->regs;
+	struct udevice *clk_dev;
 	int i;
 	int ret = clk_get_by_index(dev, 0, &priv->ddr_clk);
 
@@ -338,7 +339,15 @@ static int ast2500_sdrammc_probe(struct udevice *dev)
 		return ret;
 	}
 
-	priv->scu = ast_get_scu();
+	/* find the SCU base address from the aspeed clock device */
+	ret = uclass_get_device_by_driver(UCLASS_CLK, DM_GET_DRIVER(aspeed_scu),
+                                          &clk_dev);
+	if (ret) {
+		debug("clock device not defined\n");
+		return ret;
+	}
+	priv->scu = devfdt_get_addr_ptr(clk_dev);
+	
 	if (IS_ERR(priv->scu)) {
 		debug("%s(): can't get SCU\n", __func__);
 		return PTR_ERR(priv->scu);
@@ -406,7 +415,7 @@ static int ast2500_sdrammc_ofdata_to_platdata(struct udevice *dev)
 		return -EINVAL;
 	}
 
-	return 0;
+        return 0;
 }
 
 static int ast2500_sdrammc_get_info(struct udevice *dev, struct ram_info *info)

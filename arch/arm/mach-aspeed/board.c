@@ -62,11 +62,6 @@ int board_init(void)
 
 int dram_init(void)
 {
-        /*
-        this compile-option will be removed once the ast2600 SDRAM C
-        driver is ready
-        */
-#ifdef CONFIG_ASPEED_AST2500
 	struct udevice *dev;
 	struct ram_info ram;
 	int ret;
@@ -84,8 +79,5 @@ int dram_init(void)
 	}
 
 	gd->ram_size = ram.size;
-#else
-	gd->ram_size = 512 * 1024 * 1024;
-#endif 
 	return 0;
 }
