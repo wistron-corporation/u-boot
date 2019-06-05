@@ -34,13 +34,15 @@ static int aspeed_ofdata_to_platdata(struct udevice *dev)
 	return 0;
 }
 
-static int aspeed_reset_assert(struct reset_ctl *reset_ctl)
+static int ast2500_reset_assert(struct reset_ctl *reset_ctl)
 {
 	struct aspeed_reset_priv *priv = dev_get_priv(reset_ctl->dev);
+	struct ast2500_scu *scu = priv->scu;
 	u32 reset_mode, reset_mask;
 	bool reset_sdram;
-	int ret;
+	int ret = 0;
 
+	printf("ast2500_reset_assert reset_ctl->id %d \n", reset_ctl->id);
 	/*
 	 * To reset SDRAM, a specifal flag in SYSRESET register
 	 * needs to be enabled first
@@ -62,18 +64,23 @@ static int aspeed_reset_assert(struct reset_ctl *reset_ctl)
 		ret = wdt_expire_now(priv->wdt, reset_ctl->id);
 	}
 #endif
+	if(reset_ctl->id >= 32)
+		setbits_le32(scu->sysreset_ctrl1 , BIT(reset_ctl->id - 32));
+	else
+		setbits_le32(scu->sysreset_ctrl1 , BIT(reset_ctl->id));
+	
 	return ret;
 }
 
-static int aspeed_reset_request(struct reset_ctl *reset_ctl)
+static int ast2500_reset_request(struct reset_ctl *reset_ctl)
 {
-	debug("%s(reset_ctl=%p) (dev=%p, id=%lu)\n", __func__, reset_ctl,
+	printf("%s(reset_ctl=%p) (dev=%p, id=%lu)\n", __func__, reset_ctl,
 	      reset_ctl->dev, reset_ctl->id);
 
 	return 0;
 }
 
-static int aspeed_reset_probe(struct udevice *dev)
+static int ast2500_reset_probe(struct udevice *dev)
 {
 	struct aspeed_reset_priv *priv = dev_get_priv(dev);
 
@@ -88,15 +95,15 @@ static const struct udevice_id aspeed_reset_ids[] = {
 };
 
 struct reset_ops aspeed_reset_ops = {
-	.rst_assert = aspeed_reset_assert,
-	.request = aspeed_reset_request,
+	.rst_assert = ast2500_reset_assert,
+	.request = ast2500_reset_request,
 };
 
 U_BOOT_DRIVER(aspeed_reset) = {
 	.name		= "aspeed_reset",
 	.id		= UCLASS_RESET,
 	.of_match = aspeed_reset_ids,
-	.probe = aspeed_reset_probe,
+	.probe = ast2500_reset_probe,
 	.ops = &aspeed_reset_ops,
 	.ofdata_to_platdata = aspeed_ofdata_to_platdata,
 	.priv_auto_alloc_size = sizeof(struct aspeed_reset_priv),
