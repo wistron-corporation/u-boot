@@ -57,13 +57,21 @@ static u32 ast2600_get_mpll_rate(struct ast2600_scu *scu)
 {
 	u32 clkin = AST2600_CLK_IN;
 	u32 mpll_reg = readl(&scu->m_pll_param);
+	unsigned int mult, div = 1;
 
-	printf("&scu->m_pll_param %x \n", (u32) &scu->m_pll_param);
-	const ulong num = mpll_reg & 0x1fff;
-	const ulong denum = (mpll_reg >> 13) & 0x3f;
-	const ulong post_div = (mpll_reg >> 19) & 0xf;
+	if (mpll_reg & BIT(24)) {
+		/* Pass through mode */
+		mult = div = 1;
+	} else {
+		/* F = 25Mhz * [(M + 2) / (n + 1)] / (p + 1) */
+		u32 m = mpll_reg  & 0x1fff;
+		u32 n = (mpll_reg >> 13) & 0x3f;
+		u32 p = (mpll_reg >> 19) & 0xf;
+		mult = (m + 1) / (n + 1);
+		div = (p + 1);
+	}
+	return ((clkin * mult)/div);
 
-	return (clkin * ((num + 1) / (denum + 1))) / (post_div + 1);
 }
 
 /*
@@ -75,8 +83,6 @@ static ulong ast2600_get_hpll_rate(struct ast2600_scu *scu)
 	ulong clkin = AST2600_CLK_IN;
 	u32 hpll_reg = readl(&scu->h_pll_param);
 
-	printf("&scu->h_pll_param %x \n", (u32) &scu->h_pll_param);
-	
 	const ulong num = (hpll_reg & 0x1fff);
 	const ulong denum = (hpll_reg >> 13) & 0x3f;
 	const ulong post_div = (hpll_reg >> 19) & 0xf;
@@ -89,8 +95,6 @@ static ulong ast2600_get_apll_rate(struct ast2600_scu *scu)
 	u32 clk_in = AST2600_CLK_IN;
 	u32 apll_reg = readl(&scu->a_pll_param);
 	unsigned int mult, div = 1;
-
-	printf("&scu->h_pll_param %x \n", (u32) &scu->a_pll_param);
 
 	if (apll_reg & BIT(20)) {
 		/* Pass through mode */
@@ -111,8 +115,6 @@ static ulong ast2600_get_epll_rate(struct ast2600_scu *scu)
 	u32 clk_in = AST2600_CLK_IN;
 	u32 epll_reg = readl(&scu->e_pll_param);
 	unsigned int mult, div = 1;
-
-	printf("&scu->e_pll_param %x \n", (u32) &scu->e_pll_param);
 
 	if (epll_reg & BIT(24)) {
 		/* Pass through mode */
@@ -135,8 +137,6 @@ static ulong ast2600_get_dpll_rate(struct ast2600_scu *scu)
 	u32 dpll_reg = readl(&scu->d_pll_param);
 	unsigned int mult, div = 1;
 
-	printf("&scu->d_pll_param %x \n", (u32) &scu->d_pll_param);
-
 	if (dpll_reg & BIT(24)) {
 		/* Pass through mode */
 		mult = div = 1;
@@ -145,7 +145,6 @@ static ulong ast2600_get_dpll_rate(struct ast2600_scu *scu)
 		u32 m = dpll_reg  & 0x1fff;
 		u32 n = (dpll_reg >> 13) & 0x3f;		
 		u32 p = (dpll_reg >> 19) & 0x7;
-	
 		mult = ((m + 1) / (n + 1));
 		div = (p + 1);
 	}
