@@ -19,7 +19,6 @@
 		#reset-cells = <1>;
 	};
 
-#if 0
 	sdrammc: sdrammc@1e6e0000 {
 		u-boot,dm-pre-reloc;
 		compatible = "aspeed,ast2600-sdrammc";
@@ -30,7 +29,7 @@
 		clocks = <&scu ASPEED_CLK_MPLL>;
 		resets = <&rst AST_RESET_SDRAM>;
 	};
-#endif
+
 	ahb {
 		u-boot,dm-pre-reloc;
 

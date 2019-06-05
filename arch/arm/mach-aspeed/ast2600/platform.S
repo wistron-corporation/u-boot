@@ -359,6 +359,10 @@ check_pll_ld:
     /* End of ES40004A PLL init */
 #endif
 
+#if 1
+    /* skip SDRAM initialization (will be done in C function) */
+    b     platform_exit
+#else
     /* Check Scratch Register Bit 6 */
     ldr   r0, =0x1e6e2100
     ldr   r1, [r0]
@@ -366,6 +370,7 @@ check_pll_ld:
     mov   r2, r1, lsr #6
     cmp   r2, #0x01
     beq   platform_exit
+#endif    
 
 ddr_init_start:
 
@@ -798,7 +803,7 @@ search_read_bypass_head:
     add   r0, r0, #0x4
     ldr   r2, [r0]
     add   r2, r1, r2
-    ldr   r1, =0xBCF02355
+    ldr   r1, =0xBCF02355                       // 0x12345678 + 0xaabbccdd = 0xbcf02355
     cmp   r1, r2
     bne   search_read_bypass_end
     ldr   r0, =0x1e6e2400

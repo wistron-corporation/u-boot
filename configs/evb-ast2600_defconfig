@@ -682,7 +682,7 @@ CONFIG_PINMUX=y
 # CONFIG_DM_PWM is not set
 # CONFIG_PWM_SANDBOX is not set
 # CONFIG_U_QE is not set
-# CONFIG_RAM is not set
+CONFIG_RAM=y
 
 #
 # Remote Processor drivers

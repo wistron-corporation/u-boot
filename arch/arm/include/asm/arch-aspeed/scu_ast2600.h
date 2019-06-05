@@ -9,8 +9,10 @@
 /*
  * register offset
 */
+#define AST_SCU_CONFIG                  0x004
 #define AST_SCU_MPLL_PARAM		0x200
 #define AST_SCU_MPLL_EXT_PARAM		0x204
+#define AST_SCU_FPGA_PLL                0x400
 #define AST_SCU_HW_STRAP		0x500
 
 /*
