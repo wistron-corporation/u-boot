@@ -20,6 +20,7 @@
 #include <linux/iopoll.h>
 
 #include "ftgmac100.h"
+#include "aspeed_mdio.h"
 
 /* Min frame ethernet frame size without FCS */
 #define ETH_ZLEN			60
@@ -49,6 +50,7 @@
 enum ftgmac100_model {
 	FTGMAC100_MODEL_FARADAY,
 	FTGMAC100_MODEL_ASPEED,
+	FTGMAC100_MODEL_NEW_ASPEED,
 };
 
 /**
@@ -70,6 +72,7 @@ enum ftgmac100_model {
  */
 struct ftgmac100_data {
 	struct ftgmac100 *iobase;
+	fdt_addr_t mdio_addr;	//for aspeed ast2600 new mdio
 
 	struct ftgmac100_txdes txdes[PKTBUFSTX];
 	struct ftgmac100_rxdes rxdes[PKTBUFSRX];
@@ -160,8 +163,16 @@ static int ftgmac100_mdio_init(struct udevice *dev)
 	if (!bus)
 		return -ENOMEM;
 
-	bus->read  = ftgmac100_mdio_read;
-	bus->write = ftgmac100_mdio_write;
+	printf("ftgmac100_mdio_init xxxxxxxxxx %x \n", priv->mdio_addr);
+
+	if(priv->mdio_addr) {
+		printf("new mdio addr %x ~~~~~~~~~~~~~~xxxxxxxxxx \n", priv->mdio_addr);
+		bus->read  = aspeed_mdio_read;
+		bus->write = aspeed_mdio_write;		
+	} else {
+		bus->read  = ftgmac100_mdio_read;
+		bus->write = ftgmac100_mdio_write;
+	}
 	bus->priv  = priv;
 
 	ret = mdio_register_seq(bus, dev->seq);
@@ -520,9 +531,17 @@ static int ftgmac100_ofdata_to_platdata(struct udevice *dev)
 		return -EINVAL;
 	}
 
+	printf("pdata->phy_interface %d \n", pdata->phy_interface);
 	pdata->max_speed = dev_read_u32_default(dev, "max-speed", 0);
-
-	if (dev_get_driver_data(dev) == FTGMAC100_MODEL_ASPEED) {
+	
+	if (dev_get_driver_data(dev) == FTGMAC100_MODEL_NEW_ASPEED) {
+		printf("ftg ast2600 ~~~~~~~~~~~~~~~~~~~~ \n");
+		priv->mdio_addr =  devfdt_get_addr_index(dev, 1);
+		printf("ftg ast2600 ~~~~~~~~~~~~~~~~~~~~ priv->mdio_addr %x \n", priv->mdio_addr);
+		
+	}
+	if ((dev_get_driver_data(dev) == FTGMAC100_MODEL_ASPEED) ||
+		(dev_get_driver_data(dev) == FTGMAC100_MODEL_NEW_ASPEED)){
 		priv->rxdes0_edorr_mask = BIT(30);
 		priv->txdes0_edotr_mask = BIT(30);
 	} else {
@@ -591,7 +610,7 @@ static const struct eth_ops ftgmac100_ops = {
 static const struct udevice_id ftgmac100_ids[] = {
 	{ .compatible = "faraday,ftgmac100",  .data = FTGMAC100_MODEL_FARADAY },
 	{ .compatible = "aspeed,ast2500-mac", .data = FTGMAC100_MODEL_ASPEED  },
-	{ .compatible = "aspeed,ast2600-mac", .data = FTGMAC100_MODEL_ASPEED  },
+	{ .compatible = "aspeed,ast2600-mac", .data = FTGMAC100_MODEL_NEW_ASPEED  },
 	{ }
 };
 

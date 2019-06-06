@@ -127,16 +127,7 @@ aspeed_2nd_wdt_mode(void)
 extern void
 aspeed_spi_strap_mode(void)
 {
-	int four_byte_addr = 0;
-	int addr_auto_detect = 0;
-	addr_auto_detect = 1;
-
-	if(!addr_auto_detect) {
-		if(four_byte_addr)
-			printf("SPI 4 byte mode address strap\n");
-		else
-			printf("SPI 3 byte mode address strap\n");
-	}
+	return 0;
 }
 
 extern void

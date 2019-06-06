@@ -12,7 +12,6 @@
 #include <asm/arch/scu_ast2600.h>
 #include <dm/pinctrl.h>
 #include "pinctrl-aspeed.h"
-
 /*
  * This driver works with very simple configuration that has the same name
  * for group and function. This way it is compatible with the Linux Kernel
@@ -104,10 +103,10 @@ static const struct aspeed_group_config ast2600_groups[] = {
 	{ "MAC2LINK", 1, mac2_link },
 	{ "MAC3LINK", 1, mac3_link },
 	{ "MAC4LINK", 1, mac4_link },
-	{ "MDIO1LINK", 1, mdio1_link },
-	{ "MDIO2LINK", 1, mdio2_link },
-	{ "MDIO3LINK", 1, mdio3_link },
-	{ "MDIO4LINK", 1, mdio4_link },
+	{ "MDIO1", 1, mdio1_link },
+	{ "MDIO2", 1, mdio2_link },
+	{ "MDIO3", 1, mdio3_link },
+	{ "MDIO4", 1, mdio4_link },
 	{ "SDIO1", ARRAY_SIZE(sdio2_link), sdio2_link },
 	{ "SDIO0", ARRAY_SIZE(sdio1_link), sdio1_link },
 	{ "EMMC", ARRAY_SIZE(emmc_link), emmc_link },
