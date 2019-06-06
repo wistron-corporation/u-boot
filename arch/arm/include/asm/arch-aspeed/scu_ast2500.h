@@ -81,9 +81,6 @@
 #define SCU_PIN_FUN_SDA1		(1 << 13)
 #define SCU_PIN_FUN_SDA2		(1 << 15)
 
-#define SCU_CLKSTOP_MAC1		(1 << 20)
-#define SCU_CLKSTOP_MAC2		(1 << 21)
-
 #define SCU_D2PLL_EXT1_OFF		(1 << 0)
 #define SCU_D2PLL_EXT1_BYPASS		(1 << 1)
 #define SCU_D2PLL_EXT1_RESET		(1 << 2)

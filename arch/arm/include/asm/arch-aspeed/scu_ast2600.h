@@ -94,8 +94,6 @@
 #define SCU_PIN_FUN_SDA1		(1 << 13)
 #define SCU_PIN_FUN_SDA2		(1 << 15)
 
-#define SCU_CLKSTOP_MAC1		(1 << 20)
-#define SCU_CLKSTOP_MAC2		(1 << 21)
 
 #define SCU_D2PLL_EXT1_OFF		(1 << 0)
 #define SCU_D2PLL_EXT1_BYPASS		(1 << 1)
@@ -171,11 +169,11 @@ struct ast2600_scu {
 	u32 sysrst_evet_log2_2;	/* 0x078 */		
 	u32 reserve_0x7C;		/* 0x07C */	
 	u32 clk_stop_ctrl1;		/* 0x080 */
-	u32 reserve_0x84;		/* 0x084 */	
+	u32 clk_stop_clr_ctrl1;	/* 0x084 */	
 	u32 reserve_0x88;		/* 0x088 */	
 	u32 reserve_0x8C;		/* 0x08C */
 	u32 clk_stop_ctrl2;		/* 0x090 */
-	u32 reserve_0x94;		/* 0x094 */	
+	u32 clk_stop_clr_ctrl2;	/* 0x094 */	
 	u32 reserve_0x98;		/* 0x098 */	
 	u32 reserve_0x9C;		/* 0x09C */	
 	u32 reserve_0xA0;		/* 0x0A0 */	
