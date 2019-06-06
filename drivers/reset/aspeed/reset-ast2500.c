@@ -10,33 +10,18 @@
 #include <reset-uclass.h>
 #include <wdt.h>
 #include <asm/io.h>
-#include <asm/arch/scu_ast2500.h>
 #include <asm/arch/wdt.h>
+#include <asm/arch/scu_ast2500.h>
 
-struct aspeed_reset_priv {
+struct ast2500_reset_priv {
 	/* WDT used to perform resets. */
 	struct udevice *wdt;
 	struct ast2500_scu *scu;
 };
 
-static int aspeed_ofdata_to_platdata(struct udevice *dev)
-{
-	struct aspeed_reset_priv *priv = dev_get_priv(dev);
-	int ret;
-
-	ret = uclass_get_device_by_phandle(UCLASS_WDT, dev, "aspeed,wdt",
-					   &priv->wdt);
-	if (ret) {
-		debug("%s: can't find WDT for reset controller", __func__);
-		return ret;
-	}
-
-	return 0;
-}
-
 static int ast2500_reset_assert(struct reset_ctl *reset_ctl)
 {
-	struct aspeed_reset_priv *priv = dev_get_priv(reset_ctl->dev);
+	struct ast2500_reset_priv *priv = dev_get_priv(reset_ctl->dev);
 	struct ast2500_scu *scu = priv->scu;
 	u32 reset_mode, reset_mask;
 	bool reset_sdram;
@@ -68,13 +53,13 @@ static int ast2500_reset_assert(struct reset_ctl *reset_ctl)
 		setbits_le32(scu->sysreset_ctrl1 , BIT(reset_ctl->id - 32));
 	else
 		setbits_le32(scu->sysreset_ctrl1 , BIT(reset_ctl->id));
-	
+
 	return ret;
 }
 
 static int ast2500_reset_request(struct reset_ctl *reset_ctl)
 {
-	printf("%s(reset_ctl=%p) (dev=%p, id=%lu)\n", __func__, reset_ctl,
+	debug("%s(reset_ctl=%p) (dev=%p, id=%lu)\n", __func__, reset_ctl,
 	      reset_ctl->dev, reset_ctl->id);
 
 	return 0;
@@ -82,9 +67,37 @@ static int ast2500_reset_request(struct reset_ctl *reset_ctl)
 
 static int ast2500_reset_probe(struct udevice *dev)
 {
-	struct aspeed_reset_priv *priv = dev_get_priv(dev);
+	struct ast2500_reset_priv *priv = dev_get_priv(dev);
+	struct udevice *clk_dev;	
+	int ret = 0;
 
-	priv->scu = ast_get_scu();
+	/* find SCU base address from clock device */
+	ret = uclass_get_device_by_driver(UCLASS_CLK, DM_GET_DRIVER(aspeed_scu),
+                                          &clk_dev);
+    if (ret) {
+            debug("clock device not found\n");
+            return ret;
+    }
+
+	priv->scu = devfdt_get_addr_ptr(clk_dev);
+	if (IS_ERR(priv->scu)) {
+	        debug("%s(): can't get SCU\n", __func__);
+	        return PTR_ERR(priv->scu);
+	}
+
+	return 0;
+}
+static int aspeed_ofdata_to_platdata(struct udevice *dev)
+{
+	struct ast2500_reset_priv *priv = dev_get_priv(dev);
+	int ret;
+
+	ret = uclass_get_device_by_phandle(UCLASS_WDT, dev, "aspeed,wdt",
+					   &priv->wdt);
+	if (ret) {
+		debug("%s: can't find WDT for reset controller", __func__);
+		return ret;
+	}
 
 	return 0;
 }
@@ -106,5 +119,5 @@ U_BOOT_DRIVER(aspeed_reset) = {
 	.probe = ast2500_reset_probe,
 	.ops = &aspeed_reset_ops,
 	.ofdata_to_platdata = aspeed_ofdata_to_platdata,
-	.priv_auto_alloc_size = sizeof(struct aspeed_reset_priv),
+	.priv_auto_alloc_size = sizeof(struct ast2500_reset_priv),
 };

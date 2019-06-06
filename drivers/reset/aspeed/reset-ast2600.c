@@ -95,7 +95,6 @@ static int aspeed_ofdata_to_platdata(struct udevice *dev)
 	return 0;
 }
 
-
 static const struct udevice_id aspeed_reset_ids[] = {
 	{ .compatible = "aspeed,ast2600-reset" },
 	{ }
