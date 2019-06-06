@@ -25,7 +25,7 @@ static int ast_wdt_start(struct udevice *dev, u64 timeout, ulong flags)
 	struct ast_wdt_priv *priv = dev_get_priv(dev);
 	ulong driver_data = dev_get_driver_data(dev);
 	u32 reset_mode = ast_reset_mode_from_flags(flags);
-
+printf("ast_wdt_start to %ld \n", timeout);
 	clrsetbits_le32(&priv->regs->ctrl,
 			WDT_CTRL_RESET_MASK << WDT_CTRL_RESET_MODE_SHIFT,
 			reset_mode << WDT_CTRL_RESET_MODE_SHIFT);
@@ -99,14 +99,6 @@ static const struct wdt_ops ast_wdt_ops = {
 	.expire_now = ast_wdt_expire_now,
 };
 
-static const struct udevice_id ast_wdt_ids[] = {
-	{ .compatible = "aspeed,wdt", .data = WDT_AST2500 },
-	{ .compatible = "aspeed,ast2600-wdt", .data = WDT_AST2500 },
-	{ .compatible = "aspeed,ast2500-wdt", .data = WDT_AST2500 },
-	{ .compatible = "aspeed,ast2400-wdt", .data = WDT_AST2400 },
-	{}
-};
-
 static int ast_wdt_probe(struct udevice *dev)
 {
 	debug("%s() wdt%u\n", __func__, dev->seq);
@@ -114,6 +106,14 @@ static int ast_wdt_probe(struct udevice *dev)
 
 	return 0;
 }
+
+static const struct udevice_id ast_wdt_ids[] = {
+	{ .compatible = "aspeed,wdt", .data = WDT_AST2500 },
+	{ .compatible = "aspeed,ast2600-wdt", .data = WDT_AST2600 },
+	{ .compatible = "aspeed,ast2500-wdt", .data = WDT_AST2500 },
+	{ .compatible = "aspeed,ast2400-wdt", .data = WDT_AST2400 },
+	{}
+};
 
 U_BOOT_DRIVER(ast_wdt) = {
 	.name = "ast_wdt",
