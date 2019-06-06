@@ -327,6 +327,8 @@ static ulong ast2500_configure_ddr(struct ast2500_scu *scu, ulong rate)
 	return ast2500_get_mpll_rate(scu);
 }
 
+#define SCU_CLKSTOP_MAC1		(20)
+#define SCU_CLKSTOP_MAC2		(21)
 static ulong ast2500_configure_mac(struct ast2500_scu *scu, int index)
 {
 	ulong hpll_rate = ast2500_get_hpll_rate(scu);
@@ -366,11 +368,11 @@ static ulong ast2500_configure_mac(struct ast2500_scu *scu, int index)
 	switch (index) {
 	case 1:
 		reset_bit = BIT(ASPEED_RESET_MAC1);
-		clkstop_bit = SCU_CLKSTOP_MAC1;
+		clkstop_bit = BIT(SCU_CLKSTOP_MAC1);
 		break;
 	case 2:
 		reset_bit = BIT(ASPEED_RESET_MAC2);
-		clkstop_bit = SCU_CLKSTOP_MAC2;
+		clkstop_bit = BIT(SCU_CLKSTOP_MAC2);
 		break;
 	default:
 		return -EINVAL;
@@ -484,10 +486,10 @@ static int ast2500_clk_enable(struct clk *clk)
 	 * configured based on whether RGMII or RMII mode has been selected
 	 * through hardware strapping.
 	 */
-	case PCLK_MAC1:
+	case ASPEED_CLK_GATE_MAC1CLK:
 		ast2500_configure_mac(priv->scu, 1);
 		break;
-	case PCLK_MAC2:
+	case ASPEED_CLK_GATE_MAC2CLK:
 		ast2500_configure_mac(priv->scu, 2);
 		break;
 	case ASPEED_CLK_D2PLL:

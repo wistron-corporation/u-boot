@@ -63,14 +63,19 @@
 	clocks = <&scu ASPEED_CLK_GATE_UART5CLK>;
 };
 
+&mdio {
+	resets = <&rst ASPEED_RESET_MII>;
+};
+
 &mac0 {
-	clocks = <&scu PCLK_MAC1>;
+	clocks = <&scu ASPEED_CLK_GATE_MAC1CLK>;
 };
 
+#if 0
 &mac1 {
-	clocks = <&scu PCLK_MAC2>;
+	clocks = <&scu ASPEED_CLK_GATE_MAC2CLK>;
 };
-
+#endif
 &fmc {
 	clocks = <&scu ASPEED_CLK_AHB>;
 };

@@ -185,16 +185,27 @@
 			interrupts = <GIC_SPI 0 IRQ_TYPE_LEVEL_HIGH>;
 		};
 
+		mdio: ethernet@1e650000 {
+			compatible = "aspeed,aspeed-mdio";
+			reg = <0x1e650000 0x40>;
+		};
+
 		mac0: ethernet@1e660000 {
 			compatible = "aspeed,ast2600-mac", "faraday,ftgmac100";
-			reg = <0x1e660000 0x180>, <0x1e650000 0x4>;
+			reg = <0x1e660000 0x180>;
+#if 0
+, <0x1e650000 0x4>;
+#endif
 			interrupts = <2>;
 			status = "disabled";
 		};
 
 		mac2: ftgmac@1e670000 {
 			compatible = "aspeed,ast2600-mac", "faraday,ftgmac100";
-			reg = <0x1e670000 0x180>, <0x1e650010 0x4>;
+			reg = <0x1e670000 0x180>;
+#if 0
+, <0x1e650010 0x4>;
+#endif
 			#address-cells = <1>;
 			#size-cells = <0>;
 			interrupts = <GIC_SPI 32 IRQ_TYPE_LEVEL_HIGH>;

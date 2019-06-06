@@ -52,6 +52,7 @@
 	pinctrl-0 = <&pinctrl_mac1link_default &pinctrl_mdio1_default>;
 };
 
+#if 0
 &mac1 {
 	status = "okay";
 
@@ -60,7 +61,7 @@
 	pinctrl-names = "default";
 	pinctrl-0 = <&pinctrl_mac2link_default &pinctrl_mdio2_default>;
 };
-
+#endif
 &fmc {
 	status = "okay";
 	flash@0 {
