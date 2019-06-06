@@ -281,8 +281,46 @@ static u32 ast2600_configure_ddr(struct ast2600_clk_priv *priv, ulong rate)
 	return ast2600_get_mpll_rate(priv->scu);
 }
 
-static u32 ast2600_configure_mac(struct ast2600_clk_priv *priv, int index)
+static u32 ast2600_configure_mac(struct ast2600_scu *scu, int index)
 {
+	u32 reset_bit;
+	u32 clkstop_bit;
+
+
+	switch (index) {
+	case 1:
+		reset_bit = BIT(ASPEED_RESET_MAC1);
+		clkstop_bit = SCU_CLKSTOP_MAC1;
+		break;
+	case 2:
+		reset_bit = BIT(ASPEED_RESET_MAC2);
+		clkstop_bit = SCU_CLKSTOP_MAC2;
+		break;
+#if 0		
+	case 3:
+		reset_bit = BIT(ASPEED_RESET_MAC3);
+		clkstop_bit = SCU_CLKSTOP_MAC1;
+		break;
+	case 4:
+		reset_bit = BIT(ASPEED_RESET_MAC4);
+		clkstop_bit = SCU_CLKSTOP_MAC2;
+		break;		
+#endif
+	default:
+		return -EINVAL;
+	}
+
+	/*
+	 * Disable MAC, start its clock and re-enable it.
+	 * The procedure and the delays (100us & 10ms) are
+	 * specified in the datasheet.
+	 */
+	setbits_le32(&scu->sysreset_ctrl1, reset_bit);
+	udelay(100);
+	clrbits_le32(&scu->clk_stop_ctrl1, clkstop_bit);
+	mdelay(10);
+	clrbits_le32(&scu->sysreset_ctrl1, reset_bit);
+
 	return 0;
 }
 
@@ -327,6 +365,7 @@ static ulong ast2600_clk_get_rate(struct clk *clk)
 			
 			rate = ast2600_get_hpll_rate(priv->scu);
 			rate = rate / axi_div / ahb_div;
+			printf("hclk %ld \n", rate);
 		}
 		break;
 	case ASPEED_CLK_MPLL:
@@ -390,9 +429,11 @@ static int ast2600_clk_enable(struct clk *clk)
 	 * through hardware strapping.
 	 */
 	case PCLK_MAC1:
+		printf("ast2600_clk_enable mac 1 ~~~\n");
 		ast2600_configure_mac(priv, 1);
 		break;
 	case PCLK_MAC2:
+		printf("ast2600_clk_enable mac 2 ~~~\n");
 		ast2600_configure_mac(priv, 2);
 		break;
 	default:
