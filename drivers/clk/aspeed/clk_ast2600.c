@@ -178,7 +178,7 @@ struct aspeed_clock_config {
 };
 
 static const struct aspeed_clock_config aspeed_clock_config_defaults[] = {
-	{ 24000000, 250000000, { .num = 124, .denum = 1, .post_div = 5 } },
+	{ 25000000, 400000000, { .num = 95, .denum = 2, .post_div = 1 } },
 };
 
 static bool aspeed_get_clock_config_default(ulong input_rate,
