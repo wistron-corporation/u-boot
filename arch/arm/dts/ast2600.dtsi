@@ -7,6 +7,7 @@
 	compatible = "aspeed,ast2600";
 	#address-cells = <1>;
 	#size-cells = <1>;
+	interrupt-parent = <&gic>;
 
 	aliases {
 		i2c0 = &i2c0;
@@ -185,8 +186,8 @@
 		};
 
 		mac0: ethernet@1e660000 {
-			compatible = "aspeed,ast2500-mac", "faraday,ftgmac100";
-			reg = <0x1e660000 0x180>;
+			compatible = "aspeed,ast2600-mac", "faraday,ftgmac100";
+			reg = <0x1e660000 0x180>, <0x1e650000 0x4>;
 			interrupts = <2>;
 			status = "disabled";
 		};
@@ -235,7 +236,7 @@
 			ranges;
 
 			syscon: syscon@1e6e2000 {
-				compatible = "aspeed,aspeed-scu", "aspeed,ast2600-scu", "syscon", "simple-mfd";
+				compatible = "aspeed,aspeed-scu", "aspeed,g6-scu", "syscon", "simple-mfd";
 				reg = <0x1e6e2000 0x1000>;
 				#address-cells = <1>;
 				#size-cells = <1>;
