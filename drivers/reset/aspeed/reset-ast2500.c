@@ -87,7 +87,8 @@ static int ast2500_reset_probe(struct udevice *dev)
 
 	return 0;
 }
-static int aspeed_ofdata_to_platdata(struct udevice *dev)
+
+static int ast2500_ofdata_to_platdata(struct udevice *dev)
 {
 	struct ast2500_reset_priv *priv = dev_get_priv(dev);
 	int ret;
@@ -118,6 +119,6 @@ U_BOOT_DRIVER(aspeed_reset) = {
 	.of_match = aspeed_reset_ids,
 	.probe = ast2500_reset_probe,
 	.ops = &aspeed_reset_ops,
-	.ofdata_to_platdata = aspeed_ofdata_to_platdata,
+	.ofdata_to_platdata = ast2500_ofdata_to_platdata,
 	.priv_auto_alloc_size = sizeof(struct ast2500_reset_priv),
 };

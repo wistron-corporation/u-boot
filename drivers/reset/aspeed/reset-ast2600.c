@@ -63,6 +63,7 @@ static int ast2600_reset_probe(struct udevice *dev)
 	struct udevice *clk_dev;	
 	int ret = 0;
 
+	printf("ast2600_reset_probe");
 	/* find SCU base address from clock device */
 	ret = uclass_get_device_by_driver(UCLASS_CLK, DM_GET_DRIVER(aspeed_scu),
                                           &clk_dev);
@@ -76,21 +77,25 @@ static int ast2600_reset_probe(struct udevice *dev)
 	        debug("%s(): can't get SCU\n", __func__);
 	        return PTR_ERR(priv->scu);
 	}
+	printf("ast2600_reset_probe ~~~~~~~~~~~~~~~~");
 
 	return 0;
 }
 
-static int aspeed_ofdata_to_platdata(struct udevice *dev)
+static int ast2600_ofdata_to_platdata(struct udevice *dev)
 {
-	struct ast2600_reset_priv *priv = dev_get_priv(dev);
+//	struct ast2600_reset_priv *priv = dev_get_priv(dev);
 	int ret;
-
-	ret = uclass_get_device_by_phandle(UCLASS_WDT, dev, "aspeed,wdt",
+printf("ast2600_ofdata_to_platdata\n");
+#if 0
+	ret = uclass_get_device_by_phandle(UCLASS_WDT, dev, "aspeed,ast2600-wdt",
 					   &priv->wdt);
 	if (ret) {
-		debug("%s: can't find WDT for reset controller", __func__);
+		printf("%s: can't find WDT for reset controller", __func__);
 		return ret;
 	}
+#endif	
+	printf("ast2600_ofdata_to_platdata end\n");
 
 	return 0;
 }
@@ -112,6 +117,6 @@ U_BOOT_DRIVER(aspeed_reset) = {
 	.of_match = aspeed_reset_ids,
 	.probe = ast2600_reset_probe,
 	.ops = &aspeed_reset_ops,
-	.ofdata_to_platdata = aspeed_ofdata_to_platdata,
+	.ofdata_to_platdata = ast2600_ofdata_to_platdata,
 	.priv_auto_alloc_size = sizeof(struct ast2600_reset_priv),
 };
