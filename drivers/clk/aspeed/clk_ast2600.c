@@ -307,8 +307,7 @@ static u32 ast2600_configure_mac(struct ast2600_scu *scu, int index)
 		writel(clkstop_bit, &scu->clk_stop_clr_ctrl1);
 		mdelay(10);
 		writel(reset_bit, &scu->sysreset_clr_ctrl1);
-		
-	
+
 		break;
 	case 2:
 		reset_bit = BIT(ASPEED_RESET_MAC2);
@@ -322,27 +321,21 @@ static u32 ast2600_configure_mac(struct ast2600_scu *scu, int index)
 	case 3:
 		reset_bit = BIT(ASPEED_RESET_MAC3 - 32);
 		clkstop_bit = BIT(SCU_CLKSTOP_MAC3);
-		reset_bit = BIT(ASPEED_RESET_MAC2);
-		clkstop_bit = BIT(SCU_CLKSTOP_MAC2);
 		writel(reset_bit, &scu->sysreset_ctrl2);
 		udelay(100);
 		writel(clkstop_bit, &scu->clk_stop_clr_ctrl2);
 		mdelay(10);
 		writel(reset_bit, &scu->sysreset_clr_ctrl2);
-	
 		break;
 	case 4:
 		reset_bit = BIT(ASPEED_RESET_MAC4 - 32);
 		clkstop_bit = BIT(SCU_CLKSTOP_MAC4);
-		reset_bit = BIT(ASPEED_RESET_MAC2);
-		clkstop_bit = BIT(SCU_CLKSTOP_MAC2);
 		writel(reset_bit, &scu->sysreset_ctrl2);
 		udelay(100);
 		writel(clkstop_bit, &scu->clk_stop_clr_ctrl2);
 		mdelay(10);
 		writel(reset_bit, &scu->sysreset_clr_ctrl2);
-	
-		break;		
+		break;
 	default:
 		return -EINVAL;
 	}
