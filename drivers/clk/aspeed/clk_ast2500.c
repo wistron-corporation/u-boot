@@ -49,7 +49,7 @@ struct ast2500_div_config {
 	unsigned int post_div;
 };
 
-static u32 ast2500_get_clkin(struct ast2500_scu *scu)
+extern u32 ast2500_get_clkin(struct ast2500_scu *scu)
 {
 	return readl(&scu->hwstrap) & SCU_HWSTRAP_CLKIN_25MHZ
 			? 25 * 1000 * 1000 : 24 * 1000 * 1000;
@@ -59,7 +59,7 @@ static u32 ast2500_get_clkin(struct ast2500_scu *scu)
  * Get the rate of the M-PLL clock from input clock frequency and
  * the value of the M-PLL Parameter Register.
  */
-static u32 ast2500_get_mpll_rate(struct ast2500_scu *scu)
+extern u32 ast2500_get_mpll_rate(struct ast2500_scu *scu)
 {
 	u32 clkin = ast2500_get_clkin(scu);
 	u32 mpll_reg = readl(&scu->m_pll_param);
@@ -77,7 +77,7 @@ static u32 ast2500_get_mpll_rate(struct ast2500_scu *scu)
  * Get the rate of the H-PLL clock from input clock frequency and
  * the value of the H-PLL Parameter Register.
  */
-static u32 ast2500_get_hpll_rate(struct ast2500_scu *scu)
+extern u32 ast2500_get_hpll_rate(struct ast2500_scu *scu)
 {
 	u32 clkin = ast2500_get_clkin(scu);
 	u32 hpll_reg = readl(&scu->h_pll_param);
@@ -96,7 +96,7 @@ static u32 ast2500_get_hpll_rate(struct ast2500_scu *scu)
  * Get the rate of the D-PLL clock from input clock frequency and
  * the value of the D-PLL Parameter Register.
  */
-static u32 ast2500_get_dpll_rate(struct ast2500_scu *scu)
+extern u32 ast2500_get_dpll_rate(struct ast2500_scu *scu)
 {
 	u32 clkin = ast2500_get_clkin(scu);
 	u32 dpll_reg = readl(&scu->d_pll_param);
@@ -113,7 +113,7 @@ static u32 ast2500_get_dpll_rate(struct ast2500_scu *scu)
  * Get the rate of the D2-PLL clock from input clock frequency and
  * the value of the D2-PLL Parameter Register.
  */
-static u32 ast2500_get_d2pll_rate(struct ast2500_scu *scu)
+extern u32 ast2500_get_d2pll_rate(struct ast2500_scu *scu)
 {
 	u32 clkin = ast2500_get_clkin(scu);
 	u32 d2pll_reg = readl(&scu->d2_pll_param);
@@ -510,18 +510,11 @@ struct clk_ops ast2500_clk_ops = {
 
 static int ast2500_clk_probe(struct udevice *dev)
 {
-	char buf[32];
 	struct ast2500_clk_priv *priv = dev_get_priv(dev);
 
 	priv->scu = devfdt_get_addr_ptr(dev);
 	if (IS_ERR(priv->scu))
 		return PTR_ERR(priv->scu);
-
-	printf("PLL   : %4s MHz\n", strmhz(buf, ast2500_get_clkin(priv->scu)));
-	printf("HPLL  : %4s MHz\n", strmhz(buf, ast2500_get_hpll_rate(priv->scu)));
-	printf("MPLL  :	%4s Mhz\n", strmhz(buf, ast2500_get_mpll_rate(priv->scu)));
-	printf("DPLL  :	%4s Mhz\n", strmhz(buf, ast2500_get_dpll_rate(priv->scu)));
-	printf("D2PLL :	%4s Mhz\n", strmhz(buf, ast2500_get_d2pll_rate(priv->scu)));
 
 	return 0;
 }

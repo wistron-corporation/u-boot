@@ -6,6 +6,8 @@
 #ifndef _ASM_ARCH_SCU_AST2600_H
 #define _ASM_ARCH_SCU_AST2600_H
 
+#define AST2600_CLK_IN	25000000
+
 /*
  * register offset
 */
@@ -122,8 +124,6 @@
 #define SCU_CLKDUTY_RGMII1TXCK_MASK	(0x7f << SCU_CLKDUTY_RGMII1TXCK_SHIFT)
 #define SCU_CLKDUTY_RGMII2TXCK_SHIFT	16
 #define SCU_CLKDUTY_RGMII2TXCK_MASK	(0x7f << SCU_CLKDUTY_RGMII2TXCK_SHIFT)
-
-#ifndef __ASSEMBLY__
 
 struct ast2600_clk_priv {
 	struct ast2600_scu *scu;
@@ -321,21 +321,11 @@ struct ast2600_scu {
 	u32 vga_scratch[8];		/* 0xE00 */
 };
 
-/**
- * ast_get_clk() - get a pointer to Clock Driver
- *
- * @devp, OUT - pointer to Clock Driver
- * @return zero on success, error code (< 0) otherwise.
- */
-int ast_get_clk(struct udevice **devp);
+extern u32 ast2600_get_mpll_rate(struct ast2600_scu *scu); 
+extern u32 ast2600_get_hpll_rate(struct ast2600_scu *scu);
+extern u32 ast2600_get_apll_rate(struct ast2600_scu *scu);
+extern u32 ast2600_get_epll_rate(struct ast2600_scu *scu);
+extern u32 ast2600_get_dpll_rate(struct ast2600_scu *scu);
 
-/**
- * ast_get_scu() - get a pointer to SCU registers
- *
- * @return pointer to struct ast2600_scu on success, ERR_PTR otherwise
- */
-void *ast_get_scu(void);
-
-#endif  /* __ASSEMBLY__ */
 
 #endif  /* _ASM_ARCH_SCU_AST2600_H */

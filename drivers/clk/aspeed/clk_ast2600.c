@@ -47,13 +47,11 @@ struct ast2600_div_config {
 	unsigned int post_div;
 };
 
-#define AST2600_CLK_IN	25000000
-
 /*
  * Get the rate of the M-PLL clock from input clock frequency and
  * the value of the M-PLL Parameter Register.
  */
-static u32 ast2600_get_mpll_rate(struct ast2600_scu *scu)
+extern u32 ast2600_get_mpll_rate(struct ast2600_scu *scu)
 {
 	u32 clkin = AST2600_CLK_IN;
 	u32 mpll_reg = readl(&scu->m_pll_param);
@@ -78,19 +76,27 @@ static u32 ast2600_get_mpll_rate(struct ast2600_scu *scu)
  * Get the rate of the H-PLL clock from input clock frequency and
  * the value of the H-PLL Parameter Register.
  */
-static ulong ast2600_get_hpll_rate(struct ast2600_scu *scu)
+extern u32 ast2600_get_hpll_rate(struct ast2600_scu *scu)
 {
-	ulong clkin = AST2600_CLK_IN;
+	u32 clkin = AST2600_CLK_IN;
 	u32 hpll_reg = readl(&scu->h_pll_param);
+	unsigned int mult, div = 1;
 
-	const ulong num = (hpll_reg & 0x1fff);
-	const ulong denum = (hpll_reg >> 13) & 0x3f;
-	const ulong post_div = (hpll_reg >> 19) & 0xf;
-
-	return (clkin * ((num + 1) / (denum + 1))) / (post_div + 1);
+	if (hpll_reg & BIT(24)) {
+		/* Pass through mode */
+		mult = div = 1;
+	} else {
+		/* F = 25Mhz * [(M + 1) / (n + 1)] / (p + 1) */		
+		u32 m = (hpll_reg & 0x1fff);
+		u32 n = (hpll_reg >> 13) & 0x3f;
+		u32 p = (hpll_reg >> 19) & 0xf;
+		mult = (m + 1) / (n + 1);
+		div = (p + 1);
+	}
+	return ((clkin * mult)/div);
 }
 
-static ulong ast2600_get_apll_rate(struct ast2600_scu *scu)
+extern u32 ast2600_get_apll_rate(struct ast2600_scu *scu)
 {
 	u32 clk_in = AST2600_CLK_IN;
 	u32 apll_reg = readl(&scu->a_pll_param);
@@ -110,7 +116,7 @@ static ulong ast2600_get_apll_rate(struct ast2600_scu *scu)
 	return (clk_in * mult)/div;
 }
 
-static ulong ast2600_get_epll_rate(struct ast2600_scu *scu)
+extern u32 ast2600_get_epll_rate(struct ast2600_scu *scu)
 {
 	u32 clk_in = AST2600_CLK_IN;
 	u32 epll_reg = readl(&scu->e_pll_param);
@@ -131,7 +137,7 @@ static ulong ast2600_get_epll_rate(struct ast2600_scu *scu)
 	return (clk_in * mult)/div;
 }
 
-static ulong ast2600_get_dpll_rate(struct ast2600_scu *scu)
+extern u32 ast2600_get_dpll_rate(struct ast2600_scu *scu)
 {
 	u32 clk_in = AST2600_CLK_IN;
 	u32 dpll_reg = readl(&scu->d_pll_param);
@@ -155,7 +161,7 @@ static ulong ast2600_get_uart_clk_rate(struct ast2600_clk_priv *priv, int uart_i
 {
 	ulong uart_clkin;
 
-	printf("ast2600_get_uart_clk_rate source %ld \n\n", ast2600_get_apll_rate(priv->scu));
+	printf("ast2600_get_uart_clk_rate source %d \n\n", ast2600_get_apll_rate(priv->scu));
 	return (24000000/13);
 	
 	if (readl(&priv->scu->misc_ctrl2) &
@@ -296,33 +302,33 @@ static u32 ast2600_configure_mac(struct ast2600_scu *scu, int index)
 	case 1:
 		reset_bit = BIT(ASPEED_RESET_MAC1);
 		clkstop_bit = BIT(SCU_CLKSTOP_MAC1);
-		writel(&scu->sysreset_ctrl1, reset_bit);
+		writel(reset_bit, &scu->sysreset_ctrl1);
 		udelay(100);
-		clrbits_le32(&scu->clk_stop_clr_ctrl1, clkstop_bit);
+		writel(clkstop_bit, &scu->clk_stop_clr_ctrl1);
 		mdelay(10);
-		writel(&scu->sysreset_clr_ctrl1, reset_bit);
+		writel(reset_bit, &scu->sysreset_clr_ctrl1);
 		
 	
 		break;
 	case 2:
 		reset_bit = BIT(ASPEED_RESET_MAC2);
 		clkstop_bit = BIT(SCU_CLKSTOP_MAC2);
-		writel(&scu->sysreset_ctrl1, reset_bit);
+		writel(reset_bit, &scu->sysreset_ctrl1);
 		udelay(100);
-		writel(&scu->clk_stop_clr_ctrl1, clkstop_bit);
+		writel(clkstop_bit, &scu->clk_stop_clr_ctrl1);
 		mdelay(10);
-		writel(&scu->sysreset_clr_ctrl1, reset_bit);
+		writel(reset_bit, &scu->sysreset_clr_ctrl1);
 		break;
 	case 3:
 		reset_bit = BIT(ASPEED_RESET_MAC3 - 32);
 		clkstop_bit = BIT(SCU_CLKSTOP_MAC3);
 		reset_bit = BIT(ASPEED_RESET_MAC2);
 		clkstop_bit = BIT(SCU_CLKSTOP_MAC2);
-		writel(&scu->sysreset_ctrl2, reset_bit);
+		writel(reset_bit, &scu->sysreset_ctrl2);
 		udelay(100);
-		writel(&scu->clk_stop_clr_ctrl2, clkstop_bit);
+		writel(clkstop_bit, &scu->clk_stop_clr_ctrl2);
 		mdelay(10);
-		writel(&scu->sysreset_clr_ctrl2, reset_bit);
+		writel(reset_bit, &scu->sysreset_clr_ctrl2);
 	
 		break;
 	case 4:
@@ -330,11 +336,11 @@ static u32 ast2600_configure_mac(struct ast2600_scu *scu, int index)
 		clkstop_bit = BIT(SCU_CLKSTOP_MAC4);
 		reset_bit = BIT(ASPEED_RESET_MAC2);
 		clkstop_bit = BIT(SCU_CLKSTOP_MAC2);
-		writel(&scu->sysreset_ctrl2, reset_bit);
+		writel(reset_bit, &scu->sysreset_ctrl2);
 		udelay(100);
-		writel(&scu->clk_stop_clr_ctrl2, clkstop_bit);
+		writel(clkstop_bit, &scu->clk_stop_clr_ctrl2);
 		mdelay(10);
-		writel(&scu->sysreset_clr_ctrl2, reset_bit);
+		writel(reset_bit, &scu->sysreset_clr_ctrl2);
 	
 		break;		
 	default:
@@ -471,20 +477,11 @@ struct clk_ops aspeed_clk_ops = {
 
 static int ast2600_clk_probe(struct udevice *dev)
 {
-	char buf[32];
 	struct ast2600_clk_priv *priv = dev_get_priv(dev);
 
 	priv->scu = devfdt_get_addr_ptr(dev);
 	if (IS_ERR(priv->scu))
 		return PTR_ERR(priv->scu);
-
-	printf("PLL   : %4s MHz\n", strmhz(buf, AST2600_CLK_IN));
-	printf("HPLL  : %4s MHz\n", strmhz(buf, ast2600_get_hpll_rate(priv->scu)));
-	printf("MPLL  :	%4s Mhz\n", strmhz(buf, ast2600_get_mpll_rate(priv->scu)));
-	printf("APLL  :	%4s Mhz\n", strmhz(buf, ast2600_get_apll_rate(priv->scu)));
-	printf("EPLL :	%4s Mhz\n", strmhz(buf, ast2600_get_epll_rate(priv->scu)));
-	printf("DPLL :	%4s Mhz\n", strmhz(buf, ast2600_get_dpll_rate(priv->scu)));
-
 
 	return 0;
 }
