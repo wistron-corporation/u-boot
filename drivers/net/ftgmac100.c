@@ -163,17 +163,15 @@ static int ftgmac100_mdio_init(struct udevice *dev)
 	if (!bus)
 		return -ENOMEM;
 
-	printf("ftgmac100_mdio_init xxxxxxxxxx %x \n", priv->mdio_addr);
-
 	if(priv->mdio_addr) {
-		printf("new mdio addr %x ~~~~~~~~~~~~~~xxxxxxxxxx \n", priv->mdio_addr);
 		bus->read  = aspeed_mdio_read;
-		bus->write = aspeed_mdio_write;		
+		bus->write = aspeed_mdio_write;
+		bus->priv  = (void *)priv->mdio_addr;
 	} else {
 		bus->read  = ftgmac100_mdio_read;
 		bus->write = ftgmac100_mdio_write;
+		bus->priv  = priv;
 	}
-	bus->priv  = priv;
 
 	ret = mdio_register_seq(bus, dev->seq);
 	if (ret) {
@@ -531,14 +529,12 @@ static int ftgmac100_ofdata_to_platdata(struct udevice *dev)
 		return -EINVAL;
 	}
 
-	printf("pdata->phy_interface %d \n", pdata->phy_interface);
 	pdata->max_speed = dev_read_u32_default(dev, "max-speed", 0);
-	
+
 	if (dev_get_driver_data(dev) == FTGMAC100_MODEL_NEW_ASPEED) {
-		printf("ftg ast2600 ~~~~~~~~~~~~~~~~~~~~ \n");
 		priv->mdio_addr =  devfdt_get_addr_index(dev, 1);
-		printf("ftg ast2600 ~~~~~~~~~~~~~~~~~~~~ priv->mdio_addr %x \n", priv->mdio_addr);
-		
+		debug("priv->mdio_addr %x \n", (u32)priv->mdio_addr);
+
 	}
 	if ((dev_get_driver_data(dev) == FTGMAC100_MODEL_ASPEED) ||
 		(dev_get_driver_data(dev) == FTGMAC100_MODEL_NEW_ASPEED)){
