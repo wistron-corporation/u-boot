@@ -43,6 +43,13 @@
 	status = "okay";
 };
 
+&mdio {
+#if 0
+	u-boot,dm-pre-reloc;
+#endif
+	status = "okay";
+};
+
 &mac0 {
 	status = "okay";
 
