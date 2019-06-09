@@ -177,7 +177,7 @@ extern int aspeed_mdio_write(struct mii_dev *bus, int phy_addr, int dev_addr,
 
 static int aspeed_mdio_probe(struct udevice *dev)
 {
-	struct mii_dev *bus = (struct mii_dev *)dev_get_uclass_platdata(dev);
+//	struct mii_dev *bus = (struct mii_dev *)dev_get_uclass_platdata(dev);
 	struct reset_ctl reset_ctl;
 	int ret = 0;
 
