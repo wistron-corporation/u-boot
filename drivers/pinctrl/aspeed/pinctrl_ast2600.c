@@ -114,7 +114,7 @@ static const struct aspeed_group_config ast2600_groups[] = {
 
 static int ast2600_pinctrl_get_groups_count(struct udevice *dev)
 {
-	printf("PINCTRL: get_(functions/groups)_count\n");
+	debug("PINCTRL: get_(functions/groups)_count\n");
 
 	return ARRAY_SIZE(ast2600_groups);
 }
@@ -122,7 +122,7 @@ static int ast2600_pinctrl_get_groups_count(struct udevice *dev)
 static const char *ast2600_pinctrl_get_group_name(struct udevice *dev,
 						  unsigned selector)
 {
-	printf("PINCTRL: get_(function/group)_name %u\n", selector);
+	debug("PINCTRL: get_(function/group)_name %u\n", selector);
 
 	return ast2600_groups[selector].group_name;
 }
@@ -135,7 +135,7 @@ static int ast2600_pinctrl_group_set(struct udevice *dev, unsigned selector,
 	const struct aspeed_sig_desc *descs;
 	u32 ctrl_reg = (u32)&priv->scu;
 
-	printf("PINCTRL: group_set <%u, %u>\n", selector, func_selector);
+	debug("PINCTRL: group_set <%u, %u>\n", selector, func_selector);
 	if (selector >= ARRAY_SIZE(ast2600_groups))
 		return -EINVAL;
 
