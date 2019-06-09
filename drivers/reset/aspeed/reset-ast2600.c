@@ -24,12 +24,12 @@ static int ast2600_reset_deassert(struct reset_ctl *reset_ctl)
 	struct ast2600_reset_priv *priv = dev_get_priv(reset_ctl->dev);
 	struct ast2600_scu *scu = priv->scu;
 
-	printf("ast2600_reset_assert reset_ctl->id %ld \n", reset_ctl->id);
+	debug("ast2600_reset_assert reset_ctl->id %ld \n", reset_ctl->id);
 
 	if(reset_ctl->id >= 32)
-		writel(scu->sysreset_clr_ctrl2 , BIT(reset_ctl->id - 32));
+		writel(BIT(reset_ctl->id - 32), &scu->sysreset_clr_ctrl2);
 	else
-		writel(scu->sysreset_clr_ctrl1 , BIT(reset_ctl->id));
+		writel(BIT(reset_ctl->id), &scu->sysreset_clr_ctrl1);
 
 	return 0;
 }
@@ -39,19 +39,19 @@ static int ast2600_reset_assert(struct reset_ctl *reset_ctl)
 	struct ast2600_reset_priv *priv = dev_get_priv(reset_ctl->dev);
 	struct ast2600_scu *scu = priv->scu;	
 
-	printf("ast2600_reset_assert reset_ctl->id %ld \n", reset_ctl->id);
+	debug("ast2600_reset_assert reset_ctl->id %ld \n", reset_ctl->id);
 
 	if(reset_ctl->id >= 32)
-		writel(scu->sysreset_ctrl2 , BIT(reset_ctl->id - 32));
+		writel(BIT(reset_ctl->id - 32), &scu->sysreset_ctrl2);
 	else
-		writel(scu->sysreset_ctrl1 , BIT(reset_ctl->id));
+		writel(BIT(reset_ctl->id), &scu->sysreset_ctrl1);
 
 	return 0;
 }
 
 static int ast2600_reset_request(struct reset_ctl *reset_ctl)
 {
-	printf("%s(reset_ctl=%p) (dev=%p, id=%lu)\n", __func__, reset_ctl,
+	debug("%s(reset_ctl=%p) (dev=%p, id=%lu)\n", __func__, reset_ctl,
 	      reset_ctl->dev, reset_ctl->id);
 
 	return 0;
@@ -63,7 +63,6 @@ static int ast2600_reset_probe(struct udevice *dev)
 	struct udevice *clk_dev;	
 	int ret = 0;
 
-	printf("ast2600_reset_probe");
 	/* find SCU base address from clock device */
 	ret = uclass_get_device_by_driver(UCLASS_CLK, DM_GET_DRIVER(aspeed_scu),
                                           &clk_dev);
@@ -77,7 +76,6 @@ static int ast2600_reset_probe(struct udevice *dev)
 	        debug("%s(): can't get SCU\n", __func__);
 	        return PTR_ERR(priv->scu);
 	}
-	printf("ast2600_reset_probe ~~~~~~~~~~~~~~~~");
 
 	return 0;
 }
@@ -85,8 +83,8 @@ static int ast2600_reset_probe(struct udevice *dev)
 static int ast2600_ofdata_to_platdata(struct udevice *dev)
 {
 //	struct ast2600_reset_priv *priv = dev_get_priv(dev);
-	int ret;
-printf("ast2600_ofdata_to_platdata\n");
+//	int ret;
+
 #if 0
 	ret = uclass_get_device_by_phandle(UCLASS_WDT, dev, "aspeed,ast2600-wdt",
 					   &priv->wdt);
@@ -95,7 +93,6 @@ printf("ast2600_ofdata_to_platdata\n");
 		return ret;
 	}
 #endif	
-	printf("ast2600_ofdata_to_platdata end\n");
 
 	return 0;
 }
