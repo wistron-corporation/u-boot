@@ -313,8 +313,10 @@
 				compatible = "ns16550a";
 				reg = <0x1e784000 0x1000>;
 				reg-shift = <2>;
+				interrupts = <GIC_SPI 36 IRQ_TYPE_LEVEL_HIGH>;
 				clocks = <&scu ASPEED_CLK_GATE_UART5CLK>;
 				no-loopback-test;
+				status = "disabled";
 			};
 
 			wdt1: watchdog@1e785000 {
