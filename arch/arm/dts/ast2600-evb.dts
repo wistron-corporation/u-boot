@@ -44,9 +44,6 @@
 };
 
 &mdio {
-#if 0
-	u-boot,dm-pre-reloc;
-#endif
 	status = "okay";
 };
 
@@ -86,4 +83,12 @@
                 spi-tx-bus-width = <2>;
                 spi-rx-bus-width = <2>;
         };
+};
+
+&i2c0 {
+        status = "okay";
+};
+
+&i2c1 {
+        status = "okay";
 };

@@ -95,3 +95,11 @@
 &spi2 {
 	clocks = <&scu ASPEED_CLK_AHB>;
 };
+
+&i2c0 {
+        clocks = <&scu ASPEED_CLK_APB>;
+};
+
+&i2c1 {
+        clocks = <&scu ASPEED_CLK_APB>;
+};

@@ -246,7 +246,7 @@ struct ast2600_scu {
 	u32 freq_counter_ctrl2;	/* 0x330 */	
 	u32 freq_counter_cmp2;	/* 0x334 */
 	u32 uart_24m_ref_uxclk;	/* 0x338 */
-	u32 uart_24m_ref_apll;	/* 0x33C */
+	u32 uart_24m_ref_huxclk;	/* 0x33C */
 	u32 mac12_clk_delay;	/* 0x340 */
 	u32 reserve_0x344;		/* 0x344 */
 	u32 mac12_clk_delay_100M;/* 0x348 */
