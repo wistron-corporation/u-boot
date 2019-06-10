@@ -23,7 +23,7 @@ static int ast2500_reset_assert(struct reset_ctl *reset_ctl)
 {
 	struct ast2500_reset_priv *priv = dev_get_priv(reset_ctl->dev);
 	struct ast2500_scu *scu = priv->scu;
-	u32 reset_mode, reset_mask;
+//	u32 reset_mode, reset_mask;
 	bool reset_sdram;
 	int ret = 0;
 
@@ -32,11 +32,12 @@ static int ast2500_reset_assert(struct reset_ctl *reset_ctl)
 	 * To reset SDRAM, a specifal flag in SYSRESET register
 	 * needs to be enabled first
 	 */
+#if 0	 
 	reset_mode = ast_reset_mode_from_flags(reset_ctl->id);
 	reset_mask = ast_reset_mask_from_flags(reset_ctl->id);
 	reset_sdram = reset_mode == WDT_CTRL_RESET_SOC &&
 		(reset_mask & WDT_RESET_SDRAM);
-#if 0
+
 	if (reset_sdram) {
 		ast_scu_unlock(priv->scu);
 		setbits_le32(&priv->scu->sysreset_ctrl1,
@@ -50,9 +51,28 @@ static int ast2500_reset_assert(struct reset_ctl *reset_ctl)
 	}
 #endif
 	if(reset_ctl->id >= 32)
-		setbits_le32(scu->sysreset_ctrl1 , BIT(reset_ctl->id - 32));
+		setbits_le32(&scu->sysreset_ctrl2 , BIT(reset_ctl->id - 32));
 	else
-		setbits_le32(scu->sysreset_ctrl1 , BIT(reset_ctl->id));
+		setbits_le32(&scu->sysreset_ctrl1 , BIT(reset_ctl->id));
+
+	printf("end \n");
+	return ret;
+}
+
+static int ast2500_reset_deassert(struct reset_ctl *reset_ctl)
+{
+	struct ast2500_reset_priv *priv = dev_get_priv(reset_ctl->dev);
+	struct ast2500_scu *scu = priv->scu;
+	u32 reset_mode, reset_mask;
+	bool reset_sdram;
+	int ret = 0;
+
+	printf("ast2500_reset_deassert reset_ctl->id %d \n", reset_ctl->id);
+
+	if(reset_ctl->id >= 32)
+		clrbits_le32(&scu->sysreset_ctrl2 , BIT(reset_ctl->id - 32));
+	else
+		clrbits_le32(&scu->sysreset_ctrl1 , BIT(reset_ctl->id));
 
 	return ret;
 }
@@ -110,6 +130,7 @@ static const struct udevice_id aspeed_reset_ids[] = {
 
 struct reset_ops aspeed_reset_ops = {
 	.rst_assert = ast2500_reset_assert,
+	.rst_deassert = ast2500_reset_deassert,
 	.request = ast2500_reset_request,
 };
 
