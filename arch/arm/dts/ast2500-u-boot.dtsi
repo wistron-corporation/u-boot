@@ -39,46 +39,6 @@
 	};
 };
 
-&uart1 {
-	clocks = <&scu PCLK_UART1>;
-};
-
-&uart2 {
-	clocks = <&scu PCLK_UART2>;
-};
-
-&uart3 {
-	clocks = <&scu PCLK_UART3>;
-};
-
-&uart4 {
-	clocks = <&scu PCLK_UART4>;
-};
-
-&uart5 {
-	clocks = <&scu PCLK_UART5>;
-};
-
 &timer {
 	u-boot,dm-pre-reloc;
-};
-
-&mac0 {
-	clocks = <&scu ASPEED_CLK_GATE_MAC1CLK>, <&scu ASPEED_CLK_D2PLL>;
-};
-
-&mac1 {
-	clocks = <&scu ASPEED_CLK_GATE_MAC2CLK>, <&scu ASPEED_CLK_D2PLL>;
-};
-
-&fmc {
-	clocks = <&scu ASPEED_CLK_AHB>;
-};
-
-&spi1 {
-	clocks = <&scu ASPEED_CLK_AHB>;
-};
-
-&spi2 {
-	clocks = <&scu ASPEED_CLK_AHB>;
 };

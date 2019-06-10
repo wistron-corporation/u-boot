@@ -49,7 +49,6 @@
 
 &mac0 {
 	status = "okay";
-
 	phy-mode = "rgmii";
 
 	pinctrl-names = "default";
@@ -59,9 +58,7 @@
 #if 0
 &mac1 {
 	status = "okay";
-
 	phy-mode = "rgmii";
-
 	pinctrl-names = "default";
 	pinctrl-0 = <&pinctrl_mac2link_default &pinctrl_mdio2_default>;
 };

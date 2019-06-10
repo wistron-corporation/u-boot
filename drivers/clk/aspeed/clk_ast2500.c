@@ -194,19 +194,19 @@ static unsigned long ast2500_clk_get_rate(struct clk *clk)
 			rate = rate / apb_div;
 		}
 		break;
-	case PCLK_UART1:
+	case ASPEED_CLK_GATE_UART1CLK:
 		rate = ast2500_get_uart_clk_rate(priv->scu, 1);
 		break;
-	case PCLK_UART2:
+	case ASPEED_CLK_GATE_UART2CLK:
 		rate = ast2500_get_uart_clk_rate(priv->scu, 2);
 		break;
-	case PCLK_UART3:
+	case ASPEED_CLK_GATE_UART3CLK:
 		rate = ast2500_get_uart_clk_rate(priv->scu, 3);
 		break;
-	case PCLK_UART4:
+	case ASPEED_CLK_GATE_UART4CLK:
 		rate = ast2500_get_uart_clk_rate(priv->scu, 4);
 		break;
-	case PCLK_UART5:
+	case ASPEED_CLK_GATE_UART5CLK:
 		rate = ast2500_get_uart_clk_rate(priv->scu, 5);
 		break;
 	default:

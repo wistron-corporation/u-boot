@@ -124,6 +124,7 @@
 			compatible = "aspeed,ast2500-fmc";
 			status = "disabled";
 			interrupts = <19>;
+			clocks = <&scu ASPEED_CLK_AHB>;
 			flash@0 {
 				reg = < 0 >;
 				compatible = "jedec,spi-nor";
@@ -147,6 +148,7 @@
 			#address-cells = <1>;
 			#size-cells = <0>;
 			compatible = "aspeed,ast2500-spi";
+			clocks = <&scu ASPEED_CLK_AHB>;
 			status = "disabled";
 			flash@0 {
 				reg = < 0 >;
@@ -166,6 +168,7 @@
 			#address-cells = <1>;
 			#size-cells = <0>;
 			compatible = "aspeed,ast2500-spi";
+			clocks = <&scu ASPEED_CLK_AHB>;
 			status = "disabled";
 			flash@0 {
 				reg = < 0 >;
@@ -188,13 +191,15 @@
 		mdio: ethernet@1e650000 {
 			compatible = "aspeed,aspeed-mdio";
 			reg = <0x1e650000 0x40>;
+			resets = <&rst ASPEED_RESET_MII>;
 			status = "disabled";
 		};
 
 		mac0: ethernet@1e660000 {
 			compatible = "aspeed,ast2600-mac", "faraday,ftgmac100";
 			reg = <0x1e660000 0x180>, <0x1e650000 0x4>;
-			interrupts = <2>;
+			interrupts = <GIC_SPI 2 IRQ_TYPE_LEVEL_HIGH>;
+			clocks = <&scu ASPEED_CLK_GATE_MAC1CLK>;
 			status = "disabled";
 		};
 
@@ -204,6 +209,7 @@
 			#address-cells = <1>;
 			#size-cells = <0>;
 			interrupts = <GIC_SPI 32 IRQ_TYPE_LEVEL_HIGH>;
+			clocks = <&scu ASPEED_CLK_GATE_MAC3CLK>;
 #if 0
 			phy-handle = <&phy0>;
 #endif
@@ -216,6 +222,7 @@
 			#address-cells = <1>;
 			#size-cells = <0>;
 			interrupts = <GIC_SPI 3 IRQ_TYPE_LEVEL_HIGH>;
+			clocks = <&scu ASPEED_CLK_GATE_MAC2CLK>;
 #if 0
 			phy-handle = <&phy0>;
 #endif
@@ -228,6 +235,7 @@
 			#address-cells = <1>;
 			#size-cells = <0>;
 			interrupts = <GIC_SPI 33 IRQ_TYPE_LEVEL_HIGH>;
+			clocks = <&scu ASPEED_CLK_GATE_MAC4CLK>;
 #if 0
 			phy-handle = <&phy0>;
 #endif
@@ -295,6 +303,8 @@
 				compatible = "ns16550a";
 				reg = <0x1e783000 0x20>;
 				reg-shift = <2>;
+				interrupts = <GIC_SPI 47 IRQ_TYPE_LEVEL_HIGH>;
+				clocks = <&scu ASPEED_CLK_GATE_UART1CLK>;
 				no-loopback-test;
 				status = "disabled";	
 			};
@@ -303,7 +313,7 @@
 				compatible = "ns16550a";
 				reg = <0x1e784000 0x1000>;
 				reg-shift = <2>;
-				clock-frequency = <1846154>;
+				clocks = <&scu ASPEED_CLK_GATE_UART5CLK>;
 				no-loopback-test;
 			};
 
@@ -441,6 +451,7 @@
 				reg = <0x1e78d000 0x20>;
 				reg-shift = <2>;
 				interrupts = <GIC_SPI 48 IRQ_TYPE_LEVEL_HIGH>;
+				clocks = <&scu ASPEED_CLK_GATE_UART2CLK>;
 				no-loopback-test;
 				status = "disabled";
 			};
@@ -450,6 +461,7 @@
 				reg = <0x1e78e000 0x20>;
 				reg-shift = <2>;
 				interrupts = <GIC_SPI 49 IRQ_TYPE_LEVEL_HIGH>;
+				clocks = <&scu ASPEED_CLK_GATE_UART3CLK>;
 				no-loopback-test;
 				status = "disabled";
 			};
@@ -459,6 +471,7 @@
 				reg = <0x1e78f000 0x20>;
 				reg-shift = <2>;
 				interrupts = <GIC_SPI 50 IRQ_TYPE_LEVEL_HIGH>;
+				clocks = <&scu ASPEED_CLK_GATE_UART4CLK>;
 				no-loopback-test;
 				status = "disabled";
 			};
@@ -475,6 +488,7 @@
 				reg = <0x1e790000 0x20>;
 				reg-shift = <2>;
 				interrupts = <GIC_SPI 57 IRQ_TYPE_LEVEL_HIGH>;
+				clocks = <&scu ASPEED_CLK_GATE_UART6CLK>;
 				no-loopback-test;
 				status = "disabled";
 			};
@@ -484,6 +498,7 @@
 				reg = <0x1e790100 0x20>;
 				reg-shift = <2>;
 				interrupts = <GIC_SPI 58 IRQ_TYPE_LEVEL_HIGH>;
+				clocks = <&scu ASPEED_CLK_GATE_UART7CLK>;
 				no-loopback-test;
 				status = "disabled";
 			};
@@ -493,6 +508,7 @@
 				reg = <0x1e790200 0x20>;
 				reg-shift = <2>;
 				interrupts = <GIC_SPI 59 IRQ_TYPE_LEVEL_HIGH>;
+				clocks = <&scu ASPEED_CLK_GATE_UART8CLK>;
 				no-loopback-test;
 				status = "disabled";
 			};
@@ -502,6 +518,7 @@
 				reg = <0x1e790300 0x20>;
 				reg-shift = <2>;
 				interrupts = <GIC_SPI 60 IRQ_TYPE_LEVEL_HIGH>;
+				clocks = <&scu ASPEED_CLK_GATE_UART9CLK>;
 				no-loopback-test;
 				status = "disabled";
 			};
@@ -511,6 +528,7 @@
 				reg = <0x1e790400 0x20>;
 				reg-shift = <2>;
 				interrupts = <GIC_SPI 61 IRQ_TYPE_LEVEL_HIGH>;
+				clocks = <&scu ASPEED_CLK_GATE_UART10CLK>;
 				no-loopback-test;
 				status = "disabled";
 			};
@@ -520,6 +538,7 @@
 				reg = <0x1e790400 0x20>;
 				reg-shift = <2>;
 				interrupts = <GIC_SPI 62 IRQ_TYPE_LEVEL_HIGH>;
+				clocks = <&scu ASPEED_CLK_GATE_UART11CLK>;
 				no-loopback-test;
 				status = "disabled";
 			};
@@ -529,6 +548,7 @@
 				reg = <0x1e790600 0x20>;
 				reg-shift = <2>;
 				interrupts = <GIC_SPI 63 IRQ_TYPE_LEVEL_HIGH>;
+				clocks = <&scu ASPEED_CLK_GATE_UART12CLK>;
 				no-loopback-test;
 				status = "disabled";
 			};
@@ -538,6 +558,7 @@
 				reg = <0x1e790700 0x20>;
 				reg-shift = <2>;
 				interrupts = <GIC_SPI 64 IRQ_TYPE_LEVEL_HIGH>;
+				clocks = <&scu ASPEED_CLK_GATE_UART13CLK>;
 				no-loopback-test;
 				status = "disabled";
 			};
@@ -569,6 +590,7 @@
 		compatible = "aspeed,ast2600-i2c-bus";
 		bus-frequency = <100000>;
 		interrupts = <GIC_SPI 110 IRQ_TYPE_LEVEL_HIGH>;
+		clocks = <&scu ASPEED_CLK_APB>;
 	};
 
 	i2c1: i2c@100 {
@@ -580,6 +602,7 @@
 		compatible = "aspeed,ast-g6-i2c", "aspeed,ast-dma-i2c";
 		bus-frequency = <100000>;
 		interrupts = <GIC_SPI 111 IRQ_TYPE_LEVEL_HIGH>;
+		clocks = <&scu ASPEED_CLK_APB>;
 	};
 
 	i2c2: i2c@180 {
@@ -591,6 +614,7 @@
 		compatible = "aspeed,aspeed-i2c", "aspeed,ast-dma-i2c";
 		bus-frequency = <100000>;
 		interrupts = <GIC_SPI 112 IRQ_TYPE_LEVEL_HIGH>;
+		clocks = <&scu ASPEED_CLK_APB>;
 	};
 
 	i2c3: i2c@200 {
@@ -602,6 +626,7 @@
 		compatible = "aspeed,aspeed-i2c", "aspeed,ast-dma-i2c";
 		bus-frequency = <100000>;
 		interrupts = <GIC_SPI 113 IRQ_TYPE_LEVEL_HIGH>;
+		clocks = <&scu ASPEED_CLK_APB>;
 	};
 
 	i2c4: i2c@280 {
@@ -614,6 +639,7 @@
 		#compatible = "aspeed,ast-g6-i2c", "aspeed,ast-dma-i2c";
 		bus-frequency = <100000>;
 		interrupts = <GIC_SPI 114 IRQ_TYPE_LEVEL_HIGH>;
+		clocks = <&scu ASPEED_CLK_APB>;
 	};
 
 	i2c5: i2c@300 {
@@ -626,6 +652,7 @@
 		#compatible = "aspeed,ast-g6-i2c", "aspeed,ast-dma-i2c";
 		bus-frequency = <100000>;
 		interrupts = <GIC_SPI 115 IRQ_TYPE_LEVEL_HIGH>;
+		clocks = <&scu ASPEED_CLK_APB>;
 	};
 
 	i2c6: i2c@380 {
@@ -638,6 +665,7 @@
 		#compatible = "aspeed,ast-g6-i2c", "aspeed,ast-dma-i2c";
 		bus-frequency = <100000>;
 		interrupts = <GIC_SPI 116 IRQ_TYPE_LEVEL_HIGH>;
+		clocks = <&scu ASPEED_CLK_APB>;
 	};
 
 	i2c7: i2c@400 {
@@ -650,6 +678,7 @@
 		#compatible = "aspeed,ast-g6-i2c", "aspeed,ast-dma-i2c";
 		bus-frequency = <100000>;
 		interrupts = <GIC_SPI 117 IRQ_TYPE_LEVEL_HIGH>;
+		clocks = <&scu ASPEED_CLK_APB>;
 	};
 
 	i2c8: i2c@480 {
@@ -662,6 +691,7 @@
 		#compatible = "aspeed,ast-g6-i2c", "aspeed,ast-dma-i2c";
 		bus-frequency = <100000>;
 		interrupts = <GIC_SPI 118 IRQ_TYPE_LEVEL_HIGH>;
+		clocks = <&scu ASPEED_CLK_APB>;
 	};
 
 	i2c9: i2c@500 {
@@ -674,6 +704,7 @@
 		#compatible = "aspeed,ast-g6-i2c", "aspeed,ast-dma-i2c";
 		bus-frequency = <100000>;
 		interrupts = <GIC_SPI 119 IRQ_TYPE_LEVEL_HIGH>;
+		clocks = <&scu ASPEED_CLK_APB>;
 		status = "disabled";
 	};
 
@@ -687,6 +718,7 @@
 		#compatible = "aspeed,ast-g6-i2c", "aspeed,ast-dma-i2c";
 		bus-frequency = <100000>;
 		interrupts = <GIC_SPI 120 IRQ_TYPE_LEVEL_HIGH>;
+		clocks = <&scu ASPEED_CLK_APB>;
 		status = "disabled";
 	};
 
@@ -700,6 +732,7 @@
 		#compatible = "aspeed,ast-g6-i2c", "aspeed,ast-dma-i2c";
 		bus-frequency = <100000>;
 		interrupts = <GIC_SPI 121 IRQ_TYPE_LEVEL_HIGH>;
+		clocks = <&scu ASPEED_CLK_APB>;
 		status = "disabled";
 	};
 
@@ -713,6 +746,7 @@
 		#compatible = "aspeed,ast-g6-i2c", "aspeed,ast-dma-i2c";
 		bus-frequency = <100000>;
 		interrupts = <GIC_SPI 122 IRQ_TYPE_LEVEL_HIGH>;
+		clocks = <&scu ASPEED_CLK_APB>;
 		status = "disabled";
 	};
 
@@ -726,6 +760,7 @@
 		#compatible = "aspeed,ast-g6-i2c", "aspeed,ast-dma-i2c";
 		bus-frequency = <100000>;
 		interrupts = <GIC_SPI 123 IRQ_TYPE_LEVEL_HIGH>;
+		clocks = <&scu ASPEED_CLK_APB>;
 		status = "disabled";
 	};
 
@@ -739,6 +774,7 @@
 		#compatible = "aspeed,ast-g6-i2c", "aspeed,ast-dma-i2c";
 		bus-frequency = <100000>;
 		interrupts = <GIC_SPI 124 IRQ_TYPE_LEVEL_HIGH>;
+		clocks = <&scu ASPEED_CLK_APB>;
 		status = "disabled";
 	};
 
@@ -752,6 +788,7 @@
 		#compatible = "aspeed,ast-g6-i2c", "aspeed,ast-dma-i2c";
 		bus-frequency = <100000>;
 		interrupts = <GIC_SPI 125 IRQ_TYPE_LEVEL_HIGH>;
+		clocks = <&scu ASPEED_CLK_APB>;
 		status = "disabled";
 	};
 
