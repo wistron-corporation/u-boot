@@ -81,9 +81,6 @@
 #define SCU_PIN_FUN_SDA1		(1 << 13)
 #define SCU_PIN_FUN_SDA2		(1 << 15)
 
-#define SCU_CLKSTOP_MAC1		(1 << 20)
-#define SCU_CLKSTOP_MAC2		(1 << 21)
-
 #define SCU_D2PLL_EXT1_OFF		(1 << 0)
 #define SCU_D2PLL_EXT1_BYPASS		(1 << 1)
 #define SCU_D2PLL_EXT1_RESET		(1 << 2)
@@ -111,8 +108,6 @@
 #define SCU_CLKDUTY_RGMII1TXCK_MASK	(0x7f << SCU_CLKDUTY_RGMII1TXCK_SHIFT)
 #define SCU_CLKDUTY_RGMII2TXCK_SHIFT	16
 #define SCU_CLKDUTY_RGMII2TXCK_MASK	(0x7f << SCU_CLKDUTY_RGMII2TXCK_SHIFT)
-
-#ifndef __ASSEMBLY__
 
 struct ast2500_clk_priv {
 	struct ast2500_scu *scu;
@@ -186,21 +181,12 @@ struct ast2500_scu {
 	u32 clk_duty_sel;
 };
 
-/**
- * ast_get_clk() - get a pointer to Clock Driver
- *
- * @devp, OUT - pointer to Clock Driver
- * @return zero on success, error code (< 0) otherwise.
- */
-int ast_get_clk(struct udevice **devp);
+extern u32 ast2500_get_clkin(struct ast2500_scu *scu);
+extern u32 ast2500_get_mpll_rate(struct ast2500_scu *scu);
+extern u32 ast2500_get_hpll_rate(struct ast2500_scu *scu);
+extern u32 ast2500_get_dpll_rate(struct ast2500_scu *scu);
+extern u32 ast2500_get_d2pll_rate(struct ast2500_scu *scu);
 
-/**
- * ast_get_scu() - get a pointer to SCU registers
- *
- * @return pointer to struct ast2500_scu on success, ERR_PTR otherwise
- */
-void *ast_get_scu(void);
 
-#endif  /* __ASSEMBLY__ */
 
 #endif  /* _ASM_ARCH_SCU_AST2500_H */

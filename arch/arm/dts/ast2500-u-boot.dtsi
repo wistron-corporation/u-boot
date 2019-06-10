@@ -64,11 +64,11 @@
 };
 
 &mac0 {
-	clocks = <&scu PCLK_MAC1>, <&scu ASPEED_CLK_D2PLL>;
+	clocks = <&scu ASPEED_CLK_GATE_MAC1CLK>, <&scu ASPEED_CLK_D2PLL>;
 };
 
 &mac1 {
-	clocks = <&scu PCLK_MAC2>, <&scu ASPEED_CLK_D2PLL>;
+	clocks = <&scu ASPEED_CLK_GATE_MAC2CLK>, <&scu ASPEED_CLK_D2PLL>;
 };
 
 &fmc {

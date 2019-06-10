@@ -63,14 +63,27 @@
 	clocks = <&scu ASPEED_CLK_GATE_UART5CLK>;
 };
 
+&mdio {
+	resets = <&rst ASPEED_RESET_MII>;
+};
+
 &mac0 {
-	clocks = <&scu PCLK_MAC1>;
+	clocks = <&scu ASPEED_CLK_GATE_MAC1CLK>;
 };
 
 &mac1 {
-	clocks = <&scu PCLK_MAC2>;
+	clocks = <&scu ASPEED_CLK_GATE_MAC2CLK>;
 };
 
+#if 0
+&mac2 {
+	clocks = <&scu ASPEED_CLK_GATE_MAC3CLK>;
+};
+
+&mac3 {
+	clocks = <&scu ASPEED_CLK_GATE_MAC4CLK>;
+};
+#endif
 &fmc {
 	clocks = <&scu ASPEED_CLK_AHB>;
 };
@@ -81,4 +94,12 @@
 
 &spi2 {
 	clocks = <&scu ASPEED_CLK_AHB>;
+};
+
+&i2c0 {
+        clocks = <&scu ASPEED_CLK_APB>;
+};
+
+&i2c1 {
+        clocks = <&scu ASPEED_CLK_APB>;
 };

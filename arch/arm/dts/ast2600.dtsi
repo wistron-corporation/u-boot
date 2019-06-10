@@ -185,6 +185,12 @@
 			interrupts = <GIC_SPI 0 IRQ_TYPE_LEVEL_HIGH>;
 		};
 
+		mdio: ethernet@1e650000 {
+			compatible = "aspeed,aspeed-mdio";
+			reg = <0x1e650000 0x40>;
+			status = "disabled";
+		};
+
 		mac0: ethernet@1e660000 {
 			compatible = "aspeed,ast2600-mac", "faraday,ftgmac100";
 			reg = <0x1e660000 0x180>, <0x1e650000 0x4>;
@@ -236,7 +242,7 @@
 			ranges;
 
 			syscon: syscon@1e6e2000 {
-				compatible = "aspeed,aspeed-scu", "aspeed,g6-scu", "syscon", "simple-mfd";
+				compatible = "aspeed,g6-scu", "syscon", "simple-mfd";
 				reg = <0x1e6e2000 0x1000>;
 				#address-cells = <1>;
 				#size-cells = <1>;
@@ -561,11 +567,6 @@
 
 		reg = <0x80 0x80 0xC00 0x20>;
 		compatible = "aspeed,ast2600-i2c-bus";
-#if 0
-		compatible = "aspeed,ast-g6-i2c", "aspeed,ast-dma-i2c";
-		#compatible = "aspeed,ast2500-i2c-bus";
-		#compatible = "aspeed,aspeed-i2c", "aspeed,ast-dma-i2c";
-#endif
 		bus-frequency = <100000>;
 		interrupts = <GIC_SPI 110 IRQ_TYPE_LEVEL_HIGH>;
 	};
@@ -577,10 +578,6 @@
 
 		reg = <0x100 0x80 0xC20 0x20>;
 		compatible = "aspeed,ast-g6-i2c", "aspeed,ast-dma-i2c";
-#if 0
-		#compatible = "aspeed,ast2500-i2c-bus";
-		#compatible = "aspeed,aspeed-i2c", "aspeed,ast-dma-i2c";
-#endif
 		bus-frequency = <100000>;
 		interrupts = <GIC_SPI 111 IRQ_TYPE_LEVEL_HIGH>;
 	};
@@ -592,7 +589,6 @@
 
 		reg = <0x180 0x80 0xC40 0x20>;
 		compatible = "aspeed,aspeed-i2c", "aspeed,ast-dma-i2c";
-		#compatible = "aspeed,ast-g6-i2c", "aspeed,ast-dma-i2c";
 		bus-frequency = <100000>;
 		interrupts = <GIC_SPI 112 IRQ_TYPE_LEVEL_HIGH>;
 	};
@@ -604,7 +600,6 @@
 
 		reg = <0x200 0x40 0xC60 0x20>;
 		compatible = "aspeed,aspeed-i2c", "aspeed,ast-dma-i2c";
-		#compatible = "aspeed,ast-g6-i2c", "aspeed,ast-dma-i2c";
 		bus-frequency = <100000>;
 		interrupts = <GIC_SPI 113 IRQ_TYPE_LEVEL_HIGH>;
 	};

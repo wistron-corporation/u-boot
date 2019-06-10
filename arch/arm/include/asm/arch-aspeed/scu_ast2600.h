@@ -6,6 +6,8 @@
 #ifndef _ASM_ARCH_SCU_AST2600_H
 #define _ASM_ARCH_SCU_AST2600_H
 
+#define AST2600_CLK_IN	25000000
+
 /*
  * register offset
 */
@@ -94,8 +96,6 @@
 #define SCU_PIN_FUN_SDA1		(1 << 13)
 #define SCU_PIN_FUN_SDA2		(1 << 15)
 
-#define SCU_CLKSTOP_MAC1		(1 << 20)
-#define SCU_CLKSTOP_MAC2		(1 << 21)
 
 #define SCU_D2PLL_EXT1_OFF		(1 << 0)
 #define SCU_D2PLL_EXT1_BYPASS		(1 << 1)
@@ -124,8 +124,6 @@
 #define SCU_CLKDUTY_RGMII1TXCK_MASK	(0x7f << SCU_CLKDUTY_RGMII1TXCK_SHIFT)
 #define SCU_CLKDUTY_RGMII2TXCK_SHIFT	16
 #define SCU_CLKDUTY_RGMII2TXCK_MASK	(0x7f << SCU_CLKDUTY_RGMII2TXCK_SHIFT)
-
-#ifndef __ASSEMBLY__
 
 struct ast2600_clk_priv {
 	struct ast2600_scu *scu;
@@ -171,11 +169,11 @@ struct ast2600_scu {
 	u32 sysrst_evet_log2_2;	/* 0x078 */		
 	u32 reserve_0x7C;		/* 0x07C */	
 	u32 clk_stop_ctrl1;		/* 0x080 */
-	u32 reserve_0x84;		/* 0x084 */	
+	u32 clk_stop_clr_ctrl1;	/* 0x084 */	
 	u32 reserve_0x88;		/* 0x088 */	
 	u32 reserve_0x8C;		/* 0x08C */
 	u32 clk_stop_ctrl2;		/* 0x090 */
-	u32 reserve_0x94;		/* 0x094 */	
+	u32 clk_stop_clr_ctrl2;	/* 0x094 */	
 	u32 reserve_0x98;		/* 0x098 */	
 	u32 reserve_0x9C;		/* 0x09C */	
 	u32 reserve_0xA0;		/* 0x0A0 */	
@@ -248,7 +246,7 @@ struct ast2600_scu {
 	u32 freq_counter_ctrl2;	/* 0x330 */	
 	u32 freq_counter_cmp2;	/* 0x334 */
 	u32 uart_24m_ref_uxclk;	/* 0x338 */
-	u32 uart_24m_ref_apll;	/* 0x33C */
+	u32 uart_24m_ref_huxclk;	/* 0x33C */
 	u32 mac12_clk_delay;	/* 0x340 */
 	u32 reserve_0x344;		/* 0x344 */
 	u32 mac12_clk_delay_100M;/* 0x348 */
@@ -323,21 +321,11 @@ struct ast2600_scu {
 	u32 vga_scratch[8];		/* 0xE00 */
 };
 
-/**
- * ast_get_clk() - get a pointer to Clock Driver
- *
- * @devp, OUT - pointer to Clock Driver
- * @return zero on success, error code (< 0) otherwise.
- */
-int ast_get_clk(struct udevice **devp);
+extern u32 ast2600_get_mpll_rate(struct ast2600_scu *scu); 
+extern u32 ast2600_get_hpll_rate(struct ast2600_scu *scu);
+extern u32 ast2600_get_apll_rate(struct ast2600_scu *scu);
+extern u32 ast2600_get_epll_rate(struct ast2600_scu *scu);
+extern u32 ast2600_get_dpll_rate(struct ast2600_scu *scu);
 
-/**
- * ast_get_scu() - get a pointer to SCU registers
- *
- * @return pointer to struct ast2600_scu on success, ERR_PTR otherwise
- */
-void *ast_get_scu(void);
-
-#endif  /* __ASSEMBLY__ */
 
 #endif  /* _ASM_ARCH_SCU_AST2600_H */

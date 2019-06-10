@@ -617,7 +617,7 @@ static void ast2600_sdrammc_common_init(struct ast2600_sdrammc_regs *regs)
 
 static int ast2600_sdrammc_probe(struct udevice *dev)
 {
-	//struct reset_ctl reset_ctl;
+	struct reset_ctl reset_ctl;
 	struct dram_info *priv = (struct dram_info *)dev_get_priv(dev);
 	struct ast2600_sdrammc_regs *regs = priv->regs;
 	struct udevice *clk_dev;
@@ -631,26 +631,26 @@ static int ast2600_sdrammc_probe(struct udevice *dev)
 	/* find SCU base address from clock device */
 	ret = uclass_get_device_by_driver(UCLASS_CLK, DM_GET_DRIVER(aspeed_scu),
                                           &clk_dev);
-        if (ret) {
-                debug("clock device not defined\n");
-                return ret;
-        }
+    if (ret) {
+            debug("clock device not defined\n");
+            return ret;
+    }
 
-        priv->scu = devfdt_get_addr_ptr(clk_dev);
-        if (IS_ERR(priv->scu)) {
-                debug("%s(): can't get SCU\n", __func__);
-                return PTR_ERR(priv->scu);
-        }
+    priv->scu = devfdt_get_addr_ptr(clk_dev);
+    if (IS_ERR(priv->scu)) {
+            debug("%s(): can't get SCU\n", __func__);
+            return PTR_ERR(priv->scu);
+    }
 
-        clk_set_rate(&priv->ddr_clk, priv->clock_rate);
-	
-#if 0
-        /* FIXME: enable the following code if reset-driver is ready */
+    clk_set_rate(&priv->ddr_clk, priv->clock_rate);
+
+    /* FIXME: enable the following code if reset-driver is ready */
 	ret = reset_get_by_index(dev, 0, &reset_ctl);
 	if (ret) {
 		debug("%s(): Failed to get reset signal\n", __func__);
 		return ret;
 	}
+#if 0
 
 	ret = reset_assert(&reset_ctl);
 	if (ret) {
