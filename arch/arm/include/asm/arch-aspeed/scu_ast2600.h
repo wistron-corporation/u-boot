@@ -233,10 +233,10 @@ struct ast2600_scu {
 	u32 reserve_0x270[36];	/* 0x270 */	
 	u32 clk_sel1;			/* 0x300 */	
 	u32 clk_sel2;			/* 0x304 */		
-	u32 reserve_0x308;		/* 0x308 */
+	u32 clk_sel3;			/* 0x308 */
 	u32 reserve_0x30C;		/* 0x30C */	
-	u32 clk_sel3;			/* 0x310 */
-	u32 clk_sel4;			/* 0x314 */
+	u32 clk_sel4;			/* 0x310 */
+	u32 clk_sel5;			/* 0x314 */
 	u32 reserve_0x318;		/* 0x318 */
 	u32 reserve_0x31C;		/* 0x31C */	
 	u32 freq_counter_ctrl1;	/* 0x320 */	
