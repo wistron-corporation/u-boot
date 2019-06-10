@@ -569,21 +569,21 @@ static int ast2600_clk_enable(struct clk *clk)
 	struct ast2600_clk_priv *priv = dev_get_priv(clk->dev);
 
 	switch (clk->id) {
-	/*
-	 * For MAC clocks the clock rate is
-	 * configured based on whether RGMII or RMII mode has been selected
-	 * through hardware strapping.
-	 */
-	case ASPEED_CLK_GATE_MAC1CLK:
-		printf("ast2600_clk_enable mac 1 ~~~\n");
-		ast2600_configure_mac(priv->scu, 1);
-		break;
-	case ASPEED_CLK_GATE_MAC2CLK:
-		printf("ast2600_clk_enable mac 2 ~~~\n");
-		ast2600_configure_mac(priv->scu, 2);
-		break;
-	default:
-		return -ENOENT;
+		case ASPEED_CLK_GATE_MAC1CLK:
+			ast2600_configure_mac(priv->scu, 1);
+			break;
+		case ASPEED_CLK_GATE_MAC2CLK:
+			ast2600_configure_mac(priv->scu, 2);
+			break;
+		case ASPEED_CLK_GATE_MAC3CLK:
+			ast2600_configure_mac(priv->scu, 3);
+			break;
+		case ASPEED_CLK_GATE_MAC4CLK:
+			ast2600_configure_mac(priv->scu, 4);
+			break;
+		default:
+			return -ENOENT;
+			break;
 	}
 
 	return 0;
