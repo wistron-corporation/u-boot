@@ -138,8 +138,8 @@ static const struct aspeed_group_config ast2500_groups[] = {
 	{ "I2C12", 2, i2c12_link },
 	{ "I2C13", 2, i2c13_link },
 	{ "I2C14", 1, i2c14_link },
-	{ "SDIO1", 1, sdio2_link },
-	{ "SDIO0", 1, sdio1_link },
+	{ "SD2", 1, sdio2_link },
+	{ "SD1", 1, sdio1_link },
 };
 
 static int ast2500_pinctrl_get_groups_count(struct udevice *dev)
@@ -166,7 +166,7 @@ static int ast2500_pinctrl_group_set(struct udevice *dev, unsigned selector,
 	u32 *ctrl_reg = (u32*)priv->scu;
 	int i;
 
-	debug("PINCTRL: group_set <%u, %u>\n", selector, func_selector);
+	debug("PINCTRL: group_set <%u, %u> \n", selector, func_selector);
 	if (selector >= ARRAY_SIZE(ast2500_groups))
 		return -EINVAL;
 
@@ -180,7 +180,7 @@ static int ast2500_pinctrl_group_set(struct udevice *dev, unsigned selector,
 			setbits_le32((u32)ctrl_reg + descs->offset, descs->reg_set);
 		}
 	}
-	printf("done \n");
+
 	return 0;
 }
 
