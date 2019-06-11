@@ -212,6 +212,40 @@
 				reg = <0x1e720000 0x9000>;	// 36K
 			};
 
+			sdhci: sdhci@1e740000 {
+                                #interrupt-cells = <1>;
+                                compatible = "aspeed,aspeed-sdhci-irq", "simple-mfd";
+                                reg = <0x1e740000 0x1000>;
+                                interrupts = <26>;
+                                interrupt-controller;
+                                clocks = <&scu ASPEED_CLK_GATE_SDCLK>, <&scu ASPEED_CLK_GATE_SDEXTCLK>;
+                                clock-names = "ctrlclk", "extclk";
+                                #address-cells = <1>;
+                                #size-cells = <1>;
+                                ranges = <0x0 0x1e740000 0x1000>;
+
+                                sdhci_slot0: sdhci_slot0@100 {
+                                        compatible = "aspeed,sdhci-ast2500";
+                                        reg = <0x100 0x100>;
+                                        interrupts = <0>;
+                                        interrupt-parent = <&sdhci>;
+                                        sdhci,auto-cmd12;
+                                        clocks = <&scu ASPEED_CLK_SDIO>;
+                                        status = "disabled";
+                                };
+
+                                sdhci_slot1: sdhci_slot1@200 {
+                                        compatible = "aspeed,sdhci-ast2500";
+                                        reg = <0x200 0x100>;
+                                        interrupts = <1>;
+                                        interrupt-parent = <&sdhci>;
+                                        sdhci,auto-cmd12;
+                                        clocks = <&scu ASPEED_CLK_SDIO>;
+                                        status = "disabled";
+                                };
+
+                        };
+
 			gpio: gpio@1e780000 {
 				#gpio-cells = <2>;
 				gpio-controller;
