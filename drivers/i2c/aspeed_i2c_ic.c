@@ -37,7 +37,7 @@ static const struct udevice_id aspeed_i2c_global_ids[] = {
 	{ }
 };
 
-U_BOOT_DRIVER(irq) = {
+U_BOOT_DRIVER(aspeed_i2c_ic) = {
 	.name		= "aspeed_i2c_ic",
 	.id			= UCLASS_MISC,
 	.of_match	= aspeed_i2c_global_ids,
