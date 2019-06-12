@@ -342,6 +342,30 @@ static ulong ast2500_configure_ddr(struct ast2500_scu *scu, ulong rate)
 	return ast2500_get_mpll_rate(scu);
 }
 
+
+static unsigned long ast2500_clk_set_rate(struct clk *clk, ulong rate)
+{
+	struct ast2500_clk_priv *priv = dev_get_priv(clk->dev);
+
+	ulong new_rate;
+	switch (clk->id) {
+	//mpll
+	case ASPEED_CLK_MPLL:
+		new_rate = ast2500_configure_ddr(priv->scu, rate);
+//		printf("ast2500_clk_set_rate mpll %ld \n", new_rate);
+		break;
+	case ASPEED_CLK_D2PLL:
+		new_rate = ast2500_configure_d2pll(priv->scu, rate);
+//		printf("ast2500_clk_set_rate d2pll ==== %ld \n", new_rate);
+		break;
+	default:
+		return -ENOENT;
+	}
+
+	return new_rate;
+}
+
+
 #define SCU_CLKSTOP_MAC1		(20)
 #define SCU_CLKSTOP_MAC2		(21)
 static ulong ast2500_configure_mac(struct ast2500_scu *scu, int index)
@@ -469,7 +493,6 @@ static ulong ast2500_configure_d2pll(struct ast2500_scu *scu, ulong rate)
 	return new_rate;
 }
 
-
 #define SCU_CLKSTOP_SDIO 27
 static ulong ast2500_enable_sdclk(struct ast2500_scu *scu)
 {
@@ -539,31 +562,10 @@ static int ast2500_clk_enable(struct clk *clk)
 	default:
 		pr_debug("can't enable clk \n");
 		return -ENOENT;
+		break;
 	}
 
 	return 0;
-}
-
-static unsigned long ast2500_clk_set_rate(struct clk *clk, ulong rate)
-{
-	struct ast2500_clk_priv *priv = dev_get_priv(clk->dev);
-
-	ulong new_rate;
-	switch (clk->id) {
-	//mpll
-	case ASPEED_CLK_MPLL:
-		new_rate = ast2500_configure_ddr(priv->scu, rate);
-//		printf("ast2500_clk_set_rate mpll %ld \n", new_rate);
-		break;
-	case ASPEED_CLK_D2PLL:
-		new_rate = ast2500_configure_d2pll(priv->scu, rate);
-//		printf("ast2500_clk_set_rate d2pll ==== %ld \n", new_rate);
-		break;
-	default:
-		return -ENOENT;
-	}
-
-	return new_rate;
 }
 
 struct clk_ops ast2500_clk_ops = {
