@@ -342,6 +342,56 @@ static ulong ast2500_configure_ddr(struct ast2500_scu *scu, ulong rate)
 	return ast2500_get_mpll_rate(scu);
 }
 
+static ulong ast2500_configure_d2pll(struct ast2500_scu *scu, ulong rate)
+{
+	/*
+	 * The values and the meaning of the next three
+	 * parameters are undocumented. Taken from Aspeed SDK.
+	 *
+	 * TODO(clg@kaod.org): the SIP and SIC values depend on the
+	 * Numerator value
+	 */
+	const u32 d2_pll_ext_param = 0x2c;
+	const u32 d2_pll_sip = 0x11;
+	const u32 d2_pll_sic = 0x18;
+	struct ast2500_div_config div_cfg = {
+		.num = SCU_D2PLL_NUM_MASK >> SCU_D2PLL_NUM_SHIFT,
+		.denum = SCU_D2PLL_DENUM_MASK >> SCU_D2PLL_DENUM_SHIFT,
+		.post_div = SCU_D2PLL_POST_MASK >> SCU_D2PLL_POST_SHIFT,
+	};
+	ulong clkin = ast2500_get_clkin(scu);
+	ulong new_rate;
+
+	writel((d2_pll_ext_param << SCU_D2PLL_EXT1_PARAM_SHIFT)
+	       | SCU_D2PLL_EXT1_OFF
+	       | SCU_D2PLL_EXT1_RESET, &scu->d2_pll_ext_param[0]);
+
+	/*
+	 * Select USB2.0 port1 PHY clock as a clock source for GCRT.
+	 * This would disconnect it from D2-PLL.
+	 */
+	clrsetbits_le32(&scu->misc_ctrl1, SCU_MISC_D2PLL_OFF,
+			SCU_MISC_GCRT_USB20CLK);
+
+	new_rate = ast2500_calc_clock_config(clkin, rate, &div_cfg);
+	writel((d2_pll_sip << SCU_D2PLL_SIP_SHIFT)
+	       | (d2_pll_sic << SCU_D2PLL_SIC_SHIFT)
+	       | (div_cfg.num << SCU_D2PLL_NUM_SHIFT)
+	       | (div_cfg.denum << SCU_D2PLL_DENUM_SHIFT)
+	       | (div_cfg.post_div << SCU_D2PLL_POST_SHIFT),
+	       &scu->d2_pll_param);
+
+	clrbits_le32(&scu->d2_pll_ext_param[0],
+		     SCU_D2PLL_EXT1_OFF | SCU_D2PLL_EXT1_RESET);
+
+	clrsetbits_le32(&scu->misc_ctrl2,
+			SCU_MISC2_RGMII_HPLL | SCU_MISC2_RMII_MPLL
+			| SCU_MISC2_RGMII_CLKDIV_MASK |
+			SCU_MISC2_RMII_CLKDIV_MASK,
+			(4 << SCU_MISC2_RMII_CLKDIV_SHIFT));
+
+	return new_rate;
+}
 
 static unsigned long ast2500_clk_set_rate(struct clk *clk, ulong rate)
 {
@@ -440,57 +490,6 @@ static ulong ast2500_configure_mac(struct ast2500_scu *scu, int index)
 	writel(clk_delay_settings, &scu->mac_clk_delay_10M);
 
 	return required_rate;
-}
-
-static ulong ast2500_configure_d2pll(struct ast2500_scu *scu, ulong rate)
-{
-	/*
-	 * The values and the meaning of the next three
-	 * parameters are undocumented. Taken from Aspeed SDK.
-	 *
-	 * TODO(clg@kaod.org): the SIP and SIC values depend on the
-	 * Numerator value
-	 */
-	const u32 d2_pll_ext_param = 0x2c;
-	const u32 d2_pll_sip = 0x11;
-	const u32 d2_pll_sic = 0x18;
-	struct ast2500_div_config div_cfg = {
-		.num = SCU_D2PLL_NUM_MASK >> SCU_D2PLL_NUM_SHIFT,
-		.denum = SCU_D2PLL_DENUM_MASK >> SCU_D2PLL_DENUM_SHIFT,
-		.post_div = SCU_D2PLL_POST_MASK >> SCU_D2PLL_POST_SHIFT,
-	};
-	ulong clkin = ast2500_get_clkin(scu);
-	ulong new_rate;
-
-	writel((d2_pll_ext_param << SCU_D2PLL_EXT1_PARAM_SHIFT)
-	       | SCU_D2PLL_EXT1_OFF
-	       | SCU_D2PLL_EXT1_RESET, &scu->d2_pll_ext_param[0]);
-
-	/*
-	 * Select USB2.0 port1 PHY clock as a clock source for GCRT.
-	 * This would disconnect it from D2-PLL.
-	 */
-	clrsetbits_le32(&scu->misc_ctrl1, SCU_MISC_D2PLL_OFF,
-			SCU_MISC_GCRT_USB20CLK);
-
-	new_rate = ast2500_calc_clock_config(clkin, rate, &div_cfg);
-	writel((d2_pll_sip << SCU_D2PLL_SIP_SHIFT)
-	       | (d2_pll_sic << SCU_D2PLL_SIC_SHIFT)
-	       | (div_cfg.num << SCU_D2PLL_NUM_SHIFT)
-	       | (div_cfg.denum << SCU_D2PLL_DENUM_SHIFT)
-	       | (div_cfg.post_div << SCU_D2PLL_POST_SHIFT),
-	       &scu->d2_pll_param);
-
-	clrbits_le32(&scu->d2_pll_ext_param[0],
-		     SCU_D2PLL_EXT1_OFF | SCU_D2PLL_EXT1_RESET);
-
-	clrsetbits_le32(&scu->misc_ctrl2,
-			SCU_MISC2_RGMII_HPLL | SCU_MISC2_RMII_MPLL
-			| SCU_MISC2_RGMII_CLKDIV_MASK |
-			SCU_MISC2_RMII_CLKDIV_MASK,
-			(4 << SCU_MISC2_RMII_CLKDIV_SHIFT));
-
-	return new_rate;
 }
 
 #define SCU_CLKSTOP_SDIO 27
