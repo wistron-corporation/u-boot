@@ -63,6 +63,7 @@
 	pinctrl-0 = <&pinctrl_mac2link_default &pinctrl_mdio2_default>;
 };
 #endif
+
 &fmc {
 	status = "okay";
 	flash@0 {
@@ -86,6 +87,12 @@
         status = "okay";
 };
 
-&i2c1 {
+&i2c3 {
         status = "okay";
+
+};
+
+&i2c7 {
+        status = "okay";
+
 };
