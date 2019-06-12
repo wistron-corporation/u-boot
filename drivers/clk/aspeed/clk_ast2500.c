@@ -158,6 +158,17 @@ static u32 ast2500_get_uart_clk_rate(struct ast2500_scu *scu, int uart_index)
 	return uart_clkin;
 }
 
+static u32 ast2500_get_sdio_clk_rate(struct ast2500_scu *scu)
+{
+	u32 clkin = ast2500_get_hpll_rate(scu);
+	u32 clk_sel = readl(&scu->clk_sel1);
+	u32 div = (clk_sel >> 12) & 0x7;
+	
+	div = (div + 1) << 2;
+
+	return (clkin / div);
+}
+
 static unsigned long ast2500_clk_get_rate(struct clk *clk)
 {
 	struct ast2500_clk_priv *priv = dev_get_priv(clk->dev);
@@ -194,22 +205,26 @@ static unsigned long ast2500_clk_get_rate(struct clk *clk)
 			rate = rate / apb_div;
 		}
 		break;
-	case PCLK_UART1:
+	case ASPEED_CLK_GATE_UART1CLK:
 		rate = ast2500_get_uart_clk_rate(priv->scu, 1);
 		break;
-	case PCLK_UART2:
+	case ASPEED_CLK_GATE_UART2CLK:
 		rate = ast2500_get_uart_clk_rate(priv->scu, 2);
 		break;
-	case PCLK_UART3:
+	case ASPEED_CLK_GATE_UART3CLK:
 		rate = ast2500_get_uart_clk_rate(priv->scu, 3);
 		break;
-	case PCLK_UART4:
+	case ASPEED_CLK_GATE_UART4CLK:
 		rate = ast2500_get_uart_clk_rate(priv->scu, 4);
 		break;
-	case PCLK_UART5:
+	case ASPEED_CLK_GATE_UART5CLK:
 		rate = ast2500_get_uart_clk_rate(priv->scu, 5);
 		break;
+	case ASPEED_CLK_SDIO:
+		rate = ast2500_get_sdio_clk_rate(priv->scu);
+		break;
 	default:
+		pr_debug("can't get clk rate \n");
 		return -ENOENT;
 	}
 
@@ -454,26 +469,46 @@ static ulong ast2500_configure_d2pll(struct ast2500_scu *scu, ulong rate)
 	return new_rate;
 }
 
-static unsigned long ast2500_clk_set_rate(struct clk *clk, ulong rate)
+
+#define SCU_CLKSTOP_SDIO 27
+static ulong ast2500_enable_sdclk(struct ast2500_scu *scu)
 {
-	struct ast2500_clk_priv *priv = dev_get_priv(clk->dev);
+	u32 reset_bit;
+	u32 clkstop_bit;
 
-	ulong new_rate;
-	switch (clk->id) {
-	//mpll
-	case ASPEED_CLK_MPLL:
-		new_rate = ast2500_configure_ddr(priv->scu, rate);
-//		printf("ast2500_clk_set_rate mpll %ld \n", new_rate);
-		break;
-	case ASPEED_CLK_D2PLL:
-		new_rate = ast2500_configure_d2pll(priv->scu, rate);
-//		printf("ast2500_clk_set_rate d2pll ==== %ld \n", new_rate);
-		break;
-	default:
-		return -ENOENT;
-	}
+	reset_bit = BIT(ASEPPD_RESET_SDIO);
+	clkstop_bit = BIT(SCU_CLKSTOP_SDIO);
 
-	return new_rate;
+	setbits_le32(&scu->sysreset_ctrl1, reset_bit);
+	udelay(100);
+	//enable clk 
+	clrbits_le32(&scu->clk_stop_ctrl1, clkstop_bit);
+	mdelay(10);
+	clrbits_le32(&scu->sysreset_ctrl1, reset_bit);
+
+	return 0;
+}
+
+#define SCU_CLKSTOP_EXTSD 15
+#define SCU_CLK_SD_MASK				(0x7 << 12)
+#define SCU_CLK_SD_DIV(x)			(x << 12)
+
+static ulong ast2500_enable_extsdclk(struct ast2500_scu *scu)
+{
+	u32 clk_sel = readl(&scu->clk_sel1);
+	u32 enableclk_bit;
+
+	enableclk_bit = BIT(SCU_CLKSTOP_EXTSD);
+
+	// SDCLK = G4  H-PLL / 4, G5 = H-PLL /8
+	clk_sel &= ~SCU_CLK_SD_MASK;
+	clk_sel |= SCU_CLK_SD_DIV(1);
+	writel(clk_sel, &scu->clk_sel1);
+	
+	//enable clk 
+	setbits_le32(&scu->clk_sel1, enableclk_bit);
+	
+	return 0;
 }
 
 static int ast2500_clk_enable(struct clk *clk)
@@ -495,11 +530,40 @@ static int ast2500_clk_enable(struct clk *clk)
 	case ASPEED_CLK_D2PLL:
 		ast2500_configure_d2pll(priv->scu, D2PLL_DEFAULT_RATE);
 		break;
+	case ASPEED_CLK_GATE_SDCLK:
+		ast2500_enable_sdclk(priv->scu);
+		break;
+	case ASPEED_CLK_GATE_SDEXTCLK:
+		ast2500_enable_extsdclk(priv->scu);
+		break;
 	default:
+		pr_debug("can't enable clk \n");
 		return -ENOENT;
 	}
 
 	return 0;
+}
+
+static unsigned long ast2500_clk_set_rate(struct clk *clk, ulong rate)
+{
+	struct ast2500_clk_priv *priv = dev_get_priv(clk->dev);
+
+	ulong new_rate;
+	switch (clk->id) {
+	//mpll
+	case ASPEED_CLK_MPLL:
+		new_rate = ast2500_configure_ddr(priv->scu, rate);
+//		printf("ast2500_clk_set_rate mpll %ld \n", new_rate);
+		break;
+	case ASPEED_CLK_D2PLL:
+		new_rate = ast2500_configure_d2pll(priv->scu, rate);
+//		printf("ast2500_clk_set_rate d2pll ==== %ld \n", new_rate);
+		break;
+	default:
+		return -ENOENT;
+	}
+
+	return new_rate;
 }
 
 struct clk_ops ast2500_clk_ops = {

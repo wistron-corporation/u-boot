@@ -45,7 +45,6 @@
 
 &mac0 {
 	status = "okay";
-
 	phy-mode = "rgmii";
 
 	pinctrl-names = "default";
@@ -54,9 +53,7 @@
 
 &mac1 {
 	status = "okay";
-
 	phy-mode = "rgmii";
-
 	pinctrl-names = "default";
 	pinctrl-0 = <&pinctrl_mac2link_default &pinctrl_mdio2_default>;
 };
@@ -78,4 +75,26 @@
                 spi-tx-bus-width = <2>;
                 spi-rx-bus-width = <2>;
         };
+};
+
+&sdhci_slot0 {
+	status = "okay";
+	pinctrl-names = "default";
+	pinctrl-0 = <&pinctrl_sd1_default>;
+};
+
+&sdhci_slot1 {
+	status = "okay";
+	pinctrl-names = "default";
+	pinctrl-0 = <&pinctrl_sd2_default>;
+};
+
+&i2c3 {
+        status = "okay";
+
+};
+
+&i2c7 {
+        status = "okay";
+
 };

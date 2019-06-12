@@ -507,12 +507,10 @@ static ulong ast2600_clk_get_rate(struct clk *clk)
 	//HPLL
 	case ASPEED_CLK_HPLL:
 		rate = ast2600_get_hpll_rate(priv->scu);
-		printf("hpll %ld \n", rate);
 		break;
 	//HCLK
 	case ASPEED_CLK_AHB:
 		rate = ast2600_get_hclk(priv->scu);
-		printf("hclk %ld \n", rate);
 		break;
 	case ASPEED_CLK_MPLL:
 		rate = ast2600_get_mpll_rate(priv->scu);
@@ -569,21 +567,21 @@ static int ast2600_clk_enable(struct clk *clk)
 	struct ast2600_clk_priv *priv = dev_get_priv(clk->dev);
 
 	switch (clk->id) {
-	/*
-	 * For MAC clocks the clock rate is
-	 * configured based on whether RGMII or RMII mode has been selected
-	 * through hardware strapping.
-	 */
-	case ASPEED_CLK_GATE_MAC1CLK:
-		printf("ast2600_clk_enable mac 1 ~~~\n");
-		ast2600_configure_mac(priv->scu, 1);
-		break;
-	case ASPEED_CLK_GATE_MAC2CLK:
-		printf("ast2600_clk_enable mac 2 ~~~\n");
-		ast2600_configure_mac(priv->scu, 2);
-		break;
-	default:
-		return -ENOENT;
+		case ASPEED_CLK_GATE_MAC1CLK:
+			ast2600_configure_mac(priv->scu, 1);
+			break;
+		case ASPEED_CLK_GATE_MAC2CLK:
+			ast2600_configure_mac(priv->scu, 2);
+			break;
+		case ASPEED_CLK_GATE_MAC3CLK:
+			ast2600_configure_mac(priv->scu, 3);
+			break;
+		case ASPEED_CLK_GATE_MAC4CLK:
+			ast2600_configure_mac(priv->scu, 4);
+			break;
+		default:
+			return -ENOENT;
+			break;
 	}
 
 	return 0;

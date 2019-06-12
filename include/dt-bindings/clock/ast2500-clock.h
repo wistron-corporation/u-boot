@@ -3,14 +3,6 @@
  * Copyright 2016 Google Inc.
  */
 
-
-/* Special clocks */
-#define PCLK_UART1	501
-#define PCLK_UART2	502
-#define PCLK_UART3	503
-#define PCLK_UART4	504
-#define PCLK_UART5	505
-
 /* come from linux kernel */
 
 #define ASPEED_CLK_GATE_ECLK            0

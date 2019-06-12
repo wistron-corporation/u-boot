@@ -64,6 +64,7 @@
 			compatible = "aspeed,ast2500-fmc";
 			status = "disabled";
 			interrupts = <19>;
+			clocks = <&scu ASPEED_CLK_AHB>;
 			flash@0 {
 				reg = < 0 >;
 				compatible = "jedec,spi-nor";
@@ -87,6 +88,7 @@
 			#address-cells = <1>;
 			#size-cells = <0>;
 			compatible = "aspeed,ast2500-spi";
+			clocks = <&scu ASPEED_CLK_AHB>;
 			status = "disabled";
 			flash@0 {
 				reg = < 0 >;
@@ -106,6 +108,7 @@
 			#address-cells = <1>;
 			#size-cells = <0>;
 			compatible = "aspeed,ast2500-spi";
+			clocks = <&scu ASPEED_CLK_AHB>;
 			status = "disabled";
 			flash@0 {
 				reg = < 0 >;
@@ -131,6 +134,7 @@
 			compatible = "aspeed,ast2500-mac", "faraday,ftgmac100";
 			reg = <0x1e660000 0x180>;
 			interrupts = <2>;
+			clocks = <&scu ASPEED_CLK_GATE_MAC1CLK>, <&scu ASPEED_CLK_D2PLL>;
 			status = "disabled";
 		};
 
@@ -138,6 +142,7 @@
 			compatible = "aspeed,ast2500-mac", "faraday,ftgmac100";
 			reg = <0x1e680000 0x180>;
 			interrupts = <3>;
+			clocks = <&scu ASPEED_CLK_GATE_MAC2CLK>, <&scu ASPEED_CLK_D2PLL>;
 			status = "disabled";
 		};
 
@@ -207,6 +212,40 @@
 				reg = <0x1e720000 0x9000>;	// 36K
 			};
 
+			sdhci: sdhci@1e740000 {
+                                #interrupt-cells = <1>;
+                                compatible = "aspeed,aspeed-sdhci-irq", "simple-mfd";
+                                reg = <0x1e740000 0x1000>;
+                                interrupts = <26>;
+                                interrupt-controller;
+                                clocks = <&scu ASPEED_CLK_GATE_SDCLK>, <&scu ASPEED_CLK_GATE_SDEXTCLK>;
+                                clock-names = "ctrlclk", "extclk";
+                                #address-cells = <1>;
+                                #size-cells = <1>;
+                                ranges = <0x0 0x1e740000 0x1000>;
+
+                                sdhci_slot0: sdhci_slot0@100 {
+                                        compatible = "aspeed,sdhci-ast2500";
+                                        reg = <0x100 0x100>;
+                                        interrupts = <0>;
+                                        interrupt-parent = <&sdhci>;
+                                        sdhci,auto-cmd12;
+                                        clocks = <&scu ASPEED_CLK_SDIO>;
+                                        status = "disabled";
+                                };
+
+                                sdhci_slot1: sdhci_slot1@200 {
+                                        compatible = "aspeed,sdhci-ast2500";
+                                        reg = <0x200 0x100>;
+                                        interrupts = <1>;
+                                        interrupt-parent = <&sdhci>;
+                                        sdhci,auto-cmd12;
+                                        clocks = <&scu ASPEED_CLK_SDIO>;
+                                        status = "disabled";
+                                };
+
+                        };
+
 			gpio: gpio@1e780000 {
 				#gpio-cells = <2>;
 				gpio-controller;
@@ -228,6 +267,7 @@
 				reg = <0x1e783000 0x20>;
 				reg-shift = <2>;
 				interrupts = <9>;
+				clocks = <&scu ASPEED_CLK_GATE_UART1CLK>;
 				no-loopback-test;
 				status = "disabled";
 			};
@@ -237,6 +277,7 @@
 				reg = <0x1e784000 0x20>;
 				reg-shift = <2>;
 				interrupts = <10>;
+				clocks = <&scu ASPEED_CLK_GATE_UART5CLK>;
 				no-loopback-test;
 				status = "disabled";
 			};
@@ -337,6 +378,7 @@
 				reg = <0x1e78d000 0x20>;
 				reg-shift = <2>;
 				interrupts = <32>;
+				clocks = <&scu ASPEED_CLK_GATE_UART2CLK>;
 				no-loopback-test;
 				status = "disabled";
 			};
@@ -346,6 +388,7 @@
 				reg = <0x1e78e000 0x20>;
 				reg-shift = <2>;
 				interrupts = <33>;
+				clocks = <&scu ASPEED_CLK_GATE_UART3CLK>;
 				no-loopback-test;
 				status = "disabled";
 			};
@@ -355,6 +398,7 @@
 				reg = <0x1e78f000 0x20>;
 				reg-shift = <2>;
 				interrupts = <34>;
+				clocks = <&scu ASPEED_CLK_GATE_UART4CLK>;
 				no-loopback-test;
 				status = "disabled";
 			};
@@ -388,6 +432,7 @@
 		bus-frequency = <100000>;
 		interrupts = <0>;
 		interrupt-parent = <&i2c_ic>;
+		clocks = <&scu ASPEED_CLK_APB>;
 		status = "disabled";
 		/* Does not need pinctrl properties */
 	};
@@ -402,6 +447,7 @@
 		bus-frequency = <100000>;
 		interrupts = <1>;
 		interrupt-parent = <&i2c_ic>;
+		clocks = <&scu ASPEED_CLK_APB>;
 		status = "disabled";
 		/* Does not need pinctrl properties */
 	};
@@ -416,6 +462,7 @@
 		bus-frequency = <100000>;
 		interrupts = <2>;
 		interrupt-parent = <&i2c_ic>;
+		clocks = <&scu ASPEED_CLK_APB>;
 		pinctrl-names = "default";
 		pinctrl-0 = <&pinctrl_i2c3_default>;
 		status = "disabled";
@@ -431,6 +478,7 @@
 		bus-frequency = <100000>;
 		interrupts = <3>;
 		interrupt-parent = <&i2c_ic>;
+		clocks = <&scu ASPEED_CLK_APB>;
 		pinctrl-names = "default";
 		pinctrl-0 = <&pinctrl_i2c4_default>;
 		status = "disabled";
@@ -446,6 +494,7 @@
 		bus-frequency = <100000>;
 		interrupts = <4>;
 		interrupt-parent = <&i2c_ic>;
+		clocks = <&scu ASPEED_CLK_APB>;
 		pinctrl-names = "default";
 		pinctrl-0 = <&pinctrl_i2c5_default>;
 		status = "disabled";
@@ -461,6 +510,7 @@
 		bus-frequency = <100000>;
 		interrupts = <5>;
 		interrupt-parent = <&i2c_ic>;
+		clocks = <&scu ASPEED_CLK_APB>;
 		pinctrl-names = "default";
 		pinctrl-0 = <&pinctrl_i2c6_default>;
 		status = "disabled";
@@ -476,6 +526,7 @@
 		bus-frequency = <100000>;
 		interrupts = <6>;
 		interrupt-parent = <&i2c_ic>;
+		clocks = <&scu ASPEED_CLK_APB>;
 		pinctrl-names = "default";
 		pinctrl-0 = <&pinctrl_i2c7_default>;
 		status = "disabled";
@@ -491,6 +542,7 @@
 		bus-frequency = <100000>;
 		interrupts = <7>;
 		interrupt-parent = <&i2c_ic>;
+		clocks = <&scu ASPEED_CLK_APB>;
 		pinctrl-names = "default";
 		pinctrl-0 = <&pinctrl_i2c8_default>;
 		status = "disabled";
@@ -506,6 +558,7 @@
 		bus-frequency = <100000>;
 		interrupts = <8>;
 		interrupt-parent = <&i2c_ic>;
+		clocks = <&scu ASPEED_CLK_APB>;
 		pinctrl-names = "default";
 		pinctrl-0 = <&pinctrl_i2c9_default>;
 		status = "disabled";
@@ -521,6 +574,7 @@
 		bus-frequency = <100000>;
 		interrupts = <9>;
 		interrupt-parent = <&i2c_ic>;
+		clocks = <&scu ASPEED_CLK_APB>;
 		pinctrl-names = "default";
 		pinctrl-0 = <&pinctrl_i2c10_default>;
 		status = "disabled";
@@ -536,6 +590,7 @@
 		bus-frequency = <100000>;
 		interrupts = <10>;
 		interrupt-parent = <&i2c_ic>;
+		clocks = <&scu ASPEED_CLK_APB>;
 		pinctrl-names = "default";
 		pinctrl-0 = <&pinctrl_i2c11_default>;
 		status = "disabled";
@@ -551,6 +606,7 @@
 		bus-frequency = <100000>;
 		interrupts = <11>;
 		interrupt-parent = <&i2c_ic>;
+		clocks = <&scu ASPEED_CLK_APB>;
 		pinctrl-names = "default";
 		pinctrl-0 = <&pinctrl_i2c12_default>;
 		status = "disabled";
@@ -566,6 +622,7 @@
 		bus-frequency = <100000>;
 		interrupts = <12>;
 		interrupt-parent = <&i2c_ic>;
+		clocks = <&scu ASPEED_CLK_APB>;
 		pinctrl-names = "default";
 		pinctrl-0 = <&pinctrl_i2c13_default>;
 		status = "disabled";
@@ -581,6 +638,7 @@
 		bus-frequency = <100000>;
 		interrupts = <13>;
 		interrupt-parent = <&i2c_ic>;
+		clocks = <&scu ASPEED_CLK_APB>;
 		pinctrl-names = "default";
 		pinctrl-0 = <&pinctrl_i2c14_default>;
 		status = "disabled";
