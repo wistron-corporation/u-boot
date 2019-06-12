@@ -61,7 +61,7 @@ int board_init(void)
 
 	uclass_first_device_check(UCLASS_MISC, &dev);
 	if (!dev) 
-		printf("No MDIO found.\n");
+		printf("No MISC found.\n");
 
 	return 0;
 }
