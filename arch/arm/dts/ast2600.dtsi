@@ -121,7 +121,7 @@
 				0x20000000 0x10000000 >;
 			#address-cells = <1>;
 			#size-cells = <0>;
-			compatible = "aspeed,ast2500-fmc";
+			compatible = "aspeed,ast2600-fmc";
 			status = "disabled";
 			interrupts = <19>;
 			clocks = <&scu ASPEED_CLK_AHB>;
@@ -147,7 +147,7 @@
 				0x30000000 0x08000000 >;
 			#address-cells = <1>;
 			#size-cells = <0>;
-			compatible = "aspeed,ast2500-spi";
+			compatible = "aspeed,ast2600-spi";
 			clocks = <&scu ASPEED_CLK_AHB>;
 			status = "disabled";
 			flash@0 {
@@ -167,7 +167,7 @@
 				0x38000000 0x08000000 >;
 			#address-cells = <1>;
 			#size-cells = <0>;
-			compatible = "aspeed,ast2500-spi";
+			compatible = "aspeed,ast2600-spi";
 			clocks = <&scu ASPEED_CLK_AHB>;
 			status = "disabled";
 			flash@0 {
