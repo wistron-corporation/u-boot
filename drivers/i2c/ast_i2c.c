@@ -105,7 +105,7 @@ static int ast_i2c_ofdata_to_platdata(struct udevice *dev)
 
 static int ast_i2c_probe(struct udevice *dev)
 {
-	struct ast2500_scu *scu;
+//	struct ast2500_scu *scu;
 
 	debug("Enabling I2C%u\n", dev->seq);
 
