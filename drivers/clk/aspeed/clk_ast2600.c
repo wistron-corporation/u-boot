@@ -507,12 +507,10 @@ static ulong ast2600_clk_get_rate(struct clk *clk)
 	//HPLL
 	case ASPEED_CLK_HPLL:
 		rate = ast2600_get_hpll_rate(priv->scu);
-		printf("hpll %ld \n", rate);
 		break;
 	//HCLK
 	case ASPEED_CLK_AHB:
 		rate = ast2600_get_hclk(priv->scu);
-		printf("hclk %ld \n", rate);
 		break;
 	case ASPEED_CLK_MPLL:
 		rate = ast2600_get_mpll_rate(priv->scu);

@@ -60,9 +60,10 @@ int board_init(void)
 	gd->bd->bi_boot_params = CONFIG_SYS_SDRAM_BASE + 0x100;
 
 	uclass_first_device_check(UCLASS_MISC, &dev);
+#if 0	
 	if (!dev) 
 		printf("No MISC found.\n");
-
+#endif
 	return 0;
 }
 
