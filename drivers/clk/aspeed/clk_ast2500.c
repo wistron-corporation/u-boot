@@ -143,6 +143,16 @@ static u32 ast2500_get_hclk(struct ast2500_scu *scu)
 	return (rate / axi_div / ahb_div);
 }
 
+static u32 ast2500_get_pclk(struct ast2500_scu *scu)
+{
+	u32 rate = 0;
+	ulong apb_div = 4 + 4 * ((readl(&scu->clk_sel1)
+				  & SCU_PCLK_DIV_MASK)
+				 >> SCU_PCLK_DIV_SHIFT);
+	rate = ast2500_get_hpll_rate(scu);
+
+	return (rate / apb_div);
+}
 
 static u32 ast2500_get_sdio_clk_rate(struct ast2500_scu *scu)
 {
@@ -190,19 +200,11 @@ static ulong ast2500_clk_get_rate(struct clk *clk)
 	case ASPEED_CLK_MPLL:
 		rate = ast2500_get_mpll_rate(priv->scu);
 		break;
-	//HCLK
 	case ASPEED_CLK_AHB:
 		rate = ast2500_get_hclk(priv->scu);
 		break;
-	//pclk
 	case ASPEED_CLK_APB:
-		{
-			ulong apb_div = 4 + 4 * ((readl(&priv->scu->clk_sel1)
-						  & SCU_PCLK_DIV_MASK)
-						 >> SCU_PCLK_DIV_SHIFT);
-			rate = ast2500_get_hpll_rate(priv->scu);
-			rate = rate / apb_div;
-		}
+		rate = ast2500_get_pclk(priv->scu);
 		break;
 	case ASPEED_CLK_GATE_UART1CLK:
 		rate = ast2500_get_uart_clk_rate(priv->scu, 1);
