@@ -40,11 +40,6 @@
 	};
 };
 
-
-&i2c0 {
-        
-};
-
-&i2c1 {
-        clocks = <&scu ASPEED_CLK_APB>;
+&i2cglobal {
+	resets = <&rst ASPEED_RESET_I2C>;
 };
