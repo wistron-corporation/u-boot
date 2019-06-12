@@ -31,13 +31,13 @@ static int ast2500_pinctrl_probe(struct udevice *dev)
 	ret = uclass_get_device_by_driver(UCLASS_CLK, DM_GET_DRIVER(aspeed_scu),
                                           &clk_dev);
     if (ret) {
-		printf("clock device not found\n");
+		debug("clock device not found\n");
 		return ret;
     }
 
 	priv->scu = devfdt_get_addr_ptr(clk_dev);
 	if (IS_ERR(priv->scu)) {
-		printf("%s(): can't get SCU\n", __func__);
+		debug("%s(): can't get SCU\n", __func__);
 		return PTR_ERR(priv->scu);
 	}
 

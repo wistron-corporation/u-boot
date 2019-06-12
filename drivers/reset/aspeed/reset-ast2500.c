@@ -19,15 +19,31 @@ struct ast2500_reset_priv {
 	struct ast2500_scu *scu;
 };
 
+static int ast2500_reset_deassert(struct reset_ctl *reset_ctl)
+{
+	struct ast2500_reset_priv *priv = dev_get_priv(reset_ctl->dev);
+	struct ast2500_scu *scu = priv->scu;
+	int ret = 0;
+
+	debug("ast2500_reset_deassert reset_ctl->id %ld \n", reset_ctl->id);
+
+	if(reset_ctl->id >= 32)
+		clrbits_le32(&scu->sysreset_ctrl2 , BIT(reset_ctl->id - 32));
+	else
+		clrbits_le32(&scu->sysreset_ctrl1 , BIT(reset_ctl->id));
+
+	return ret;
+}
+
 static int ast2500_reset_assert(struct reset_ctl *reset_ctl)
 {
 	struct ast2500_reset_priv *priv = dev_get_priv(reset_ctl->dev);
 	struct ast2500_scu *scu = priv->scu;
 //	u32 reset_mode, reset_mask;
-	bool reset_sdram;
+//	bool reset_sdram;
 	int ret = 0;
 
-	debug("ast2500_reset_assert reset_ctl->id %d \n", reset_ctl->id);
+	debug("ast2500_reset_assert reset_ctl->id %ld \n", reset_ctl->id);
 	/*
 	 * To reset SDRAM, a specifal flag in SYSRESET register
 	 * needs to be enabled first
@@ -58,23 +74,6 @@ static int ast2500_reset_assert(struct reset_ctl *reset_ctl)
 	return ret;
 }
 
-static int ast2500_reset_deassert(struct reset_ctl *reset_ctl)
-{
-	struct ast2500_reset_priv *priv = dev_get_priv(reset_ctl->dev);
-	struct ast2500_scu *scu = priv->scu;
-	u32 reset_mode, reset_mask;
-	bool reset_sdram;
-	int ret = 0;
-
-	debug("ast2500_reset_deassert reset_ctl->id %d \n", reset_ctl->id);
-
-	if(reset_ctl->id >= 32)
-		clrbits_le32(&scu->sysreset_ctrl2 , BIT(reset_ctl->id - 32));
-	else
-		clrbits_le32(&scu->sysreset_ctrl1 , BIT(reset_ctl->id));
-
-	return ret;
-}
 
 static int ast2500_reset_request(struct reset_ctl *reset_ctl)
 {

@@ -25,7 +25,7 @@ static int ast_wdt_start(struct udevice *dev, u64 timeout, ulong flags)
 	struct ast_wdt_priv *priv = dev_get_priv(dev);
 	ulong driver_data = dev_get_driver_data(dev);
 	u32 reset_mode = ast_reset_mode_from_flags(flags);
-printf("ast_wdt_start to %ld \n", timeout);
+
 	clrsetbits_le32(&priv->regs->ctrl,
 			WDT_CTRL_RESET_MASK << WDT_CTRL_RESET_MODE_SHIFT,
 			reset_mode << WDT_CTRL_RESET_MODE_SHIFT);

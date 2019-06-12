@@ -127,14 +127,44 @@ extern u32 ast2500_get_d2pll_rate(struct ast2500_scu *scu)
 	return (((clkin * ((num + 1) / (denum + 1))) / (post_div + 1))/ (od_div + 1));
 }
 
-/**
- * Get current rate or uart clock
- *
- * @scu SCU registers
- * @uart_index UART index, 1-5
- *
- * @return current setting for uart clock rate
- */
+#define SCU_HWSTRAP_AXIAHB_DIV_SHIFT    9
+#define SCU_HWSTRAP_AXIAHB_DIV_MASK     (0x7 << SCU_HWSTRAP_AXIAHB_DIV_SHIFT)
+
+static u32 ast2500_get_hclk(struct ast2500_scu *scu)
+{
+	ulong ahb_div = 1 + ((readl(&scu->hwstrap)
+			      & SCU_HWSTRAP_AXIAHB_DIV_MASK)
+			     >> SCU_HWSTRAP_AXIAHB_DIV_SHIFT);
+	
+	ulong axi_div = 2;
+	u32 rate = 0;
+
+	rate = ast2500_get_hpll_rate(scu);
+	return (rate / axi_div / ahb_div);
+}
+
+static u32 ast2500_get_pclk(struct ast2500_scu *scu)
+{
+	u32 rate = 0;
+	ulong apb_div = 4 + 4 * ((readl(&scu->clk_sel1)
+				  & SCU_PCLK_DIV_MASK)
+				 >> SCU_PCLK_DIV_SHIFT);
+	rate = ast2500_get_hpll_rate(scu);
+
+	return (rate / apb_div);
+}
+
+static u32 ast2500_get_sdio_clk_rate(struct ast2500_scu *scu)
+{
+	u32 clkin = ast2500_get_hpll_rate(scu);
+	u32 clk_sel = readl(&scu->clk_sel1);
+	u32 div = (clk_sel >> 12) & 0x7;
+	
+	div = (div + 1) << 2;
+
+	return (clkin / div);
+}
+
 static u32 ast2500_get_uart_clk_rate(struct ast2500_scu *scu, int uart_index)
 {
 	/*
@@ -158,52 +188,23 @@ static u32 ast2500_get_uart_clk_rate(struct ast2500_scu *scu, int uart_index)
 	return uart_clkin;
 }
 
-static u32 ast2500_get_sdio_clk_rate(struct ast2500_scu *scu)
-{
-	u32 clkin = ast2500_get_hpll_rate(scu);
-	u32 clk_sel = readl(&scu->clk_sel1);
-	u32 div = (clk_sel >> 12) & 0x7;
-	
-	div = (div + 1) << 2;
-
-	return (clkin / div);
-}
-
-static unsigned long ast2500_clk_get_rate(struct clk *clk)
+static ulong ast2500_clk_get_rate(struct clk *clk)
 {
 	struct ast2500_clk_priv *priv = dev_get_priv(clk->dev);
 	ulong rate;
 
 	switch (clk->id) {
-	//HPLL
 	case ASPEED_CLK_HPLL:
 		rate = ast2500_get_hpll_rate(priv->scu);
 		break;
-	//HCLK
-	case ASPEED_CLK_AHB:
-		{
-			ulong ahb_div = 1 + ((readl(&priv->scu->hwstrap)
-					      & SCU_HWSTRAP_AXIAHB_DIV_MASK)
-					     >> SCU_HWSTRAP_AXIAHB_DIV_SHIFT);
-			ulong axi_div = 2;
-
-			rate = ast2500_get_hpll_rate(priv->scu);
-			rate = rate / axi_div / ahb_div;
-		}
-		break;
-	//mpll
 	case ASPEED_CLK_MPLL:
 		rate = ast2500_get_mpll_rate(priv->scu);
 		break;
-	//pclk
+	case ASPEED_CLK_AHB:
+		rate = ast2500_get_hclk(priv->scu);
+		break;
 	case ASPEED_CLK_APB:
-		{
-			ulong apb_div = 4 + 4 * ((readl(&priv->scu->clk_sel1)
-						  & SCU_PCLK_DIV_MASK)
-						 >> SCU_PCLK_DIV_SHIFT);
-			rate = ast2500_get_hpll_rate(priv->scu);
-			rate = rate / apb_div;
-		}
+		rate = ast2500_get_pclk(priv->scu);
 		break;
 	case ASPEED_CLK_GATE_UART1CLK:
 		rate = ast2500_get_uart_clk_rate(priv->scu, 1);
@@ -226,6 +227,7 @@ static unsigned long ast2500_clk_get_rate(struct clk *clk)
 	default:
 		pr_debug("can't get clk rate \n");
 		return -ENOENT;
+		break;
 	}
 
 	return rate;
@@ -342,8 +344,82 @@ static ulong ast2500_configure_ddr(struct ast2500_scu *scu, ulong rate)
 	return ast2500_get_mpll_rate(scu);
 }
 
+static ulong ast2500_configure_d2pll(struct ast2500_scu *scu, ulong rate)
+{
+	/*
+	 * The values and the meaning of the next three
+	 * parameters are undocumented. Taken from Aspeed SDK.
+	 *
+	 * TODO(clg@kaod.org): the SIP and SIC values depend on the
+	 * Numerator value
+	 */
+	const u32 d2_pll_ext_param = 0x2c;
+	const u32 d2_pll_sip = 0x11;
+	const u32 d2_pll_sic = 0x18;
+	struct ast2500_div_config div_cfg = {
+		.num = SCU_D2PLL_NUM_MASK >> SCU_D2PLL_NUM_SHIFT,
+		.denum = SCU_D2PLL_DENUM_MASK >> SCU_D2PLL_DENUM_SHIFT,
+		.post_div = SCU_D2PLL_POST_MASK >> SCU_D2PLL_POST_SHIFT,
+	};
+	ulong clkin = ast2500_get_clkin(scu);
+	ulong new_rate;
+
+	writel((d2_pll_ext_param << SCU_D2PLL_EXT1_PARAM_SHIFT)
+	       | SCU_D2PLL_EXT1_OFF
+	       | SCU_D2PLL_EXT1_RESET, &scu->d2_pll_ext_param[0]);
+
+	/*
+	 * Select USB2.0 port1 PHY clock as a clock source for GCRT.
+	 * This would disconnect it from D2-PLL.
+	 */
+	clrsetbits_le32(&scu->misc_ctrl1, SCU_MISC_D2PLL_OFF,
+			SCU_MISC_GCRT_USB20CLK);
+
+	new_rate = ast2500_calc_clock_config(clkin, rate, &div_cfg);
+	writel((d2_pll_sip << SCU_D2PLL_SIP_SHIFT)
+	       | (d2_pll_sic << SCU_D2PLL_SIC_SHIFT)
+	       | (div_cfg.num << SCU_D2PLL_NUM_SHIFT)
+	       | (div_cfg.denum << SCU_D2PLL_DENUM_SHIFT)
+	       | (div_cfg.post_div << SCU_D2PLL_POST_SHIFT),
+	       &scu->d2_pll_param);
+
+	clrbits_le32(&scu->d2_pll_ext_param[0],
+		     SCU_D2PLL_EXT1_OFF | SCU_D2PLL_EXT1_RESET);
+
+	clrsetbits_le32(&scu->misc_ctrl2,
+			SCU_MISC2_RGMII_HPLL | SCU_MISC2_RMII_MPLL
+			| SCU_MISC2_RGMII_CLKDIV_MASK |
+			SCU_MISC2_RMII_CLKDIV_MASK,
+			(4 << SCU_MISC2_RMII_CLKDIV_SHIFT));
+
+	return new_rate;
+}
+
+static unsigned long ast2500_clk_set_rate(struct clk *clk, ulong rate)
+{
+	struct ast2500_clk_priv *priv = dev_get_priv(clk->dev);
+
+	ulong new_rate;
+	switch (clk->id) {
+	//mpll
+	case ASPEED_CLK_MPLL:
+		new_rate = ast2500_configure_ddr(priv->scu, rate);
+//		printf("ast2500_clk_set_rate mpll %ld \n", new_rate);
+		break;
+	case ASPEED_CLK_D2PLL:
+		new_rate = ast2500_configure_d2pll(priv->scu, rate);
+//		printf("ast2500_clk_set_rate d2pll ==== %ld \n", new_rate);
+		break;
+	default:
+		return -ENOENT;
+	}
+
+	return new_rate;
+}
+
 #define SCU_CLKSTOP_MAC1		(20)
 #define SCU_CLKSTOP_MAC2		(21)
+
 static ulong ast2500_configure_mac(struct ast2500_scu *scu, int index)
 {
 	ulong hpll_rate = ast2500_get_hpll_rate(scu);
@@ -418,58 +494,6 @@ static ulong ast2500_configure_mac(struct ast2500_scu *scu, int index)
 	return required_rate;
 }
 
-static ulong ast2500_configure_d2pll(struct ast2500_scu *scu, ulong rate)
-{
-	/*
-	 * The values and the meaning of the next three
-	 * parameters are undocumented. Taken from Aspeed SDK.
-	 *
-	 * TODO(clg@kaod.org): the SIP and SIC values depend on the
-	 * Numerator value
-	 */
-	const u32 d2_pll_ext_param = 0x2c;
-	const u32 d2_pll_sip = 0x11;
-	const u32 d2_pll_sic = 0x18;
-	struct ast2500_div_config div_cfg = {
-		.num = SCU_D2PLL_NUM_MASK >> SCU_D2PLL_NUM_SHIFT,
-		.denum = SCU_D2PLL_DENUM_MASK >> SCU_D2PLL_DENUM_SHIFT,
-		.post_div = SCU_D2PLL_POST_MASK >> SCU_D2PLL_POST_SHIFT,
-	};
-	ulong clkin = ast2500_get_clkin(scu);
-	ulong new_rate;
-
-	writel((d2_pll_ext_param << SCU_D2PLL_EXT1_PARAM_SHIFT)
-	       | SCU_D2PLL_EXT1_OFF
-	       | SCU_D2PLL_EXT1_RESET, &scu->d2_pll_ext_param[0]);
-
-	/*
-	 * Select USB2.0 port1 PHY clock as a clock source for GCRT.
-	 * This would disconnect it from D2-PLL.
-	 */
-	clrsetbits_le32(&scu->misc_ctrl1, SCU_MISC_D2PLL_OFF,
-			SCU_MISC_GCRT_USB20CLK);
-
-	new_rate = ast2500_calc_clock_config(clkin, rate, &div_cfg);
-	writel((d2_pll_sip << SCU_D2PLL_SIP_SHIFT)
-	       | (d2_pll_sic << SCU_D2PLL_SIC_SHIFT)
-	       | (div_cfg.num << SCU_D2PLL_NUM_SHIFT)
-	       | (div_cfg.denum << SCU_D2PLL_DENUM_SHIFT)
-	       | (div_cfg.post_div << SCU_D2PLL_POST_SHIFT),
-	       &scu->d2_pll_param);
-
-	clrbits_le32(&scu->d2_pll_ext_param[0],
-		     SCU_D2PLL_EXT1_OFF | SCU_D2PLL_EXT1_RESET);
-
-	clrsetbits_le32(&scu->misc_ctrl2,
-			SCU_MISC2_RGMII_HPLL | SCU_MISC2_RMII_MPLL
-			| SCU_MISC2_RGMII_CLKDIV_MASK |
-			SCU_MISC2_RMII_CLKDIV_MASK,
-			(4 << SCU_MISC2_RMII_CLKDIV_SHIFT));
-
-	return new_rate;
-}
-
-
 #define SCU_CLKSTOP_SDIO 27
 static ulong ast2500_enable_sdclk(struct ast2500_scu *scu)
 {
@@ -539,31 +563,10 @@ static int ast2500_clk_enable(struct clk *clk)
 	default:
 		pr_debug("can't enable clk \n");
 		return -ENOENT;
+		break;
 	}
 
 	return 0;
-}
-
-static unsigned long ast2500_clk_set_rate(struct clk *clk, ulong rate)
-{
-	struct ast2500_clk_priv *priv = dev_get_priv(clk->dev);
-
-	ulong new_rate;
-	switch (clk->id) {
-	//mpll
-	case ASPEED_CLK_MPLL:
-		new_rate = ast2500_configure_ddr(priv->scu, rate);
-//		printf("ast2500_clk_set_rate mpll %ld \n", new_rate);
-		break;
-	case ASPEED_CLK_D2PLL:
-		new_rate = ast2500_configure_d2pll(priv->scu, rate);
-//		printf("ast2500_clk_set_rate d2pll ==== %ld \n", new_rate);
-		break;
-	default:
-		return -ENOENT;
-	}
-
-	return new_rate;
 }
 
 struct clk_ops ast2500_clk_ops = {
