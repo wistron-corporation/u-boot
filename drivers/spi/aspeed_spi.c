@@ -117,7 +117,7 @@ struct aspeed_spi_regs {
 #define G6_SEGMENT_ADDR_START(reg)		(reg & 0xffff)
 #define G6_SEGMENT_ADDR_END(reg)		((reg >> 16) & 0xffff)
 #define G6_SEGMENT_ADDR_VALUE(start, end)					\
-	((((start) >> 16) & 0xffff) | ((end) & 0xffff0000))
+	((((start) >> 16) & 0xffff) | (((end) - 0x100000) & 0xfff00000))
 
 /* DMA Control/Status Register */
 #define DMA_CTRL_DELAY_SHIFT		8
@@ -207,7 +207,7 @@ static u32 aspeed_g6_spi_hclk_divisor(struct aspeed_spi_priv *priv, u32 max_hz)
 		if( j == 0) break;	// todo check
 	}
 
-	printf("hclk=%d required=%d base_div is %d (mask %x, base_div %x) speed=%d\n",
+	debug("hclk=%d required=%d base_div is %d (mask %x, base_div %x) speed=%d\n",
 		  hclk_rate, max_hz, i + 1, hclk_masks[i], base_div, hclk_rate / ((i + 1) + base_div));
 
 	hclk_div_setting = ((j << 4) | hclk_masks[i]);
@@ -223,9 +223,7 @@ static u32 aspeed_spi_hclk_divisor(struct aspeed_spi_priv *priv, u32 max_hz)
 	const u8 hclk_masks[] = {
 		15, 7, 14, 6, 13, 5, 12, 4, 11, 3, 10, 2, 9, 1, 8, 0
 	};
-	u8 base_div = 0;
-//	int done = 0;
-	u32 i, j;
+	u32 i;
 	u32 hclk_div_setting = 0;
 
 	for (i = 0; i < ARRAY_SIZE(hclk_masks); i++) {
@@ -332,7 +330,7 @@ static int aspeed_spi_timing_calibration(struct aspeed_spi_priv *priv)
 				checksum = aspeed_spi_read_checksum(priv, hclk_masks[i],
 								    delay);
 				pass = (checksum == gold_checksum);
-				printf(" HCLK/%d, 4ns DI delay, %d HCLK cycle : %s\n",
+				debug(" HCLK/%d, 4ns DI delay, %d HCLK cycle : %s\n",
 				      hdiv, hcycle, pass ? "PASS" : "FAIL");
 
 				/* Try again with more HCLK cycles */
@@ -344,7 +342,7 @@ static int aspeed_spi_timing_calibration(struct aspeed_spi_priv *priv)
 				checksum = aspeed_spi_read_checksum(priv, hclk_masks[i],
 								    delay);
 				pass = (checksum == gold_checksum);
-				printf(" HCLK/%d,  no DI delay, %d HCLK cycle : %s\n",
+				debug(" HCLK/%d,  no DI delay, %d HCLK cycle : %s\n",
 				      hdiv, hcycle, pass ? "PASS" : "FAIL");
 
 				/* All good for this freq  */
@@ -438,19 +436,22 @@ static int aspeed_spi_controller_init(struct aspeed_spi_priv *priv)
 		for (cs = 0; cs < priv->flash_count; cs++) {
 			struct aspeed_spi_flash *flash = &priv->flashes[cs];
 			u32 seg_addr = readl(&priv->regs->segment_addr[cs]);
+			u32 addr_config = 0;
 			switch(cs) {
 				case 0:
 					flash->ahb_base = cs ? (void *)G6_SEGMENT_ADDR_START(seg_addr) :
 						priv->ahb_base;
-					printf("cs0 mem-map : %x ", (u32)flash->ahb_base);
+					debug("cs0 mem-map : %x \n", (u32)flash->ahb_base);
 					break;
 				case 1:
 					flash->ahb_base = priv->flashes[0].ahb_base + 0x8000000;	//cs0 + 128Mb
-					printf("cs1 mem-map : %x ", (u32)flash->ahb_base);
+					debug("cs1 mem-map : %x end %x \n", (u32)flash->ahb_base, (u32)flash->ahb_base + 0x8000000);
+					addr_config = G6_SEGMENT_ADDR_VALUE((u32)flash->ahb_base, (u32)flash->ahb_base + 0x8000000); //add 128Mb
+					writel(addr_config, &priv->regs->segment_addr[cs]);
 					break;
 				case 2:
 					flash->ahb_base = priv->flashes[0].ahb_base + 0xc000000;	//cs0 + 196Mb
-					printf("cs2 mem-map : %x ", (u32)flash->ahb_base);
+					printf("cs2 mem-map : %x \n", (u32)flash->ahb_base);
 					break;
 			}
 			flash->cs = cs;
@@ -469,7 +470,7 @@ static int aspeed_spi_controller_init(struct aspeed_spi_priv *priv)
 			 */
 			flash->ahb_base = cs ? (void *)SEGMENT_ADDR_START(seg_addr) :
 				priv->ahb_base;
-		
+
 			flash->cs = cs;
 			flash->ce_ctrl_user = CE_CTRL_USERMODE;
 			flash->ce_ctrl_fread = CE_CTRL_READMODE;
@@ -825,20 +826,27 @@ static int aspeed_spi_flash_init(struct aspeed_spi_priv *priv,
 	if (slave->mode & (SPI_RX_DUAL | SPI_TX_DUAL)) {
 		debug("CS%u: setting dual data mode\n", flash->cs);
 		flash->iomode = CE_CTRL_IO_DUAL_DATA;
+		flash->spi->read_opcode = SPINOR_OP_READ_1_1_2;
+	} else if (slave->mode & (SPI_RX_QUAD | SPI_TX_QUAD)) {
+		flash->iomode = CE_CTRL_IO_QUAD_DATA;
+		flash->spi->read_opcode = SPINOR_OP_READ_1_4_4;
+	} else {
+		debug("normal read \n");
 	}
 
-	if(priv->new_ver) 
+	if(priv->new_ver) {
 		flash->ce_ctrl_fread = CE_G6_CTRL_CLOCK_FREQ(read_hclk) |
 			flash->iomode |
 			CE_CTRL_CMD(flash->spi->read_opcode) |
 			CE_CTRL_DUMMY((flash->spi->read_dummy/8)) |
 			CE_CTRL_FREADMODE;
-	else 
+	} else {
 		flash->ce_ctrl_fread = CE_CTRL_CLOCK_FREQ(read_hclk) |
 			flash->iomode |
 			CE_CTRL_CMD(flash->spi->read_opcode) |
 			CE_CTRL_DUMMY((flash->spi->read_dummy/8)) |
 			CE_CTRL_FREADMODE;
+	}
 
 	debug("CS%u: USER mode 0x%08x FREAD mode 0x%08x\n", flash->cs,
 	      flash->ce_ctrl_user, flash->ce_ctrl_fread);
