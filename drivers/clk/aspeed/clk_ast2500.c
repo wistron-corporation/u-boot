@@ -415,9 +415,9 @@ static unsigned long ast2500_clk_set_rate(struct clk *clk, ulong rate)
 	return new_rate;
 }
 
-
 #define SCU_CLKSTOP_MAC1		(20)
 #define SCU_CLKSTOP_MAC2		(21)
+
 static ulong ast2500_configure_mac(struct ast2500_scu *scu, int index)
 {
 	ulong hpll_rate = ast2500_get_hpll_rate(scu);

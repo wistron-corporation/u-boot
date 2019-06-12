@@ -329,6 +329,57 @@ static ulong ast2600_get_uart_clk_rate(struct ast2600_scu *scu, int uart_idx)
 	return uart_clk;
 }
 
+static u32 ast2600_hpll_pclk_div_table[] = {
+	4, 8, 12, 16, 20, 24, 28, 32,
+};
+static ulong ast2600_clk_get_rate(struct clk *clk)
+{
+	struct ast2600_clk_priv *priv = dev_get_priv(clk->dev);
+	ulong rate = 0;
+
+	switch (clk->id) {
+	//HPLL
+	case ASPEED_CLK_HPLL:
+		rate = ast2600_get_hpll_rate(priv->scu);
+		break;
+	//HCLK
+	case ASPEED_CLK_AHB:
+		rate = ast2600_get_hclk(priv->scu);
+		break;
+	case ASPEED_CLK_MPLL:
+		rate = ast2600_get_mpll_rate(priv->scu);
+		break;
+	//pclk
+	case ASPEED_CLK_APB:
+		{
+			u32 clk_sel1 = readl(&priv->scu->clk_sel1);
+			u32 apb_div = ast2600_hpll_pclk_div_table[((clk_sel1 >> 23) & 0x7)];
+			rate = ast2600_get_hpll_rate(priv->scu);
+			rate = rate / apb_div;
+		}
+		break;
+	case ASPEED_CLK_GATE_UART1CLK:
+		rate = ast2600_get_uart_clk_rate(priv->scu, 1);
+		break;
+	case ASPEED_CLK_GATE_UART2CLK:
+		rate = ast2600_get_uart_clk_rate(priv->scu, 2);
+		break;
+	case ASPEED_CLK_GATE_UART3CLK:
+		rate = ast2600_get_uart_clk_rate(priv->scu, 3);
+		break;
+	case ASPEED_CLK_GATE_UART4CLK:
+		rate = ast2600_get_uart_clk_rate(priv->scu, 4);
+		break;
+	case ASPEED_CLK_GATE_UART5CLK:
+		rate = ast2600_get_uart_clk_rate(priv->scu, 5);
+		break;
+	default:
+		return -ENOENT;
+	}
+
+	return rate;
+}
+
 struct aspeed_clock_config {
 	ulong input_rate;
 	ulong rate;
@@ -416,7 +467,7 @@ static ulong aspeed_calc_clock_config(ulong input_rate, ulong requested_rate,
 	return new_rate_khz * 1000;
 }
 
-static u32 ast2600_configure_ddr(struct ast2600_clk_priv *priv, ulong rate)
+static u32 ast2600_configure_ddr(struct ast2600_scu *scu, ulong rate)
 {
 	u32 clkin = AST2600_CLK_IN;
 	u32 mpll_reg;
@@ -428,67 +479,16 @@ static u32 ast2600_configure_ddr(struct ast2600_clk_priv *priv, ulong rate)
 
 	aspeed_calc_clock_config(clkin, rate, &div_cfg);
 
-	mpll_reg = readl(&priv->scu->m_pll_param);
+	mpll_reg = readl(&scu->m_pll_param);
 	mpll_reg &= ~(SCU_MPLL_POST_MASK | SCU_MPLL_NUM_MASK
 		      | SCU_MPLL_DENUM_MASK);
 	mpll_reg |= (div_cfg.post_div << SCU_MPLL_POST_SHIFT)
 	    | (div_cfg.num << SCU_MPLL_NUM_SHIFT)
 	    | (div_cfg.denum << SCU_MPLL_DENUM_SHIFT);
 
-	writel(mpll_reg, &priv->scu->m_pll_param);
+	writel(mpll_reg, &scu->m_pll_param);
 
-	return ast2600_get_mpll_rate(priv->scu);
-}
-
-static u32 ast2600_hpll_pclk_div_table[] = {
-	4, 8, 12, 16, 20, 24, 28, 32,
-};
-static ulong ast2600_clk_get_rate(struct clk *clk)
-{
-	struct ast2600_clk_priv *priv = dev_get_priv(clk->dev);
-	ulong rate = 0;
-
-	switch (clk->id) {
-	//HPLL
-	case ASPEED_CLK_HPLL:
-		rate = ast2600_get_hpll_rate(priv->scu);
-		break;
-	//HCLK
-	case ASPEED_CLK_AHB:
-		rate = ast2600_get_hclk(priv->scu);
-		break;
-	case ASPEED_CLK_MPLL:
-		rate = ast2600_get_mpll_rate(priv->scu);
-		break;
-	//pclk
-	case ASPEED_CLK_APB:
-		{
-			u32 clk_sel1 = readl(&priv->scu->clk_sel1);
-			u32 apb_div = ast2600_hpll_pclk_div_table[((clk_sel1 >> 23) & 0x7)];
-			rate = ast2600_get_hpll_rate(priv->scu);
-			rate = rate / apb_div;
-		}
-		break;
-	case ASPEED_CLK_GATE_UART1CLK:
-		rate = ast2600_get_uart_clk_rate(priv->scu, 1);
-		break;
-	case ASPEED_CLK_GATE_UART2CLK:
-		rate = ast2600_get_uart_clk_rate(priv->scu, 2);
-		break;
-	case ASPEED_CLK_GATE_UART3CLK:
-		rate = ast2600_get_uart_clk_rate(priv->scu, 3);
-		break;
-	case ASPEED_CLK_GATE_UART4CLK:
-		rate = ast2600_get_uart_clk_rate(priv->scu, 4);
-		break;
-	case ASPEED_CLK_GATE_UART5CLK:
-		rate = ast2600_get_uart_clk_rate(priv->scu, 5);
-		break;
-	default:
-		return -ENOENT;
-	}
-
-	return rate;
+	return ast2600_get_mpll_rate(scu);
 }
 
 static ulong ast2600_clk_set_rate(struct clk *clk, ulong rate)
@@ -498,7 +498,7 @@ static ulong ast2600_clk_set_rate(struct clk *clk, ulong rate)
 	ulong new_rate;
 	switch (clk->id) {
 	case ASPEED_CLK_MPLL:
-		new_rate = ast2600_configure_ddr(priv, rate);
+		new_rate = ast2600_configure_ddr(priv->scu, rate);
 		break;
 	default:
 		return -ENOENT;
@@ -506,6 +506,7 @@ static ulong ast2600_clk_set_rate(struct clk *clk, ulong rate)
 
 	return new_rate;
 }
+
 #define SCU_CLKSTOP_MAC1		(20)
 #define SCU_CLKSTOP_MAC2		(21)
 #define SCU_CLKSTOP_MAC3		(20)
