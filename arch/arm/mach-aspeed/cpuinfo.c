@@ -79,7 +79,7 @@ int print_cpuinfo(void)
 {
 	char buf[32];
 	int i = 0;
-	ulong size = 0;
+//	ulong size = 0;
 
 	aspeed_get_revision_id();
 	aspeed_sys_reset_info();

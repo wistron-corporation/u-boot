@@ -127,14 +127,34 @@ extern u32 ast2500_get_d2pll_rate(struct ast2500_scu *scu)
 	return (((clkin * ((num + 1) / (denum + 1))) / (post_div + 1))/ (od_div + 1));
 }
 
-/**
- * Get current rate or uart clock
- *
- * @scu SCU registers
- * @uart_index UART index, 1-5
- *
- * @return current setting for uart clock rate
- */
+#define SCU_HWSTRAP_AXIAHB_DIV_SHIFT    9
+#define SCU_HWSTRAP_AXIAHB_DIV_MASK     (0x7 << SCU_HWSTRAP_AXIAHB_DIV_SHIFT)
+
+static u32 ast2500_get_hclk(struct ast2500_scu *scu)
+{
+	ulong ahb_div = 1 + ((readl(&scu->hwstrap)
+			      & SCU_HWSTRAP_AXIAHB_DIV_MASK)
+			     >> SCU_HWSTRAP_AXIAHB_DIV_SHIFT);
+	
+	ulong axi_div = 2;
+	u32 rate = 0;
+
+	rate = ast2500_get_hpll_rate(scu);
+	return (rate / axi_div / ahb_div);
+}
+
+
+static u32 ast2500_get_sdio_clk_rate(struct ast2500_scu *scu)
+{
+	u32 clkin = ast2500_get_hpll_rate(scu);
+	u32 clk_sel = readl(&scu->clk_sel1);
+	u32 div = (clk_sel >> 12) & 0x7;
+	
+	div = (div + 1) << 2;
+
+	return (clkin / div);
+}
+
 static u32 ast2500_get_uart_clk_rate(struct ast2500_scu *scu, int uart_index)
 {
 	/*
@@ -158,42 +178,21 @@ static u32 ast2500_get_uart_clk_rate(struct ast2500_scu *scu, int uart_index)
 	return uart_clkin;
 }
 
-static u32 ast2500_get_sdio_clk_rate(struct ast2500_scu *scu)
-{
-	u32 clkin = ast2500_get_hpll_rate(scu);
-	u32 clk_sel = readl(&scu->clk_sel1);
-	u32 div = (clk_sel >> 12) & 0x7;
-	
-	div = (div + 1) << 2;
-
-	return (clkin / div);
-}
-
-static unsigned long ast2500_clk_get_rate(struct clk *clk)
+static ulong ast2500_clk_get_rate(struct clk *clk)
 {
 	struct ast2500_clk_priv *priv = dev_get_priv(clk->dev);
 	ulong rate;
 
 	switch (clk->id) {
-	//HPLL
 	case ASPEED_CLK_HPLL:
 		rate = ast2500_get_hpll_rate(priv->scu);
 		break;
-	//HCLK
-	case ASPEED_CLK_AHB:
-		{
-			ulong ahb_div = 1 + ((readl(&priv->scu->hwstrap)
-					      & SCU_HWSTRAP_AXIAHB_DIV_MASK)
-					     >> SCU_HWSTRAP_AXIAHB_DIV_SHIFT);
-			ulong axi_div = 2;
-
-			rate = ast2500_get_hpll_rate(priv->scu);
-			rate = rate / axi_div / ahb_div;
-		}
-		break;
-	//mpll
 	case ASPEED_CLK_MPLL:
 		rate = ast2500_get_mpll_rate(priv->scu);
+		break;
+	//HCLK
+	case ASPEED_CLK_AHB:
+		rate = ast2500_get_hclk(priv->scu);
 		break;
 	//pclk
 	case ASPEED_CLK_APB:
@@ -226,6 +225,7 @@ static unsigned long ast2500_clk_get_rate(struct clk *clk)
 	default:
 		pr_debug("can't get clk rate \n");
 		return -ENOENT;
+		break;
 	}
 
 	return rate;

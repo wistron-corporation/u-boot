@@ -116,38 +116,6 @@ extern u32 ast2600_get_dpll_rate(struct ast2600_scu *scu)
 	return (clk_in * mult)/div;
 }
 
-static u32 ast2600_a0_axi_ahb_div_table[] = {
-	2, 2, 3, 5,
-};
-
-static u32 ast2600_a1_axi_ahb_div_table[] = {
-	4, 6, 2, 4,
-};
-
-static u32 ast2600_get_hclk(struct ast2600_scu *scu)
-{
-	u32 hw_rev = readl(&scu->chip_id0);
-	u32 hwstrap1 = readl(&scu->hwstrap1);
-	u32 axi_div = 1;
-	u32 ahb_div = 0;
-	u32 rate = 0;
-	
-	if((hwstrap1 >> 16) & 0x1)
-		axi_div = 1;
-	else
-		axi_div = 2;
-	
-	if (hw_rev & BIT(16))
-		ahb_div = ast2600_a1_axi_ahb_div_table[(hwstrap1 >> 11) & 0x3];
-	else
-		ahb_div = ast2600_a0_axi_ahb_div_table[(hwstrap1 >> 11) & 0x3];
-	
-	rate = ast2600_get_hpll_rate(scu);
-	rate = rate / axi_div / ahb_div;
-
-	return rate;
-}
-
 extern u32 ast2600_get_apll_rate(struct ast2600_scu *scu)
 {
 	u32 clk_in = AST2600_CLK_IN;
@@ -187,6 +155,38 @@ extern u32 ast2600_get_epll_rate(struct ast2600_scu *scu)
 		div = (p + 1);
 	}
 	return (clk_in * mult)/div;
+}
+
+static u32 ast2600_a0_axi_ahb_div_table[] = {
+	2, 2, 3, 5,
+};
+
+static u32 ast2600_a1_axi_ahb_div_table[] = {
+	4, 6, 2, 4,
+};
+
+static u32 ast2600_get_hclk(struct ast2600_scu *scu)
+{
+	u32 hw_rev = readl(&scu->chip_id0);
+	u32 hwstrap1 = readl(&scu->hwstrap1);
+	u32 axi_div = 1;
+	u32 ahb_div = 0;
+	u32 rate = 0;
+	
+	if((hwstrap1 >> 16) & 0x1)
+		axi_div = 1;
+	else
+		axi_div = 2;
+	
+	if (hw_rev & BIT(16))
+		ahb_div = ast2600_a1_axi_ahb_div_table[(hwstrap1 >> 11) & 0x3];
+	else
+		ahb_div = ast2600_a0_axi_ahb_div_table[(hwstrap1 >> 11) & 0x3];
+	
+	rate = ast2600_get_hpll_rate(scu);
+	rate = rate / axi_div / ahb_div;
+
+	return rate;
 }
 
 
@@ -338,16 +338,15 @@ static ulong ast2600_clk_get_rate(struct clk *clk)
 	ulong rate = 0;
 
 	switch (clk->id) {
-	//HPLL
 	case ASPEED_CLK_HPLL:
 		rate = ast2600_get_hpll_rate(priv->scu);
+		break;
+	case ASPEED_CLK_MPLL:
+		rate = ast2600_get_mpll_rate(priv->scu);
 		break;
 	//HCLK
 	case ASPEED_CLK_AHB:
 		rate = ast2600_get_hclk(priv->scu);
-		break;
-	case ASPEED_CLK_MPLL:
-		rate = ast2600_get_mpll_rate(priv->scu);
 		break;
 	//pclk
 	case ASPEED_CLK_APB:
@@ -374,7 +373,9 @@ static ulong ast2600_clk_get_rate(struct clk *clk)
 		rate = ast2600_get_uart_clk_rate(priv->scu, 5);
 		break;
 	default:
+		pr_debug("can't get clk rate \n");
 		return -ENOENT;
+		break;
 	}
 
 	return rate;
