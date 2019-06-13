@@ -165,7 +165,7 @@ static u32 ast2500_get_sdio_clk_rate(struct ast2500_scu *scu)
 	return (clkin / div);
 }
 
-static u32 ast2500_get_uart_clk_rate(struct ast2500_scu *scu, int uart_index)
+static u32 ast2500_get_uart_clk_rate(struct ast2500_scu *scu, int uart_idx)
 {
 	/*
 	 * ast2500 datasheet is very confusing when it comes to UART clocks,

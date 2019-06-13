@@ -279,7 +279,34 @@ static u32 ast2600_get_uart_from_huxclk_rate(struct ast2600_scu *scu)
 	return (clk_in * mult)/div;
 }
 
-static ulong ast2600_get_uart_clk_rate(struct ast2600_scu *scu, int uart_idx)
+static u32 ast2600_get_sdio_clk_rate(struct ast2600_scu *scu)
+{
+	u32 clkin = 0;
+	u32 clk_sel = readl(&scu->clk_sel4);
+	u32 div = (clk_sel >> 28) & 0x7;
+
+	if(clk_sel & BIT(8)) {
+		clkin = ast2600_get_apll_rate(scu);
+	} else {
+		clkin = 200 * 1000 * 1000;
+	}
+	div = (div + 1) << 1;
+
+	return (clkin / div);
+}
+
+static u32 ast2600_get_emmc_clk_rate(struct ast2600_scu *scu)
+{
+	u32 clkin = ast2600_get_hpll_rate(scu);
+	u32 clk_sel = readl(&scu->clk_sel1);
+	u32 div = (clk_sel >> 12) & 0x7;
+	
+	div = (div + 1) << 2;
+
+	return (clkin / div);
+}
+
+static u32 ast2600_get_uart_clk_rate(struct ast2600_scu *scu, int uart_idx)
 {
 	u32 uart_sel = readl(&scu->clk_sel4);
 	u32 uart_sel5 = readl(&scu->clk_sel5);	
@@ -373,6 +400,12 @@ static ulong ast2600_clk_get_rate(struct clk *clk)
 		break;
 	case ASPEED_CLK_GATE_UART5CLK:
 		rate = ast2600_get_uart_clk_rate(priv->scu, 5);
+		break;
+	case ASPEED_CLK_SDIO:
+		rate = ast2600_get_sdio_clk_rate(priv->scu);
+		break;
+	case ASPEED_CLK_EMMC:
+		rate = ast2600_get_emmc_clk_rate(priv->scu);
 		break;
 	default:
 		pr_debug("can't get clk rate \n");
@@ -566,6 +599,86 @@ static u32 ast2600_configure_mac(struct ast2600_scu *scu, int index)
 	return 0;
 }
 
+#define SCU_CLKSTOP_SDIO 4
+static ulong ast2600_enable_sdclk(struct ast2600_scu *scu)
+{
+	u32 reset_bit;
+	u32 clkstop_bit;
+
+	reset_bit = BIT(ASPEED_RESET_SD - 32);
+	clkstop_bit = BIT(SCU_CLKSTOP_SDIO);
+
+	writel(reset_bit, &scu->sysreset_clr_ctrl2);
+	udelay(100);
+	//enable clk 
+	writel(clkstop_bit, &scu->clk_stop_clr_ctrl2);
+	mdelay(10);
+	writel(reset_bit, &scu->sysreset_ctrl2);
+
+	return 0;
+}
+
+#define SCU_CLKSTOP_EXTSD 31
+#define SCU_CLK_SD_MASK				(0x7 << 28)
+#define SCU_CLK_SD_DIV(x)			(x << 28)
+
+static ulong ast2600_enable_extsdclk(struct ast2600_scu *scu)
+{
+	u32 clk_sel = readl(&scu->clk_sel4);
+	u32 enableclk_bit;
+
+	enableclk_bit = BIT(SCU_CLKSTOP_EXTSD);
+
+	clk_sel &= ~SCU_CLK_SD_MASK;
+	clk_sel |= SCU_CLK_SD_DIV(0);
+	writel(clk_sel, &scu->clk_sel4);
+	
+	//enable clk 
+	setbits_le32(&scu->clk_sel4, enableclk_bit);
+	
+	return 0;
+}
+
+#define SCU_CLKSTOP_EMMC 27
+static ulong ast2600_enable_emmcclk(struct ast2600_scu *scu)
+{
+	u32 reset_bit;
+	u32 clkstop_bit;
+
+	reset_bit = BIT(ASPEED_RESET_EMMC);
+	clkstop_bit = BIT(SCU_CLKSTOP_EMMC);
+
+	writel(reset_bit, &scu->sysreset_clr_ctrl1);
+	udelay(100);
+	//enable clk 
+	writel(clkstop_bit, &scu->clk_stop_clr_ctrl1);
+	mdelay(10);
+	writel(reset_bit, &scu->sysreset_ctrl2);
+
+	return 0;
+}
+
+#define SCU_CLKSTOP_EXTEMMC 15
+#define SCU_CLK_EMMC_MASK			(0x7 << 12)
+#define SCU_CLK_EMMC_DIV(x)			(x << 12)
+
+static ulong ast2600_enable_extemmcclk(struct ast2600_scu *scu)
+{
+	u32 clk_sel = readl(&scu->clk_sel1);
+	u32 enableclk_bit;
+
+	enableclk_bit = BIT(SCU_CLKSTOP_EXTSD);
+
+	clk_sel &= ~SCU_CLK_SD_MASK;
+	clk_sel |= SCU_CLK_SD_DIV(1);
+	writel(clk_sel, &scu->clk_sel1);
+
+	//enable clk 
+	setbits_le32(&scu->clk_sel1, enableclk_bit);
+
+	return 0;
+}
+
 static int ast2600_clk_enable(struct clk *clk)
 {
 	struct ast2600_clk_priv *priv = dev_get_priv(clk->dev);
@@ -582,6 +695,18 @@ static int ast2600_clk_enable(struct clk *clk)
 			break;
 		case ASPEED_CLK_GATE_MAC4CLK:
 			ast2600_configure_mac(priv->scu, 4);
+			break;
+		case ASPEED_CLK_GATE_SDCLK:
+			ast2600_enable_sdclk(priv->scu);
+			break;
+		case ASPEED_CLK_GATE_SDEXTCLK:
+			ast2600_enable_extsdclk(priv->scu);
+			break;
+		case ASPEED_CLK_GATE_EMMCCLK:
+			ast2600_enable_emmcclk(priv->scu);
+			break;
+		case ASPEED_CLK_GATE_EMMCEXTCLK:
+			ast2600_enable_extemmcclk(priv->scu);
 			break;
 		default:
 			pr_debug("can't enable clk \n");

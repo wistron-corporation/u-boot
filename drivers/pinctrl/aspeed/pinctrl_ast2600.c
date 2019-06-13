@@ -77,25 +77,29 @@ static struct aspeed_sig_desc mdio4_link[] = {
 	{ 0x410, BIT(3) | BIT(2), 0	},
 };
 
-//8bit mode offset 0x414 (21~18) 0x450 bit0: sd0 bit1: sd1,  bit3: sd0 8bits
-
-
 static struct aspeed_sig_desc sdio2_link[] = {
+	{ 0x414, GENMASK(23, 16), 1	},
 	{ 0x4B4, GENMASK(23, 16), 0	},
 	{ 0x450, BIT(1), 0		},
-	{ 0x414, GENMASK(23, 16), 0	},
 };
 
-//sdio1 414 (23~16) = 0, 4b4 (23~16) = 1, 450 bit1 = 1
 static struct aspeed_sig_desc sdio1_link[] = {
 	{ 0x414, GENMASK(15, 8), 0	},
-	{ 0x4b4, GENMASK(23, 16), 0	},
-	{ 0x450, BIT(0), 0	},
+};	
+
+//when sdio1 8bits, sdio2 can't use
+static struct aspeed_sig_desc sdio1_8bit_link[] = {
+	{ 0x414, GENMASK(15, 8), 0	},
+	{ 0x4b4, GENMASK(21, 18), 0	},
+	{ 0x450, BIT(3), 0	},
+	{ 0x450, BIT(1), 1	},
 };	
 
 static struct aspeed_sig_desc emmc_link[] = {
 	{ 0x400, GENMASK(31, 24), 0 },
 	{ 0x404, GENMASK(3, 0), 0 },
+	{ 0x500, BIT(3), 1 },
+	{ 0x500, BIT(5), 1 },
 };
 
 static const struct aspeed_group_config ast2600_groups[] = {
@@ -107,8 +111,8 @@ static const struct aspeed_group_config ast2600_groups[] = {
 	{ "MDIO2", 1, mdio2_link },
 	{ "MDIO3", 1, mdio3_link },
 	{ "MDIO4", 1, mdio4_link },
-	{ "SDIO1", ARRAY_SIZE(sdio2_link), sdio2_link },
-	{ "SDIO0", ARRAY_SIZE(sdio1_link), sdio1_link },
+	{ "SD1", ARRAY_SIZE(sdio2_link), sdio2_link },
+	{ "SD2", ARRAY_SIZE(sdio1_link), sdio1_link },
 	{ "EMMC", ARRAY_SIZE(emmc_link), emmc_link },
 };
 

@@ -42,7 +42,3 @@
 &timer {
 	u-boot,dm-pre-reloc;
 };
-
-&i2c_ic {
-	resets = <&rst ASPEED_RESET_I2C>;
-};

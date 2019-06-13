@@ -46,6 +46,7 @@ static int aspeed_sdhci_irq_probe(struct udevice *dev)
 
 static const struct udevice_id aspeed_sdhci_irq_ids[] = {
 	{ .compatible = "aspeed,aspeed-sdhci-irq" },
+	{ .compatible = "aspeed,aspeed-emmc-irq" },
 	{ }
 };
 
