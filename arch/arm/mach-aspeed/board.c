@@ -26,6 +26,7 @@
 
 DECLARE_GLOBAL_DATA_PTR;
 
+#if 0
 void lowlevel_init(void)
 {
 	/*
@@ -50,11 +51,19 @@ void lowlevel_init(void)
 	clrbits_le32(&sec_boot_wdt->ctrl, WDT_CTRL_EN);
 #endif
 }
+#endif
 
 int board_init(void)
 {
+	struct udevice *dev;
+
 	gd->bd->bi_boot_params = CONFIG_SYS_SDRAM_BASE + 0x100;
 
+	uclass_first_device_check(UCLASS_MISC, &dev);
+#if 0	
+	if (!dev) 
+		printf("No MISC found.\n");
+#endif
 	return 0;
 }
 
@@ -77,6 +86,5 @@ int dram_init(void)
 	}
 
 	gd->ram_size = ram.size;
-
 	return 0;
 }

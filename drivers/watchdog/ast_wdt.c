@@ -10,8 +10,11 @@
 #include <asm/io.h>
 #include <asm/arch/wdt.h>
 
-#define WDT_AST2500	2500
-#define WDT_AST2400	2400
+enum aspeed_wdt_model {
+	WDT_AST2400,
+	WDT_AST2500,
+	WDT_AST2600,
+};
 
 struct ast_wdt_priv {
 	struct ast_wdt *regs;
@@ -96,13 +99,6 @@ static const struct wdt_ops ast_wdt_ops = {
 	.expire_now = ast_wdt_expire_now,
 };
 
-static const struct udevice_id ast_wdt_ids[] = {
-	{ .compatible = "aspeed,wdt", .data = WDT_AST2500 },
-	{ .compatible = "aspeed,ast2500-wdt", .data = WDT_AST2500 },
-	{ .compatible = "aspeed,ast2400-wdt", .data = WDT_AST2400 },
-	{}
-};
-
 static int ast_wdt_probe(struct udevice *dev)
 {
 	debug("%s() wdt%u\n", __func__, dev->seq);
@@ -110,6 +106,14 @@ static int ast_wdt_probe(struct udevice *dev)
 
 	return 0;
 }
+
+static const struct udevice_id ast_wdt_ids[] = {
+	{ .compatible = "aspeed,wdt", .data = WDT_AST2500 },
+	{ .compatible = "aspeed,ast2600-wdt", .data = WDT_AST2600 },
+	{ .compatible = "aspeed,ast2500-wdt", .data = WDT_AST2500 },
+	{ .compatible = "aspeed,ast2400-wdt", .data = WDT_AST2400 },
+	{}
+};
 
 U_BOOT_DRIVER(ast_wdt) = {
 	.name = "ast_wdt",

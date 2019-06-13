@@ -18,7 +18,7 @@
 #include <asm/arch/wdt.h>
 #include <linux/err.h>
 #include <linux/kernel.h>
-#include <dt-bindings/clock/ast2500-scu.h>
+#include <dt-bindings/clock/ast2500-clock.h>
 
 /* These configuration parameters are taken from Aspeed SDK */
 #define DDR4_MR46_MODE		0x08000000
@@ -330,6 +330,7 @@ static int ast2500_sdrammc_probe(struct udevice *dev)
 	struct reset_ctl reset_ctl;
 	struct dram_info *priv = (struct dram_info *)dev_get_priv(dev);
 	struct ast2500_sdrammc_regs *regs = priv->regs;
+	struct udevice *clk_dev;
 	int i;
 	int ret = clk_get_by_index(dev, 0, &priv->ddr_clk);
 
@@ -338,7 +339,15 @@ static int ast2500_sdrammc_probe(struct udevice *dev)
 		return ret;
 	}
 
-	priv->scu = ast_get_scu();
+	/* find the SCU base address from the aspeed clock device */
+	ret = uclass_get_device_by_driver(UCLASS_CLK, DM_GET_DRIVER(aspeed_scu),
+                                          &clk_dev);
+	if (ret) {
+		debug("clock device not defined\n");
+		return ret;
+	}
+	priv->scu = devfdt_get_addr_ptr(clk_dev);
+	
 	if (IS_ERR(priv->scu)) {
 		debug("%s(): can't get SCU\n", __func__);
 		return PTR_ERR(priv->scu);
@@ -351,12 +360,13 @@ static int ast2500_sdrammc_probe(struct udevice *dev)
 		return ret;
 	}
 
+#if 0
 	ret = reset_assert(&reset_ctl);
 	if (ret) {
 		debug("%s(): SDRAM reset failed: %u\n", __func__, ret);
 		return ret;
 	}
-
+#endif
 	ast2500_sdrammc_unlock(priv);
 
 	writel(SDRAM_PCR_MREQI_DIS | SDRAM_PCR_RESETN_DIS,
@@ -406,7 +416,7 @@ static int ast2500_sdrammc_ofdata_to_platdata(struct udevice *dev)
 		return -EINVAL;
 	}
 
-	return 0;
+        return 0;
 }
 
 static int ast2500_sdrammc_get_info(struct udevice *dev, struct ram_info *info)
