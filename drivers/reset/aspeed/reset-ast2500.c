@@ -92,15 +92,15 @@ static int ast2500_reset_probe(struct udevice *dev)
 	/* find SCU base address from clock device */
 	ret = uclass_get_device_by_driver(UCLASS_CLK, DM_GET_DRIVER(aspeed_scu),
                                           &clk_dev);
-    if (ret) {
-            debug("clock device not found\n");
-            return ret;
-    }
+	if (ret) {
+		debug("clock device not found\n");
+		return ret;
+	}
 
 	priv->scu = devfdt_get_addr_ptr(clk_dev);
 	if (IS_ERR(priv->scu)) {
-	        debug("%s(): can't get SCU\n", __func__);
-	        return PTR_ERR(priv->scu);
+		debug("%s(): can't get SCU\n", __func__);
+		return PTR_ERR(priv->scu);
 	}
 
 	return 0;

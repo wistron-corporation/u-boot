@@ -475,19 +475,18 @@ static u32 ast2600_configure_ddr(struct ast2600_scu *scu, ulong rate)
 	u32 clkin = AST2600_CLK_IN;
 	u32 mpll_reg;
 	struct ast2600_div_config div_cfg = {
-		.num = (SCU_MPLL_NUM_MASK >> SCU_MPLL_NUM_SHIFT),
-		.denum = (SCU_MPLL_DENUM_MASK >> SCU_MPLL_DENUM_SHIFT),
-		.post_div = (SCU_MPLL_POST_MASK >> SCU_MPLL_POST_SHIFT),
+		.num = 0x1fff,			/* SCU220 bit[12:0] */
+		.denum = 0x3f,			/* SCU220 bit[18:13] */
+		.post_div = 0xf,		/* SCU220 bit[22:19] */
 	};
 
 	aspeed_calc_clock_config(clkin, rate, &div_cfg);
 
 	mpll_reg = readl(&scu->m_pll_param);
-	mpll_reg &= ~(SCU_MPLL_POST_MASK | SCU_MPLL_NUM_MASK
-		      | SCU_MPLL_DENUM_MASK);
-	mpll_reg |= (div_cfg.post_div << SCU_MPLL_POST_SHIFT)
-	    | (div_cfg.num << SCU_MPLL_NUM_SHIFT)
-	    | (div_cfg.denum << SCU_MPLL_DENUM_SHIFT);
+	mpll_reg &= ~0x7fffff;
+	mpll_reg |= (div_cfg.post_div << 19)
+	    | (div_cfg.denum << 13)
+	    | (div_cfg.num << 0);
 
 	writel(mpll_reg, &scu->m_pll_param);
 
