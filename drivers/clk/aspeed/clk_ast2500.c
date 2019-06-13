@@ -177,7 +177,7 @@ static u32 ast2500_get_uart_clk_rate(struct ast2500_scu *scu, int uart_idx)
 	u32 uart_clkin;
 
 	if (readl(&scu->misc_ctrl2) &
-	    (1 << (uart_index - 1 + SCU_MISC2_UARTCLK_SHIFT)))
+	    (1 << (uart_idx - 1 + SCU_MISC2_UARTCLK_SHIFT)))
 		uart_clkin = 192 * 1000 * 1000;
 	else
 		uart_clkin = 24 * 1000 * 1000;
