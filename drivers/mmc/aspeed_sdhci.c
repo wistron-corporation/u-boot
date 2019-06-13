@@ -93,6 +93,8 @@ static int aspeed_sdhci_bind(struct udevice *dev)
 
 static const struct udevice_id aspeed_sdhci_ids[] = {
 	{ .compatible = "aspeed,sdhci-ast2500" },
+	{ .compatible = "aspeed,sdhci-ast2600" },
+	{ .compatible = "aspeed,emmc-ast2600" },
 	{ }
 };
 

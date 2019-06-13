@@ -420,6 +420,7 @@
 		reg = <0x0 0x40>;
 		interrupts = <12>;
 		interrupt-controller;
+		resets = <&rst ASPEED_RESET_I2C>;
 	};
 
 	i2c0: i2c-bus@40 {
