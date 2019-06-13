@@ -662,6 +662,7 @@ static int ast2600_sdrammc_probe(struct udevice *dev)
 
 	if (readl(priv->scu + AST_SCU_HANDSHAKE) & SCU_SDRAM_INIT_READY_MASK) {
 		debug("%s(): DDR SDRAM had been initialized\n", __func__);
+		ast2600_sdrammc_calc_size(priv);
 		return 0;
 	}
 
