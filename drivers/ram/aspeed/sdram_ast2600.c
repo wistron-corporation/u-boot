@@ -51,6 +51,24 @@
 #define SDRAM_MIN_SIZE		(256 * SDRAM_SIZE_1MB)
 #define SDRAM_MAX_SIZE		(2048 * SDRAM_SIZE_1MB)
 
+/* register offset */
+#define AST_SCU_CONFIG		0x004
+#define AST_SCU_HANDSHAKE	0x100
+#define AST_SCU_FPGA_PLL	0x400
+#define AST_SCU_HW_STRAP	0x500
+
+/* bit-field of AST_SCU_HW_STRAP */
+#define SCU_HWSTRAP_VGAMEM_SHIFT	2
+#define SCU_HWSTRAP_VGAMEM_MASK		(3 << SCU_HWSTRAP_VGAMEM_SHIFT)
+#define SCU_HWSTRAP_DDR3		(1 << 25)
+
+
+/* bit-field of AST_SCU_HANDSHAKE */
+#define SCU_SDRAM_INIT_READY_SHIFT	6
+#define SCU_SDRAM_INIT_READY_MASK	(0x1 << SCU_SDRAM_INIT_READY_SHIFT)
+#define SCU_SDRAM_INIT_BY_SOC_SHIFT	7
+#define SCU_SDRAM_INIT_BY_SOC_MASK	(0x1 << SCU_SDRAM_INIT_BY_SOC_SHIFT)
+
 DECLARE_GLOBAL_DATA_PTR;
 
 /*
@@ -631,20 +649,26 @@ static int ast2600_sdrammc_probe(struct udevice *dev)
 	/* find SCU base address from clock device */
 	ret = uclass_get_device_by_driver(UCLASS_CLK, DM_GET_DRIVER(aspeed_scu),
                                           &clk_dev);
-    if (ret) {
-            debug("clock device not defined\n");
-            return ret;
-    }
+	if (ret) {
+		debug("clock device not defined\n");
+		return ret;
+	}
 
-    priv->scu = devfdt_get_addr_ptr(clk_dev);
-    if (IS_ERR(priv->scu)) {
-            debug("%s(): can't get SCU\n", __func__);
-            return PTR_ERR(priv->scu);
-    }
+	priv->scu = devfdt_get_addr_ptr(clk_dev);
+	if (IS_ERR(priv->scu)) {
+		debug("%s(): can't get SCU\n", __func__);
+		return PTR_ERR(priv->scu);
+	}
 
-    clk_set_rate(&priv->ddr_clk, priv->clock_rate);
+	if (readl(priv->scu + AST_SCU_HANDSHAKE) & SCU_SDRAM_INIT_READY_MASK) {
+		debug("%s(): DDR SDRAM had been initialized\n", __func__);
+		ast2600_sdrammc_calc_size(priv);
+		return 0;
+	}
 
-    /* FIXME: enable the following code if reset-driver is ready */
+	clk_set_rate(&priv->ddr_clk, priv->clock_rate);
+
+	/* FIXME: enable the following code if reset-driver is ready */
 	ret = reset_get_by_index(dev, 0, &reset_ctl);
 	if (ret) {
 		debug("%s(): Failed to get reset signal\n", __func__);
@@ -660,7 +684,7 @@ static int ast2600_sdrammc_probe(struct udevice *dev)
 #endif
 
 	ast2600_sdrammc_unlock(priv);
-	ast2600_sdrammc_common_init(regs);	
+	ast2600_sdrammc_common_init(regs);
 
 	if (readl(priv->scu + AST_SCU_HW_STRAP) & SCU_HWSTRAP_DDR3) {
 		debug("Unsupported SDRAM type: DDR3\n");

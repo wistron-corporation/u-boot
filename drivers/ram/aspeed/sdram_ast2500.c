@@ -353,6 +353,12 @@ static int ast2500_sdrammc_probe(struct udevice *dev)
 		return PTR_ERR(priv->scu);
 	}
 
+	if (readl(&priv->scu->vga_handshake[0]) & (0x1 << 6)) {
+		printf("%s(): DDR SDRAM had been initialized\n", __func__);
+		ast2500_sdrammc_calc_size(priv);
+		return 0;
+	}
+
 	clk_set_rate(&priv->ddr_clk, priv->clock_rate);
 	ret = reset_get_by_index(dev, 0, &reset_ctl);
 	if (ret) {

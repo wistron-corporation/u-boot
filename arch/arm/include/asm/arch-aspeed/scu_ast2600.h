@@ -8,33 +8,6 @@
 
 #define AST2600_CLK_IN	25000000
 
-/*
- * register offset
-*/
-#define AST_SCU_CONFIG                  0x004
-#define AST_SCU_MPLL_PARAM		0x200
-#define AST_SCU_MPLL_EXT_PARAM		0x204
-#define AST_SCU_FPGA_PLL                0x400
-#define AST_SCU_HW_STRAP		0x500
-
-/*
- * bit-field
-*/
-#define SCU_UNLOCK_VALUE		0x1688a8a8
-
-#define SCU_HWSTRAP_VGAMEM_SHIFT	2
-#define SCU_HWSTRAP_VGAMEM_MASK		(3 << SCU_HWSTRAP_VGAMEM_SHIFT)
-
-
-#define SCU_HWSTRAP_DDR3		(1 << 25)
-
-#define SCU_MPLL_NUM_SHIFT		0
-#define SCU_MPLL_NUM_MASK		(0x1fff << SCU_MPLL_NUM_SHIFT)
-#define SCU_MPLL_DENUM_SHIFT		13
-#define SCU_MPLL_DENUM_MASK		(0x3f << SCU_MPLL_DENUM_SHIFT)
-#define SCU_MPLL_POST_SHIFT		19
-#define SCU_MPLL_POST_MASK		(0xf << SCU_MPLL_POST_SHIFT)
-
 struct ast2600_clk_priv {
 	struct ast2600_scu *scu;
 };
