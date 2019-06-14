@@ -204,11 +204,4 @@ struct ast2600_scu {
 	u32 vga_scratch[8];		/* 0xE00 */
 };
 
-extern u32 ast2600_get_mpll_rate(struct ast2600_scu *scu); 
-extern u32 ast2600_get_hpll_rate(struct ast2600_scu *scu);
-extern u32 ast2600_get_apll_rate(struct ast2600_scu *scu);
-extern u32 ast2600_get_epll_rate(struct ast2600_scu *scu);
-extern u32 ast2600_get_dpll_rate(struct ast2600_scu *scu);
-
-
 #endif  /* _ASM_ARCH_SCU_AST2600_H */

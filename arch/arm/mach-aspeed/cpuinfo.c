@@ -9,12 +9,6 @@
 #include <asm/io.h>
 #include <asm/arch/aspeed_scu_info.h>
 #include <asm/arch/platform.h>
-#ifdef CONFIG_ASPEED_AST2500
-#include <asm/arch/scu_ast2500.h>
-#endif
-#ifdef CONFIG_ASPEED_AST2600
-#include <asm/arch/scu_ast2600.h>
-#endif
 
 #if defined(CONFIG_DISPLAY_CPUINFO)
 /* SoC mapping Table */
@@ -77,7 +71,6 @@ void aspeed_get_revision_id(void)
 
 int print_cpuinfo(void)
 {
-	char buf[32];
 	int i = 0;
 //	ulong size = 0;
 
@@ -112,26 +105,6 @@ int print_cpuinfo(void)
 	puts("Total DRAM : ");
 	print_size(size, "\n");
 #endif	
-
-#if defined(CONFIG_ASPEED_AST2500)
-	struct ast2500_scu *scu = (struct ast2500_scu *)0x1e6e2000;
-
-	printf("PLL   : %4s MHz\n", strmhz(buf, ast2500_get_clkin(scu)));
-	printf("HPLL  : %4s MHz\n", strmhz(buf, ast2500_get_hpll_rate(scu)));
-	printf("MPLL  :	%4s Mhz\n", strmhz(buf, ast2500_get_mpll_rate(scu)));
-	printf("DPLL  :	%4s Mhz\n", strmhz(buf, ast2500_get_dpll_rate(scu)));
-	printf("D2PLL :	%4s Mhz\n", strmhz(buf, ast2500_get_d2pll_rate(scu)));
-#elif defined(CONFIG_ASPEED_AST2600)
-	struct ast2600_scu *scu = (struct ast2600_scu *)0x1e6e2000;
-
-	printf("PLL   : %4s MHz\n", strmhz(buf, AST2600_CLK_IN));
-	printf("HPLL  : %4s MHz\n", strmhz(buf, ast2600_get_hpll_rate(scu)));
-	printf("MPLL  :	%4s Mhz\n", strmhz(buf, ast2600_get_mpll_rate(scu)));
-	printf("APLL  :	%4s Mhz\n", strmhz(buf, ast2600_get_apll_rate(scu)));
-	printf("EPLL :	%4s Mhz\n", strmhz(buf, ast2600_get_epll_rate(scu)));
-	printf("DPLL :	%4s Mhz\n", strmhz(buf, ast2600_get_dpll_rate(scu)));
-#else
-#endif
 
 	aspeed_2nd_wdt_mode();
 

@@ -179,12 +179,4 @@ struct ast2500_scu {
 	u32 clk_duty_sel;
 };
 
-extern u32 ast2500_get_clkin(struct ast2500_scu *scu);
-extern u32 ast2500_get_mpll_rate(struct ast2500_scu *scu);
-extern u32 ast2500_get_hpll_rate(struct ast2500_scu *scu);
-extern u32 ast2500_get_dpll_rate(struct ast2500_scu *scu);
-extern u32 ast2500_get_d2pll_rate(struct ast2500_scu *scu);
-
-
-
 #endif  /* _ASM_ARCH_SCU_AST2500_H */

@@ -111,8 +111,9 @@ static const struct aspeed_group_config ast2600_groups[] = {
 	{ "MDIO2", 1, mdio2_link },
 	{ "MDIO3", 1, mdio3_link },
 	{ "MDIO4", 1, mdio4_link },
-	{ "SD1", ARRAY_SIZE(sdio2_link), sdio2_link },
-	{ "SD2", ARRAY_SIZE(sdio1_link), sdio1_link },
+	{ "SD1", ARRAY_SIZE(sdio1_link), sdio1_link },
+	{ "SD1_8bits", ARRAY_SIZE(sdio1_8bit_link), sdio1_8bit_link },
+	{ "SD2", ARRAY_SIZE(sdio2_link), sdio2_link },
 	{ "EMMC", ARRAY_SIZE(emmc_link), emmc_link },
 };
 
