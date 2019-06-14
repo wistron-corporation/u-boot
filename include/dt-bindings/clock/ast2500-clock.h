@@ -43,5 +43,6 @@
 #define ASPEED_CLK_MPLL                 35
 #define ASPEED_CLK_24M                  36
 
-#define ASPEED_CLK_D2PLL                 37
+#define ASPEED_CLK_DPLL                 37
+#define ASPEED_CLK_D2PLL                 38
 
