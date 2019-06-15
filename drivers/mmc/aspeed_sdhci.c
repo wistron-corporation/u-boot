@@ -33,6 +33,7 @@ static int aspeed_sdhci_probe(struct udevice *dev)
 	struct mmc_uclass_priv *upriv = dev_get_uclass_priv(dev);
 	struct aspeed_sdhci_plat *plat = dev_get_platdata(dev);
 	struct aspeed_sdhci_priv *prv = dev_get_priv(dev);
+	int node = dev_of_offset(dev);
 	struct sdhci_host *host = prv->host;
 	unsigned long clock;
 	struct clk clk;
@@ -51,6 +52,19 @@ static int aspeed_sdhci_probe(struct udevice *dev)
 	}
 
 	debug("%s: CLK %ld\n", __func__, clock);
+
+	gpio_request_by_name_nodev(offset_to_ofnode(node), "pwr-gpios", 0,
+				   &host->pwr_gpio, GPIOD_IS_OUT);
+	gpio_request_by_name_nodev(offset_to_ofnode(node), "pwr-sw-gpios", 0,
+				   &host->pwr_sw_gpio, GPIOD_IS_OUT);
+
+	if (dm_gpio_is_valid(&host->pwr_gpio)) {
+		dm_gpio_set_value(&host->pwr_gpio, 1);
+		if (ret) {
+			debug("MMC not configured\n");
+			return ret;
+		}
+	}
 
 //	host->quirks = SDHCI_QUIRK_WAIT_SEND_CMD;
 	host->max_clk = clock;
