@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0+
 #include <dt-bindings/interrupt-controller/arm-gic.h>
+#include <dt-bindings/gpio/aspeed-gpio.h>
 #include "skeleton.dtsi"
 
 / {
@@ -318,10 +319,8 @@
                                         interrupt-parent = <&sdhci>;
                                         sdhci,auto-cmd12;
                                         clocks = <&scu ASPEED_CLK_SDIO>;
-#if 0
-                                        power-gpio = <&gpio0 ASPEED_GPIO(V, 0) GPIO_ACTIVE_LOW>;
-                                        power-switch-gpio = <&gpio0 ASPEED_GPIO(V, 1) GPIO_ACTIVE_LOW>;
-#endif
+                                        pwr-gpios = <&gpio0 ASPEED_GPIO(V, 0) GPIO_ACTIVE_LOW>;
+                                        pwr-sw-gpios = <&gpio0 ASPEED_GPIO(V, 1) GPIO_ACTIVE_LOW>;
 					status = "disabled";
                                 };
 
@@ -332,15 +331,13 @@
                                         interrupt-parent = <&sdhci>;
                                         sdhci,auto-cmd12;
                                         clocks = <&scu ASPEED_CLK_SDIO>;
-#if 0
-                                        power-gpio = <&gpio0 ASPEED_GPIO(V, 2) GPIO_ACTIVE_LOW>;
-                                        power-switch-gpio = <&gpio0 ASPEED_GPIO(V, 3) GPIO_ACTIVE_LOW>;
-#endif
+                                        pwr-gpios = <&gpio0 ASPEED_GPIO(V, 2) GPIO_ACTIVE_LOW>;
+                                        pwr-sw-gpios = <&gpio0 ASPEED_GPIO(V, 3) GPIO_ACTIVE_LOW>;
 					status = "disabled";
                                 };
 
                         };
-			
+
 			emmc: emmc@1e750000 {
                                 #interrupt-cells = <1>;
                                 compatible = "aspeed,aspeed-emmc-irq", "simple-mfd";
@@ -363,7 +360,27 @@
                                 };
 
                         };
-			
+
+			gpio0: gpio@1e780000 {
+				compatible = "aspeed,ast2600-gpio";
+				reg = <0x1e780000 0x1000>;
+				interrupts = <GIC_SPI 40 IRQ_TYPE_LEVEL_HIGH>;
+				#gpio-cells = <2>;
+				gpio-controller;
+				interrupt-controller;
+				gpio-ranges = <&pinctrl 0 0 220>;
+			};
+
+			gpio1: gpio@1e780800 {
+				compatible = "aspeed,ast2600-gpio";
+				reg = <0x1e780800 0x800>;
+				interrupts = <GIC_SPI 11 IRQ_TYPE_LEVEL_HIGH>;
+				#gpio-cells = <2>;
+				gpio-controller;
+				interrupt-controller;
+				gpio-ranges = <&pinctrl 0 0 208>;
+			};
+
 			uart1: serial@1e783000 {
 				compatible = "ns16550a";
 				reg = <0x1e783000 0x20>;
