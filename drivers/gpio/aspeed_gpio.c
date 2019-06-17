@@ -283,7 +283,7 @@ static int aspeed_gpio_probe(struct udevice *dev)
 
 	uc_priv->bank_name = dev->name;
     uc_priv->gpio_count = driver_data;
-	
+
 	priv->regs = devfdt_get_addr_ptr(dev);
 
     return 0;

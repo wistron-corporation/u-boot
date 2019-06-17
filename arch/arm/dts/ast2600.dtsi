@@ -337,7 +337,7 @@
                                 };
 
                         };
-			
+
 			emmc: emmc@1e750000 {
                                 #interrupt-cells = <1>;
                                 compatible = "aspeed,aspeed-emmc-irq", "simple-mfd";
@@ -362,15 +362,25 @@
                         };
 
 			gpio0: gpio@1e780000 {
+				compatible = "aspeed,ast2600-gpio";
+				reg = <0x1e780000 0x1000>;
+				interrupts = <GIC_SPI 40 IRQ_TYPE_LEVEL_HIGH>;
 				#gpio-cells = <2>;
 				gpio-controller;
-				compatible = "aspeed,ast2500-gpio";
-				reg = <0x1e780000 0x1000>;
-				interrupts = <20>;
-				gpio-ranges = <&pinctrl 0 0 220>;
 				interrupt-controller;
+				gpio-ranges = <&pinctrl 0 0 220>;
 			};
-			
+
+			gpio1: gpio@1e780800 {
+				compatible = "aspeed,ast2600-gpio";
+				reg = <0x1e780800 0x800>;
+				interrupts = <GIC_SPI 11 IRQ_TYPE_LEVEL_HIGH>;
+				#gpio-cells = <2>;
+				gpio-controller;
+				interrupt-controller;
+				gpio-ranges = <&pinctrl 0 0 208>;
+			};
+
 			uart1: serial@1e783000 {
 				compatible = "ns16550a";
 				reg = <0x1e783000 0x20>;
