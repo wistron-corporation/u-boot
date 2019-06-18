@@ -1389,7 +1389,7 @@ void Finish_Close (MAC_ENGINE *eng)
 //------------------------------------------------------------
 char Finish_Check (MAC_ENGINE *eng, int value) 
 {
-#if defined( CONFIG_MACH_ASPEED_G5 )
+#if defined(CONFIG_ASPEED_AST2500)
 	uint32_t   reg;
 	BYTE    shift_value = 0;
 #endif
@@ -1443,7 +1443,7 @@ char Finish_Check (MAC_ENGINE *eng, int value)
 
 	Finish_Close( eng );
 
-#if defined( CONFIG_MACH_ASPEED_G5 )
+#if defined(CONFIG_ASPEED_AST2500)
 	reg = Read_Reg_SCU_DD( 0x40 );
 	if ( eng->ModeSwitch == MODE_DEDICATED )
 		shift_value = 18 + eng->run.MAC_idx;
@@ -1454,7 +1454,7 @@ char Finish_Check (MAC_ENGINE *eng, int value)
 	if ( eng->flg.Err_Flag )
 	{
 		// Fail
-#if defined( CONFIG_MACH_ASPEED_G5 )
+#if defined(CONFIG_ASPEED_AST2500)
 		reg = reg & ~( 1 << shift_value );
 		Write_Reg_SCU_DD( 0x40, reg );
 #endif
@@ -1463,7 +1463,7 @@ char Finish_Check (MAC_ENGINE *eng, int value)
 	else
 	{
 		// PASS
-#if defined( CONFIG_MACH_ASPEED_G5 )
+#if defined(CONFIG_ASPEED_AST2500)
 		reg |= ( 1 << shift_value );
 		Write_Reg_SCU_DD( 0x40, reg );
 #endif

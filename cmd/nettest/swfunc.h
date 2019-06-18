@@ -44,20 +44,11 @@
 //#define  UBOOT_FOR_LINUX_4_9
 
 /* == Auto setting ==========================================  */
-/* ====  Support OS system                                     */
-/*        "Windows"                                            */
-/* ====  Support Chip                                          */
-/*        "AST1010_CHIP" or "AST2500_IOMAP" or "FPGA"          */
-
-#if defined(CONFIG_MACH_ASPEED_G3)
+#if defined(CONFIG_ASPEED_AST2500)
   #define AST2500_IOMAP
 #endif
 
-#if defined(CONFIG_MACH_ASPEED_G5)
-  #define AST2500_IOMAP
-#endif
-
-#if defined(CONFIG_MACH_ASPEED_G6)
+#if defined(CONFIG_ASPEED_AST2600)
   #define AST2500_IOMAP
 #endif
 

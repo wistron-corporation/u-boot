@@ -56,7 +56,7 @@ U_BOOT_CMD(ncsitestd, NETESTCMD_MAX_ARGS, 0, do_ncsitestd,
 // ------------------------------------------------------------------------------
 void multi_pin_2_mdcmdio_init( MAC_ENGINE *eng )
 {  
-#if defined(CONFIG_MACH_ASPEED_G5) || defined(CONFIG_MACH_ASPEED_G4) || defined(CONFIG_MACH_ASPEED_G3)
+#if defined(CONFIG_ASPEED_AST2500)
 	switch (eng->run.MAC_idx_PHY) {
 	case 0:
 		Write_Reg_SCU_DD(0x088, (Read_Reg_SCU_DD(0x088) | 0xC0000000));
@@ -451,7 +451,7 @@ U_BOOT_CMD(
 // ------------------------------------------------------------------------------
 void multi_pin_2_gpio_init( MAC_ENGINE *eng )
 {
-#if defined(CONFIG_MACH_ASPEED_G5) || defined(CONFIG_MACH_ASPEED_G4) || defined(CONFIG_MACH_ASPEED_G3)
+#if defined(CONFIG_ASPEED_AST2500)
 	switch (eng->run.MAC_idx_PHY) {
 	case 0:
 		Write_Reg_SCU_DD(0x088, (Read_Reg_SCU_DD(0x088) & 0x3fffffff));
