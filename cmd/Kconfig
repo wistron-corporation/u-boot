@@ -1932,4 +1932,9 @@ config CMD_UBIFS
 	help
 	  UBIFS is a file system for flash devices which works on top of UBI.
 
+menu "Aspeed Test commands"
+config CMD_NETTEST
+        bool "ASPEED Ethernet loopback test"
+        default y
+endmenu
 endmenu
