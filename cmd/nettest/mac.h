@@ -42,11 +42,9 @@
 //#define Disable_VGA
 //#define Enable_ShowBW
 
-#ifdef AST2500_IOMAP
-  #define AST2500_IOStageStep                    1
-  #define AST2500_IOStageShiftBit_In             2 //0~2
-  #define AST2500_IOStageShiftBit_Out            2 //0~2
-#endif
+#define AST2500_IOStageStep                    1
+#define AST2500_IOStageShiftBit_In             2 //0~2
+#define AST2500_IOStageShiftBit_Out            2 //0~2
 
 //#define SelectSimpleBoundary                                    //[off] Using in debug
 //#define SelectSimpleData                                        //[off] Using in debug

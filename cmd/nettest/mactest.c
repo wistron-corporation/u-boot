@@ -98,37 +98,11 @@ int mac_test(int argc, char * const argv[], char mode)
 		// [Env]setup ASTChipType
 		//------------------------------
 		switch ( eng->reg.SCU_07c ) {
-#ifdef AST2500_IOMAP
-#else
-			case 0x02010303 : sprintf( eng->env.ASTChipName, "[*]AST2400-A1"                    ); eng->env.ASTChipType = 5; break;//AST2400-A1
-			case 0x02000303 : sprintf( eng->env.ASTChipName, "[ ]AST2400-A0"                    ); eng->env.ASTChipType = 5; break;//AST2400-A0
-			case 0x02010103 : sprintf( eng->env.ASTChipName, "[*]AST1400-A1"                    ); eng->env.ASTChipType = 5; break;//AST1400-A1
-			case 0x02000003 : sprintf( eng->env.ASTChipName, "[ ]AST1400-A0"                    ); eng->env.ASTChipType = 5; break;//AST1400-A0
-
-			case 0x01010303 : sprintf( eng->env.ASTChipName, "[*]AST2300-A1"                    ); eng->env.ASTChipType = 4; break;//AST2300-A1
-			case 0x01010203 : sprintf( eng->env.ASTChipName, "[*]AST1050-A1"                    ); eng->env.ASTChipType = 4; break;//AST1050-A1
-			case 0x01010003 : sprintf( eng->env.ASTChipName, "[*]AST1300-A1"                    ); eng->env.ASTChipType = 4; break;//AST1300-A1
-			case 0x01000003 : sprintf( eng->env.ASTChipName, "[ ]AST2300-A0"                    ); eng->env.ASTChipType = 4; break;//AST2300-A0
-
-			case 0x00000102 : sprintf( eng->env.ASTChipName, "[*]AST2200-A1"                    ); eng->env.ASTChipType = 3; break;//AST2200-A1/A0
-
-			case 0x00000302 : sprintf( eng->env.ASTChipName, "[*]AST2100-A3"                    ); eng->env.ASTChipType = 2; break;//AST2100-A3/A2
-			case 0x00000301 : sprintf( eng->env.ASTChipName, "[ ]AST2100-A1"                    ); eng->env.ASTChipType = 2; break;//AST2100-A1
-			case 0x00000300 : sprintf( eng->env.ASTChipName, "[ ]AST2100-A0"                    ); eng->env.ASTChipType = 2; break;//AST2100-A0
-			case 0x00000202 : sprintf( eng->env.ASTChipName, "[*]AST2050/AST1100-A3, AST2150-A1"); eng->env.ASTChipType = 1; break;//AST2050/AST1100-A3/A2 AST2150-A1/A0
-			case 0x00000201 : sprintf( eng->env.ASTChipName, "[ ]AST2050/AST1100-A1"            ); eng->env.ASTChipType = 1; break;//AST2050/AST1100-A1
-			case 0x00000200 : sprintf( eng->env.ASTChipName, "[ ]AST2050/AST1100-A0"            ); eng->env.ASTChipType = 1; break;//AST2050/AST1100-A0
-#endif
 			default:
 				sprintf( eng->env.ASTChipName, "[ ]" );
 				temp = ( eng->reg.SCU_07c ) & 0xff000000;
 				switch ( temp ) {
-#ifdef AST2500_IOMAP
 					case 0x04000000 : eng->env.ASTChipType = 8; goto PASS_CHIP_ID;
-#else
-					case 0x02000000 : eng->env.ASTChipType = 5; goto PASS_CHIP_ID;
-					case 0x01000000 : eng->env.ASTChipType = 4; goto PASS_CHIP_ID;
-#endif
 					default:
 						printf("Error Silicon Revision ID(SCU7C) %08x [%08x]!!!\n", eng->reg.SCU_07c, temp);
 				}
@@ -170,7 +144,7 @@ PASS_CHIP_ID:
 			eng->env.MAC34_vld = 1;
 		else
 			eng->env.MAC34_vld = 0;
-#ifdef CONFIG_MACH_ASPEED_G6
+#ifdef CONFIG_ASPEED_AST2600
 		eng->env.MAC34_vld = 1;
 #endif
 
@@ -301,7 +275,7 @@ Error_GRun_Mode:
 				PrintMode ( eng );
 				return(1);
 		} // End switch ( eng->arg.GRun_Mode )
-#ifdef CONFIG_MACH_ASPEED_G6
+#ifdef CONFIG_ASPEED_AST2600
 switch ( eng->run.MAC_idx ) {
 	case 0: Write_Reg_SCU_DD_AST2600( 0x10c , 0x00000000 | eng->reg.SCU_FPGASel ); break;
 	case 1: Write_Reg_SCU_DD_AST2600( 0x10c , 0x50000000 | eng->reg.SCU_FPGASel ); break;
@@ -547,7 +521,7 @@ Error_GTestMode:
 			eng->env.MAC1_RMII  = !eng->env.MAC1_1Gvld;
 			eng->env.MAC2_RMII  = !eng->env.MAC2_1Gvld;
 			eng->env.MAC2_vld   = 1;
-#ifdef CONFIG_MACH_ASPEED_G6
+#ifdef CONFIG_ASPEED_AST2600
 			eng->env.MAC3_1Gvld = ( eng->reg.SCU_510 & 0x1 ) ? 1 : 0;//1:RGMII, 0:RMII
 			eng->env.MAC4_1Gvld = ( eng->reg.SCU_510 & 0x2 ) ? 1 : 0;//1:RGMII, 0:RMII
 			eng->env.MAC3_RMII  = !eng->env.MAC3_1Gvld;
@@ -627,7 +601,7 @@ Error_GTestMode:
 					eng->phy.PHY_BASE    = MAC_BASE3;
 					eng->run.MAC_idx_PHY = 2;
 				}
-#ifdef CONFIG_MACH_ASPEED_G6
+#ifdef CONFIG_ASPEED_AST2600
 				eng->env.MAC_1Gvld = eng->env.MAC3_1Gvld;
 				eng->env.MAC_RMII  = eng->env.MAC3_RMII;
 
@@ -644,7 +618,7 @@ Error_GTestMode:
 					eng->phy.PHY_BASE    = MAC_BASE4;
 					eng->run.MAC_idx_PHY = 3;
 				}
-#ifdef CONFIG_MACH_ASPEED_G6
+#ifdef CONFIG_ASPEED_AST2600
 				eng->env.MAC_1Gvld = eng->env.MAC4_1Gvld;
 				eng->env.MAC_RMII  = eng->env.MAC4_RMII;
 
@@ -654,7 +628,7 @@ Error_GTestMode:
 				}
 #endif
 			}
-#ifdef CONFIG_MACH_ASPEED_G6
+#ifdef CONFIG_ASPEED_AST2600
 #else
 			eng->env.MAC_1Gvld = 0;
 			eng->env.MAC_RMII  = 1;
@@ -677,9 +651,8 @@ Error_GTestMode:
 		//------------------------------
 		// [Env]setup MHCLK_Ratio
 		//------------------------------
-#ifdef CONFIG_MACH_ASPEED_G6
+#ifdef CONFIG_ASPEED_AST2600
 #else
-#if defined(AST2500_IOMAP)
 		eng->env.MHCLK_Ratio = ( eng->reg.SCU_008 >> 16 ) & 0x7;
 		if ( eng->env.MAC_atlast_1Gvld ) {
 			if ( eng->env.MHCLK_Ratio != 2 ) {
@@ -693,23 +666,6 @@ Error_GTestMode:
 //				return( Finish_Check( eng, Err_Flag_MHCLK_Ratio ) );
 			}
 		}
-#else
-		if ( eng->env.AST2300 ) {
-			eng->env.MHCLK_Ratio = ( eng->reg.SCU_008 >> 16 ) & 0x7;
-			if ( eng->env.MAC_atlast_1Gvld ) {
-				if ( ( eng->env.MHCLK_Ratio == 0 ) || ( eng->env.MHCLK_Ratio > 2 ) ) {
-					FindErr( eng, Err_Flag_MHCLK_Ratio );
-//					return( Finish_Check( eng, Err_Flag_MHCLK_Ratio ) );
-				}
-			}
-			else {
-				if ( eng->env.MHCLK_Ratio != 4 ) {
-					FindErr( eng, Err_Flag_MHCLK_Ratio );
-//					return( Finish_Check( eng, Err_Flag_MHCLK_Ratio ) );
-				}
-			}
-		} // End if ( eng->env.AST2300 )
-#endif
 #endif
 
 //------------------------------------------------------------
@@ -721,7 +677,6 @@ Error_GTestMode:
 		// [Reg]setup SCU_004_dis
 		// [Reg]setup SCU_004_en
 		//------------------------------
-#if defined(AST2500_IOMAP)
 		if ( eng->arg.GEn_PHYAdrInv ) {
 			eng->reg.SCU_004_rstbit = 0x00001800; //Reset Engine
 		}
@@ -731,22 +686,6 @@ Error_GTestMode:
 			else
 				eng->reg.SCU_004_rstbit = 0x00000800; //Reset Engine
 		}
-#else
-//		if ( eng->arg.GEn_PHYAdrInv ) {
-			if ( eng->env.AST2300 )
-				eng->reg.SCU_004_rstbit = 0x0c001800; //Reset Engine
-			else
-				eng->reg.SCU_004_rstbit = 0x00001800; //Reset Engine
-//		}
-//		else {
-//			switch ( eng->run.MAC_idx ) {
-//				case 3: eng->reg.SCU_004_rstbit = 0x08000000; break; //Reset Engine
-//				case 2: eng->reg.SCU_004_rstbit = 0x04000000; break; //Reset Engine
-//				case 1: eng->reg.SCU_004_rstbit = 0x00001000; break; //Reset Engine
-//				case 0: eng->reg.SCU_004_rstbit = 0x00000800; break; //Reset Engine
-//			}
-//		}
-#endif
 		eng->reg.SCU_004_mix = eng->reg.SCU_004;
 		eng->reg.SCU_004_en  = eng->reg.SCU_004_mix & (~eng->reg.SCU_004_rstbit);
 		eng->reg.SCU_004_dis = eng->reg.SCU_004_mix |   eng->reg.SCU_004_rstbit;
@@ -785,7 +724,6 @@ Error_GTestMode:
 		// [Reg]setup SCU_048_default
 		// [Reg]setup SCU_074_mix
 		//------------------------------
-#ifdef AST2500_IOMAP
 		eng->reg.SCU_048_mix     = ( eng->reg.SCU_048 & 0xfc000000 );
 		eng->reg.SCU_048_check   = ( eng->reg.SCU_048 & 0x03ffffff );
 		eng->reg.SCU_048_default =   SCU_48h_AST2500  & 0x03ffffff;
@@ -796,17 +734,6 @@ Error_GTestMode:
 				case 0: eng->reg.SCU_048_mix = eng->reg.SCU_048_mix | 0x20000000; break;
 			}
 		}
-#else
-		eng->reg.SCU_048_mix     = ( eng->reg.SCU_048 & 0xf0000000 );
-		if ( eng->env.MAC34_vld ) {
-			eng->reg.SCU_048_check   = ( eng->reg.SCU_048 & 0x0fffffff );
-			eng->reg.SCU_048_default =    SCU_48h_AST2300 & 0x0fffffff;
-		}
-		else {
-			eng->reg.SCU_048_check   = ( eng->reg.SCU_048 & 0x0300ffff );
-			eng->reg.SCU_048_default =    SCU_48h_AST2300 & 0x0300ffff;
-		}
-#endif
 		eng->reg.SCU_074_mix = eng->reg.SCU_074;
 
 		//------------------------------

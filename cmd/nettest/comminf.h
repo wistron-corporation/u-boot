@@ -185,12 +185,7 @@
   // #define DRAM_OFS_BUF                         0x06000000 // in-house setting
 #endif
 
-#ifdef AST2500_IOMAP
-  #define DRAM_OFS_WINDOW                      0x80000000
-#else
-  #define DRAM_OFS_WINDOW                      0x40000000
-#endif
-
+#define DRAM_OFS_WINDOW                      0x80000000
 #define DRAM_OFS_REMAP                       0x00000000
 
   #define TDES_BASE1                             ( 0x00000000 + DRAM_OFS_BUF - DRAM_OFS_REMAP + DRAM_OFS_WINDOW )
@@ -499,7 +494,7 @@ typedef struct {
 	uint32_t ManufacturerID                           ;//__attribute__ ((aligned (4)));
 } NCSI_Capability;
 typedef struct {
-#ifdef CONFIG_MACH_ASPEED_G6
+#ifdef CONFIG_ASPEED_AST2600
 	uint32_t SCU_FPGASel                   ;//__attribute__ ((aligned (4)));
 	uint32_t SCU_510                       ;//__attribute__ ((aligned (4)));
 #endif
@@ -533,16 +528,12 @@ typedef struct {
 	uint32_t SCU_088                       ;//__attribute__ ((aligned (4)));
 	uint32_t SCU_090                       ;//__attribute__ ((aligned (4)));
 	uint32_t SCU_09c                       ;//__attribute__ ((aligned (4)));
-#ifdef AST2500_IOMAP
 	uint32_t SCU_0b8                       ;//__attribute__ ((aligned (4)));
 	uint32_t SCU_0bc                       ;//__attribute__ ((aligned (4)));
-#endif
 	uint32_t SCU_0f0                       ;//__attribute__ ((aligned (4)));
 	uint32_t WDT_00c                       ;//__attribute__ ((aligned (4)));
 	uint32_t WDT_02c                       ;//__attribute__ ((aligned (4)));
-#ifdef AST2500_IOMAP
 	uint32_t WDT_04c                       ;//__attribute__ ((aligned (4)));
-#endif
 
 	CHAR                 SCU_oldvld                    ;//__attribute__ ((aligned (4)));
 } MAC_Register;
@@ -559,13 +550,13 @@ typedef struct {
 	CHAR                 MAC_Mode                      ;//__attribute__ ((aligned (4)));
 	CHAR                 MAC1_1Gvld                    ;//__attribute__ ((aligned (4)));
 	CHAR                 MAC2_1Gvld                    ;//__attribute__ ((aligned (4)));
-#ifdef CONFIG_MACH_ASPEED_G6
+#ifdef CONFIG_ASPEED_AST2600
 	CHAR                 MAC3_1Gvld                    ;//__attribute__ ((aligned (4)));
 	CHAR                 MAC4_1Gvld                    ;//__attribute__ ((aligned (4)));
 #endif
 	CHAR                 MAC1_RMII                     ;//__attribute__ ((aligned (4)));
 	CHAR                 MAC2_RMII                     ;//__attribute__ ((aligned (4)));
-#ifdef CONFIG_MACH_ASPEED_G6
+#ifdef CONFIG_ASPEED_AST2600
 	CHAR                 MAC3_RMII                     ;//__attribute__ ((aligned (4)));
 	CHAR                 MAC4_RMII                     ;//__attribute__ ((aligned (4)));
 #endif
@@ -710,10 +701,8 @@ typedef struct {
 	BYTE                 Dly_in_shf_regH               ;//__attribute__ ((aligned (4)));
 	BYTE                 Dly_out_shf_regH              ;//__attribute__ ((aligned (4)));
 	BYTE                 value_ary[64]                 ;//__attribute__ ((aligned (4)));
-#ifdef AST2500_IOMAP
 	BYTE                 Dly_stage_shf_i               ;//__attribute__ ((aligned (4)));
 	BYTE                 Dly_stage_shf_o               ;//__attribute__ ((aligned (4)));
-#endif
 
 	uint32_t Dly_reg_idx                   ;//__attribute__ ((aligned (4)));
 	uint32_t Dly_reg_value                 ;//__attribute__ ((aligned (4)));
