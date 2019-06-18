@@ -52,18 +52,9 @@
   #define AST2500_IOMAP
 #endif
 
-#if defined(CONFIG_AST1500)
-  #define ISUBOOT_1_1_4
-  #define AST2500_IOMAP
-#endif
-
 
 /* ========================================================== */
-#ifdef ISUBOOT_1_1_4
-#define NETESTCMD_MAX_ARGS CFG_MAXARGS
-#else
 #define NETESTCMD_MAX_ARGS CONFIG_SYS_MAXARGS
-#endif
 
 /* == Step 4:==========   Select PHY    ================== */
 //#define SUPPORT_PHY_LAN9303                                   // Initial PHY via I2C bus

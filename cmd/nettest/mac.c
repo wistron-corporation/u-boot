@@ -102,7 +102,7 @@ uint32_t Read_Reg_PHY_DD(MAC_ENGINE *eng, uint32_t addr)
 	printf("[RegRd-PHY] %08x = %08x\n", eng->phy.PHY_BASE + addr,
 	       SWAP_4B_LEDN_REG(ReadSOC_DD(eng->phy.PHY_BASE + addr)));
 #endif
-#ifdef CONFIG_MACH_ASPEED_G6
+#ifdef CONFIG_ASPEED_AST2600
 	if (addr == 0x60) {
 		if (eng->env.MAC_RMII)
 			return (SWAP_4B_LEDN_REG(ReadSOC_DD(0x1e650008)));
@@ -130,7 +130,7 @@ uint32_t Read_Reg_SCU_DD_AST2600(uint32_t addr)
 
 uint32_t Read_Reg_SCU_DD(uint32_t addr)
 {
-#ifdef CONFIG_MACH_ASPEED_G6
+#ifdef CONFIG_ASPEED_AST2600
 	return (0);
 #else
 #ifdef MAC_DEBUG_REGRW_SCU
@@ -227,7 +227,7 @@ void Write_Reg_PHY_DD (MAC_ENGINE *eng, uint32_t addr, uint32_t data) {
 #ifdef MAC_DEBUG_REGRW_PHY
 	printf("[RegWr-PHY] %08x = %08x\n", eng->phy.PHY_BASE + addr, SWAP_4B_LEDN_REG( data ));
 #endif
-#ifdef CONFIG_MACH_ASPEED_G6
+#ifdef CONFIG_ASPEED_AST2600
 	if (addr == 0x60) {
 		if (eng->env.MAC_RMII)
 			WriteSOC_DD( 0x1e650008, SWAP_4B_LEDN_REG( data ) );
@@ -250,7 +250,7 @@ void Write_Reg_SCU_DD_AST2600 (uint32_t addr, uint32_t data) {
 	WriteSOC_DD( SCU_BASE + addr, SWAP_4B_LEDN_REG( data ) );
 }
 void Write_Reg_SCU_DD (uint32_t addr, uint32_t data) {
-#ifdef CONFIG_MACH_ASPEED_G6
+#ifdef CONFIG_ASPEED_AST2600
 #else
 #ifdef MAC_DEBUG_REGRW_SCU
 	printf("[RegWr-SCU] %08x = %08x\n", SCU_BASE + addr, SWAP_4B_LEDN_REG( data ));
@@ -713,7 +713,7 @@ void read_scu (MAC_ENGINE *eng)
 	} // End if ( !eng->reg.SCU_oldvld )
 
 
-#ifdef CONFIG_MACH_ASPEED_G6
+#ifdef CONFIG_ASPEED_AST2600
 	eng->reg.SCU_048 = 0x00082208;
 	eng->reg.SCU_0b8 = 0x00082208;
 	eng->reg.SCU_0bc = 0x00082208;

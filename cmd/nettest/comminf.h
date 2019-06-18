@@ -499,7 +499,7 @@ typedef struct {
 	uint32_t ManufacturerID                           ;//__attribute__ ((aligned (4)));
 } NCSI_Capability;
 typedef struct {
-#ifdef CONFIG_MACH_ASPEED_G6
+#ifdef CONFIG_ASPEED_AST2600
 	uint32_t SCU_FPGASel                   ;//__attribute__ ((aligned (4)));
 	uint32_t SCU_510                       ;//__attribute__ ((aligned (4)));
 #endif
@@ -559,13 +559,13 @@ typedef struct {
 	CHAR                 MAC_Mode                      ;//__attribute__ ((aligned (4)));
 	CHAR                 MAC1_1Gvld                    ;//__attribute__ ((aligned (4)));
 	CHAR                 MAC2_1Gvld                    ;//__attribute__ ((aligned (4)));
-#ifdef CONFIG_MACH_ASPEED_G6
+#ifdef CONFIG_ASPEED_AST2600
 	CHAR                 MAC3_1Gvld                    ;//__attribute__ ((aligned (4)));
 	CHAR                 MAC4_1Gvld                    ;//__attribute__ ((aligned (4)));
 #endif
 	CHAR                 MAC1_RMII                     ;//__attribute__ ((aligned (4)));
 	CHAR                 MAC2_RMII                     ;//__attribute__ ((aligned (4)));
-#ifdef CONFIG_MACH_ASPEED_G6
+#ifdef CONFIG_ASPEED_AST2600
 	CHAR                 MAC3_RMII                     ;//__attribute__ ((aligned (4)));
 	CHAR                 MAC4_RMII                     ;//__attribute__ ((aligned (4)));
 #endif

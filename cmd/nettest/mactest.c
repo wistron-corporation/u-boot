@@ -170,7 +170,7 @@ PASS_CHIP_ID:
 			eng->env.MAC34_vld = 1;
 		else
 			eng->env.MAC34_vld = 0;
-#ifdef CONFIG_MACH_ASPEED_G6
+#ifdef CONFIG_ASPEED_AST2600
 		eng->env.MAC34_vld = 1;
 #endif
 
@@ -301,7 +301,7 @@ Error_GRun_Mode:
 				PrintMode ( eng );
 				return(1);
 		} // End switch ( eng->arg.GRun_Mode )
-#ifdef CONFIG_MACH_ASPEED_G6
+#ifdef CONFIG_ASPEED_AST2600
 switch ( eng->run.MAC_idx ) {
 	case 0: Write_Reg_SCU_DD_AST2600( 0x10c , 0x00000000 | eng->reg.SCU_FPGASel ); break;
 	case 1: Write_Reg_SCU_DD_AST2600( 0x10c , 0x50000000 | eng->reg.SCU_FPGASel ); break;
@@ -547,7 +547,7 @@ Error_GTestMode:
 			eng->env.MAC1_RMII  = !eng->env.MAC1_1Gvld;
 			eng->env.MAC2_RMII  = !eng->env.MAC2_1Gvld;
 			eng->env.MAC2_vld   = 1;
-#ifdef CONFIG_MACH_ASPEED_G6
+#ifdef CONFIG_ASPEED_AST2600
 			eng->env.MAC3_1Gvld = ( eng->reg.SCU_510 & 0x1 ) ? 1 : 0;//1:RGMII, 0:RMII
 			eng->env.MAC4_1Gvld = ( eng->reg.SCU_510 & 0x2 ) ? 1 : 0;//1:RGMII, 0:RMII
 			eng->env.MAC3_RMII  = !eng->env.MAC3_1Gvld;
@@ -627,7 +627,7 @@ Error_GTestMode:
 					eng->phy.PHY_BASE    = MAC_BASE3;
 					eng->run.MAC_idx_PHY = 2;
 				}
-#ifdef CONFIG_MACH_ASPEED_G6
+#ifdef CONFIG_ASPEED_AST2600
 				eng->env.MAC_1Gvld = eng->env.MAC3_1Gvld;
 				eng->env.MAC_RMII  = eng->env.MAC3_RMII;
 
@@ -644,7 +644,7 @@ Error_GTestMode:
 					eng->phy.PHY_BASE    = MAC_BASE4;
 					eng->run.MAC_idx_PHY = 3;
 				}
-#ifdef CONFIG_MACH_ASPEED_G6
+#ifdef CONFIG_ASPEED_AST2600
 				eng->env.MAC_1Gvld = eng->env.MAC4_1Gvld;
 				eng->env.MAC_RMII  = eng->env.MAC4_RMII;
 
@@ -654,7 +654,7 @@ Error_GTestMode:
 				}
 #endif
 			}
-#ifdef CONFIG_MACH_ASPEED_G6
+#ifdef CONFIG_ASPEED_AST2600
 #else
 			eng->env.MAC_1Gvld = 0;
 			eng->env.MAC_RMII  = 1;
@@ -677,7 +677,7 @@ Error_GTestMode:
 		//------------------------------
 		// [Env]setup MHCLK_Ratio
 		//------------------------------
-#ifdef CONFIG_MACH_ASPEED_G6
+#ifdef CONFIG_ASPEED_AST2600
 #else
 #if defined(AST2500_IOMAP)
 		eng->env.MHCLK_Ratio = ( eng->reg.SCU_008 >> 16 ) & 0x7;

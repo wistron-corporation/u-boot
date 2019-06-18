@@ -40,7 +40,7 @@ void phy_write (MAC_ENGINE *eng, int adr, uint32_t data) {
         int        timeout = 0;
 
         if ( eng->inf.NewMDIO ) {
-#ifdef CONFIG_MACH_ASPEED_G6
+#ifdef CONFIG_ASPEED_AST2600
                 Write_Reg_PHY_DD( eng, 0x60, data | MAC_PHYWr_AST2600 | ( eng->phy.Adr << 21 ) | ( ( adr & 0x1f ) << 16 ) );
 				
 				while ( Read_Reg_PHY_DD( eng, 0x60 ) & MAC_PHYBusy_AST2600 ) {
@@ -96,7 +96,7 @@ uint32_t phy_read (MAC_ENGINE *eng, int adr) {
         int        timeout = 0;
 
         if ( eng->inf.NewMDIO ) {
-#ifdef CONFIG_MACH_ASPEED_G6
+#ifdef CONFIG_ASPEED_AST2600
 				Write_Reg_PHY_DD( eng, 0x60, MAC_PHYRd_AST2600 | (eng->phy.Adr << 21) | (( adr & 0x1f ) << 16) );
 
 				while ( Read_Reg_PHY_DD( eng, 0x60 ) & MAC_PHYBusy_AST2600 ) {
@@ -2254,7 +2254,7 @@ BOOLEAN find_phyadr (MAC_ENGINE *eng)
                 eng->inf.NewMDIO = ( Read_Reg_PHY_DD( eng, 0x40 ) & 0x80000000 ) ? 1 : 0;
         } else
                 eng->inf.NewMDIO = 0;
-#ifdef CONFIG_MACH_ASPEED_G6
+#ifdef CONFIG_ASPEED_AST2600
 		eng->inf.NewMDIO = 1;
 #endif
         PHY_ADR_org = eng->phy.Adr;
