@@ -306,15 +306,10 @@ void init_iodelay (MAC_ENGINE *eng)
 
 	nt_log_func_name();
 
-#ifdef AST2500_IOMAP
 	if ( eng->env.AST2500A1 && ( !eng->env.MAC_RMII ) )
 		eng->io.Dly_3Regiser = 1;
 	else
 		eng->io.Dly_3Regiser = 0;
-#else
-	eng->io.Dly_3Regiser = 0;
-#endif
-
 	//------------------------------
 	// IO Strength Max.
 	//------------------------------
@@ -326,7 +321,6 @@ void init_iodelay (MAC_ENGINE *eng)
 	// [IO]setup Str_shf
 	//------------------------------
 	// Get bit (shift) of IO driving strength register
-#if defined(AST2500_IOMAP)
 	eng->io.Str_reg_idx   = 0x90;
 	eng->io.Str_reg_Lbit  =  8;
 	eng->io.Str_reg_Hbit  = 11;
@@ -347,34 +341,7 @@ void init_iodelay (MAC_ENGINE *eng)
 			case 1  : eng->io.Str_shf = 10; break;
 		}
 	}
-#else
-	if ( eng->env.AST2400 ) {
-		eng->io.Str_reg_idx   = 0x90;
-		eng->io.Str_reg_Lbit  =  8;
-		eng->io.Str_reg_Hbit  = 11;
-		eng->io.Str_reg_value = ( eng->reg.SCU_090 >> eng->io.Str_reg_Lbit ) & 0xf;
-		eng->io.Str_reg_mask  = ( eng->reg.SCU_090 & 0xfffff0ff );
-		eng->io.Str_max       = 1;//0~1
-		switch ( eng->run.MAC_idx ) {
-			case 0  : eng->io.Str_shf =  9; break;
-			case 1  : eng->io.Str_shf = 11; break;
-		}
-	}
-	else {
-		eng->io.Str_reg_idx   = 0x90;
-		eng->io.Str_reg_Lbit  =  8;
-		eng->io.Str_reg_Hbit  = 15;
-		eng->io.Str_reg_value = ( eng->reg.SCU_090 >> eng->io.Str_reg_Lbit ) & 0xff;
-		eng->io.Str_reg_mask  = ( eng->reg.SCU_090 & 0xffff00ff );
-		eng->io.Str_max       = 3;//0~3
-		switch ( eng->run.MAC_idx ) {
-			case 0  : eng->io.Str_shf =  8; break;
-			case 1  : eng->io.Str_shf = 10; break;
-			case 2  : eng->io.Str_shf = 12; break;
-			case 3  : eng->io.Str_shf = 14; break;
-		}
-	}
-#endif
+
 	if ( !eng->run.TM_IOStrength )
 		eng->io.Str_max = 0;
 
@@ -389,24 +356,15 @@ void init_iodelay (MAC_ENGINE *eng)
 	// [IO]setup Dly_mask_bit_in
 	// [IO]setup Dly_mask_bit_out
 	//------------------------------
-#ifdef AST2500_IOMAP
 	eng->io.Dly_stage_shf_i = (eng->arg.GEn_FullRange) ? 0 : AST2500_IOStageShiftBit_In ;
 	eng->io.Dly_stage_shf_o = (eng->arg.GEn_FullRange) ? 0 : AST2500_IOStageShiftBit_Out;
-#endif
 
-#ifdef AST2500_IOMAP
 	eng->io.Dly_stagebit  = 6;
 	eng->io.Dly_stage     =   ( 1 << eng->io.Dly_stagebit );
 	eng->io.Dly_stage_in  = ( eng->io.Dly_stage >> eng->io.Dly_stage_shf_i );
 	eng->io.Dly_stage_out = ( eng->io.Dly_stage >> eng->io.Dly_stage_shf_o );
 	eng->io.Dly_step      = AST2500_IOStageStep;
-#else
-	eng->io.Dly_stagebit  = 4;
-	eng->io.Dly_stage     = ( 1 << eng->io.Dly_stagebit );
-	eng->io.Dly_stage_in  = eng->io.Dly_stage;
-	eng->io.Dly_stage_out = eng->io.Dly_stage;
-	eng->io.Dly_step      = 1;
-#endif
+
 	eng->io.Dly_mask_bit_in = eng->io.Dly_stage - 1;
 	if ( eng->env.MAC_RMII )
 		eng->io.Dly_mask_bit_out = 1;
@@ -422,7 +380,6 @@ void init_iodelay (MAC_ENGINE *eng)
 	// [IO]setup Dly_in_shf_regH
 	// [IO]setup Dly_out_shf_regH
 	//------------------------------
-#ifdef AST2500_IOMAP
 	if ( eng->env.MAC_RMII ) {
 		switch ( eng->run.MAC_idx ) {
 			case 0  : eng->io.Dly_out_shf = 24; eng->io.Dly_in_shf = 12; break;
@@ -435,22 +392,7 @@ void init_iodelay (MAC_ENGINE *eng)
 			case 1  : eng->io.Dly_out_shf =  6; eng->io.Dly_in_shf  = 18; break;
 		}
 	} // End if ( eng->env.MAC_RMII )
-#else
-	if ( eng->env.MAC_RMII ) {
-		switch ( eng->run.MAC_idx ) {
-			case 0  : eng->io.Dly_out_shf = 24; eng->io.Dly_in_shf =  8; break;
-			case 1  : eng->io.Dly_out_shf = 25; eng->io.Dly_in_shf = 12; break;
-			case 2  : eng->io.Dly_out_shf = 26; eng->io.Dly_in_shf = 16; break;
-			case 3  : eng->io.Dly_out_shf = 27; eng->io.Dly_in_shf = 20; break;
-		}
-	}
-	else {
-		switch ( eng->run.MAC_idx ) {
-			case 0  : eng->io.Dly_out_shf =  0; eng->io.Dly_in_shf  =  8; break;
-			case 1  : eng->io.Dly_out_shf =  4; eng->io.Dly_in_shf  = 12; break;
-		}
-	} // End if ( eng->env.MAC_RMII )
-#endif
+
 	eng->io.Dly_in_shf_regH  = eng->io.Dly_in_shf  + eng->io.Dly_stagebit - 1;
 	eng->io.Dly_out_shf_regH = eng->io.Dly_out_shf + eng->io.Dly_stagebit - 1;
 
@@ -482,9 +424,7 @@ void init_iodelay (MAC_ENGINE *eng)
 //------------------------------------------------------------
 int get_iodelay (MAC_ENGINE *eng) {
 	int        index;
-#ifdef AST2500_IOMAP
 	int        index_max;
-#endif
 
 	nt_log_func_name();
 
@@ -495,16 +435,20 @@ int get_iodelay (MAC_ENGINE *eng) {
 	// [IO]setup Dly_reg_idx
 	// [IO]setup Dly_reg_value
 	//------------------------------
-#ifdef AST2500_IOMAP
-	switch ( eng->run.Speed_idx ) {
-		case 0        : eng->io.Dly_reg_idx = 0x48; eng->io.Dly_reg_value = eng->reg.SCU_048; break;
-		case 1        : eng->io.Dly_reg_idx = 0xb8; eng->io.Dly_reg_value = eng->reg.SCU_0b8; break;
-		case 2        : eng->io.Dly_reg_idx = 0xbc; eng->io.Dly_reg_value = eng->reg.SCU_0bc; break;
+	switch (eng->run.Speed_idx) {
+	case 0:
+		eng->io.Dly_reg_idx = 0x48;
+		eng->io.Dly_reg_value = eng->reg.SCU_048;
+		break;
+	case 1:
+		eng->io.Dly_reg_idx = 0xb8;
+		eng->io.Dly_reg_value = eng->reg.SCU_0b8;
+		break;
+	case 2:
+		eng->io.Dly_reg_idx = 0xbc;
+		eng->io.Dly_reg_value = eng->reg.SCU_0bc;
+		break;
 	}
-#else
-	eng->io.Dly_reg_idx   = 0x48;
-	eng->io.Dly_reg_value = eng->reg.SCU_048;
-#endif
 
 	//------------------------------
 	// [IO]setup Dly_reg_name_tx
@@ -517,13 +461,16 @@ int get_iodelay (MAC_ENGINE *eng) {
 	else
 		sprintf( eng->io.Dly_reg_name_tx, "Tx:SCU%2X[%2d:%2d]=", eng->io.Dly_reg_idx, eng->io.Dly_out_shf_regH, eng->io.Dly_out_shf );
 	sprintf( eng->io.Dly_reg_name_rx, "Rx:SCU%2X[%2d:%2d]=", eng->io.Dly_reg_idx, eng->io.Dly_in_shf_regH,  eng->io.Dly_in_shf );
-#ifdef AST2500_IOMAP
-	if ( eng->env.MAC_RMII )
-		sprintf( eng->io.Dly_reg_name_tx_new, "Tx[   %2d]=",                            eng->io.Dly_out_shf );
+
+	if (eng->env.MAC_RMII)
+		sprintf(eng->io.Dly_reg_name_tx_new,
+			"Tx[   %2d]=", eng->io.Dly_out_shf);
 	else
-		sprintf( eng->io.Dly_reg_name_tx_new, "Tx[%2d:%2d]=", eng->io.Dly_out_shf_regH, eng->io.Dly_out_shf );
-	sprintf( eng->io.Dly_reg_name_rx_new, "Rx[%2d:%2d]=", eng->io.Dly_in_shf_regH,  eng->io.Dly_in_shf );
-#endif
+		sprintf(eng->io.Dly_reg_name_tx_new,
+			"Tx[%2d:%2d]=", eng->io.Dly_out_shf_regH,
+			eng->io.Dly_out_shf);
+	sprintf(eng->io.Dly_reg_name_rx_new,
+		"Rx[%2d:%2d]=", eng->io.Dly_in_shf_regH, eng->io.Dly_in_shf);
 
 	//------------------------------
 	// [IO]setup Dly_in_reg
@@ -543,24 +490,17 @@ int get_iodelay (MAC_ENGINE *eng) {
 	// [IO]setup Dly_out_max
 	//------------------------------
 	// Find the coordinate in X-Y axis
-#ifdef AST2500_IOMAP
 	index_max = ( eng->io.Dly_stage_in << eng->io.Dly_stage_shf_i );
 	for ( index = 0; index < index_max; index++ )
-#else
-	for ( index = 0; index < eng->io.Dly_stage_in; index++ )
-#endif
 		if ( eng->io.Dly_in_reg == eng->io.value_ary[ index ] ) {
 			eng->io.Dly_in_reg_idx = index;
 			eng->io.Dly_in_min     = index - ( eng->run.IO_Bund >> 1 );
 			eng->io.Dly_in_max     = index + ( eng->run.IO_Bund >> 1 );
 			break;
 		}
-#ifdef AST2500_IOMAP
+
 	index_max = ( eng->io.Dly_stage_out << eng->io.Dly_stage_shf_o );
 	for ( index = 0; index < index_max; index++ )
-#else
-	for ( index = 0; index < eng->io.Dly_stage_out; index++ )
-#endif
 		if ( eng->io.Dly_out_reg == eng->io.value_ary[ index ] ) {
 			eng->io.Dly_out_reg_idx = index;
 			if ( eng->env.MAC_RMII ) {
@@ -655,27 +595,15 @@ void recov_scu (MAC_ENGINE *eng) {
 	Write_Reg_SCU_DD( 0x048, eng->reg.SCU_048 );
 //#if defined(SLT_UBOOT) || defined(Enable_MAC_ExtLoop)
 //#else
-//  #ifdef AST2500_IOMAP
 //	Write_Reg_SCU_DD( 0x07c, (~eng->reg.SCU_070) );
-//  #endif
 //	Write_Reg_SCU_DD( 0x070, eng->reg.SCU_070  );
 //#endif
 	Write_Reg_SCU_DD( 0x074, eng->reg.SCU_074 );
 	Write_Reg_SCU_DD( 0x080, eng->reg.SCU_080 );
 	Write_Reg_SCU_DD( 0x088, eng->reg.SCU_088 );
 	Write_Reg_SCU_DD( 0x090, eng->reg.SCU_090 );
-#ifdef AST2500_IOMAP
 	Write_Reg_SCU_DD( 0x0b8, eng->reg.SCU_0b8 );
 	Write_Reg_SCU_DD( 0x0bc, eng->reg.SCU_0bc );
-#endif
-
-	//WDT
-//	Write_Reg_WDT_DD( 0x00c, eng->reg.WDT_00c );
-//	Write_Reg_WDT_DD( 0x02c, eng->reg.WDT_02c );
-#ifdef AST2500_IOMAP
-//	Write_Reg_WDT_DD( 0x04c, eng->reg.WDT_04c );
-#endif
-
 } // End void recov_scu (MAC_ENGINE *eng)
 
 //------------------------------------------------------------
@@ -696,18 +624,14 @@ void read_scu (MAC_ENGINE *eng)
 		eng->reg.SCU_088 = Read_Reg_SCU_DD( 0x088 );
 		eng->reg.SCU_090 = Read_Reg_SCU_DD( 0x090 );
 		eng->reg.SCU_09c = Read_Reg_SCU_DD( 0x09c );
-#ifdef AST2500_IOMAP
 		eng->reg.SCU_0b8 = Read_Reg_SCU_DD( 0x0b8 );
 		eng->reg.SCU_0bc = Read_Reg_SCU_DD( 0x0bc );
-#endif
 		eng->reg.SCU_0f0 = Read_Reg_SCU_DD( 0x0f0 );
 
 		//WDT
 		eng->reg.WDT_00c = Read_Reg_WDT_DD( 0x00c );
 		eng->reg.WDT_02c = Read_Reg_WDT_DD( 0x02c );
-#ifdef AST2500_IOMAP
 		eng->reg.WDT_04c = Read_Reg_WDT_DD( 0x04c );
-#endif
 
 		eng->reg.SCU_oldvld = 1;
 	} // End if ( !eng->reg.SCU_oldvld )
@@ -765,13 +689,11 @@ void Setting_scu (MAC_ENGINE *eng)
 
 	Write_Reg_WDT_DD( 0x00c, eng->reg.WDT_00c & 0xfffffffc );
 	Write_Reg_WDT_DD( 0x02c, eng->reg.WDT_02c & 0xfffffffc );
-#ifdef AST2500_IOMAP
 	Write_Reg_WDT_DD( 0x04c, eng->reg.WDT_04c & 0xfffffffc );
 
 	Write_Reg_WDT_DD( 0x01c, Read_Reg_WDT_DD( 0x01c ) & 0xffffff9f );
 	Write_Reg_WDT_DD( 0x03c, Read_Reg_WDT_DD( 0x03c ) & 0xffffff9f );
 	Write_Reg_WDT_DD( 0x05c, Read_Reg_WDT_DD( 0x05c ) & 0xffffff9f );
-#endif
 }
 
 //------------------------------------------------------------
@@ -851,14 +773,6 @@ void init_scu_macrst (MAC_ENGINE *eng)
 	DELAY( Delay_SCU );
 #endif
 	Write_Reg_SCU_DD( 0x04, eng->reg.SCU_004_en );//Enable Engine
-
-#ifndef AST2500_IOMAP //MAC40h is SCU reset before AST2500
-  #ifdef MAC_040_def
-	Write_Reg_MAC_DD( eng, 0x40, eng->reg.MAC_040_new | MAC_040_def );
-  #else
-	Write_Reg_MAC_DD( eng, 0x40, eng->reg.MAC_040_new );
-  #endif
-#endif
 } // End void init_scu_macrst (MAC_ENGINE *eng)
 
 //------------------------------------------------------------
@@ -886,14 +800,6 @@ void init_scu_macen (MAC_ENGINE *eng)
 	Read_Reg_SCU_DD( 0x04 );//delay
 	Write_Reg_SCU_DD( 0x04, eng->reg.SCU_004_en );//Enable Engine
 	Read_Reg_SCU_DD( 0x04 );//delay
-
-#ifndef AST2500_IOMAP
-  #ifdef MAC_040_def
-	Write_Reg_MAC_DD( eng, 0x40, eng->reg.MAC_040_new | MAC_040_def );
-  #else
-	Write_Reg_MAC_DD( eng, 0x40, eng->reg.MAC_040_new );
-  #endif
-#endif
 } // End void init_scu_macen (MAC_ENGINE *eng)
 
 //------------------------------------------------------------
@@ -968,13 +874,11 @@ void get_mac_info (MAC_ENGINE *eng)
 	else
 		eng->reg.MAC_040_new = eng->reg.MAC_040;
 
-#ifdef AST2500_IOMAP //MAC40h is power-on reset in AST2500
   #ifdef MAC_040_def
 	Write_Reg_MAC_DD( eng, 0x40, eng->reg.MAC_040_new | MAC_040_def );
   #else
 	Write_Reg_MAC_DD( eng, 0x40, eng->reg.MAC_040_new );
   #endif
-#endif
 }
 
 //------------------------------------------------------------
@@ -1001,11 +905,9 @@ void init_mac (MAC_ENGINE *eng)
 	Write_Reg_MAC_DD( eng, 0x20, AT_MEMRW_BUF( eng->run.TDES_BASE ) ); // 20130730
 	Write_Reg_MAC_DD( eng, 0x24, AT_MEMRW_BUF( eng->run.RDES_BASE ) ); // 20130730
 
-//#ifdef AST2500_IOMAP
-//#else
 	Write_Reg_MAC_DD( eng, 0x08, eng->reg.MAC_008 );
 	Write_Reg_MAC_DD( eng, 0x0c, eng->reg.MAC_00c );
-//#endif
+
 #ifdef MAC_030_def
 	Write_Reg_MAC_DD( eng, 0x30, MAC_030_def );//Int Thr/Cnt
 #endif
@@ -1019,9 +921,7 @@ void init_mac (MAC_ENGINE *eng)
 	Write_Reg_MAC_DD( eng, 0x48, MAC_048_def );
 #endif
 #ifdef MAC_058_def
-  #ifdef AST2500_IOMAP
 	Write_Reg_MAC_DD( eng, 0x58, MAC_058_def );
-  #endif
 #endif
 
 	if ( eng->ModeSwitch == MODE_NSCI )
@@ -1042,46 +942,17 @@ void FPri_RegValue (MAC_ENGINE *eng, BYTE option)
 {
 	nt_log_func_name();
 
-#ifdef AST2500_IOMAP
 	PRINTF( option, "[SDR] Date:%08x\n", Read_Reg_SDR_DD( 0x88 ) );
 	PRINTF( option, "[SDR]  80:%08x %08x %08x %08x\n", Read_Reg_SDR_DD( 0x80 ), Read_Reg_SDR_DD( 0x84 ), Read_Reg_SDR_DD( 0x88 ), Read_Reg_SDR_DD( 0x8c ) );
-#else
-	if ( eng->env.AST2300 ) {
-		PRINTF( option, "[SMB] Date:%08x\n", Read_Reg_SMB_DD( 0xa8 ) );
-		PRINTF( option, "[SMB]  00:%08x %08x %08x %08x\n", Read_Reg_SMB_DD( 0x00 ), Read_Reg_SMB_DD( 0x04 ), Read_Reg_SMB_DD( 0x08 ), Read_Reg_SMB_DD( 0x0c ) );
-		PRINTF( option, "[SMB]  10:%08x %08x %08x %08x\n", Read_Reg_SMB_DD( 0x10 ), Read_Reg_SMB_DD( 0x14 ), Read_Reg_SMB_DD( 0x18 ), Read_Reg_SMB_DD( 0x1c ) );
-		PRINTF( option, "[SMB]  20:%08x %08x %08x %08x\n", Read_Reg_SMB_DD( 0x20 ), Read_Reg_SMB_DD( 0x24 ), Read_Reg_SMB_DD( 0x28 ), Read_Reg_SMB_DD( 0x2c ) );
-		PRINTF( option, "[SMB]  30:%08x %08x %08x %08x\n", Read_Reg_SMB_DD( 0x30 ), Read_Reg_SMB_DD( 0x34 ), Read_Reg_SMB_DD( 0x38 ), Read_Reg_SMB_DD( 0x3c ) );
-		PRINTF( option, "[SMB]  40:%08x %08x %08x %08x\n", Read_Reg_SMB_DD( 0x40 ), Read_Reg_SMB_DD( 0x44 ), Read_Reg_SMB_DD( 0x48 ), Read_Reg_SMB_DD( 0x4c ) );
-		PRINTF( option, "[SMB]  50:%08x %08x %08x %08x\n", Read_Reg_SMB_DD( 0x50 ), Read_Reg_SMB_DD( 0x54 ), Read_Reg_SMB_DD( 0x58 ), Read_Reg_SMB_DD( 0x5c ) );
-		PRINTF( option, "[SMB]  60:%08x %08x %08x %08x\n", Read_Reg_SMB_DD( 0x60 ), Read_Reg_SMB_DD( 0x64 ), Read_Reg_SMB_DD( 0x68 ), Read_Reg_SMB_DD( 0x6c ) );
-		PRINTF( option, "[SMB]  70:%08x %08x %08x %08x\n", Read_Reg_SMB_DD( 0x70 ), Read_Reg_SMB_DD( 0x74 ), Read_Reg_SMB_DD( 0x78 ), Read_Reg_SMB_DD( 0x7c ) );
-		PRINTF( option, "[SMB]  80:%08x %08x %08x %08x\n", Read_Reg_SMB_DD( 0x80 ), Read_Reg_SMB_DD( 0x84 ), Read_Reg_SMB_DD( 0x88 ), Read_Reg_SMB_DD( 0x8c ) );
-		PRINTF( option, "[SMB]  90:%08x %08x %08x %08x\n", Read_Reg_SMB_DD( 0x90 ), Read_Reg_SMB_DD( 0x94 ), Read_Reg_SMB_DD( 0x98 ), Read_Reg_SMB_DD( 0x9c ) );
-		PRINTF( option, "[SMB]  A0:%08x %08x %08x %08x\n", Read_Reg_SMB_DD( 0xa0 ), Read_Reg_SMB_DD( 0xa4 ), Read_Reg_SMB_DD( 0xa8 ), Read_Reg_SMB_DD( 0xac ) );
-		PRINTF( option, "[SMB]  B0:%08x %08x %08x %08x\n", Read_Reg_SMB_DD( 0xb0 ), Read_Reg_SMB_DD( 0xb4 ), Read_Reg_SMB_DD( 0xb8 ), Read_Reg_SMB_DD( 0xbc ) );
-		PRINTF( option, "[SMB]  C0:%08x %08x %08x %08x\n", Read_Reg_SMB_DD( 0xc0 ), Read_Reg_SMB_DD( 0xc4 ), Read_Reg_SMB_DD( 0xc8 ), Read_Reg_SMB_DD( 0xcc ) );
-		PRINTF( option, "[SMB]  D0:%08x %08x %08x %08x\n", Read_Reg_SMB_DD( 0xd0 ), Read_Reg_SMB_DD( 0xd4 ), Read_Reg_SMB_DD( 0xd8 ), Read_Reg_SMB_DD( 0xdc ) );
-		PRINTF( option, "[SMB]  E0:%08x %08x %08x %08x\n", Read_Reg_SMB_DD( 0xe0 ), Read_Reg_SMB_DD( 0xe4 ), Read_Reg_SMB_DD( 0xe8 ), Read_Reg_SMB_DD( 0xec ) );
-		PRINTF( option, "[SMB]  F0:%08x %08x %08x %08x\n", Read_Reg_SMB_DD( 0xf0 ), Read_Reg_SMB_DD( 0xf4 ), Read_Reg_SMB_DD( 0xf8 ), Read_Reg_SMB_DD( 0xfc ) );
-	}
-#endif
 
 	PRINTF( option, "[SCU]  04:%08x  08:%08x  0c:%08x\n",           eng->reg.SCU_004, eng->reg.SCU_008, eng->reg.SCU_00c );
 	PRINTF( option, "[SCU]  1c:%08x  2c:%08x  48:%08x  4c:%08x\n", Read_Reg_SCU_DD( 0x01c ), Read_Reg_SCU_DD( 0x02c ), eng->reg.SCU_048, Read_Reg_SCU_DD( 0x04c ) );
 	PRINTF( option, "[SCU]  70:%08x  74:%08x  7c:%08x  f0:%08x\n", eng->reg.SCU_070, eng->reg.SCU_074, eng->reg.SCU_07c, eng->reg.SCU_0f0 );
 	PRINTF( option, "[SCU]  80:%08x  88:%08x  90:%08x  9c:%08x\n", eng->reg.SCU_080, eng->reg.SCU_088, eng->reg.SCU_090, eng->reg.SCU_09c );
-#if defined(AST2500_IOMAP)
 	PRINTF( option, "[SCU]  a0:%08x  a4:%08x  b8:%08x  bc:%08x\n", Read_Reg_SCU_DD( 0x0a0 ), Read_Reg_SCU_DD( 0x0a4 ), eng->reg.SCU_0b8, eng->reg.SCU_0bc );
-#else
-	PRINTF( option, "[SCU]  a4:%08x\n",                               Read_Reg_SCU_DD( 0x0a4 ) );
-#endif
-#ifdef AST2500_IOMAP
+
 	PRINTF( option, "[SCU] 13c:%08x 140:%08x 144:%08x 1dc:%08x\n", Read_Reg_SCU_DD( 0x13c ), Read_Reg_SCU_DD( 0x140 ), Read_Reg_SCU_DD( 0x144 ), Read_Reg_SCU_DD( 0x1dc ) );
 	PRINTF( option, "[WDT]  0c:%08x  2c:%08x  4c:%08x\n", eng->reg.WDT_00c, eng->reg.WDT_02c, eng->reg.WDT_04c );
-#else
-	PRINTF( option, "[WDT]  0c:%08x  2c:%08x\n", eng->reg.WDT_00c, eng->reg.WDT_02c );
-#endif
 	PRINTF( option, "[MAC]  08:%08x  0c:%08x\n", eng->reg.MAC_008, eng->reg.MAC_00c );
 	PRINTF( option, "[MAC]  A0|%08x %08x %08x %08x\n", Read_Reg_MAC_DD( eng, 0xa0 ), Read_Reg_MAC_DD( eng, 0xa4 ), Read_Reg_MAC_DD( eng, 0xa8 ), Read_Reg_MAC_DD( eng, 0xac ) );
 	PRINTF( option, "[MAC]  B0|%08x %08x %08x %08x\n", Read_Reg_MAC_DD( eng, 0xb0 ), Read_Reg_MAC_DD( eng, 0xb4 ), Read_Reg_MAC_DD( eng, 0xb8 ), Read_Reg_MAC_DD( eng, 0xbc ) );
@@ -1137,7 +1008,6 @@ void FPri_End (MAC_ENGINE *eng, BYTE option)
 			PRINTF( option, "\n[Warning] SCU48 == 0x%08x is not the suggestion value 0x%08x.\n", eng->reg.SCU_048, eng->reg.SCU_048_default );
 			PRINTF( option, "          This change at this platform must been proven again by the ASPEED.\n" );
 		}
-#ifdef AST2500_IOMAP
 		if ( eng->env.AST2500A1 ) {
 			if ( ( eng->reg.SCU_0b8 != SCU_B8h_AST2500 ) ) {
 				PRINTF( option, "\n[Warning] SCUB8 == 0x%08x is not the suggestion value 0x%08x.\n", eng->reg.SCU_0b8, SCU_B8h_AST2500 );
@@ -1148,7 +1018,6 @@ void FPri_End (MAC_ENGINE *eng, BYTE option)
 				PRINTF( option, "          This change at this platform must been proven again by the ASPEED.\n" );
 			}
 		}
-#endif
 	} // End if ( eng->env.AST2300 )
 
 	if ( eng->ModeSwitch == MODE_NSCI ) {
@@ -1274,19 +1143,11 @@ void FPri_ErrFlag (MAC_ENGINE *eng, BYTE option)
 			if ( eng->flg.Err_Flag & Err_Flag_IOMargin                ) { PRINTF( option, "[Err] IO timing margin is not enough                         \n" ); }
 
 			if ( eng->flg.Err_Flag & Err_Flag_MHCLK_Ratio             ) {
-#if defined(AST2500_IOMAP)
 				PRINTF( option, "[Err] Error setting of MAC AHB bus clock (SCU08[18:16])      \n" );
 				if ( eng->env.MAC_atlast_1Gvld )
 					{ PRINTF( option, "      SCU08[18:16] == 0x%01x is not the suggestion value 2.\n", eng->env.MHCLK_Ratio ); }
 				else
 					{ PRINTF( option, "      SCU08[18:16] == 0x%01x is not the suggestion value 4.\n", eng->env.MHCLK_Ratio ); }
-#else
-				PRINTF( option, "[Err] Error setting of MAC AHB bus clock (SCU08[18:16])      \n" );
-				if ( eng->env.MAC_atlast_1Gvld )
-					{ PRINTF( option, "      SCU08[18:16] == 0x%01x is not the suggestion value 2.\n", eng->env.MHCLK_Ratio ); }
-				else
-					{ PRINTF( option, "      SCU08[18:16] == 0x%01x is not the suggestion value 4.\n", eng->env.MHCLK_Ratio ); }
-#endif
 			} // End if ( eng->flg.Err_Flag & Err_Flag_MHCLK_Ratio             )
 
 			if ( eng->flg.Err_Flag & Err_Flag_IOMarginOUF ) {
@@ -2458,7 +2319,6 @@ void PrintIO_Header (MAC_ENGINE *eng, BYTE option) {
 	else                                { PRINTF( option, "[10M ]========================================>\n" ); }
 
 	if ( !(option == FP_LOG) ) {
-#ifdef AST2500_IOMAP
 		PRINTF( option, "   SCU%2X      ", eng->io.Dly_reg_idx );
 
 		for ( eng->io.Dly_in = eng->io.Dly_in_str; eng->io.Dly_in <= eng->io.Dly_in_end; eng->io.Dly_in+=eng->io.Dly_in_cval ) {
@@ -2477,20 +2337,6 @@ void PrintIO_Header (MAC_ENGINE *eng, BYTE option) {
 			if ( eng->io.Dly_in_reg_idx == eng->io.Dly_in ) { PRINTF( option, "|" ); }
 			else                                            { PRINTF( option, " " ); }
 		}
-#else
-		PRINTF( option, "%s   ", eng->io.Dly_reg_name_rx );
-
-		for ( eng->io.Dly_in = eng->io.Dly_in_str; eng->io.Dly_in <= eng->io.Dly_in_end; eng->io.Dly_in+=eng->io.Dly_in_cval ) {
-			eng->io.Dly_in_selval = eng->io.value_ary[ eng->io.Dly_in ];
-			PRINTF( option, "%2x", eng->io.Dly_in_selval & 0xf );
-		}
-
-		PRINTF( option, "\n                   " );
-		for ( eng->io.Dly_in = eng->io.Dly_in_str; eng->io.Dly_in <= eng->io.Dly_in_end; eng->io.Dly_in+=eng->io.Dly_in_cval ) {
-			if ( eng->io.Dly_in_reg_idx == eng->io.Dly_in ) { PRINTF( option, " |" ); }
-			else                                            { PRINTF( option, "  " ); }
-		}
-#endif
 		PRINTF( option, "\n");
 	} // End if ( !(option == FP_LOG) )
 } // End void PrintIO_Header (MAC_ENGINE *eng, BYTE option)
@@ -2498,23 +2344,15 @@ void PrintIO_Header (MAC_ENGINE *eng, BYTE option) {
 //------------------------------------------------------------
 void PrintIO_LineS (MAC_ENGINE *eng, BYTE option) {
 
-#ifdef AST2500_IOMAP
 	if ( eng->io.Dly_out_reg_hit )
 		{ PRINTF( option, "%s%02x:-", eng->io.Dly_reg_name_tx_new, eng->io.Dly_out_selval ); }
 	else
 		{ PRINTF( option, "%s%02x: ", eng->io.Dly_reg_name_tx_new, eng->io.Dly_out_selval ); }
-#else
-	if ( eng->io.Dly_out_reg_hit )
-		{ PRINTF( option, "%s%01x:-", eng->io.Dly_reg_name_tx, eng->io.Dly_out_selval ); }
-	else
-		{ PRINTF( option, "%s%01x: ", eng->io.Dly_reg_name_tx, eng->io.Dly_out_selval ); }
-#endif
 } // End void PrintIO_LineS (MAC_ENGINE *eng, BYTE option)
 
 //------------------------------------------------------------
 void PrintIO_Line (MAC_ENGINE *eng, BYTE option) {
 
-#ifdef AST2500_IOMAP
 	if ( ( eng->io.Dly_in_reg == eng->io.Dly_in_selval ) && eng->io.Dly_out_reg_hit ) {
 		if ( eng->io.Dly_result ) { PRINTF( option, "X" ); }
 		else                      { PRINTF( option, "O" ); }
@@ -2523,16 +2361,6 @@ void PrintIO_Line (MAC_ENGINE *eng, BYTE option) {
 		if ( eng->io.Dly_result ) { PRINTF( option, "x" ); }
 		else                      { PRINTF( option, "o" ); }
 	}
-#else
-	if ( ( eng->io.Dly_in_reg == eng->io.Dly_in_selval ) && eng->io.Dly_out_reg_hit ) {
-		if ( eng->io.Dly_result ) { PRINTF( option, " X" ); }
-		else                      { PRINTF( option, " O" ); }
-	}
-	else {
-		if ( eng->io.Dly_result ) { PRINTF( option, " x" ); }
-		else                      { PRINTF( option, " o" ); }
-	}
-#endif
 } // End void PrintIO_Line (MAC_ENGINE *eng, BYTE option)
 
 //------------------------------------------------------------

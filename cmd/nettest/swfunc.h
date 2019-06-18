@@ -43,16 +43,6 @@
 
 //#define  UBOOT_FOR_LINUX_4_9
 
-/* == Auto setting ==========================================  */
-#if defined(CONFIG_ASPEED_AST2500)
-  #define AST2500_IOMAP
-#endif
-
-#if defined(CONFIG_ASPEED_AST2600)
-  #define AST2500_IOMAP
-#endif
-
-
 /* ========================================================== */
 #define NETESTCMD_MAX_ARGS CONFIG_SYS_MAXARGS
 
