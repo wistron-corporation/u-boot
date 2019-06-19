@@ -23,6 +23,10 @@
 
 #define AST2600_SDRAMMC_FPGA
 
+/* in order to speed up DRAM init time, write pre-defined values to registers
+ * directly */
+#define AST2600_SDRAMMC_MANUAL_CLK
+
 #ifdef AST2600_SDRAMMC_FPGA
 /* mode register settings for FPGA are fixed */
 #define DDR4_MR01_MODE		0x03010100
@@ -54,6 +58,7 @@
 /* register offset */
 #define AST_SCU_CONFIG		0x004
 #define AST_SCU_HANDSHAKE	0x100
+#define AST_SCU_MPLL		0x220
 #define AST_SCU_FPGA_PLL	0x400
 #define AST_SCU_HW_STRAP	0x500
 
@@ -68,6 +73,17 @@
 #define SCU_SDRAM_INIT_READY_MASK	(0x1 << SCU_SDRAM_INIT_READY_SHIFT)
 #define SCU_SDRAM_INIT_BY_SOC_SHIFT	7
 #define SCU_SDRAM_INIT_BY_SOC_MASK	(0x1 << SCU_SDRAM_INIT_BY_SOC_SHIFT)
+
+
+/* bit-field of AST_SCU_MPLL */
+#define SCU_MPLL_FREQ_MASK		0x007FFFFF	/* bit[22:0] */
+#define SCU_MPLL_FREQ_400M		0x0008405F	/* 0x0038007F */
+#define SCU_MPLL_FREQ_200M		0x0078007F
+#define SCU_MPLL_FREQ_CFG		SCU_MPLL_FREQ_400M
+
+#define SCU_MPLL_TURN_OFF		BIT(23)
+#define SCU_MPLL_BYPASS			BIT(24)
+#define SCU_MPLL_RESET			BIT(25)
 
 DECLARE_GLOBAL_DATA_PTR;
 
@@ -640,6 +656,7 @@ static int ast2600_sdrammc_probe(struct udevice *dev)
 	struct ast2600_sdrammc_regs *regs = priv->regs;
 	struct udevice *clk_dev;
 	int ret = clk_get_by_index(dev, 0, &priv->ddr_clk);
+	uint32_t reg;
 
 	if (ret) {
 		debug("DDR:No CLK\n");
@@ -666,15 +683,24 @@ static int ast2600_sdrammc_probe(struct udevice *dev)
 		return 0;
 	}
 
+#ifdef AST2600_SDRAMMC_MANUAL_CLK
+	reg = readl(priv->scu + AST_SCU_MPLL);
+	reg |= (SCU_MPLL_RESET | SCU_MPLL_TURN_OFF);
+	writel(reg, priv->scu + AST_SCU_MPLL);
+	reg &= ~(SCU_MPLL_RESET | SCU_MPLL_TURN_OFF| SCU_MPLL_FREQ_MASK);
+	reg |= SCU_MPLL_FREQ_CFG;
+	writel(reg, priv->scu + AST_SCU_MPLL);
+#else
 	clk_set_rate(&priv->ddr_clk, priv->clock_rate);
+#endif	
 
+#if 0
 	/* FIXME: enable the following code if reset-driver is ready */
 	ret = reset_get_by_index(dev, 0, &reset_ctl);
 	if (ret) {
 		debug("%s(): Failed to get reset signal\n", __func__);
 		return ret;
 	}
-#if 0
 
 	ret = reset_assert(&reset_ctl);
 	if (ret) {
@@ -699,9 +725,9 @@ static int ast2600_sdrammc_probe(struct udevice *dev)
 
 	ast2600_sdramphy_show_status(priv);
 	ast2600_sdrammc_calc_size(priv);
-
+#if 0
 	ast2600_sdrammc_test(priv);
-
+#endif
 	clrbits_le32(&regs->intr_ctrl, MCR50_RESET_ALL_INTR);
 	ast2600_sdrammc_lock(priv);
 	return 0;
@@ -710,20 +736,14 @@ static int ast2600_sdrammc_probe(struct udevice *dev)
 static int ast2600_sdrammc_ofdata_to_platdata(struct udevice *dev)
 {
 	struct dram_info *priv = dev_get_priv(dev);
-	struct regmap *map;
 	int ret;
 
-	ret = regmap_init_mem(dev_ofnode(dev), &map);
-	if (ret)
-		return ret;
-
-	priv->regs = regmap_get_range(map, 0);
-	priv->phy_setting = regmap_get_range(map, 1);
-	priv->phy_status = regmap_get_range(map, 2);
+	priv->regs = (void *)(uintptr_t)devfdt_get_addr_index(dev, 0);
+	priv->phy_setting = (void *)(uintptr_t)devfdt_get_addr_index(dev, 1);
+	priv->phy_status = (void *)(uintptr_t)devfdt_get_addr_index(dev, 2);
 
 	priv->clock_rate = fdtdec_get_int(gd->fdt_blob, dev_of_offset(dev),
 					  "clock-frequency", 0);
-
 	if (!priv->clock_rate) {
 		debug("DDR Clock Rate not defined\n");
 		return -EINVAL;
