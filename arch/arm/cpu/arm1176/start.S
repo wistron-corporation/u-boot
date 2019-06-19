@@ -105,8 +105,9 @@ mmu_disable_phys:
 	/*
 	 * Go setup Memory and board specific bits prior to relocation.
 	 */
+#ifndef CONFIG_SPL_BUILD
 	bl	lowlevel_init		/* go setup pll,mux,memory */
-
+#endif
 	bl	_main
 
 /*------------------------------------------------------------------------------*/
