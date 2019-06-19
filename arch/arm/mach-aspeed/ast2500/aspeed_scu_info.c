@@ -127,7 +127,7 @@ aspeed_2nd_wdt_mode(void)
 extern void
 aspeed_spi_strap_mode(void)
 {
-	return;
+	return 0;
 }
 
 extern void

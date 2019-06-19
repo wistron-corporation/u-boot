@@ -22,7 +22,6 @@
 #define ASPEED_DRAM_BASE		0x40000000
 #define ASPEED_SRAM_BASE		0x1E720000	
 #elif defined(CONFIG_ASPEED_AST2500)
-#include "ast2500_platform.h"
 #define ASPEED_MAC_COUNT	2
 #define ASPEED_HW_STRAP1	0x1e6e2070
 #define ASPEED_HW_STRAP2	0x1e6e20D0
