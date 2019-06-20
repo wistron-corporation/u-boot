@@ -29,7 +29,6 @@
 #define CONFIG_ENV_OFFSET		0x60000
 #endif
 
-#define CONFIG_ENV_OFFSET		0x60000
 #define CONFIG_ENV_SECT_SIZE		(4 << 10)
 
 #endif	/* __CONFIG_H */
