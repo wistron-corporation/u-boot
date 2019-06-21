@@ -88,6 +88,7 @@ obj-$(CONFIG_CMD_MEMORY) += mem.o
 obj-$(CONFIG_CMD_IO) += io.o
 obj-$(CONFIG_CMD_MFSL) += mfsl.o
 obj-$(CONFIG_CMD_MII) += mii.o
+obj-$(CONFIG_CMD_OTP) += otp.o
 ifdef CONFIG_PHYLIB
 obj-$(CONFIG_CMD_MII) += mdio.o
 endif
