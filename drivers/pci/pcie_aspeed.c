@@ -35,7 +35,7 @@ DECLARE_GLOBAL_DATA_PTR;
 #define PCIE_UNLOCK				0xa8
 
 /*	AST_PCIE_LINK			0xC0	*/
-#define PCIE_LINK_STS			(1 << 5)
+#define PCIE_LINK_STS			BIT(5)
 
 struct pcie_aspeed {
 	void *ctrl_base;
