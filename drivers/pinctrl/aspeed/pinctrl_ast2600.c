@@ -66,7 +66,7 @@ static struct aspeed_sig_desc mdio1_link[] = {
 };
 
 static struct aspeed_sig_desc mdio2_link[] = {
-	{ 0x410, BIT(14) | BIT(13), 0	},
+	{ 0x410, BIT(13) | BIT(12), 0	},
 };
 
 static struct aspeed_sig_desc mdio3_link[] = {
