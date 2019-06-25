@@ -43,12 +43,13 @@ SECTIONS
 	.end_align : { *(.end_align*) } > flash
 	__spl_flash_end = .;
 
-	.bss :
-        {
-              . = ALIGN(4);
-              __bss_start = .;
-              *(.bss*)
-              . = ALIGN(4);
-              __bss_end = .;
-        } > sdram
+	_image_binary_end = .;
+
+	.bss : {
+		. = ALIGN(4);
+		__bss_start = .;
+		*(.bss*)
+		. = ALIGN(4);
+		__bss_end = .;
+	} > sdram
 }
