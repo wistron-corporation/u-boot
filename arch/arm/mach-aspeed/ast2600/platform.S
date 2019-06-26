@@ -243,6 +243,22 @@ wordcopy:
 #endif
 
 init_uart:
+
+#ifdef CONFIG_SPL_BUILD
+    /* leave the rest to U-Boot proper */
+    mov   r1, #0
+    ldr   r0, =0x1e78500c
+    str   r1, [r0]
+    ldr   r0, =0x1e78504c
+    str   r1, [r0]
+    ldr   r0, =0x1e78508c
+    str   r1, [r0]
+    ldr   r0, =0x1e7850cc
+    str   r1, [r0]
+
+    mov   pc, lr
+#endif
+
     /* save lr */
     mov   r4, lr
 
