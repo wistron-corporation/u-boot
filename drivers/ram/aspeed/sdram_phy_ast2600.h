@@ -5,7 +5,7 @@
 #define DDR_PHY_TBL_POST_SIM_800	1
 #define DDR_PHY_TBL_GUC_1600		2
 #define DDR_PHY_TBL_GUC_800		3
-#define DDR_PHY_TBL_SEL			DDR_PHY_TBL_GUC_800		
+#define DDR_PHY_TBL_SEL			DDR_PHY_TBL_GUC_1600		
 /* DDR4-1600 PHY configuration table */
 #if (DDR_PHY_TBL_SEL == DDR_PHY_TBL_GUC_800)
 u32 ast2600_sdramphy_config[165] = {
