@@ -138,6 +138,12 @@ static void ast2600_sdramphy_kick_training(struct dram_info *info)
  * @brief	load DDR-PHY configurations table to the PHY registers
  * @param[in]	p_tbl - pointer to the configuration table
  * @param[in]	info - pointer to the DRAM info struct
+ * 
+ * There are two sets of MRS (Mode Registers) configuration in ast2600 memory 
+ * system: one is in the SDRAM MC (memory controller) which is used in run 
+ * time, and the other is in the DDR-PHY IP which is used during DDR-PHY 
+ * training.  To make these two configurations align, we overwrite the DDR-PHY
+ * setting by the MC setting before DDR-PHY training.
 */
 static void ast2600_sdramphy_init(u32 *p_tbl, struct dram_info *info)
 {
@@ -167,6 +173,29 @@ static void ast2600_sdramphy_init(u32 *p_tbl, struct dram_info *info)
                         addr += 4;
                 }
         }
+
+	printf("Overwrite DDR-PHY MRS by MCR config\n");
+	/* MR0 and MR1 */
+	data = readl(&info->regs->mr01_mode_setting);
+	data =
+	    ((data & GENMASK(15, 0)) << 16) | ((data & GENMASK(31, 16)) >> 16);
+	writel(data, reg_base + 0x58);
+	debug("[%08x] 0x%08x\n", reg_base + 0x58, data);
+
+	/* MR2 and MR3 */
+	data = readl(&info->regs->mr23_mode_setting);
+	writel(data, reg_base + 0x54);
+	debug("[%08x] 0x%08x\n", reg_base + 0x54, data);
+
+	/* MR4 and MR5 */
+	data = readl(&info->regs->mr45_mode_setting);
+	writel(data, reg_base + 0x5c);
+	debug("[%08x] 0x%08x\n", reg_base + 0x5c, data);
+
+	/* MR6 */
+	data = readl(&info->regs->mr6_mode_setting);
+	writel(data, reg_base + 0x60);
+	debug("[%08x] 0x%08x\n", reg_base + 0x60, data);	
 #endif        
 }
 
