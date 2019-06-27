@@ -56,7 +56,7 @@
 #define SDRAM_MAX_SIZE		(2048 * SDRAM_SIZE_1MB)
 
 /* register offset */
-#define AST_SCU_CONFIG		0x004
+#define AST_SCU_FPGA_STATUS	0x004
 #define AST_SCU_HANDSHAKE	0x100
 #define AST_SCU_MPLL		0x220
 #define AST_SCU_FPGA_PLL	0x400
@@ -69,10 +69,8 @@
 
 
 /* bit-field of AST_SCU_HANDSHAKE */
-#define SCU_SDRAM_INIT_READY_SHIFT	6
-#define SCU_SDRAM_INIT_READY_MASK	(0x1 << SCU_SDRAM_INIT_READY_SHIFT)
-#define SCU_SDRAM_INIT_BY_SOC_SHIFT	7
-#define SCU_SDRAM_INIT_BY_SOC_MASK	(0x1 << SCU_SDRAM_INIT_BY_SOC_SHIFT)
+#define SCU_SDRAM_INIT_READY_MASK	BIT(6)
+#define SCU_SDRAM_INIT_BY_SOC_MASK	BIT(7)
 
 
 /* bit-field of AST_SCU_MPLL */
@@ -368,7 +366,7 @@ static void ast2600_sdrammc_fpga_set_pll(struct dram_info *info)
         writel(0x00000303, scu_base + AST_SCU_FPGA_PLL);                                
         
         do {
-                data = readl(scu_base + AST_SCU_CONFIG);
+                data = readl(scu_base + AST_SCU_FPGA_STATUS);
         } while (!(data & 0x100));
         
         writel(0x00000103, scu_base + AST_SCU_FPGA_PLL);
@@ -757,6 +755,9 @@ static int ast2600_sdrammc_probe(struct udevice *dev)
 #if 0
 	ast2600_sdrammc_test(priv);
 #endif
+	writel(readl(priv->scu + AST_SCU_HANDSHAKE) | SCU_SDRAM_INIT_READY_MASK,
+	       priv->scu + AST_SCU_HANDSHAKE);
+
 	clrbits_le32(&regs->intr_ctrl, MCR50_RESET_ALL_INTR);
 	ast2600_sdrammc_lock(priv);
 	return 0;
