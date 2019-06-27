@@ -684,13 +684,8 @@ static int ast2600_sdrammc_probe(struct udevice *dev)
 	struct dram_info *priv = (struct dram_info *)dev_get_priv(dev);
 	struct ast2600_sdrammc_regs *regs = priv->regs;
 	struct udevice *clk_dev;
-	int ret = clk_get_by_index(dev, 0, &priv->ddr_clk);
+	int ret;
 	uint32_t reg;
-
-	if (ret) {
-		debug("DDR:No CLK\n");
-		return ret;
-	}
 
 	/* find SCU base address from clock device */
 	ret = uclass_get_device_by_driver(UCLASS_CLK, DM_GET_DRIVER(aspeed_scu),
@@ -720,6 +715,11 @@ static int ast2600_sdrammc_probe(struct udevice *dev)
 	reg |= SCU_MPLL_FREQ_CFG;
 	writel(reg, priv->scu + AST_SCU_MPLL);
 #else
+	ret = clk_get_by_index(dev, 0, &priv->ddr_clk);
+	if (ret) {
+		debug("DDR:No CLK\n");
+		return ret;
+	}
 	clk_set_rate(&priv->ddr_clk, priv->clock_rate);
 #endif	
 
