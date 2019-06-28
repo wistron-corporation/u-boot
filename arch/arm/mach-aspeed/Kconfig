@@ -26,6 +26,7 @@ config ASPEED_AST2600
 	select CPU_V7A
 	select CPU_V7_HAS_NONSEC
 	select ARCH_SUPPORT_PSCI
+	select SUPPORT_SPL
 	select EXPERT
 	help
 	  The Aspeed AST2600 is a ARM-based SoC with Cortex-A7 CPU.
