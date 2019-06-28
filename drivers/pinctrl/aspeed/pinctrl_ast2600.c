@@ -138,7 +138,7 @@ static int ast2600_pinctrl_group_set(struct udevice *dev, unsigned selector,
 	struct ast2600_pinctrl_priv *priv = dev_get_priv(dev);
 	const struct aspeed_group_config *config;
 	const struct aspeed_sig_desc *descs;
-	u32 ctrl_reg = (u32)&priv->scu;
+	u32 ctrl_reg = (u32)priv->scu;
 
 	debug("PINCTRL: group_set <%u, %u>\n", selector, func_selector);
 	if (selector >= ARRAY_SIZE(ast2600_groups))
