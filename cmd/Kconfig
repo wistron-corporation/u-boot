@@ -1940,6 +1940,10 @@ config CMD_UBIFS
 menu "Aspeed Test commands"
 config CMD_NETTEST
         bool "ASPEED Ethernet loopback test"
-        default y
+        default n
+
+config CMD_DRAMTEST
+        bool "ASPEED DRAM controller stress test"
+        default y	
 endmenu
 endmenu

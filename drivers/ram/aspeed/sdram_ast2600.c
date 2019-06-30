@@ -21,7 +21,7 @@
 #include <dt-bindings/clock/ast2600-clock.h>
 #include "sdram_phy_ast2600.h"
 
-#define AST2600_SDRAMMC_FPGA
+//#define AST2600_SDRAMMC_FPGA
 
 /* in order to speed up DRAM init time, write pre-defined values to registers
  * directly */
@@ -33,7 +33,7 @@
 #define DDR4_MR23_MODE		0x00000000
 #define DDR4_MR45_MODE		0x04C00000
 #define DDR4_MR6_MODE		0x00000050
-#define DDR4_TRFC		0x17263434
+#define DDR4_TRFC_FPGA		0x17263434
 
 /* FPGA need for an additional initialization procedure: search read window */
 #define SEARCH_RDWIN_ANCHOR_0   (CONFIG_SYS_SDRAM_BASE + 0x0000)
@@ -47,7 +47,8 @@
 #define DDR4_MR23_MODE		0x00000000
 #define DDR4_MR45_MODE		0x04000000
 #define DDR4_MR6_MODE           0x00000400
-#define DDR4_TRFC               0x467299f1
+#define DDR4_TRFC_1600		0x467299f1
+#define DDR4_TRFC_800		0x23394c78
 #endif  /* end of "#ifdef AST2600_SDRAMMC_FPGA" */
 
 #define SDRAM_SIZE_1KB		(1024U)
@@ -77,7 +78,20 @@
 #define SCU_MPLL_FREQ_MASK		0x007FFFFF	/* bit[22:0] */
 #define SCU_MPLL_FREQ_400M		0x0008405F	/* 0x0038007F */
 #define SCU_MPLL_FREQ_200M		0x0078007F
-#define SCU_MPLL_FREQ_CFG		SCU_MPLL_FREQ_400M
+#define SCU_MPLL_FREQ_CFG		SCU_MPLL_FREQ_200M
+
+#if defined(AST2600_SDRAMMC_FPGA)
+#define DDR4_TRFC			DDR4_TRFC_FPGA
+#else
+/* real chip setting */
+#if (SCU_MPLL_FREQ_CFG == SCU_MPLL_FREQ_400M)
+#define DDR4_TRFC			DDR4_TRFC_1600
+#elif (SCU_MPLL_FREQ_CFG == SCU_MPLL_FREQ_200M)
+#define DDR4_TRFC			DDR4_TRFC_800
+#else
+#error "undefined tRFC setting"
+#endif	/* end of "#if (SCU_MPLL_FREQ_CFG == SCU_MPLL_FREQ_400M)" */
+#endif	/* end of "#if defined(AST2600_SDRAMMC_FPGA)" */
 
 #define SCU_MPLL_TURN_OFF		BIT(23)
 #define SCU_MPLL_BYPASS			BIT(24)

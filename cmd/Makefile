@@ -178,7 +178,7 @@ obj-$(CONFIG_X86) += x86/
 obj-$(CONFIG_ARCH_MVEBU) += mvebu/
 
 obj-$(CONFIG_CMD_NETTEST) += nettest/
-endif # !CONFIG_SPL_BUILD
+obj-$(CONFIG_CMD_DRAMTEST) += dramtest.o
 
 # core command
 obj-y += nvedit.o
