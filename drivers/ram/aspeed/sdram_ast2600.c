@@ -21,7 +21,7 @@
 #include <dt-bindings/clock/ast2600-clock.h>
 #include "sdram_phy_ast2600.h"
 
-#define AST2600_SDRAMMC_FPGA
+//#define AST2600_SDRAMMC_FPGA
 
 /* in order to speed up DRAM init time, write pre-defined values to registers
  * directly */
@@ -33,7 +33,7 @@
 #define DDR4_MR23_MODE		0x00000000
 #define DDR4_MR45_MODE		0x04C00000
 #define DDR4_MR6_MODE		0x00000050
-#define DDR4_TRFC		0x17263434
+#define DDR4_TRFC_FPGA		0x17263434
 
 /* FPGA need for an additional initialization procedure: search read window */
 #define SEARCH_RDWIN_ANCHOR_0   (CONFIG_SYS_SDRAM_BASE + 0x0000)
@@ -47,7 +47,8 @@
 #define DDR4_MR23_MODE		0x00000000
 #define DDR4_MR45_MODE		0x04000000
 #define DDR4_MR6_MODE           0x00000400
-#define DDR4_TRFC               0x467299f1
+#define DDR4_TRFC_1600		0x467299f1
+#define DDR4_TRFC_800		0x23394c78
 #endif  /* end of "#ifdef AST2600_SDRAMMC_FPGA" */
 
 #define SDRAM_SIZE_1KB		(1024U)
@@ -56,7 +57,7 @@
 #define SDRAM_MAX_SIZE		(2048 * SDRAM_SIZE_1MB)
 
 /* register offset */
-#define AST_SCU_CONFIG		0x004
+#define AST_SCU_FPGA_STATUS	0x004
 #define AST_SCU_HANDSHAKE	0x100
 #define AST_SCU_MPLL		0x220
 #define AST_SCU_FPGA_PLL	0x400
@@ -69,17 +70,28 @@
 
 
 /* bit-field of AST_SCU_HANDSHAKE */
-#define SCU_SDRAM_INIT_READY_SHIFT	6
-#define SCU_SDRAM_INIT_READY_MASK	(0x1 << SCU_SDRAM_INIT_READY_SHIFT)
-#define SCU_SDRAM_INIT_BY_SOC_SHIFT	7
-#define SCU_SDRAM_INIT_BY_SOC_MASK	(0x1 << SCU_SDRAM_INIT_BY_SOC_SHIFT)
+#define SCU_SDRAM_INIT_READY_MASK	BIT(6)
+#define SCU_SDRAM_INIT_BY_SOC_MASK	BIT(7)
 
 
 /* bit-field of AST_SCU_MPLL */
 #define SCU_MPLL_FREQ_MASK		0x007FFFFF	/* bit[22:0] */
 #define SCU_MPLL_FREQ_400M		0x0008405F	/* 0x0038007F */
 #define SCU_MPLL_FREQ_200M		0x0078007F
-#define SCU_MPLL_FREQ_CFG		SCU_MPLL_FREQ_400M
+#define SCU_MPLL_FREQ_CFG		SCU_MPLL_FREQ_200M
+
+#if defined(AST2600_SDRAMMC_FPGA)
+#define DDR4_TRFC			DDR4_TRFC_FPGA
+#else
+/* real chip setting */
+#if (SCU_MPLL_FREQ_CFG == SCU_MPLL_FREQ_400M)
+#define DDR4_TRFC			DDR4_TRFC_1600
+#elif (SCU_MPLL_FREQ_CFG == SCU_MPLL_FREQ_200M)
+#define DDR4_TRFC			DDR4_TRFC_800
+#else
+#error "undefined tRFC setting"
+#endif	/* end of "#if (SCU_MPLL_FREQ_CFG == SCU_MPLL_FREQ_400M)" */
+#endif	/* end of "#if defined(AST2600_SDRAMMC_FPGA)" */
 
 #define SCU_MPLL_TURN_OFF		BIT(23)
 #define SCU_MPLL_BYPASS			BIT(24)
@@ -368,7 +380,7 @@ static void ast2600_sdrammc_fpga_set_pll(struct dram_info *info)
         writel(0x00000303, scu_base + AST_SCU_FPGA_PLL);                                
         
         do {
-                data = readl(scu_base + AST_SCU_CONFIG);
+                data = readl(scu_base + AST_SCU_FPGA_STATUS);
         } while (!(data & 0x100));
         
         writel(0x00000103, scu_base + AST_SCU_FPGA_PLL);
@@ -684,13 +696,8 @@ static int ast2600_sdrammc_probe(struct udevice *dev)
 	struct dram_info *priv = (struct dram_info *)dev_get_priv(dev);
 	struct ast2600_sdrammc_regs *regs = priv->regs;
 	struct udevice *clk_dev;
-	int ret = clk_get_by_index(dev, 0, &priv->ddr_clk);
+	int ret;
 	uint32_t reg;
-
-	if (ret) {
-		debug("DDR:No CLK\n");
-		return ret;
-	}
 
 	/* find SCU base address from clock device */
 	ret = uclass_get_device_by_driver(UCLASS_CLK, DM_GET_DRIVER(aspeed_scu),
@@ -720,6 +727,11 @@ static int ast2600_sdrammc_probe(struct udevice *dev)
 	reg |= SCU_MPLL_FREQ_CFG;
 	writel(reg, priv->scu + AST_SCU_MPLL);
 #else
+	ret = clk_get_by_index(dev, 0, &priv->ddr_clk);
+	if (ret) {
+		debug("DDR:No CLK\n");
+		return ret;
+	}
 	clk_set_rate(&priv->ddr_clk, priv->clock_rate);
 #endif	
 
@@ -757,6 +769,9 @@ static int ast2600_sdrammc_probe(struct udevice *dev)
 #if 0
 	ast2600_sdrammc_test(priv);
 #endif
+	writel(readl(priv->scu + AST_SCU_HANDSHAKE) | SCU_SDRAM_INIT_READY_MASK,
+	       priv->scu + AST_SCU_HANDSHAKE);
+
 	clrbits_le32(&regs->intr_ctrl, MCR50_RESET_ALL_INTR);
 	ast2600_sdrammc_lock(priv);
 	return 0;
