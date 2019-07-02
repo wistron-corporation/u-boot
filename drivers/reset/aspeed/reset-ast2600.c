@@ -10,7 +10,6 @@
 #include <reset-uclass.h>
 #include <wdt.h>
 #include <asm/io.h>
-#include <asm/arch/wdt.h>
 #include <asm/arch/scu_ast2600.h>
 
 struct ast2600_reset_priv {

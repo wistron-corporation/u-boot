@@ -8,7 +8,6 @@
 #include <timer.h>
 #include <asm/io.h>
 #include <asm/arch/timer.h>
-#include <asm/arch/wdt.h>
 #include <linux/err.h>
 #include <dm/uclass.h>
 
