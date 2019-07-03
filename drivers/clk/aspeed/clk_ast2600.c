@@ -500,8 +500,14 @@ static ulong ast2600_clk_set_rate(struct clk *clk, ulong rate)
 
 static u32 ast2600_configure_mac34_clk(struct ast2600_scu *scu)
 {
+	u32 clksel;
 	writel(readl(&scu->mac12_clk_delay) | BIT(28), &scu->mac12_clk_delay);
 	writel(readl(&scu->mac34_clk_delay) & ~BIT(31), &scu->mac34_clk_delay);
+
+	/* MAC AHB = HCLK / 2 */
+	clksel = readl(&scu->clk_sel4);
+	clksel &= ~GENMASK(26, 24);	
+	writel(clksel, &scu->clk_sel4);
 	return 0;
 }
 
@@ -534,6 +540,12 @@ static u32 ast2600_configure_mac12_clk(struct ast2600_scu *scu)
 
 	/* select RGMII 125M from internal source */
 	writel(readl(&scu->mac12_clk_delay) | BIT(31), &scu->mac12_clk_delay);
+
+	/* MAC AHB = HPLL / 8 */
+	clksel = readl(&scu->clk_sel1);
+	clksel &= ~GENMASK(18, 16);
+	clksel |= 0x3 << 16;
+	writel(clksel, &scu->clk_sel1);
 
 	return 0;
 }
