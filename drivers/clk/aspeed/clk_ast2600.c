@@ -373,7 +373,9 @@ struct aspeed_clock_config {
 };
 
 static const struct aspeed_clock_config aspeed_clock_config_defaults[] = {
-	{ 25000000, 400000000, { .num = 95, .denum = 2, .post_div = 1 } },
+	{ 25000000, 400000000, { .num = 95, .denum = 2, .post_div = 1   } },
+	{ 25000000, 200000000, { .num = 127, .denum = 0, .post_div = 15 } },
+	{ 25000000, 334000000, { .num = 667, .denum = 4, .post_div = 9  } },
 	{ 25000000, 1000000000, { .num = 119, .denum = 2, .post_div = 0 } },
 };
 
