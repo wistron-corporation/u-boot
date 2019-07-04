@@ -67,6 +67,10 @@ lowlevel_init:
 #if defined(CONFIG_SPL) && !defined(CONFIG_SPL_BUILD)
     mov   pc, lr
 #else
+    /* setup timer frequency */
+    ldr   r0, =#25000000
+    mcr   p15, 0, r0, c14, c0, 0
+
     /*
      * we treat cpu0 as the primary core and
      * put secondary core (cpuN) to sleep
