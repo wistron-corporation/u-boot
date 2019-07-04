@@ -46,34 +46,49 @@ static int ast2600_pinctrl_probe(struct udevice *dev)
 }
 
 static struct aspeed_sig_desc mac1_link[] = {
-	{ 0x410, BIT(4), 0	},
+	{ 0x400, GENMASK(11, 0), 0 },
+	{ 0x410, BIT(4), 0 },
+	{ 0x470, BIT(4), 1 },
 };
 
 static struct aspeed_sig_desc mac2_link[] = {
+	{ 0x400, GENMASK(23, 12), 0 },
 	{ 0x410, BIT(5), 0	},
+	{ 0x470, BIT(5), 1 },
 };
 
-static struct aspeed_sig_desc mac3_link[] = {
-	{ 0x410, BIT(6), 0	},
+static struct aspeed_sig_desc mac3_link[] = {	
+	{ 0x410, GENMASK(27, 16), 0	},
+	{ 0x410, BIT(6), 0		},
+	{ 0x470, BIT(6), 1      	},
 };
 
 static struct aspeed_sig_desc mac4_link[] = {
-	{ 0x410, BIT(7), 0	},
+	{ 0x410, GENMASK(31, 28), 1	},
+	{ 0x4b0, GENMASK(31, 28), 0	},
+	{ 0x474, GENMASK(7, 0), 1	},
+	{ 0x414, GENMASK(7, 0), 1	},
+	{ 0x4b4, GENMASK(7, 0), 0	},
+	{ 0x410, BIT(7), 0		},
+	{ 0x470, BIT(7), 1		},
 };
 
 static struct aspeed_sig_desc mdio1_link[] = {
-	{ 0x430, BIT(17), 0	},
+	{ 0x430, BIT(17) | BIT(16), 0	},
 };
 
 static struct aspeed_sig_desc mdio2_link[] = {
+	{ 0x470, BIT(13) | BIT(12), 1	},
 	{ 0x410, BIT(13) | BIT(12), 0	},
 };
 
 static struct aspeed_sig_desc mdio3_link[] = {
+	{ 0x470, BIT(1) | BIT(0), 1	},
 	{ 0x410, BIT(1) | BIT(0), 0	},
 };
 
 static struct aspeed_sig_desc mdio4_link[] = {
+	{ 0x470, BIT(3) | BIT(2), 1	},
 	{ 0x410, BIT(3) | BIT(2), 0	},
 };
 
@@ -103,14 +118,14 @@ static struct aspeed_sig_desc emmc_link[] = {
 };
 
 static const struct aspeed_group_config ast2600_groups[] = {
-	{ "MAC1LINK", 1, mac1_link },
-	{ "MAC2LINK", 1, mac2_link },
-	{ "MAC3LINK", 1, mac3_link },
-	{ "MAC4LINK", 1, mac4_link },
-	{ "MDIO1", 1, mdio1_link },
-	{ "MDIO2", 1, mdio2_link },
-	{ "MDIO3", 1, mdio3_link },
-	{ "MDIO4", 1, mdio4_link },
+	{ "MAC1LINK", ARRAY_SIZE(mac1_link), mac1_link },
+	{ "MAC2LINK", ARRAY_SIZE(mac2_link), mac2_link },
+	{ "MAC3LINK", ARRAY_SIZE(mac3_link), mac3_link },
+	{ "MAC4LINK", ARRAY_SIZE(mac4_link), mac4_link },
+	{ "MDIO1", ARRAY_SIZE(mdio1_link), mdio1_link },
+	{ "MDIO2", ARRAY_SIZE(mdio2_link), mdio2_link },
+	{ "MDIO3", ARRAY_SIZE(mdio3_link), mdio3_link },
+	{ "MDIO4", ARRAY_SIZE(mdio4_link), mdio4_link },
 	{ "SD1", ARRAY_SIZE(sdio1_link), sdio1_link },
 	{ "SD1_8bits", ARRAY_SIZE(sdio1_8bit_link), sdio1_8bit_link },
 	{ "SD2", ARRAY_SIZE(sdio2_link), sdio2_link },
@@ -139,15 +154,23 @@ static int ast2600_pinctrl_group_set(struct udevice *dev, unsigned selector,
 	const struct aspeed_group_config *config;
 	const struct aspeed_sig_desc *descs;
 	u32 ctrl_reg = (u32)priv->scu;
+	u32 i;
 
 	debug("PINCTRL: group_set <%u, %u>\n", selector, func_selector);
 	if (selector >= ARRAY_SIZE(ast2600_groups))
 		return -EINVAL;
 
 	config = &ast2600_groups[selector];
-	descs = config->descs;
-
-	setbits_le32(ctrl_reg + descs->offset, descs->reg_set);
+	for (i = 0; i < config->ndescs; i++) {
+		descs = &config->descs[i];
+		if (descs->clr) {
+			clrbits_le32((u32)ctrl_reg + descs->offset,
+				     descs->reg_set);
+		} else {
+			setbits_le32((u32)ctrl_reg + descs->offset,
+				     descs->reg_set);
+		}
+	}
 
 	return 0;
 }

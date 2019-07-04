@@ -18,6 +18,10 @@
 #define RGMII_TXCLK_ODLY		8
 #define RMII_RXCLK_IDLY		2
 
+#define MAC_DEF_DELAY_1G	0x00410410
+#define MAC_DEF_DELAY_100M	0x00810810
+#define MAC_DEF_DELAY_10M	0x00810810
+
 /*
  * TGMII Clock Duty constants, taken from Aspeed SDK
  */
@@ -371,7 +375,10 @@ struct aspeed_clock_config {
 };
 
 static const struct aspeed_clock_config aspeed_clock_config_defaults[] = {
-	{ 25000000, 400000000, { .num = 95, .denum = 2, .post_div = 1 } },
+	{ 25000000, 400000000, { .num = 95, .denum = 2, .post_div = 1   } },
+	{ 25000000, 200000000, { .num = 127, .denum = 0, .post_div = 15 } },
+	{ 25000000, 334000000, { .num = 667, .denum = 4, .post_div = 9  } },
+	{ 25000000, 1000000000, { .num = 119, .denum = 2, .post_div = 0 } },
 };
 
 static bool aspeed_get_clock_config_default(ulong input_rate,
@@ -471,7 +478,7 @@ static u32 ast2600_configure_ddr(struct ast2600_scu *scu, ulong rate)
 
 	writel(mpll_reg, &scu->m_pll_param);
 
-	return ast2600_get_pll_rate(scu, ASPEED_CLK_HPLL);
+	return ast2600_get_pll_rate(scu, ASPEED_CLK_MPLL);
 }
 
 static ulong ast2600_clk_set_rate(struct clk *clk, ulong rate)
@@ -495,11 +502,77 @@ static ulong ast2600_clk_set_rate(struct clk *clk, ulong rate)
 #define SCU_CLKSTOP_MAC3		(20)
 #define SCU_CLKSTOP_MAC4		(21)
 
+static u32 ast2600_configure_mac34_clk(struct ast2600_scu *scu)
+{
+	u32 clksel;
+
+	writel(readl(&scu->mac34_clk_delay) & ~BIT(31), &scu->mac34_clk_delay);
+
+	/* MAC AHB = HCLK / 2 */
+	clksel = readl(&scu->clk_sel4);
+	clksel &= ~GENMASK(26, 24);	
+	writel(clksel, &scu->clk_sel4);
+	return 0;
+}
+
+static u32 ast2600_configure_mac12_clk(struct ast2600_scu *scu)
+{
+	u32 epll_reg;
+	u32 clksel;
+	u32 clkdelay;
+
+	struct ast2600_div_config div_cfg = {
+		.num = 0x1fff,			/* SCU240 bit[12:0] */
+		.denum = 0x3f,			/* SCU240 bit[18:13] */
+		.post_div = 0xf,		/* SCU240 bit[22:19] */
+	};
+
+	/* configure E-PLL 1000M */
+	aspeed_calc_clock_config(AST2600_CLK_IN, 1000000000, &div_cfg);
+	epll_reg = readl(&scu->e_pll_param);
+	epll_reg &= ~GENMASK(22, 0);
+	epll_reg |= (div_cfg.post_div << 19)
+	    | (div_cfg.denum << 13)
+	    | (div_cfg.num << 0);
+
+	writel(epll_reg, &scu->e_pll_param);
+
+	/* select MAC#1 and MAC#2 clock source = EPLL / 8 */
+	clksel = readl(&scu->clk_sel2);
+	clksel &= ~BIT(23);
+	clksel |= 0x7 << 20;
+	writel(clksel, &scu->clk_sel2);
+
+	/* 
+	BIT(31): select RGMII 125M from internal source
+	BIT(28): RGMII 125M output enable
+	BIT(25:0): 1G default delay
+	*/
+	clkdelay = MAC_DEF_DELAY_1G | BIT(31) | BIT(28);
+	writel(clkdelay, &scu->mac12_clk_delay);	
+
+	/* set 100M/10M default delay */
+	writel(MAC_DEF_DELAY_100M, &scu->mac12_clk_delay_100M);
+	writel(MAC_DEF_DELAY_10M, &scu->mac12_clk_delay_10M);
+
+	/* MAC AHB = HPLL / 6 */
+	clksel = readl(&scu->clk_sel1);
+	clksel &= ~GENMASK(18, 16);
+	clksel |= 0x2 << 16;
+	writel(clksel, &scu->clk_sel1);	
+
+	return 0;
+}
+
 static u32 ast2600_configure_mac(struct ast2600_scu *scu, int index)
 {
 	u32 reset_bit;
 	u32 clkstop_bit;
 
+	if (index < 3)
+		ast2600_configure_mac12_clk(scu);
+	else
+		ast2600_configure_mac34_clk(scu);
 
 	switch (index) {
 	case 1:
