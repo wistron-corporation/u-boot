@@ -19,7 +19,7 @@
 #define RGMII_TXCLK_ODLY		8
 #define RMII_RXCLK_IDLY		2
 
-#define MAC_DEF_DELAY_1G	0x00810810
+#define MAC_DEF_DELAY_1G	0x00410410
 #define MAC_DEF_DELAY_100M	0x00810810
 #define MAC_DEF_DELAY_10M	0x00810810
 
@@ -557,10 +557,10 @@ static u32 ast2600_configure_mac12_clk(struct ast2600_scu *scu)
 	writel(MAC_DEF_DELAY_100M, &scu->mac12_clk_delay_100M);
 	writel(MAC_DEF_DELAY_10M, &scu->mac12_clk_delay_10M);
 
-	/* MAC AHB = HPLL / 8 */
+	/* MAC AHB = HPLL / 6 */
 	clksel = readl(&scu->clk_sel1);
 	clksel &= ~GENMASK(18, 16);
-	clksel |= 0x3 << 16;
+	clksel |= 0x2 << 16;
 	writel(clksel, &scu->clk_sel1);	
 
 	return 0;
