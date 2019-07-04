@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0
 /*
  * Copyright (C) ASPEED Technology Inc.
- * Ryan Chen <ryan_chen@aspeedtech.com>
  */
 
 #include <common.h>
@@ -120,7 +119,7 @@ static u32 ast2600_get_hclk(struct ast2600_scu *scu)
 	u32 ahb_div = 0;
 	u32 rate = 0;
 	
-	if((hwstrap1 >> 16) & 0x1)
+	if(hwstrap1 & BIT(16))
 		axi_div = 1;
 	else
 		axi_div = 2;
@@ -147,7 +146,6 @@ static u32 ast2600_get_pclk(struct ast2600_scu *scu)
 
 	return (rate / apb_div);
 }
-
 
 static u32 ast2600_get_uxclk_rate(struct ast2600_scu *scu)
 {
