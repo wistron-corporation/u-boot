@@ -19,6 +19,10 @@
 #define RGMII_TXCLK_ODLY		8
 #define RMII_RXCLK_IDLY		2
 
+#define MAC_DEF_DELAY_1G	0x00810810
+#define MAC_DEF_DELAY_100M	0x00810810
+#define MAC_DEF_DELAY_10M	0x00810810
+
 /*
  * TGMII Clock Duty constants, taken from Aspeed SDK
  */
@@ -503,7 +507,7 @@ static ulong ast2600_clk_set_rate(struct clk *clk, ulong rate)
 static u32 ast2600_configure_mac34_clk(struct ast2600_scu *scu)
 {
 	u32 clksel;
-	writel(readl(&scu->mac12_clk_delay) | BIT(28), &scu->mac12_clk_delay);
+
 	writel(readl(&scu->mac34_clk_delay) & ~BIT(31), &scu->mac34_clk_delay);
 
 	/* MAC AHB = HCLK / 2 */
@@ -517,6 +521,7 @@ static u32 ast2600_configure_mac12_clk(struct ast2600_scu *scu)
 {
 	u32 epll_reg;
 	u32 clksel;
+	u32 clkdelay;
 
 	struct ast2600_div_config div_cfg = {
 		.num = 0x1fff,			/* SCU240 bit[12:0] */
@@ -540,14 +545,23 @@ static u32 ast2600_configure_mac12_clk(struct ast2600_scu *scu)
 	clksel |= 0x7 << 20;
 	writel(clksel, &scu->clk_sel2);
 
-	/* select RGMII 125M from internal source */
-	writel(readl(&scu->mac12_clk_delay) | BIT(31), &scu->mac12_clk_delay);
+	/* 
+	BIT(31): select RGMII 125M from internal source
+	BIT(28): RGMII 125M output enable
+	BIT(25:0): 1G default delay
+	*/
+	clkdelay = MAC_DEF_DELAY_1G | BIT(31) | BIT(28);
+	writel(clkdelay, &scu->mac12_clk_delay);	
+
+	/* set 100M/10M default delay */
+	writel(MAC_DEF_DELAY_100M, &scu->mac12_clk_delay_100M);
+	writel(MAC_DEF_DELAY_10M, &scu->mac12_clk_delay_10M);
 
 	/* MAC AHB = HPLL / 8 */
 	clksel = readl(&scu->clk_sel1);
 	clksel &= ~GENMASK(18, 16);
 	clksel |= 0x3 << 16;
-	writel(clksel, &scu->clk_sel1);
+	writel(clksel, &scu->clk_sel1);	
 
 	return 0;
 }
