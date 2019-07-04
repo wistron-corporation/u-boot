@@ -462,9 +462,6 @@ static int otp_prog_conf(uint32_t *buf, int otp_addr, int dw_count)
 	int pass, soak;
 	uint32_t prog_bit, prog_address;
 
-	otp_write(0x3000, 0x4061); // Write MRA
-	otp_write(0x5000, 0x302f); // Write MRB
-	otp_write(0x1000, 0x4020); // Write MR
 	for (i = 0; i < dw_count; i++) {
 		prog_address = 0x800;
 		prog_address |= ((i + otp_addr) / 8) * 0x200;
@@ -477,17 +474,23 @@ static int otp_prog_conf(uint32_t *buf, int otp_addr, int dw_count)
 				continue;
 			pass = 0;
 			soak = 0;
+			otp_write(0x3000, 0x4061); // Write MRA
+			otp_write(0x5000, 0x302f); // Write MRB
+			otp_write(0x1000, 0x4020); // Write MR
+			writel(0x04190760, 0x1e602008); //normal program
 			for (k = 0; k < RETRY; k++) {
 				if (!soak) {
-					writel(0x04190760, 0x1e602008); //normal program
 					otp_prog(prog_address, prog_bit);
 					if (prog_verify(prog_address, j, bit_value) == 0) {
 						pass = 1;
 						break;
 					}
 					soak = 1;
+					otp_write(0x3000, 0x4021); // Write MRA
+					otp_write(0x5000, 0x1027); // Write MRB
+					otp_write(0x1000, 0x4820); // Write MR
+					writel(0x041930d4, 0x1e602008); //soak program
 				}
-				writel(0x041930d4, 0x1e602008); //soak program
 				otp_prog(prog_address, prog_bit);
 				if (prog_verify(prog_address, j, bit_value) == 0) {
 					pass = 1;
@@ -681,17 +684,23 @@ static int otp_prog_strap(uint32_t *buf)
 		}
 		pass = 0;
 		soak = 0;
+		otp_write(0x3000, 0x4061); // Write MRA
+		otp_write(0x5000, 0x302f); // Write MRB
+		otp_write(0x1000, 0x4020); // Write MR
+		writel(0x04190760, 0x1e602008); //normal program
 		for (j = 0; j < RETRY; j++) {
 			if (!soak) {
-				writel(0x04190760, 0x1e602008); //normal program
 				otp_prog(prog_address, prog_bit);
 				if (prog_verify(prog_address, offset, 1) == 0) {
 					pass = 1;
 					break;
 				}
 				soak = 1;
+				otp_write(0x3000, 0x4021); // Write MRA
+				otp_write(0x5000, 0x1027); // Write MRB
+				otp_write(0x1000, 0x4820); // Write MR
+				writel(0x041930d4, 0x1e602008); //soak program
 			}
-			writel(0x041930d4, 0x1e602008); //soak program
 			otp_prog(prog_address, prog_bit);
 			if (prog_verify(prog_address, offset, 1) == 0) {
 				pass = 1;
@@ -743,9 +752,6 @@ static int otp_prog_data(uint32_t *buf, int otp_addr, int dw_count)
 	int pass, soak;
 	uint32_t prog_bit, prog_address;
 
-	otp_write(0x3000, 0x4061); // Write MRA
-	otp_write(0x5000, 0x302f); // Write MRB
-	otp_write(0x1000, 0x4020); // Write MR
 	for (i = 0; i < dw_count; i++) {
 		prog_address = i + otp_addr;
 		for (j = 0; j < 32; j++) {
@@ -766,9 +772,12 @@ static int otp_prog_data(uint32_t *buf, int otp_addr, int dw_count)
 			}
 			pass = 0;
 			soak = 0;
+			otp_write(0x3000, 0x4061); // Write MRA
+			otp_write(0x5000, 0x302f); // Write MRB
+			otp_write(0x1000, 0x4020); // Write MR
+			writel(0x04190760, 0x1e602008); //normal program
 			for (k = 0; k < RETRY; k++) {
 				if (!soak) {
-					writel(0x04190760, 0x1e602008); //normal program
 					// printf("prog_address = %x\n", prog_address);
 					// printf("prog_bit = %x\n", prog_bit);
 					otp_prog(prog_address, prog_bit);
@@ -777,8 +786,11 @@ static int otp_prog_data(uint32_t *buf, int otp_addr, int dw_count)
 						break;
 					}
 					soak = 1;
+					otp_write(0x3000, 0x4021); // Write MRA
+					otp_write(0x5000, 0x1027); // Write MRB
+					otp_write(0x1000, 0x4820); // Write MR
+					writel(0x041930d4, 0x1e602008); //soak program
 				}
-				writel(0x041930d4, 0x1e602008); //soak program
 				otp_prog(prog_address, prog_bit);
 				if (prog_verify(prog_address, j, bit_value) == 0) {
 					pass = 1;
