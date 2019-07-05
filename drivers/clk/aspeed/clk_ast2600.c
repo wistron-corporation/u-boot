@@ -48,10 +48,50 @@ DECLARE_GLOBAL_DATA_PTR;
  * D-PLL and D2-PLL have extra divider (OD + 1), which is not
  * yet needed and ignored by clock configurations.
  */
-struct ast2600_div_config {
-	unsigned int num;
-	unsigned int denum;
-	unsigned int post_div;
+union ast2600_pll_reg {
+	unsigned int w;
+	struct {
+		unsigned int m : 13;	/* 12:0  */
+		unsigned int n : 6;	/* 18:13  */
+		unsigned int p : 4;	/* 22:19  */
+		unsigned int reserved : 9; /* 31:20  */
+	} b;
+};
+
+struct ast2600_pll_cfg {
+	union ast2600_pll_reg reg;
+	unsigned int ext_reg;
+};
+
+struct ast2600_pll_desc {
+	u32 in;
+	u32 out;
+	struct ast2600_pll_cfg cfg;
+};
+
+static const struct ast2600_pll_desc ast2600_pll_lookup[] = {
+    {.in = AST2600_CLK_IN, .out = 400000000,
+    .cfg.reg.b.m = 95, .cfg.reg.b.n = 2, .cfg.reg.b.p = 1,
+    .cfg.ext_reg = 0x31,
+    },
+    {.in = AST2600_CLK_IN, .out = 200000000,
+    .cfg.reg.b.m = 127, .cfg.reg.b.n = 0, .cfg.reg.b.p = 15,
+    .cfg.ext_reg = 0x3f
+    },
+    {.in = AST2600_CLK_IN, .out = 334000000,
+    .cfg.reg.b.m = 667, .cfg.reg.b.n = 4, .cfg.reg.b.p = 9,
+    .cfg.ext_reg = 0x14d
+    },
+
+    {.in = AST2600_CLK_IN, .out = 1000000000,
+    .cfg.reg.b.m = 119, .cfg.reg.b.n = 2, .cfg.reg.b.p = 0,
+    .cfg.ext_reg = 0x3d
+    },
+
+    {.in = AST2600_CLK_IN, .out = 50000000,
+    .cfg.reg.b.m = 95, .cfg.reg.b.n = 2, .cfg.reg.b.p = 15,
+    .cfg.ext_reg = 0x31
+    },
 };
 
 extern u32 ast2600_get_pll_rate(struct ast2600_scu *scu, int pll_idx)
@@ -372,115 +412,50 @@ static ulong ast2600_clk_get_rate(struct clk *clk)
 	return rate;
 }
 
-struct aspeed_clock_config {
-	ulong input_rate;
-	ulong rate;
-	struct ast2600_div_config cfg;
-};
-
-static const struct aspeed_clock_config aspeed_clock_config_defaults[] = {
-	{ 25000000, 400000000, { .num = 95, .denum = 2, .post_div = 1   } },
-	{ 25000000, 200000000, { .num = 127, .denum = 0, .post_div = 15 } },
-	{ 25000000, 334000000, { .num = 667, .denum = 4, .post_div = 9  } },
-	{ 25000000, 1000000000, { .num = 119, .denum = 2, .post_div = 0 } },
-};
-
-static bool aspeed_get_clock_config_default(ulong input_rate,
-					     ulong requested_rate,
-					     struct ast2600_div_config *cfg)
-{
-	int i;
-
-	for (i = 0; i < ARRAY_SIZE(aspeed_clock_config_defaults); i++) {
-		const struct aspeed_clock_config *default_cfg =
-			&aspeed_clock_config_defaults[i];
-		if (default_cfg->input_rate == input_rate &&
-		    default_cfg->rate == requested_rate) {
-			*cfg = default_cfg->cfg;
-			return true;
-		}
-	}
-
-	return false;
-}
-
-/*
- * @input_rate - the rate of input clock in Hz
- * @requested_rate - desired output rate in Hz
- * @div - this is an IN/OUT parameter, at input all fields of the config
- * need to be set to their maximum allowed values.
- * The result (the best config we could find), would also be returned
- * in this structure.
- *
- * @return The clock rate, when the resulting div_config is used.
+/**
+ * @brief	lookup PLL divider config by input/output rate
+ * @param[in]	*pll - PLL descriptor
+ * @return	true - if PLL divider config is found, false - else
+ * 
+ * The function caller shall fill "pll->in" and "pll->out", then this function
+ * will search the lookup table to find a valid PLL divider configuration.
  */
-static ulong aspeed_calc_clock_config(ulong input_rate, ulong requested_rate,
-				       struct ast2600_div_config *cfg)
+static bool ast2600_search_clock_config(struct ast2600_pll_desc *pll)
 {
-	/*
-	 * The assumption is that kHz precision is good enough and
-	 * also enough to avoid overflow when multiplying.
-	 */
-	const ulong input_rate_khz = input_rate / 1000;
-	const ulong rate_khz = requested_rate / 1000;
-	const struct ast2600_div_config max_vals = *cfg;
-	struct ast2600_div_config it = { 0, 0, 0 };
-	ulong delta = rate_khz;
-	ulong new_rate_khz = 0;
+	u32 i;
+	bool is_found = false;
 
-	/*
-	 * Look for a well known frequency first.
-	 */
-	if (aspeed_get_clock_config_default(input_rate, requested_rate, cfg))
-		return requested_rate;
-
-	for (; it.denum <= max_vals.denum; ++it.denum) {
-		for (it.post_div = 0; it.post_div <= max_vals.post_div;
-		     ++it.post_div) {
-			it.num = (rate_khz * (it.post_div + 1) / input_rate_khz)
-			    * (it.denum + 1);
-			if (it.num > max_vals.num)
-				continue;
-
-			new_rate_khz = (input_rate_khz
-					* ((it.num + 1) / (it.denum + 1)))
-			    / (it.post_div + 1);
-
-			/* Keep the rate below requested one. */
-			if (new_rate_khz > rate_khz)
-				continue;
-
-			if (new_rate_khz - rate_khz < delta) {
-				delta = new_rate_khz - rate_khz;
-				*cfg = it;
-				if (delta == 0)
-					return new_rate_khz * 1000;
-			}
+	for (i = 0; i < ARRAY_SIZE(ast2600_pll_lookup); i++) {
+		const struct ast2600_pll_desc *def_cfg = &ast2600_pll_lookup[i];
+		if ((def_cfg->in == pll->in) && (def_cfg->out == pll->out)) {
+			is_found = true;
+			pll->cfg.reg.w = def_cfg->cfg.reg.w;
+			pll->cfg.ext_reg = def_cfg->cfg.ext_reg;
+			break;
 		}
 	}
-
-	return new_rate_khz * 1000;
+	return is_found;
 }
 
 static u32 ast2600_configure_ddr(struct ast2600_scu *scu, ulong rate)
 {
-	u32 clkin = AST2600_CLK_IN;
 	u32 mpll_reg;
-	struct ast2600_div_config div_cfg = {
-		.num = 0x1fff,			/* SCU220 bit[12:0] */
-		.denum = 0x3f,			/* SCU220 bit[18:13] */
-		.post_div = 0xf,		/* SCU220 bit[22:19] */
-	};
+	struct ast2600_pll_desc mpll;	
 
-	aspeed_calc_clock_config(clkin, rate, &div_cfg);
+	mpll.in = AST2600_CLK_IN;
+	mpll.out = rate;
+	if (false == ast2600_search_clock_config(&mpll)) {
+		printf("error!! unable to find valid DDR clock setting\n");
+		return 0;
+	}
 
 	mpll_reg = readl(&scu->m_pll_param);
-	mpll_reg &= ~0x7fffff;
-	mpll_reg |= (div_cfg.post_div << 19)
-	    | (div_cfg.denum << 13)
-	    | (div_cfg.num << 0);
-
-	writel(mpll_reg, &scu->m_pll_param);
+	mpll_reg &= ~GENMASK(22, 0);
+	mpll_reg |= mpll.cfg.reg.w;
+	writel(mpll_reg, &scu->m_pll_param);	
+	
+	/* write extend parameter */
+	writel(mpll.cfg.ext_reg, &scu->m_pll_ext_param);
 
 	return ast2600_get_pll_rate(scu, ASPEED_CLK_MPLL);
 }
@@ -511,22 +486,28 @@ static u32 ast2600_configure_mac12_clk(struct ast2600_scu *scu)
 	u32 epll_reg;
 	u32 clksel;
 	u32 clkdelay;
+	
+	struct ast2600_pll_desc epll;
 
-	struct ast2600_div_config div_cfg = {
-		.num = 0x1fff,			/* SCU240 bit[12:0] */
-		.denum = 0x3f,			/* SCU240 bit[18:13] */
-		.post_div = 0xf,		/* SCU240 bit[22:19] */
-	};
+	epll.in = AST2600_CLK_IN;
+	epll.out = 1000000000;
+	if (false == ast2600_search_clock_config(&epll)) {
+		printf(
+		    "error!! unable to find valid ETHNET MAC clock setting\n");
+		debug("%s: epll cfg = 0x%08x 0x%08x\n", __func__,
+		      epll.cfg.reg.w, epll.cfg.ext_reg);
+		debug("%s: epll cfg = %02x %02x %02x\n", __func__,
+		      epll.cfg.reg.b.m, epll.cfg.reg.b.n, epll.cfg.reg.b.p);
+		return 0;
+	}
 
-	/* configure E-PLL 1000M */
-	aspeed_calc_clock_config(AST2600_CLK_IN, 1000000000, &div_cfg);
 	epll_reg = readl(&scu->e_pll_param);
 	epll_reg &= ~GENMASK(22, 0);
-	epll_reg |= (div_cfg.post_div << 19)
-	    | (div_cfg.denum << 13)
-	    | (div_cfg.num << 0);
-
-	writel(epll_reg, &scu->e_pll_param);
+	epll_reg |= epll.cfg.reg.w;
+	writel(epll_reg, &scu->e_pll_param);	
+	
+	/* write extend parameter */
+	writel(epll.cfg.ext_reg, &scu->e_pll_ext_param);	
 
 	/* select MAC#1 and MAC#2 clock source = EPLL / 8 */
 	clksel = readl(&scu->clk_sel2);
