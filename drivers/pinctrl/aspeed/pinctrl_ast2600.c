@@ -46,9 +46,13 @@ static int ast2600_pinctrl_probe(struct udevice *dev)
 }
 
 static struct aspeed_sig_desc mac1_link[] = {
+#ifdef CONFIG_FPGA_ASPEED
+	{ 0x410, BIT(4), 0 },
+#else
 	{ 0x400, GENMASK(11, 0), 0 },
 	{ 0x410, BIT(4), 0 },
 	{ 0x470, BIT(4), 1 },
+#endif
 };
 
 static struct aspeed_sig_desc mac2_link[] = {

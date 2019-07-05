@@ -24,7 +24,7 @@
  * directly */
 #define AST2600_SDRAMMC_MANUAL_CLK
 
-#ifdef CONFIG_FPGA_AST2600
+#ifdef CONFIG_FPGA_ASPEED
 /* mode register settings for FPGA are fixed */
 #define DDR4_MR01_MODE		0x03010100
 #define DDR4_MR23_MODE		0x00000000
@@ -46,7 +46,7 @@
 #define DDR4_MR6_MODE           0x00000400
 #define DDR4_TRFC_1600		0x467299f1
 #define DDR4_TRFC_800		0x23394c78
-#endif  /* end of "#ifdef CONFIG_FPGA_AST2600" */
+#endif  /* end of "#ifdef CONFIG_FPGA_ASPEED" */
 
 #define SDRAM_SIZE_1KB		(1024U)
 #define SDRAM_SIZE_1MB		(SDRAM_SIZE_1KB * SDRAM_SIZE_1KB)
@@ -77,7 +77,7 @@
 #define SCU_MPLL_FREQ_200M		0x0078007F
 #define SCU_MPLL_FREQ_CFG		SCU_MPLL_FREQ_200M
 
-#if defined(CONFIG_FPGA_AST2600)
+#if defined(CONFIG_FPGA_ASPEED)
 #define DDR4_TRFC			DDR4_TRFC_FPGA
 #else
 /* real chip setting */
@@ -88,7 +88,7 @@
 #else
 #error "undefined tRFC setting"
 #endif	/* end of "#if (SCU_MPLL_FREQ_CFG == SCU_MPLL_FREQ_400M)" */
-#endif	/* end of "#if defined(CONFIG_FPGA_AST2600)" */
+#endif	/* end of "#if defined(CONFIG_FPGA_ASPEED)" */
 
 #define SCU_MPLL_TURN_OFF		BIT(23)
 #define SCU_MPLL_BYPASS			BIT(24)
@@ -100,7 +100,7 @@ DECLARE_GLOBAL_DATA_PTR;
  * Bandwidth configuration parameters for different SDRAM requests.
  * These are hardcoded settings taken from Aspeed SDK.
  */
-#ifdef CONFIG_FPGA_AST2600
+#ifdef CONFIG_FPGA_ASPEED
 static const u32 ddr4_ac_timing[4] = {0x030C0207, 0x04451133, 0x0E010200,
                                       0x00000140};
 
@@ -127,7 +127,7 @@ struct dram_info {
 
 static void ast2600_sdramphy_kick_training(struct dram_info *info)
 {
-#ifndef CONFIG_FPGA_AST2600
+#ifndef CONFIG_FPGA_ASPEED
         struct ast2600_sdrammc_regs *regs = info->regs;
         u32 mask = SDRAM_PHYCTRL0_INIT | SDRAM_PHYCTRL0_PLL_LOCKED;
         u32 data;
@@ -156,7 +156,7 @@ static void ast2600_sdramphy_kick_training(struct dram_info *info)
 */
 static void ast2600_sdramphy_init(u32 *p_tbl, struct dram_info *info)
 {
-#ifndef CONFIG_FPGA_AST2600
+#ifndef CONFIG_FPGA_ASPEED
 	u32 reg_base = (u32)info->phy_setting;
 	u32 addr = p_tbl[0];
         u32 data;
@@ -210,7 +210,7 @@ static void ast2600_sdramphy_init(u32 *p_tbl, struct dram_info *info)
 
 static void ast2600_sdramphy_show_status(struct dram_info *info)
 {
-#ifndef CONFIG_FPGA_AST2600
+#ifndef CONFIG_FPGA_ASPEED
         u32 value;
         u32 reg_base = (u32)info->phy_status;
 
@@ -368,7 +368,7 @@ static size_t ast2600_sdrammc_get_vga_mem_size(struct dram_info *info)
 
         return vga_mem_size_base << vga_hwconf;
 }
-#ifdef CONFIG_FPGA_AST2600
+#ifdef CONFIG_FPGA_ASPEED
 static void ast2600_sdrammc_fpga_set_pll(struct dram_info *info)
 {
         u32 data;
@@ -505,7 +505,7 @@ static int ast2600_sdrammc_search_read_window(struct dram_info *info)
                 return (0);
         }
 }
-#endif  /* end of "#ifdef CONFIG_FPGA_AST2600" */
+#endif  /* end of "#ifdef CONFIG_FPGA_ASPEED" */
 
 /*
  * Find out RAM size and save it in dram_info
@@ -586,7 +586,7 @@ static int ast2600_sdrammc_init_ddr4(struct dram_info *info)
         writel(MCR30_SET_MR(0) | MCR30_RESET_DLL_DELAY_EN,
                &info->regs->mode_setting_control);
 
-#ifdef CONFIG_FPGA_AST2600
+#ifdef CONFIG_FPGA_ASPEED
         writel(SDRAM_REFRESH_EN | SDRAM_RESET_DLL_ZQCL_EN |
                    (0x5d << SDRAM_REFRESH_PERIOD_SHIFT),
                &info->regs->refresh_timing);
@@ -600,7 +600,7 @@ static int ast2600_sdrammc_init_ddr4(struct dram_info *info)
         while (readl(&info->regs->power_ctrl) & MCR34_SELF_REFRESH_STATUS_MASK)
                 ;
 
-#ifdef CONFIG_FPGA_AST2600
+#ifdef CONFIG_FPGA_ASPEED
         writel(SDRAM_REFRESH_EN | SDRAM_LOW_PRI_REFRESH_EN |
                    SDRAM_REFRESH_ZQCS_EN |
                    (0x5d << SDRAM_REFRESH_PERIOD_SHIFT) |
@@ -616,7 +616,7 @@ static int ast2600_sdrammc_init_ddr4(struct dram_info *info)
 
         writel(power_ctrl, &info->regs->power_ctrl);
 
-#ifdef CONFIG_FPGA_AST2600
+#ifdef CONFIG_FPGA_ASPEED
         /* toggle Vref training */
         setbits_le32(&info->regs->mr6_mode_setting, 0x80);
         writel(MCR30_RESET_DLL_DELAY_EN | MCR30_SET_MR(6),
@@ -668,7 +668,7 @@ static void ast2600_sdrammc_common_init(struct ast2600_sdrammc_regs *regs)
         writel(0xFFFFFFFF, &regs->req_input_ctrl);
         writel(0, &regs->req_high_pri_ctrl);
 
-#ifdef CONFIG_FPGA_AST2600
+#ifdef CONFIG_FPGA_ASPEED
         //writel(0xFF, 0x1e6e0100);
 #endif        
         udelay(500);
@@ -757,7 +757,7 @@ static int ast2600_sdrammc_probe(struct udevice *dev)
 		ast2600_sdrammc_init_ddr4(priv);
 	}
 
-#ifdef CONFIG_FPGA_AST2600
+#ifdef CONFIG_FPGA_ASPEED
         ast2600_sdrammc_search_read_window(priv);
 #endif
 

@@ -68,13 +68,13 @@ config FPGA_ZYNQPL
 	  Enable FPGA driver for loading bitstream in BIT and BIN format
 	  on Xilinx Zynq devices.
 
-config FPGA_AST2600
-	bool "Enable AST2600 FPGA driver"
-	depends on TARGET_EVB_AST2600
+config FPGA_ASPEED
+	bool "Enable Aspeed FPGA driver"
+	depends on ARCH_ASPEED
 	help
-	  Say Y here to enable the AST2600 FPGA driver
+	  Say Y here to enable the Aspeed FPGA driver
 
 	  This provides functionality and hardware configurations
-	  specific for AST2600 FPGA device
+	  specific for Aspeed FPGA devices
 
 endmenu
