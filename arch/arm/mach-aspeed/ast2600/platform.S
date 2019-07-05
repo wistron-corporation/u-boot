@@ -124,12 +124,10 @@ poll_mailbox_ready:
 
 do_primary_core_setup:
 
-#ifdef CONFIG_FPGA_AST2600
-    /* fpga unlock scu */
+    /* unlock scu */
     ldr   r0, =0x1e6e2000
     ldr   r1, =0x1688a8a8
     str   r1, [r0]
-#endif
 
     /* disable WDT */
     mov   r1, #0
