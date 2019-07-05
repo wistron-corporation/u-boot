@@ -113,8 +113,10 @@ static struct aspeed_sig_desc sdio1_8bit_link[] = {
 static struct aspeed_sig_desc emmc_link[] = {
 	{ 0x400, GENMASK(31, 24), 0 },
 	{ 0x404, GENMASK(3, 0), 0 },
+#if 0	
 	{ 0x500, BIT(3), 1 },
 	{ 0x500, BIT(5), 1 },
+#endif	
 };
 
 static const struct aspeed_group_config ast2600_groups[] = {
