@@ -15,7 +15,9 @@
 	aliases {
 		spi0 = &fmc;
 		ethernet0 = &mac0;
+#ifndef CONFIG_FPGA_ASPEED
 		ethernet1 = &mac1;
+#endif
 	};
 };
 
@@ -55,7 +57,7 @@
 	pinctrl-0 = <&pinctrl_mac1link_default &pinctrl_mdio1_default>;
 };
 
-#if 1
+#ifndef CONFIG_FPGA_ASPEED
 &mac1 {
 	status = "okay";
 	phy-mode = "rgmii";

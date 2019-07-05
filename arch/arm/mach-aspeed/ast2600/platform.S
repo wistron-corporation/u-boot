@@ -60,19 +60,20 @@
 #define AST_UART_BASE       0x1e784000
 
 #define AST_SCU_BASE        0x1e6e2000
+#define AST_SCU_PROT_KEY    (AST_SCU_BASE)
 #define AST_SCU_REV_ID      (AST_SCU_BASE + 0x014)
 
 #define REV_ID_AST2600A0    0x05000303
 
 .macro timer_init
-#ifdef CONFIG_FPGA_AST2600
+#ifdef CONFIG_FPGA_ASPEED
     movw    r0, #0x0
     movt    r0, #0x2500
 #else
-    ldr     r0, =#AST_SCU_REV_ID
+    ldr     r0, =AST_SCU_REV_ID
     ldr     r0, [r0]
 
-    ldr     r1, =#REV_ID_AST2600A0
+    ldr     r1, =REV_ID_AST2600A0
     cmp     r0, r1
 
     movweq  r0, #0x0800
@@ -107,26 +108,26 @@ lowlevel_init:
     /* hold cpuN until mailbox is ready */
 poll_mailbox_ready:
     wfe
-    ldr   r0, =#AST_SMP_MBOX_FIELD_READY
-    ldr   r1, =#0xBABECAFE
+    ldr   r0, =AST_SMP_MBOX_FIELD_READY
+    ldr   r1, =0xBABECAFE
     ldr   r2, [r0]
     cmp   r1, r2
     bne   poll_mailbox_ready
 
     /* parameters for relocated SMP go polling insn. */
-    ldr   r0, =#AST_SMP_MBOX_FIELD_GOSIGN
-    ldr   r1, =#AST_SMP_MBOX_FIELD_ENTRY
-    ldr   r2, =#0xABBAADDA
-    ldr   r3, =#AST_UART_BASE
+    ldr   r0, =AST_SMP_MBOX_FIELD_GOSIGN
+    ldr   r1, =AST_SMP_MBOX_FIELD_ENTRY
+    ldr   r2, =0xABBAADDA
+    ldr   r3, =AST_UART_BASE
 
     /* no return */
-    ldr   pc, =#AST_SMP_MBOX_FIELD_POLLINSN
+    ldr   pc, =AST_SMP_MBOX_FIELD_POLLINSN
 
 do_primary_core_setup:
 
-#ifdef CONFIG_FPGA_AST2600
+#ifdef CONFIG_FPGA_ASPEED
     /* fpga unlock scu */
-    ldr   r0, =0x1e6e2000
+    ldr   r0, =AST_SCU_PROT_KEY
     ldr   r1, =0x1688a8a8
     str   r1, [r0]
 #endif
@@ -155,8 +156,8 @@ relocate_mailbox_insn:
     bne   relocate_mailbox_insn
 
     /* notify cpuN mailbox is ready */
-    ldr   r0, =#AST_SMP_MBOX_FIELD_READY
-    ldr   r1, =#0xBABECAFE
+    ldr   r0, =AST_SMP_MBOX_FIELD_READY
+    ldr   r1, =0xBABECAFE
     str   r1, [r0]
     sev
 
