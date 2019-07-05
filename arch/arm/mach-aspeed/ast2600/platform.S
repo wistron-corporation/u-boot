@@ -13,7 +13,6 @@
  *
  ******************************************************************************
  * ASPEED Technology Inc.
- * AST26x0 DDR3/DDR4 SDRAM controller initialization sequence for FPGA
  *
  * Version     : 2
  * Release date: 2019.02.19
@@ -58,7 +57,33 @@
 #define AST_SMP_MBOX_FIELD_READY        (AST_SMP_MAILBOX_BASE + 0x8)
 #define AST_SMP_MBOX_FIELD_POLLINSN     (AST_SMP_MAILBOX_BASE + 0xC)
 
-#define AST_UART_BASE   0x1e784000
+#define AST_UART_BASE       0x1e784000
+
+#define AST_SCU_BASE        0x1e6e2000
+#define AST_SCU_REV_ID      (AST_SCU_BASE + 0x014)
+
+#define REV_ID_AST2600A0    0x05000303
+
+.macro timer_init
+#ifdef CONFIG_FPGA_AST2600
+    movw    r0, #0x0
+    movt    r0, #0x2500
+#else
+    ldr     r0, =#AST_SCU_REV_ID
+    ldr     r0, [r0]
+
+    ldr     r1, =#REV_ID_AST2600A0
+    cmp     r0, r1
+
+    movweq  r0, #0x0800
+    movteq  r0, #0x2faf
+    movwne  r0, #0x8c00
+    movtne  r0, #0x4786
+#endif
+    /* write CNTFRQ */
+    mcr     p15, 0, r0, c14, c0, 0
+.endm
+
 
 .globl lowlevel_init
 
@@ -67,9 +92,8 @@ lowlevel_init:
 #if defined(CONFIG_SPL) && !defined(CONFIG_SPL_BUILD)
     mov   pc, lr
 #else
-    /* setup timer frequency */
-    ldr   r0, =#25000000
-    mcr   p15, 0, r0, c14, c0, 0
+    /* setup timer frequency for ARM generic timer */
+    timer_init
 
     /*
      * we treat cpu0 as the primary core and
@@ -100,10 +124,12 @@ poll_mailbox_ready:
 
 do_primary_core_setup:
 
+#ifdef CONFIG_FPGA_AST2600
     /* fpga unlock scu */
     ldr   r0, =0x1e6e2000
     ldr   r1, =0x1688a8a8
     str   r1, [r0]
+#endif
 
     /* disable WDT */
     mov   r1, #0
