@@ -15,12 +15,16 @@
 /*
  * MAC Clock Delay settings, taken from Aspeed SDK
  */
-#define RGMII_TXCLK_ODLY		8
+#define RGMII_TXCLK_ODLY	8
 #define RMII_RXCLK_IDLY		2
 
 #define MAC_DEF_DELAY_1G	0x00410410
-#define MAC_DEF_DELAY_100M	0x00810810
-#define MAC_DEF_DELAY_10M	0x00810810
+#define MAC_DEF_DELAY_100M	0x00410410
+#define MAC_DEF_DELAY_10M	0x00410410
+
+#define MAC34_DEF_DELAY_1G	0x00104208
+#define MAC34_DEF_DELAY_100M	0x00104208
+#define MAC34_DEF_DELAY_10M	0x00104208
 
 /*
  * TGMII Clock Duty constants, taken from Aspeed SDK
@@ -502,19 +506,6 @@ static ulong ast2600_clk_set_rate(struct clk *clk, ulong rate)
 #define SCU_CLKSTOP_MAC3		(20)
 #define SCU_CLKSTOP_MAC4		(21)
 
-static u32 ast2600_configure_mac34_clk(struct ast2600_scu *scu)
-{
-	u32 clksel;
-
-	writel(readl(&scu->mac34_clk_delay) & ~BIT(31), &scu->mac34_clk_delay);
-
-	/* MAC AHB = HCLK / 2 */
-	clksel = readl(&scu->clk_sel4);
-	clksel &= ~GENMASK(26, 24);	
-	writel(clksel, &scu->clk_sel4);
-	return 0;
-}
-
 static u32 ast2600_configure_mac12_clk(struct ast2600_scu *scu)
 {
 	u32 epll_reg;
@@ -564,6 +555,72 @@ static u32 ast2600_configure_mac12_clk(struct ast2600_scu *scu)
 	return 0;
 }
 
+static u32 ast2600_configure_mac34_clk(struct ast2600_scu *scu)
+{
+	u32 reg;
+
+	ast2600_configure_mac12_clk(scu);
+
+	/* 
+	BIT[31]   RGMII 125M source: 0 = from IO pin
+	BIT[25:0] MAC 1G delay 
+	*/
+	reg = readl(&scu->mac34_clk_delay);
+	reg &= ~(BIT(31) | GENMASK(25, 0));
+	reg |= MAC34_DEF_DELAY_1G;
+	writel(reg, &scu->mac34_clk_delay);
+	writel(MAC34_DEF_DELAY_100M, &scu->mac34_clk_delay_100M);
+	writel(MAC34_DEF_DELAY_10M, &scu->mac34_clk_delay_10M);
+
+	/* clock source seletion and divider */
+	reg = readl(&scu->clk_sel4);
+	reg &= ~GENMASK(26, 24);	/* MAC AHB = HCLK / 2 */
+	reg &= ~GENMASK(18, 16);
+	reg |= 0x3 << 16;		/* RMII 50M = SLICLK_200M / 4 */
+	writel(reg, &scu->clk_sel4);
+
+	/* set driving strength */
+	reg = readl(&scu->pinmux_ctrl16);
+	reg &= GENMASK(3, 0);
+	reg |= (0x2 << 0) | (0x2 << 2);
+	writel(reg, &scu->pinmux_ctrl16);
+
+	return 0;
+}
+#if 0
+/**
+ * WIP: ast2600 RGMII clock source tree
+ * 
+ *    125M from external PAD -------->|\
+ *    HPLL -->|\                      | |---->RGMII 125M for MAC#1 & MAC#2
+ *            | |---->| divider |---->|/                             +
+ *    EPLL -->|/                                                     |
+ *                                                                   |
+ *    +---------<-----------|PAD output enable|<---------------------+
+ *    |
+ *    +--->|PAD input enable|----->|\
+ *                                 | |----> RGMII 125M for MAC#3 & MAC#4
+ *    SLICLK 200M -->|divider|---->|/
+*/
+struct ast2600_rgmii_clk_config {
+	u32 mac_1_2_src;	/* 0=external PAD, 1=internal PLL */
+	u32 int_clk_src;	/* 0=EPLL, 1=HPLL */
+	u32 int_clk_div;
+	
+	u32 mac_3_4_src;	/* 0=external PAD, 1=SLICLK */
+	u32 sli_clk_div;	/* reserved */
+};
+
+static void ast2600_init_rgmii_clk(struct ast2600_scu *scu, int index)
+{
+	debug("%s not ready\n", __func__);
+}
+
+static void ast2600_init_rmii_clk(struct ast2600_scu *scu, int index)
+{
+	debug("%s not ready\n", __func__);
+}
+#endif
 static u32 ast2600_configure_mac(struct ast2600_scu *scu, int index)
 {
 	u32 reset_bit;
