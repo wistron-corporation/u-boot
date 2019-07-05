@@ -176,10 +176,11 @@ obj-$(CONFIG_CMD_AVB) += avb.o
 obj-$(CONFIG_X86) += x86/
 
 obj-$(CONFIG_ARCH_MVEBU) += mvebu/
-endif # !CONFIG_SPL_BUILD
 
 obj-$(CONFIG_CMD_NETTEST) += nettest/
 obj-$(CONFIG_CMD_DRAMTEST) += dramtest.o
+
+endif # !CONFIG_SPL_BUILD
 
 # core command
 obj-y += nvedit.o
