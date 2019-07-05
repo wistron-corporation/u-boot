@@ -144,8 +144,35 @@ struct ast2600_scu {
 	u32 clk_duty_meas_res;	/* 0x36C */	
 	u32 clk_duty_meas_ctr2;	/* 0x370 */
 	u32 clk_duty_sel2;		/* 0x374 */	
-	u32 reserve_0x378[34];	/* 0x378 */	
-	u32 pinmux_ctrl1[64];	/* 0x400 ~ 0x500 */	
+	u32 reserve_0x378[34];		/* 0x378 ~ 0x3fc */	
+	u32 pinmux_ctrl1;		/* 0x400 */
+	u32 pinmux_ctrl2;		/* 0x404 */
+	u32 reserve_0x408;		/* 0x408 */
+	u32 pinmux_ctrl3;		/* 0x40C */
+        u32 pinmux_ctrl4;		/* 0x410 */
+        u32 pinmux_ctrl5;		/* 0x414 */
+        u32 pinmux_ctrl6;		/* 0x418 */
+        u32 pinmux_ctrl7;		/* 0x41C */
+	u32 reserve_0x420[4];		/* 0x420 ~ 0x42c */
+        u32 pinmux_ctrl8;		/* 0x430 */
+        u32 pinmux_ctrl9;		/* 0x434 */
+        u32 pinmux_ctrl10;		/* 0x438 */
+	u32 reserve_0x43c;		/* 0x43c */
+	u32 pinmux_ctrl12;		/* 0x440 */
+	u32 pinmux_ctrl13;		/* 0x444 */
+	u32 reserv_0x448[2];		/* 0x448 ~ 0x44c */
+	u32 pinmux_ctrl14;		/* 0x450 */
+	u32 pinmux_ctrl15;		/* 0x454 */
+	u32 pinmux_ctrl16;		/* 0x458 */
+	u32 reserv_0x45c[2];		/* 0x45c ~ 0x4ac */
+	u32 pinmux_ctrl17;		/* 0x4b0 */
+	u32 pinmux_ctrl18;		/* 0x4b4 */
+	u32 pinmux_ctrl19;		/* 0x4b8 */
+	u32 pinmux_ctrl20;		/* 0x4bc */
+	u32 reserv_0x4c0[5];		/* 0x4c0 ~ 0x4d0 */
+	u32 pinmux_ctrl22;		/* 0x4d4 */
+	u32 pinmux_ctrl23;		/* 0x4d8 */
+	u32 reserv_0x4dc[9];		/* 0x4dc ~ 0x4fc */
 	struct hw_strap hwstrap1; /* 0x500 */
 	u32 reserve_0x50C;		/* 0x50C */
 	struct hw_strap hwstrap2; /* 0x510 */
