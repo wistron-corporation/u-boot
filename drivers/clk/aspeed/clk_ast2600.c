@@ -120,11 +120,10 @@ extern u32 ast2600_get_pll_rate(struct ast2600_scu *scu, int pll_idx)
 		mult = div = 1;
 	} else {
 		/* F = 25Mhz * [(M + 2) / (n + 1)] / (p + 1) */
-		u32 m = pll_reg  & 0x1fff;
-		u32 n = (pll_reg >> 13) & 0x3f;
-		u32 p = (pll_reg >> 19) & 0xf;
-		mult = (m + 1) / (n + 1);
-		div = (p + 1);
+		union ast2600_pll_reg reg;
+		reg.w = pll_reg;
+		mult = (reg.b.m + 1) / (reg.b.n + 1);
+		div = (reg.b.p + 1);
 	}
 	return ((clkin * mult)/div);
 	
