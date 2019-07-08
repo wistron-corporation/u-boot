@@ -51,18 +51,31 @@
  * +----------------------+ AST_SMP_MAILBOX_BASE
  */
 
-#define AST_SMP_MAILBOX_BASE            0x1e6e2180
+#define AST_SMP_MAILBOX_BASE            0x1E6E2180
 #define AST_SMP_MBOX_FIELD_ENTRY        (AST_SMP_MAILBOX_BASE + 0x0)
 #define AST_SMP_MBOX_FIELD_GOSIGN       (AST_SMP_MAILBOX_BASE + 0x4)
 #define AST_SMP_MBOX_FIELD_READY        (AST_SMP_MAILBOX_BASE + 0x8)
-#define AST_SMP_MBOX_FIELD_POLLINSN     (AST_SMP_MAILBOX_BASE + 0xC)
+#define AST_SMP_MBOX_FIELD_POLLINSN     (AST_SMP_MAILBOX_BASE + 0xc)
 
-#define AST_UART_BASE       0x1e784000
+/* AST2600 HW registers */
+#define AST_SCU_BASE            0x1E6E2000
+#define AST_SCU_PROT_KEY1       (AST_SCU_BASE)
+#define AST_SCU_PROT_KEY2       (AST_SCU_BASE + 0x010)
+#define AST_SCU_REV_ID          (AST_SCU_BASE + 0x014)
 
-#define AST_SCU_BASE        0x1e6e2000
-#define AST_SCU_PROT_KEY    (AST_SCU_BASE)
-#define AST_SCU_REV_ID      (AST_SCU_BASE + 0x014)
+#define AST_FMC_BASE            0x1E620000
+#define AST_FMC_WDT1_CTRL_MODE  (AST_FMC_BASE + 0x060)
+#define AST_FMC_WDT2_CTRL_MODE  (AST_FMC_BASE + 0x064)
 
+#define AST_UART_BASE           0x1E784000
+
+#define AST_WDT_BASE            0x1E785000
+#define AST_WDT_WDT1_CTRL       (AST_WDT_BASE + 0x00C)
+#define AST_WDT_WDT2_CTRL       (AST_WDT_BASE + 0x04C)
+#define AST_WDT_WDT3_CTRL       (AST_WDT_BASE + 0x08C)
+#define AST_WDT_WDT4_CTRL       (AST_WDT_BASE + 0x0CC)
+
+/* Revision ID */
 #define REV_ID_AST2600A0    0x05000303
 
 .macro timer_init
@@ -77,9 +90,9 @@
     cmp     r0, r1
 
     movweq  r0, #0x0800
-    movteq  r0, #0x2faf
-    movwne  r0, #0x8c00
-    movtne  r0, #0x4786
+    movteq  r0, #0x2FAF         @; 800MHz for A0
+    movwne  r0, #0x8C00
+    movtne  r0, #0x4786         @; 1.2GHz for A1
 #endif
     /* write CNTFRQ */
     mcr     p15, 0, r0, c14, c0, 0
@@ -89,7 +102,6 @@
 .globl lowlevel_init
 
 lowlevel_init:
-
 #if defined(CONFIG_SPL) && !defined(CONFIG_SPL_BUILD)
     mov   pc, lr
 #else
@@ -100,8 +112,8 @@ lowlevel_init:
      * we treat cpu0 as the primary core and
      * put secondary core (cpuN) to sleep
      */
-    mrc   p15, 0, r0, c0, c0, 5                  @; Read CPU ID register
-    ands  r0, r0, #0x03                          @; Mask off, leaving the CPU ID field
+    mrc   p15, 0, r0, c0, c0, 5             @; Read CPU ID register
+    ands  r0, r0, #0x03                     @; Mask off, leaving the CPU ID field
 
     beq   do_primary_core_setup
 
@@ -124,22 +136,30 @@ poll_mailbox_ready:
     ldr   pc, =AST_SMP_MBOX_FIELD_POLLINSN
 
 do_primary_core_setup:
-
-    /* unlock scu */
-    ldr   r0, =0x1e6e2000
-    ldr   r1, =0x1688a8a8
-    str   r1, [r0]
+    /* unlock SCU */
+    ldr   r0, =0x1688A8A8                   @; magic key to unlock SCU
+    ldr   r1, =AST_SCU_PROT_KEY1
+    str   r0, [r1]
+    ldr   r1, =AST_SCU_PROT_KEY2
+    str   r0, [r1]
 
     /* disable WDT */
-    mov   r1, #0
-    ldr   r0, =0x1e78500c
-    str   r1, [r0]
-    ldr   r0, =0x1e78504c
-    str   r1, [r0]
-    ldr   r0, =0x1e78508c
-    str   r1, [r0]
-    ldr   r0, =0x1e7850cc
-    str   r1, [r0]
+    mov   r0, #0
+    ldr   r1, =AST_WDT_WDT1_CTRL
+    str   r0, [r1]
+    ldr   r1, =AST_WDT_WDT2_CTRL
+    str   r0, [r1]
+    ldr   r1, =AST_WDT_WDT3_CTRL
+    str   r0, [r1]
+    ldr   r1, =AST_WDT_WDT4_CTRL
+    str   r0, [r1]
+
+    /* disable FMC WDT for SPI address mode detection */
+    mov   r0, #0
+    ldr   r1, =AST_FMC_WDT1_CTRL_MODE
+    str   r0, [r1]
+    ldr   r1, =AST_FMC_WDT2_CTRL_MODE
+    str   r0, [r1]
 
     /* relocate mailbox insn. for cpuN polling SMP go signal */
     adrl  r0, mailbox_insn
