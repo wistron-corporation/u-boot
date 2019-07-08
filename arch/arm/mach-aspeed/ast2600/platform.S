@@ -69,12 +69,6 @@
 
 #define AST_UART_BASE           0x1E784000
 
-#define AST_WDT_BASE            0x1E785000
-#define AST_WDT_WDT1_CTRL       (AST_WDT_BASE + 0x00C)
-#define AST_WDT_WDT2_CTRL       (AST_WDT_BASE + 0x04C)
-#define AST_WDT_WDT3_CTRL       (AST_WDT_BASE + 0x08C)
-#define AST_WDT_WDT4_CTRL       (AST_WDT_BASE + 0x0CC)
-
 /* Revision ID */
 #define REV_ID_AST2600A0    0x05000303
 
@@ -141,17 +135,6 @@ do_primary_core_setup:
     ldr   r1, =AST_SCU_PROT_KEY1
     str   r0, [r1]
     ldr   r1, =AST_SCU_PROT_KEY2
-    str   r0, [r1]
-
-    /* disable WDT */
-    mov   r0, #0
-    ldr   r1, =AST_WDT_WDT1_CTRL
-    str   r0, [r1]
-    ldr   r1, =AST_WDT_WDT2_CTRL
-    str   r0, [r1]
-    ldr   r1, =AST_WDT_WDT3_CTRL
-    str   r0, [r1]
-    ldr   r1, =AST_WDT_WDT4_CTRL
     str   r0, [r1]
 
     /* disable FMC WDT for SPI address mode detection */
