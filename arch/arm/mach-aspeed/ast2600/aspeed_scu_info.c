@@ -103,127 +103,128 @@ aspeed_sys_reset_info(void)
 {
 	u32 rest = readl(ASPEED_SYS_RESET_CTRL);
 
-	if (rest & (SYS_WDT4_SOC_RESET | SYS_WDT4_FULL_RESET | SYS_WDT4_ARM_RESET | SYS_WDT4_SW_RESET)) {
-		printf("RST : WDT4 ");
-		if(rest & SYS_WDT4_FULL_RESET) {
-			printf("FULL ");
-			writel(SYS_WDT4_FULL_RESET, ASPEED_SYS_RESET_CTRL);
-		}
-		if(rest & SYS_WDT4_SOC_RESET) {
-			printf("SOC ");
-			writel(SYS_WDT4_SOC_RESET, ASPEED_SYS_RESET_CTRL);
-		}
-		if(rest & SYS_WDT4_ARM_RESET) {
-			printf("ARM ");
-			writel(SYS_WDT4_ARM_RESET, ASPEED_SYS_RESET_CTRL);
-		}
-		if(rest & SYS_WDT4_SW_RESET) {
-			printf("SW ");
-			writel(SYS_WDT4_SW_RESET, ASPEED_SYS_RESET_CTRL);
-		}
-		printf("\n");
-	}
-
-	if (rest & (SYS_WDT3_SOC_RESET | SYS_WDT3_FULL_RESET | SYS_WDT3_ARM_RESET | SYS_WDT3_SW_RESET)) {
-		printf("RST : WDT3 ");
-		if(rest & SYS_WDT3_FULL_RESET) {
-			printf("FULL ");
-			writel(SYS_WDT3_FULL_RESET, ASPEED_SYS_RESET_CTRL);
-		}
-		if(rest & SYS_WDT3_SOC_RESET) {
-			printf("SOC ");
-			writel(SYS_WDT3_SOC_RESET, ASPEED_SYS_RESET_CTRL);
-		}
-		if(rest & SYS_WDT3_ARM_RESET) {
-			printf("ARM ");
-			writel(SYS_WDT3_ARM_RESET, ASPEED_SYS_RESET_CTRL);
-		}
-		if(rest & SYS_WDT3_SW_RESET) {
-			printf("SW ");
-			writel(SYS_WDT3_SW_RESET, ASPEED_SYS_RESET_CTRL);
-		}
-		printf("\n");
-	}
-
-	if (rest & (SYS_WDT2_SOC_RESET | SYS_WDT2_FULL_RESET | SYS_WDT2_ARM_RESET | SYS_WDT2_SW_RESET)) {
-		printf("RST : WDT2 ");
-		if(rest & SYS_WDT2_FULL_RESET) {
-			printf("FULL ");
-			writel(SYS_WDT2_FULL_RESET, ASPEED_SYS_RESET_CTRL);
-		}
-		if(rest & SYS_WDT2_SOC_RESET) {
-			printf("SOC ");
-			writel(SYS_WDT2_SOC_RESET, ASPEED_SYS_RESET_CTRL);
-		}
-		if(rest & SYS_WDT2_ARM_RESET) {
-			printf("ARM ");
-			writel(SYS_WDT2_ARM_RESET, ASPEED_SYS_RESET_CTRL);
-		}
-		if(rest & SYS_WDT2_SW_RESET) {
-			printf("SW ");
-			writel(SYS_WDT2_SW_RESET, ASPEED_SYS_RESET_CTRL);
-		}
-		printf("\n");
-	}
-
-	if (rest & (SYS_WDT1_SOC_RESET | SYS_WDT1_FULL_RESET | SYS_WDT1_ARM_RESET | SYS_WDT1_SW_RESET)) {
-		printf("RST : WDT1 ");
-		if(rest & SYS_WDT1_FULL_RESET) {
-			printf("FULL ");
-			writel(SYS_WDT1_FULL_RESET, ASPEED_SYS_RESET_CTRL);
-		}
-		if(rest & SYS_WDT1_SOC_RESET) {
-			printf("SOC ");
-			writel(SYS_WDT1_SOC_RESET, ASPEED_SYS_RESET_CTRL);
-		}
-		if(rest & SYS_WDT1_ARM_RESET) {
-			printf("ARM ");
-			writel(SYS_WDT1_ARM_RESET, ASPEED_SYS_RESET_CTRL);
-		}
-		if(rest & SYS_WDT1_SW_RESET) {
-			printf("SW ");
-			writel(SYS_WDT1_SW_RESET, ASPEED_SYS_RESET_CTRL);
-		}
-		printf("\n");
-	}
-
-	if (rest & SYS_CM3_EXT_RESET) {
-		printf("RST : SYS_CM3_EXT_RESET \n");
-		writel(SYS_CM3_EXT_RESET, ASPEED_SYS_RESET_CTRL);		
-	}
-	
-	if (rest & (SYS_PCI1_RESET | SYS_PCI2_RESET)) {
-		printf("PCI RST : ");
-		if (rest & SYS_PCI1_RESET) {
-			printf("#1 ");
-			writel(SYS_PCI1_RESET, ASPEED_SYS_RESET_CTRL);		
-		}
-		
-		if (rest & SYS_PCI2_RESET) {
-			printf("#2 ");
-			writel(SYS_PCI2_RESET, ASPEED_SYS_RESET_CTRL);		
-		}
-		printf("\n");
-	}
-
-	if (rest & SYS_DRAM_ECC_RESET) {
-		printf("RST : DRAM_ECC_RESET \n");
-		writel(SYS_FLASH_ABR_RESET, ASPEED_SYS_RESET_CTRL);		
-	}
-
-	if (rest & SYS_FLASH_ABR_RESET) {
-		printf("RST : SYS_FLASH_ABR_RESET \n");
-		writel(SYS_FLASH_ABR_RESET, ASPEED_SYS_RESET_CTRL);		
-	}
-	if (rest & SYS_EXT_RESET) {
-		printf("RST : External \n");
-		writel(SYS_EXT_RESET, ASPEED_SYS_RESET_CTRL);
-	}	
 	if (rest & SYS_PWR_RESET_FLAG) {
 		printf("RST : Power On \n");
-		writel(SYS_PWR_RESET_FLAG, ASPEED_SYS_RESET_CTRL);
-	}
+		writel(rest, ASPEED_SYS_RESET_CTRL);
+	} else {
 
+		if (rest & (SYS_WDT4_SOC_RESET | SYS_WDT4_FULL_RESET | SYS_WDT4_ARM_RESET | SYS_WDT4_SW_RESET)) {
+			printf("RST : WDT4 ");
+			if(rest & SYS_WDT4_FULL_RESET) {
+				printf("FULL ");
+				writel(SYS_WDT4_FULL_RESET, ASPEED_SYS_RESET_CTRL);
+			}
+			if(rest & SYS_WDT4_SOC_RESET) {
+				printf("SOC ");
+				writel(SYS_WDT4_SOC_RESET, ASPEED_SYS_RESET_CTRL);
+			}
+			if(rest & SYS_WDT4_ARM_RESET) {
+				printf("ARM ");
+				writel(SYS_WDT4_ARM_RESET, ASPEED_SYS_RESET_CTRL);
+			}
+			if(rest & SYS_WDT4_SW_RESET) {
+				printf("SW ");
+				writel(SYS_WDT4_SW_RESET, ASPEED_SYS_RESET_CTRL);
+			}
+			printf("\n");
+		}
+
+		if (rest & (SYS_WDT3_SOC_RESET | SYS_WDT3_FULL_RESET | SYS_WDT3_ARM_RESET | SYS_WDT3_SW_RESET)) {
+			printf("RST : WDT3 ");
+			if(rest & SYS_WDT3_FULL_RESET) {
+				printf("FULL ");
+				writel(SYS_WDT3_FULL_RESET, ASPEED_SYS_RESET_CTRL);
+			}
+			if(rest & SYS_WDT3_SOC_RESET) {
+				printf("SOC ");
+				writel(SYS_WDT3_SOC_RESET, ASPEED_SYS_RESET_CTRL);
+			}
+			if(rest & SYS_WDT3_ARM_RESET) {
+				printf("ARM ");
+				writel(SYS_WDT3_ARM_RESET, ASPEED_SYS_RESET_CTRL);
+			}
+			if(rest & SYS_WDT3_SW_RESET) {
+				printf("SW ");
+				writel(SYS_WDT3_SW_RESET, ASPEED_SYS_RESET_CTRL);
+			}
+			printf("\n");
+		}
+
+		if (rest & (SYS_WDT2_SOC_RESET | SYS_WDT2_FULL_RESET | SYS_WDT2_ARM_RESET | SYS_WDT2_SW_RESET)) {
+			printf("RST : WDT2 ");
+			if(rest & SYS_WDT2_FULL_RESET) {
+				printf("FULL ");
+				writel(SYS_WDT2_FULL_RESET, ASPEED_SYS_RESET_CTRL);
+			}
+			if(rest & SYS_WDT2_SOC_RESET) {
+				printf("SOC ");
+				writel(SYS_WDT2_SOC_RESET, ASPEED_SYS_RESET_CTRL);
+			}
+			if(rest & SYS_WDT2_ARM_RESET) {
+				printf("ARM ");
+				writel(SYS_WDT2_ARM_RESET, ASPEED_SYS_RESET_CTRL);
+			}
+			if(rest & SYS_WDT2_SW_RESET) {
+				printf("SW ");
+				writel(SYS_WDT2_SW_RESET, ASPEED_SYS_RESET_CTRL);
+			}
+			printf("\n");
+		}
+
+		if (rest & (SYS_WDT1_SOC_RESET | SYS_WDT1_FULL_RESET | SYS_WDT1_ARM_RESET | SYS_WDT1_SW_RESET)) {
+			printf("RST : WDT1 ");
+			if(rest & SYS_WDT1_FULL_RESET) {
+				printf("FULL ");
+				writel(SYS_WDT1_FULL_RESET, ASPEED_SYS_RESET_CTRL);
+			}
+			if(rest & SYS_WDT1_SOC_RESET) {
+				printf("SOC ");
+				writel(SYS_WDT1_SOC_RESET, ASPEED_SYS_RESET_CTRL);
+			}
+			if(rest & SYS_WDT1_ARM_RESET) {
+				printf("ARM ");
+				writel(SYS_WDT1_ARM_RESET, ASPEED_SYS_RESET_CTRL);
+			}
+			if(rest & SYS_WDT1_SW_RESET) {
+				printf("SW ");
+				writel(SYS_WDT1_SW_RESET, ASPEED_SYS_RESET_CTRL);
+			}
+			printf("\n");
+		}
+
+		if (rest & SYS_CM3_EXT_RESET) {
+			printf("RST : SYS_CM3_EXT_RESET \n");
+			writel(SYS_CM3_EXT_RESET, ASPEED_SYS_RESET_CTRL);		
+		}
+		
+		if (rest & (SYS_PCI1_RESET | SYS_PCI2_RESET)) {
+			printf("PCI RST : ");
+			if (rest & SYS_PCI1_RESET) {
+				printf("#1 ");
+				writel(SYS_PCI1_RESET, ASPEED_SYS_RESET_CTRL);		
+			}
+			
+			if (rest & SYS_PCI2_RESET) {
+				printf("#2 ");
+				writel(SYS_PCI2_RESET, ASPEED_SYS_RESET_CTRL);		
+			}
+			printf("\n");
+		}
+
+		if (rest & SYS_DRAM_ECC_RESET) {
+			printf("RST : DRAM_ECC_RESET \n");
+			writel(SYS_FLASH_ABR_RESET, ASPEED_SYS_RESET_CTRL);		
+		}
+
+		if (rest & SYS_FLASH_ABR_RESET) {
+			printf("RST : SYS_FLASH_ABR_RESET \n");
+			writel(SYS_FLASH_ABR_RESET, ASPEED_SYS_RESET_CTRL);		
+		}
+		if (rest & SYS_EXT_RESET) {
+			printf("RST : External \n");
+			writel(SYS_EXT_RESET, ASPEED_SYS_RESET_CTRL);
+		}	
+	}
 }
 
 #define SOC_FW_INIT_DRAM		BIT(7)
