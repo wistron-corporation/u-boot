@@ -181,15 +181,28 @@ static u32 ast2600_get_hclk(struct ast2600_scu *scu)
 	return (rate / axi_div / ahb_div);
 }
 
-static u32 ast2600_hpll_pclk_div_table[] = {
+static u32 ast2600_hpll_pclk1_div_table[] = {
 	4, 8, 12, 16, 20, 24, 28, 32,
 };
 
-static u32 ast2600_get_pclk(struct ast2600_scu *scu)
+static u32 ast2600_hpll_pclk2_div_table[] = {
+	2, 4, 6, 8, 10, 12, 14, 16,
+};
+
+static u32 ast2600_get_pclk1(struct ast2600_scu *scu)
 {
 	u32 clk_sel1 = readl(&scu->clk_sel1);
-	u32 apb_div = ast2600_hpll_pclk_div_table[((clk_sel1 >> 23) & 0x7)];
+	u32 apb_div = ast2600_hpll_pclk1_div_table[((clk_sel1 >> 23) & 0x7)];
 	u32 rate = ast2600_get_pll_rate(scu, ASPEED_CLK_HPLL);
+
+	return (rate / apb_div);
+}
+
+static u32 ast2600_get_pclk2(struct ast2600_scu *scu)
+{
+	u32 clk_sel4 = readl(&scu->clk_sel4);
+	u32 apb_div = ast2600_hpll_pclk2_div_table[((clk_sel4 >> 9) & 0x7)];
+	u32 rate = ast2600_get_hclk(scu);
 
 	return (rate / apb_div);
 }
@@ -375,9 +388,12 @@ static ulong ast2600_clk_get_rate(struct clk *clk)
 	case ASPEED_CLK_AHB:
 		rate = ast2600_get_hclk(priv->scu);
 		break;
-	case ASPEED_CLK_APB:
-		rate = ast2600_get_pclk(priv->scu);
+	case ASPEED_CLK_APB1:
+		rate = ast2600_get_pclk1(priv->scu);
 		break;
+	case ASPEED_CLK_APB2:
+		rate = ast2600_get_pclk2(priv->scu);
+		break;	
 	case ASPEED_CLK_APLL:
 		rate = ast2600_get_apll_rate(priv->scu);
 		break;
@@ -816,7 +832,8 @@ static struct aspeed_clks aspeed_clk_names[] = {
 	{ ASPEED_CLK_EPLL, "epll" },
 	{ ASPEED_CLK_DPLL, "dpll" },
 	{ ASPEED_CLK_AHB, "hclk" },
-	{ ASPEED_CLK_APB, "pclk" },
+	{ ASPEED_CLK_APB1, "pclk1" },
+	{ ASPEED_CLK_APB2, "pclk2" },	
 };
 
 int soc_clk_dump(void)
