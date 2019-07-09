@@ -99,6 +99,7 @@
         };
 };
 
+#if 0
 &sdhci_slot0 {
 	status = "okay";
 	pinctrl-names = "default";
@@ -110,9 +111,11 @@
 	pinctrl-names = "default";
 	pinctrl-0 = <&pinctrl_sd2_default>;
 };
+#endif
 
 &emmc_slot0 {
 	status = "okay";
+	bus-width = <4>;
 	pinctrl-names = "default";
 	pinctrl-0 = <&pinctrl_emmc_default>;
 };
