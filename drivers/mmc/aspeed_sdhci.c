@@ -69,6 +69,8 @@ static int aspeed_sdhci_probe(struct udevice *dev)
 //	host->quirks = SDHCI_QUIRK_WAIT_SEND_CMD;
 	host->max_clk = clock;
 
+	host->bus_width = dev_read_u32_default(dev, "bus-width", 4);
+
 	if (host->bus_width == 8)
 		host->host_caps |= MMC_MODE_8BIT;
 
@@ -91,10 +93,10 @@ static int aspeed_sdhci_ofdata_to_platdata(struct udevice *dev)
 	priv->host = calloc(1, sizeof(struct sdhci_host));
 	if (!priv->host)
 			return -1;
-	
+
 	priv->host->name = dev->name;
 	priv->host->ioaddr = (void *)dev_read_addr(dev);
-	
+
 	return 0;
 }
 

@@ -740,7 +740,7 @@ static ulong ast2600_enable_extemmcclk(struct ast2600_scu *scu)
 	u32 clk_sel = readl(&scu->clk_sel1);
 	u32 enableclk_bit;
 
-	enableclk_bit = BIT(SCU_CLKSTOP_EXTSD);
+	enableclk_bit = BIT(SCU_CLKSTOP_EXTEMMC);
 
 	clk_sel &= ~SCU_CLK_SD_MASK;
 	clk_sel |= SCU_CLK_SD_DIV(1);
