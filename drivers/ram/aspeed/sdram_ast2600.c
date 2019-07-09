@@ -251,9 +251,9 @@ static void ast2600_sdramphy_init(u32 *p_tbl, struct dram_info *info)
                 }
         }
 	
-	//data = readl(info->phy_setting + 0x84) & ~GENMASK(16, 0);
-	//data |= DDR4_PHY_TRAIN_TRFC;
-	//writel(data, info->phy_setting + 0x84)
+	data = readl(info->phy_setting + 0x84) & ~GENMASK(16, 0);
+	data |= DDR4_PHY_TRAIN_TRFC;
+	writel(data, info->phy_setting + 0x84);
 #endif
 }
 
@@ -739,7 +739,7 @@ static int ast2600_sdrammc_init_ddr4(struct dram_info *info)
 	ast2600_sdramphy_init(ast2600_sdramphy_config, info);
         writel((MCR34_CKE_EN | MCR34_MREQI_DIS | MCR34_RESETN_DIS),
                &info->regs->power_ctrl);
-	udelay(5);	       
+	udelay(500);
 	ast2600_sdramphy_kick_training(info);
         writel(SDRAM_RESET_DLL_ZQCL_EN, &info->regs->refresh_timing);
 
