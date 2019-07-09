@@ -569,7 +569,7 @@ static u32 ast2600_configure_mac34_clk(struct ast2600_scu *scu)
 }
 #if 0
 /**
- * WIP: ast2600 RGMII clock source tree
+ * ast2600 RGMII clock source tree
  * 
  *    125M from external PAD -------->|\
  *    HPLL -->|\                      | |---->RGMII 125M for MAC#1 & MAC#2
@@ -581,6 +581,15 @@ static u32 ast2600_configure_mac34_clk(struct ast2600_scu *scu)
  *    +--->|PAD input enable|----->|\
  *                                 | |----> RGMII 125M for MAC#3 & MAC#4
  *    SLICLK 200M -->|divider|---->|/
+ * 
+ * 
+ * ast2600 RMII/NCSI clock source tree
+ * 
+ *    HPLL -->|\                      
+ *            | |---->| divider |----> RMII 50M for MAC#1 & MAC#2
+ *    EPLL -->|/ 
+ * 
+ *    HCLK(SCLICLK)---->| divider |----> RMII 50M for MAC#3 & MAC#4
 */
 struct ast2600_rgmii_clk_config {
 	u32 mac_1_2_src;	/* 0=external PAD, 1=internal PLL */
