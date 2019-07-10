@@ -1,7 +1,7 @@
 #define DDR_PHY_TBL_CHG_ADDR            0xaeeddeea
 #define DDR_PHY_TBL_END                 0xaeededed
 
-#if 0
+#if defined(CONFIG_ASPEED_DDR4_800)
 u32 ast2600_sdramphy_config[165] = {
 	0x1e6e0100,	// start address
 	0x00000000,	// phyr000

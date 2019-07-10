@@ -24,6 +24,50 @@
  * directly */
 #define AST2600_SDRAMMC_MANUAL_CLK
 
+/* register offset */
+#define AST_SCU_FPGA_STATUS	0x004
+#define AST_SCU_HANDSHAKE	0x100
+#define AST_SCU_MPLL		0x220
+#define AST_SCU_MPLL_EXT	0x224
+#define AST_SCU_FPGA_PLL	0x400
+#define AST_SCU_HW_STRAP	0x500
+
+
+/* bit-field of AST_SCU_HW_STRAP */
+#define SCU_HWSTRAP_VGAMEM_SHIFT	2
+#define SCU_HWSTRAP_VGAMEM_MASK		(3 << SCU_HWSTRAP_VGAMEM_SHIFT)
+#define SCU_HWSTRAP_DDR3		(1 << 25)
+
+
+/* bit-field of AST_SCU_HANDSHAKE */
+#define SCU_SDRAM_INIT_READY_MASK	BIT(6)
+#define SCU_SDRAM_INIT_BY_SOC_MASK	BIT(7)
+
+/* bit-field of AST_SCU_MPLL */
+#define SCU_MPLL_RESET			BIT(25)
+#define SCU_MPLL_BYPASS			BIT(24)
+#define SCU_MPLL_TURN_OFF		BIT(23)
+#define SCU_MPLL_FREQ_MASK		GENMASK(22, 0)
+
+#define SCU_MPLL_FREQ_400M		0x0008405F
+#define SCU_MPLL_EXT_400M		0x00000031
+//#define SCU_MPLL_FREQ_400M		0x0038007F
+//#define SCU_MPLL_EXT_400M		0x0000003F
+#define SCU_MPLL_FREQ_200M		0x0078007F
+#define SCU_MPLL_EXT_200M		0x0000003F
+
+/* MPLL configuration */
+#if defined(CONFIG_ASPEED_DDR4_800)
+#define SCU_MPLL_FREQ_CFG		SCU_MPLL_FREQ_200M
+#define SCU_MPLL_EXT_CFG		SCU_MPLL_EXT_200M
+#elif defined(CONFIG_ASPEED_DDR4_1600)
+#define SCU_MPLL_FREQ_CFG		SCU_MPLL_FREQ_400M
+#define SCU_MPLL_EXT_CFG		SCU_MPLL_EXT_400M
+#else
+#error "undefined DDR4 target rate\n"
+#endif
+
+/* AC timing and SDRAM mode registers */
 #ifdef CONFIG_FPGA_ASPEED
 /* mode register settings for FPGA are fixed */
 #define DDR4_MR01_MODE		0x03010100
@@ -48,47 +92,14 @@
 #define DDR4_TRFC_800		0x23394c78
 #endif  /* end of "#ifdef CONFIG_FPGA_ASPEED" */
 
-#define SDRAM_SIZE_1KB		(1024U)
-#define SDRAM_SIZE_1MB		(SDRAM_SIZE_1KB * SDRAM_SIZE_1KB)
-#define SDRAM_MIN_SIZE		(256 * SDRAM_SIZE_1MB)
-#define SDRAM_MAX_SIZE		(2048 * SDRAM_SIZE_1MB)
-
-/* register offset */
-#define AST_SCU_FPGA_STATUS	0x004
-#define AST_SCU_HANDSHAKE	0x100
-#define AST_SCU_MPLL		0x220
-#define AST_SCU_MPLL_EXT	0x224
-#define AST_SCU_FPGA_PLL	0x400
-#define AST_SCU_HW_STRAP	0x500
-
-/* bit-field of AST_SCU_HW_STRAP */
-#define SCU_HWSTRAP_VGAMEM_SHIFT	2
-#define SCU_HWSTRAP_VGAMEM_MASK		(3 << SCU_HWSTRAP_VGAMEM_SHIFT)
-#define SCU_HWSTRAP_DDR3		(1 << 25)
-
-
-/* bit-field of AST_SCU_HANDSHAKE */
-#define SCU_SDRAM_INIT_READY_MASK	BIT(6)
-#define SCU_SDRAM_INIT_BY_SOC_MASK	BIT(7)
-
-
-/* bit-field of AST_SCU_MPLL */
-#define SCU_MPLL_FREQ_MASK		0x007FFFFF	/* bit[22:0] */
-#define SCU_MPLL_FREQ_400M		0x0008405F	/* 0x0038007F */
-#define SCU_MPLL_EXT_400M		0x00000031
-#define SCU_MPLL_FREQ_200M		0x0078007F
-#define SCU_MPLL_EXT_200M		0x0000003F
-#define SCU_MPLL_FREQ_CFG		SCU_MPLL_FREQ_400M
-#define SCU_MPLL_EXT_CFG		SCU_MPLL_EXT_400M
-
 #if defined(CONFIG_FPGA_ASPEED)
 #define DDR4_TRFC			DDR4_TRFC_FPGA
 #else
 /* real chip setting */
-#if (SCU_MPLL_FREQ_CFG == SCU_MPLL_FREQ_400M)
+#if defined(CONFIG_ASPEED_DDR4_1600)
 #define DDR4_TRFC			DDR4_TRFC_1600
 #define DDR4_PHY_TRAIN_TRFC		0xc30
-#elif (SCU_MPLL_FREQ_CFG == SCU_MPLL_FREQ_200M)
+#elif defined(CONFIG_ASPEED_DDR4_800)
 #define DDR4_TRFC			DDR4_TRFC_800
 #define DDR4_PHY_TRAIN_TRFC		0x618
 #else
@@ -96,9 +107,12 @@
 #endif	/* end of "#if (SCU_MPLL_FREQ_CFG == SCU_MPLL_FREQ_400M)" */
 #endif	/* end of "#if defined(CONFIG_FPGA_ASPEED)" */
 
-#define SCU_MPLL_TURN_OFF		BIT(23)
-#define SCU_MPLL_BYPASS			BIT(24)
-#define SCU_MPLL_RESET			BIT(25)
+/* supported SDRAM size */
+#define SDRAM_SIZE_1KB		(1024U)
+#define SDRAM_SIZE_1MB		(SDRAM_SIZE_1KB * SDRAM_SIZE_1KB)
+#define SDRAM_MIN_SIZE		(256 * SDRAM_SIZE_1MB)
+#define SDRAM_MAX_SIZE		(2048 * SDRAM_SIZE_1MB)
+
 
 DECLARE_GLOBAL_DATA_PTR;
 
@@ -187,12 +201,16 @@ static void ast2600_sdramphy_kick_training(struct dram_info *info)
 {
 #ifndef CONFIG_FPGA_ASPEED
         struct ast2600_sdrammc_regs *regs = info->regs;
+        u32 mask = SDRAM_PHYCTRL0_INIT | SDRAM_PHYCTRL0_PLL_LOCKED;
         u32 data;
 
-	writel(SDRAM_PHYCTRL0_NRST, &regs->phy_ctrl[0]);
-	udelay(300);
+	writel(0, &regs->phy_ctrl[0]);
+	udelay(5000);
+        writel(SDRAM_PHYCTRL0_NRST, &regs->phy_ctrl[0]);
+	udelay(1000);
         writel(SDRAM_PHYCTRL0_NRST | SDRAM_PHYCTRL0_INIT, &regs->phy_ctrl[0]);
-
+	udelay(1000);
+        /* wait for (PLL_LOCKED == 1) and (INIT == 0) */
 	debug("%s: wait for PHY PLL lock\n", __func__);
 	while (1) {
 		data = readl(&regs->phy_ctrl[0]) & SDRAM_PHYCTRL0_PLL_LOCKED;
@@ -208,7 +226,13 @@ static void ast2600_sdramphy_kick_training(struct dram_info *info)
 			break;
 		}
 	}
-#endif        
+
+#if (SCU_MPLL_FREQ_CFG == SCU_MPLL_FREQ_200M)
+	do {
+		data = readl(0x1e6e0400);
+	} while((data & 0x7) != 0x7);
+#endif
+#endif
 }
 
 /**
@@ -250,11 +274,37 @@ static void ast2600_sdramphy_init(u32 *p_tbl, struct dram_info *info)
                         addr += 4;
                 }
         }
-	
+
 	data = readl(info->phy_setting + 0x84) & ~GENMASK(16, 0);
 	data |= DDR4_PHY_TRAIN_TRFC;
 	writel(data, info->phy_setting + 0x84);
-#endif
+
+#if (SCU_MPLL_FREQ_CFG == SCU_MPLL_FREQ_200M)
+
+	printf("Overwrite DDR-PHY MRS by MCR config\n");
+	/* MR0 and MR1 */
+	data = readl(&info->regs->mr01_mode_setting);
+	data =
+	    ((data & GENMASK(15, 0)) << 16) | ((data & GENMASK(31, 16)) >> 16);
+	writel(data, reg_base + 0x58);
+	debug("[%08x] 0x%08x\n", reg_base + 0x58, data);
+
+	/* MR2 and MR3 */
+	data = readl(&info->regs->mr23_mode_setting);
+	writel(data, reg_base + 0x54);
+	debug("[%08x] 0x%08x\n", reg_base + 0x54, data);
+
+	/* MR4 and MR5 */
+	data = readl(&info->regs->mr45_mode_setting);
+	writel(data, reg_base + 0x5c);
+	debug("[%08x] 0x%08x\n", reg_base + 0x5c, data);
+
+	/* MR6 */
+	data = readl(&info->regs->mr6_mode_setting);
+	writel(data, reg_base + 0x60);
+	debug("[%08x] 0x%08x\n", reg_base + 0x60, data);	
+#endif	
+#endif        
 }
 
 static void ast2600_sdramphy_show_status(struct dram_info *info)
@@ -263,7 +313,7 @@ static void ast2600_sdramphy_show_status(struct dram_info *info)
         u32 value;
         u32 reg_base = (u32)info->phy_status;
 
-	
+
 	ast2600_dram_time_window();
 
         debug("%s:reg base = 0x%08x\n", __func__, reg_base);
@@ -409,7 +459,6 @@ static int ast2600_sdrammc_test(struct dram_info *info)
 
         return ret;
 }
-/*********************************************************** */
 #define DRAM_MapAdr	81000000
 #define TIMEOUT_DRAM	5000000
 int MMCTestSingle1(unsigned int datagen)
@@ -523,7 +572,7 @@ static int ast2600_dramtest(void)
 
 
 }
-/*********************************************************** */
+
 static size_t ast2600_sdrammc_get_vga_mem_size(struct dram_info *info)
 {
         u32 vga_hwconf;
@@ -729,7 +778,7 @@ static int ast2600_sdrammc_init_ddr4(struct dram_info *info)
                                MCR34_ODT_EN | MCR34_ODT_AUTO_ON |
                                (0x1 << MCR34_ODT_EXT_SHIFT);
 
-#ifdef CONFIG_DUALX8_RAM
+#ifdef CONFIG_ASPEED_DDR4_DUALX8
 	setbits_le32(&info->regs->config, SDRAM_CONF_DDR4 | SDRAM_CONF_DUALX8);
 #else
 	setbits_le32(&info->regs->config, SDRAM_CONF_DDR4);
@@ -737,10 +786,10 @@ static int ast2600_sdrammc_init_ddr4(struct dram_info *info)
 
         /* init SDRAM-PHY only on real chip */
 	ast2600_sdramphy_init(ast2600_sdramphy_config, info);
+	ast2600_sdramphy_kick_training(info);
         writel((MCR34_CKE_EN | MCR34_MREQI_DIS | MCR34_RESETN_DIS),
                &info->regs->power_ctrl);
 	udelay(500);
-	ast2600_sdramphy_kick_training(info);
         writel(SDRAM_RESET_DLL_ZQCL_EN, &info->regs->refresh_timing);
 
         writel(MCR30_SET_MR(3), &info->regs->mode_setting_control);
