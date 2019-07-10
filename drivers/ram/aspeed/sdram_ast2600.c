@@ -144,58 +144,6 @@ struct dram_info {
 	void __iomem *phy_status;
 	ulong clock_rate;
 };
-static void ast2600_dram_time_window(void){
-        int ftmp1,ftmp2;
-        uint32_t uctmp1;
-        int itmp1,itmp2;
-
-        /* timing window */
-        /* pupd */
-        uctmp1 =  readl(0x1e6e0430);
-        printf("PU:PD=%x:%x\n",(uctmp1 & 0x0000000f),((uctmp1>>16)&0x0000000f));
-
-        /* write eye window */
-        uctmp1 =  readl(0x1e6e047c);
-        ftmp1 = ((uctmp1&0x000000ff));
-        ftmp2 = ((uctmp1 >> 8)&0x000000ff);
-        printf("WEW:B0:B1=%d:%d_UI\n",ftmp1,ftmp2);
-	//printf("WEW:B0:B1=%d:%d_UI\n",ftmp1/255,ftmp2/255);
-	// show percentage
-
-        /* write vref */
-        uctmp1 =  readl(0x1e6e0490);
-         printf("WVREF=0x%x\n",(uctmp1 & 0x000000ff));
-
-        /* read */
-        uctmp1 =  readl(0x1e6e0468);
-        ftmp1 = (uctmp1&0x000000ff);
-        ftmp2 = ((uctmp1 >> 8)&0x000000ff);
-        printf("REW-R:B0:B1=%d:%d_UI\n",ftmp1,ftmp2);
-	//printf("REW-R:B0:B1=%d:%d_UI\n",ftmp1/255,ftmp2/255);
-	// show percentage
-
-        uctmp1 =  readl(0x1e6e04C8);
-        ftmp1 = (uctmp1&0x000000ff);
-        ftmp2 = ((uctmp1 >> 8)&0x000000ff);
-        printf("REW-F:B0:B1=%d:%d_UI\n",ftmp1,ftmp2);
-	//printf("REW-F:B0:B1=%d:%d_UI\n",ftmp1/255,ftmp2/255);
-	// show percentage
-
-        /* read vref */
-        uctmp1 =  readl(0x1e6e0488);
-        printf("RVREF:B0:B1=%x,%x\n",(uctmp1 & 0x000000ff),(( (uctmp1 >>8)& 0x000000ff)));
-
-        /* gate train */
-        uctmp1 =  readl(0x1e6e0450);
-        itmp1 = ((uctmp1 >> 8) & 0x000000ff);
-        ftmp1 =  (uctmp1 & 0x000000ff);
-
-        itmp2 = ((uctmp1 >> 24) & 0x000000ff);
-        ftmp2 =  ( (uctmp1>>16) & 0x000000ff);
-
-        printf("GATEW-F:B0:B1=%d_%d:%d_%d_UI\n",itmp1,ftmp1,itmp2,ftmp2);
-        // show percentage
-}
 
 static void ast2600_sdramphy_kick_training(struct dram_info *info)
 {
@@ -227,7 +175,7 @@ static void ast2600_sdramphy_kick_training(struct dram_info *info)
 		}
 	}
 
-#if (SCU_MPLL_FREQ_CFG == SCU_MPLL_FREQ_200M)
+#ifdef CONFIG_ASPEED_DDR4_800
 	do {
 		data = readl(0x1e6e0400);
 	} while((data & 0x7) != 0x7);
@@ -279,9 +227,9 @@ static void ast2600_sdramphy_init(u32 *p_tbl, struct dram_info *info)
 	data |= DDR4_PHY_TRAIN_TRFC;
 	writel(data, info->phy_setting + 0x84);
 
-#if (SCU_MPLL_FREQ_CFG == SCU_MPLL_FREQ_200M)
+#ifdef CONFIG_ASPEED_DDR4_800
 
-	printf("Overwrite DDR-PHY MRS by MCR config\n");
+	debug("Overwrite DDR-PHY MRS by MCR config\n");
 	/* MR0 and MR1 */
 	data = readl(&info->regs->mr01_mode_setting);
 	data =
@@ -310,132 +258,76 @@ static void ast2600_sdramphy_init(u32 *p_tbl, struct dram_info *info)
 static void ast2600_sdramphy_show_status(struct dram_info *info)
 {
 #ifndef CONFIG_FPGA_ASPEED
-        u32 value;
+        u32 value, tmp;
         u32 reg_base = (u32)info->phy_status;
-
-
-	ast2600_dram_time_window();
-
-        debug("%s:reg base = 0x%08x\n", __func__, reg_base);
-
+	
+	printf("\n");
+	/* training status */
         value = readl(reg_base + 0x00);
+	printf("rO_DDRPHY_reg offset 0x00 = 0x%08x\n", value);
         if (value & BIT(3)) {
-                debug("initial PVT calibration fail\n");
+                debug("\tinitial PVT calibration fail\n");
         }
         if (value & BIT(5)) {
-                debug("runtime calibration fail\n");
+                debug("\truntime calibration fail\n");
         }
 
-        value = readl(reg_base + 0x30);
-        debug("IO PU = 0x%02x\n", value & 0xff);
-        debug("IO PD = 0x%02x\n", (value >> 16) & 0xff);
+	/* PU & PD */
+	value = readl(reg_base + 0x30);	
+	printf("rO_DDRPHY_reg offset 0x30 = 0x%08x\n", value);
+        printf("  PU = 0x%02x\n", value & 0xff);
+        printf("  PD = 0x%02x\n", (value >> 16) & 0xff);
 
-        value = readl(reg_base + 0x88);
-        debug("PHY vref: 0x%02x_%02x\n", value & 0xff, (value >> 8) & 0xff);
-        value = readl(reg_base + 0x90);
-        debug("DDR vref: 0x%02x\n", value & 0x3f);
-
-        value = readl(reg_base + 0x40);
-        debug("MLB Gate training result: 0x%04x_%04x\n", value & 0xffff,
-              (value >> 16) & 0xffff);
-        value = readl(reg_base + 0x50);
-        debug("MLB Gate pass window: 0x%04x_%04x\n", value & 0xffff,
-              (value >> 16) & 0xffff);
-        value = readl(reg_base + 0x60);
-        debug("Rising  edge Read Data Eye Training Result      = 0x%x_%x\n",
-              value & 0xff, (value >> 8) & 0xff);
-
+	/* read eye window */
         value = readl(reg_base + 0x68);
-        debug("Rising  edge Read Data Eye Training Pass Window = 0x%x_%x\n",
-              value & 0xff, (value >> 8) & 0xff);
+	printf("rO_DDRPHY_reg offset 0x68 = 0x%08x\n", value);
+	printf("  rising edge of read data eye training pass window\n");
+	tmp = (((value & GENMASK(7, 0)) >> 0) * 100) / 255;
+	printf("    B0:%d\%\n", tmp);
+	tmp = (((value & GENMASK(15, 8)) >> 8) * 100) / 255;
+        printf("    B1:%d\%\n", tmp);
 
-        value = readl(reg_base + 0xC0);
-        debug("Falling edge Read Data Eye Training Result      = 0x%x_%x\n",
-              value & 0xff, (value >> 8) & 0xff);
+	value = readl(reg_base + 0xC8);
+	printf("rO_DDRPHY_reg offset 0xC8 = 0x%08x\n", value);
+	printf("  falling edge of read data eye training pass window\n");
+	tmp = (((value & GENMASK(7, 0)) >> 0) * 100) / 255;
+	printf("    B0:%d\%\n", tmp);
+	tmp = (((value & GENMASK(15, 8)) >> 8) * 100) / 255;
+        printf("    B1:%d\%\n", tmp);
 
-        value = readl(reg_base + 0xC8);
-        debug("Falling edge Read Data Eye Training Pass Window = 0x%x_%x\n",
-              value & 0xff, (value >> 8) & 0xff);
+        /* write eye window */
+        value = readl(reg_base + 0x7c);
+	printf("rO_DDRPHY_reg offset 0x7C = 0x%08x\n", value);
+	printf("  rising edge of write data eye training pass window\n");
+	tmp = (((value & GENMASK(7, 0)) >> 0) * 100) / 255;
+	printf("    B0:%d\%\n", tmp);
+	tmp = (((value & GENMASK(15, 8)) >> 8) * 100) / 255;
+        printf("    B1:%d\%\n", tmp);
 
-        value = readl(reg_base + 0x74);
-        debug("Write Data Eye fine Training Result             = %X_%X\n",
-              value & 0xff, (value >> 8) & 0xff);
+	/* read Vref training result */
+        value = readl(reg_base + 0x88);
+	printf("rO_DDRPHY_reg offset 0x88 = 0x%08x\n", value);
+        printf("  read Vref training result\n");
+	tmp = (((value & GENMASK(7, 0)) >> 0) * 100) / 127;
+	printf("    B0:%d\%\n", tmp);
+	tmp = (((value & GENMASK(15, 8)) >> 8) * 100) / 127;
+        printf("    B1:%d\%\n", tmp);
 
-        value = readl(reg_base + 0x7C);
-        debug("Write Data Eye Training Pass Window             = 0x%x_%x\n",
-              value & 0xff, (value >> 8) & 0xff);
+        /* write Vref training result */
+        value = readl(reg_base + 0x90);
+	printf("rO_DDRPHY_reg offset 0x90 = 0x%08x\n", value);
+	tmp = (((value & GENMASK(5, 0)) >> 0) * 100) / 127;
+        printf("  write Vref training result = %d\%\n", tmp);
+
+        /* gate train */
+	value = readl(reg_base + 0x50);
+	printf("rO_DDRPHY_reg offset 0x50 = 0x%08x\n", value);
+	printf("  gate training pass window\n");
+	tmp = (((value & GENMASK(7, 0)) >> 0) * 100) / 255;
+	printf("    module 0: %d.%03d\n", (value >> 8) & 0xff, tmp);        
+        tmp = (((value & GENMASK(23, 16)) >> 0) * 100) / 255;
+	printf("    module 1: %d.%03d\n", (value >> 24) & 0xff, tmp);                
 #endif              
-}
-
-/**
- * @brief       SDRAM memory controller test mode with data-generation
- * @param[in]   - info - pointer to the current dram_info
- * @param[in]   - data_gen - data_gen index
- * @param[in]	- mode - 0:single, 1:burst
- * @return      - 0:success, others:fail
-*/
-static int ast2600_sdrammc_dg_test(struct dram_info *info, u32 data_gen,
-                                   u32 mode)
-{
-        u32 data;
-	u32 mask;
-	struct ast2600_sdrammc_regs *regs = info->regs;
-
-        writel(0, &regs->ecc_test_ctrl);
-        data = (data_gen << SDRAM_TEST_GEN_MODE_SHIFT) | SDRAM_TEST_ERRSTOP |
-               SDRAM_TEST_EN;
-        if (mode) {
-                data |=
-                    (SDRAM_TEST_ERRSTOP | SDRAM_TEST_EN | SDRAM_TEST_MODE_RW);
-        } else {
-                data |= (SDRAM_TEST_ERRSTOP | SDRAM_TEST_EN |
-                         SDRAM_TEST_MODE_WO | SDRAM_TEST_TWO_MODES);
-        }
-        writel(data, &regs->ecc_test_ctrl);
-
-	mask = SDRAM_TEST_DONE | SDRAM_TEST_FAIL;
-        do {
-                data = readl(&regs->ecc_test_ctrl) & mask;
-                if (data & SDRAM_TEST_FAIL) {
-                        debug("%s %d fail\n", __func__, data_gen);
-                        return 1;
-                }
-        } while (!data);
-
-        writel(0x00000000, &regs->ecc_test_ctrl);
-        return 0;
-}
-
-static int ast2600_sdrammc_cbr_test(struct dram_info *info, u32 pattern)
-{
-        struct ast2600_sdrammc_regs *regs = info->regs;
-        int i;
-        int ret = 0;
-
-        writel((0xff << SDRAM_TEST_LEN_SHIFT), &regs->test_addr);
-        writel(pattern, &regs->test_init_val);
-
-        /* scan all data-generation mode */
-        for (i = 0; i < 8; i++) {
-                if (0 == ast2600_sdrammc_dg_test(info, i, 0)) {
-                        debug("sdrammc calibration test fail: single data "
-                              "mode\n");
-                        ret = 1;
-                        break;
-                }
-        }
-
-        for (i = 0; i < 8; i++) {
-                if (0 == ast2600_sdrammc_dg_test(info, i, 1)) {
-                        debug(
-                            "sdrammc calibration test fail: burst data mode\n");
-                        ret = 1;
-                        break;
-                }
-        }
-
-        writel(0, &regs->ecc_test_ctrl);
-        return ret;
 }
 
 #define MC_TEST_PATTERN_N 8
@@ -443,22 +335,6 @@ static u32 as2600_sdrammc_test_pattern[MC_TEST_PATTERN_N] = {
     0xcc33cc33, 0xff00ff00, 0xaa55aa55, 0x88778877,
     0x92cc4d6e, 0x543d3cde, 0xf1e843c7, 0x7c61d253};
 
-static int ast2600_sdrammc_test(struct dram_info *info)
-{
-        int i;
-        int ret;
-
-        for (i = 0; i < MC_TEST_PATTERN_N; i++) {
-                ret = ast2600_sdrammc_cbr_test(info,
-                                               as2600_sdrammc_test_pattern[i]);
-                if (ret) {
-                        return ret;
-                }
-                debug("%s: pass %d\n", __func__, i);
-        }
-
-        return ret;
-}
 #define DRAM_MapAdr	81000000
 #define TIMEOUT_DRAM	5000000
 int MMCTestSingle1(unsigned int datagen)
@@ -515,18 +391,7 @@ int MMCTestBurst1(unsigned int datagen)
 
 int MMCTest1(void)
 {
-	unsigned int pattern;
-
-#if 1
-	pattern = rand();
-#else
-	pattern = readl( 0x1E6E2078 );
-#endif
-
-	printf("Pattern = %08X : ",pattern);
-
-	writel((DRAM_MapAdr | 0x7fffff), 0x1E6E0074);
-	writel(pattern, 0x1E6E007C);
+	writel((DRAM_MapAdr | 0x7fffff), 0x1E6E0074);	
 
   	if(!MMCTestSingle1(0))   return(0);
 	if(!MMCTestSingle1(1))   return(0);
@@ -549,28 +414,34 @@ int MMCTest1(void)
 	return(1);
 }
 
-//@@ dpeng
-static int ast2600_dramtest(void)
+static int ast2600_dramtest(void) 
 {
-        unsigned int PassCnt     = 0;
-	ulong Testcounter = 0;
-        int ret = 1;
+	u32 pass_cnt = 0;
+	u32 fail_cnt = 0;
+	u32 target_cnt = 2;
+	u32 test_cnt = 0;
+	u32 pattern;
+	u32 i = 0;
+	bool finish = false;
 
-        writel(0xFC600309, 0x1E6E0000);
+	while (finish == false) {
+		pattern = as2600_sdrammc_test_pattern[i++];
+		i = i % MC_TEST_PATTERN_N;
+		printf("Pattern = %08X : ",pattern);
+		writel(pattern, 0x1E6E007C);
 
-	while( ( Testcounter > PassCnt ) || ( Testcounter == 0 ) ){
-		if( !MMCTest1() ) {
-			printf("FAIL...%d/%ld\n", PassCnt, Testcounter);
-			ret = 0;
-
-			break;
+		if (!MMCTest1()) {
+			fail_cnt++;
 		} else {
-			PassCnt++;
-			printf("Pass %d/%ld\n", PassCnt, Testcounter);
+			pass_cnt++;
 		}
-	} // End while()
 
-
+		if (++test_cnt == target_cnt) {
+			finish = true;
+		}
+		printf("pass/fail/total %d/%d/%d\n", pass_cnt, fail_cnt,
+		       target_cnt);
+	}
 }
 
 static size_t ast2600_sdrammc_get_vga_mem_size(struct dram_info *info)
@@ -979,8 +850,8 @@ static int ast2600_sdrammc_probe(struct udevice *dev)
 
 	ast2600_sdramphy_show_status(priv);
 	ast2600_sdrammc_calc_size(priv);
-#if 0
-	ast2600_sdrammc_test(priv);
+#if 1
+	ast2600_dramtest();
 #endif
 	writel(readl(priv->scu + AST_SCU_HANDSHAKE) | SCU_SDRAM_INIT_READY_MASK,
 	       priv->scu + AST_SCU_HANDSHAKE);
