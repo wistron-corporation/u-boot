@@ -414,7 +414,7 @@ int MMCTest1(void)
 	return(1);
 }
 
-static int ast2600_dramtest(void) 
+static int ast2600_sdrammc_test(void) 
 {
 	u32 pass_cnt = 0;
 	u32 fail_cnt = 0;
@@ -442,6 +442,8 @@ static int ast2600_dramtest(void)
 		printf("pass/fail/total %d/%d/%d\n", pass_cnt, fail_cnt,
 		       target_cnt);
 	}
+
+	return fail_cnt;
 }
 
 static size_t ast2600_sdrammc_get_vga_mem_size(struct dram_info *info)
@@ -850,9 +852,12 @@ static int ast2600_sdrammc_probe(struct udevice *dev)
 
 	ast2600_sdramphy_show_status(priv);
 	ast2600_sdrammc_calc_size(priv);
-#if 1
-	ast2600_dramtest();
-#endif
+
+	if (0 != ast2600_sdrammc_test()) {
+		printf("%s: DDR4 init fail\n", __func__);
+		return -EINVAL;
+	}
+
 	writel(readl(priv->scu + AST_SCU_HANDSHAKE) | SCU_SDRAM_INIT_READY_MASK,
 	       priv->scu + AST_SCU_HANDSHAKE);
 
