@@ -149,7 +149,6 @@ static void ast2600_sdramphy_kick_training(struct dram_info *info)
 {
 #ifndef CONFIG_FPGA_ASPEED
         struct ast2600_sdrammc_regs *regs = info->regs;
-        u32 mask = SDRAM_PHYCTRL0_INIT | SDRAM_PHYCTRL0_PLL_LOCKED;
         u32 data;
 
 	writel(0, &regs->phy_ctrl[0]);
@@ -283,41 +282,41 @@ static void ast2600_sdramphy_show_status(struct dram_info *info)
 	printf("rO_DDRPHY_reg offset 0x68 = 0x%08x\n", value);
 	printf("  rising edge of read data eye training pass window\n");
 	tmp = (((value & GENMASK(7, 0)) >> 0) * 100) / 255;
-	printf("    B0:%d\%\n", tmp);
+	printf("    B0:%d%%\n", tmp);
 	tmp = (((value & GENMASK(15, 8)) >> 8) * 100) / 255;
-        printf("    B1:%d\%\n", tmp);
+        printf("    B1:%d%%\n", tmp);
 
 	value = readl(reg_base + 0xC8);
 	printf("rO_DDRPHY_reg offset 0xC8 = 0x%08x\n", value);
 	printf("  falling edge of read data eye training pass window\n");
 	tmp = (((value & GENMASK(7, 0)) >> 0) * 100) / 255;
-	printf("    B0:%d\%\n", tmp);
+	printf("    B0:%d%%\n", tmp);
 	tmp = (((value & GENMASK(15, 8)) >> 8) * 100) / 255;
-        printf("    B1:%d\%\n", tmp);
+        printf("    B1:%d%%\n", tmp);
 
         /* write eye window */
         value = readl(reg_base + 0x7c);
 	printf("rO_DDRPHY_reg offset 0x7C = 0x%08x\n", value);
 	printf("  rising edge of write data eye training pass window\n");
 	tmp = (((value & GENMASK(7, 0)) >> 0) * 100) / 255;
-	printf("    B0:%d\%\n", tmp);
+	printf("    B0:%d%%\n", tmp);
 	tmp = (((value & GENMASK(15, 8)) >> 8) * 100) / 255;
-        printf("    B1:%d\%\n", tmp);
+        printf("    B1:%d%%\n", tmp);
 
 	/* read Vref training result */
         value = readl(reg_base + 0x88);
 	printf("rO_DDRPHY_reg offset 0x88 = 0x%08x\n", value);
         printf("  read Vref training result\n");
 	tmp = (((value & GENMASK(7, 0)) >> 0) * 100) / 127;
-	printf("    B0:%d\%\n", tmp);
+	printf("    B0:%d%%\n", tmp);
 	tmp = (((value & GENMASK(15, 8)) >> 8) * 100) / 127;
-        printf("    B1:%d\%\n", tmp);
+        printf("    B1:%d%%\n", tmp);
 
         /* write Vref training result */
         value = readl(reg_base + 0x90);
 	printf("rO_DDRPHY_reg offset 0x90 = 0x%08x\n", value);
 	tmp = (((value & GENMASK(5, 0)) >> 0) * 100) / 127;
-        printf("  write Vref training result = %d\%\n", tmp);
+        printf("  write Vref training result = %d%%\n", tmp);
 
         /* gate train */
 	value = readl(reg_base + 0x50);
@@ -337,85 +336,62 @@ static u32 as2600_sdrammc_test_pattern[MC_TEST_PATTERN_N] = {
 
 #define DRAM_MapAdr	81000000
 #define TIMEOUT_DRAM	5000000
-int MMCTestSingle1(unsigned int datagen)
+int ast2600_sdrammc_dg_test(struct dram_info *info, unsigned int datagen, u32 mode)
 {
 	unsigned int data;
 	unsigned int timeout = 0;
+	struct ast2600_sdrammc_regs *regs = info->regs;
 
-	writel(0x00000000, 0x1E6E0070);
-	writel((0x00000085 | (datagen << 3)), 0x1E6E0070);
-
-	do {
-		data = readl(0x1E6E0070) & 0x3000;
-
-		if( data & 0x2000 )
-			return(0);
-
-		if( ++timeout > TIMEOUT_DRAM ){
-			printf("Timeout!!\n");
-			writel(0x00000000, 0x1E6E0070);
-
-			return(0);
-		}
-	} while ( !data );
-
-	writel(0x00000000, 0x1E6E0070);
-
-	return(1);
-}
-int MMCTestBurst1(unsigned int datagen)
-{
-	unsigned int data;
-	unsigned int timeout = 0;
-
-	writel(0x00000000, 0x1E6E0070);
-	writel((0x000000C1 | (datagen << 3)), 0x1E6E0070);
+	writel(0, &regs->ecc_test_ctrl);
+	if (mode == 0) {
+		writel(0x00000085 | (datagen << 3), &regs->ecc_test_ctrl);
+	} else {
+		writel(0x000000C1 | (datagen << 3), &regs->ecc_test_ctrl);
+	}
 
 	do {
-		data = readl(0x1E6E0070) & 0x3000;
+		data = readl(&regs->ecc_test_ctrl) & GENMASK(13, 12);
 
-		if( data & 0x2000 )
-			return(0);
+		if (data & BIT(13))
+			return (0);
 
-		if( ++timeout > TIMEOUT_DRAM ) {
+		if (++timeout > TIMEOUT_DRAM) {
 			printf("Timeout!!\n");
-			writel(0x00000000, 0x1E6E0070);
-			return(0);
+			writel(0, &regs->ecc_test_ctrl);
+
+			return (0);
 		}
 	} while (!data);
 
-	writel(0x00000000, 0x1E6E0070);
+	writel(0, &regs->ecc_test_ctrl);
+
+	return (1);
+}
+
+int ast2600_sdrammc_cbr_test(struct dram_info *info)
+{
+	struct ast2600_sdrammc_regs *regs = info->regs;
+	u32 i;
+
+	writel((DRAM_MapAdr | 0x7fffff), &regs->test_addr);
+
+	/* single */
+	for (i=0; i<8; i++) {
+  		if(!ast2600_sdrammc_dg_test(info, i, 0))   return(0);
+	}
+	
+	/* burst */
+	for (i=0; i<8; i++) {
+  		if(!ast2600_sdrammc_dg_test(info, i, i))   return(0);
+	}
 
 	return(1);
 }
 
-int MMCTest1(void)
+static int ast2600_sdrammc_test(struct dram_info *info) 
 {
-	writel((DRAM_MapAdr | 0x7fffff), 0x1E6E0074);	
+	struct ast2600_sdrammc_regs *regs = info->regs;
 
-  	if(!MMCTestSingle1(0))   return(0);
-	if(!MMCTestSingle1(1))   return(0);
-	if(!MMCTestSingle1(2))   return(0);
-	if(!MMCTestSingle1(3))   return(0);
-	if(!MMCTestSingle1(4))   return(0);
-	if(!MMCTestSingle1(5))   return(0);
-	if(!MMCTestSingle1(6))   return(0);
-	if(!MMCTestSingle1(7))   return(0);
-	if(!MMCTestBurst1(0))    return(0);
-	if(!MMCTestBurst1(1))    return(0);
-	if(!MMCTestBurst1(2))    return(0);
-	if(!MMCTestBurst1(3))    return(0);
-	if(!MMCTestBurst1(4))    return(0);
-	if(!MMCTestBurst1(5))    return(0);
-	if(!MMCTestBurst1(6))    return(0);
-	if(!MMCTestBurst1(7))    return(0);
-
-
-	return(1);
-}
-
-static int ast2600_sdrammc_test(void) 
-{
 	u32 pass_cnt = 0;
 	u32 fail_cnt = 0;
 	u32 target_cnt = 2;
@@ -428,9 +404,9 @@ static int ast2600_sdrammc_test(void)
 		pattern = as2600_sdrammc_test_pattern[i++];
 		i = i % MC_TEST_PATTERN_N;
 		printf("Pattern = %08X : ",pattern);
-		writel(pattern, 0x1E6E007C);
+		writel(pattern, regs->test_init_val);
 
-		if (!MMCTest1()) {
+		if (!ast2600_sdrammc_cbr_test(info)) {
 			fail_cnt++;
 		} else {
 			pass_cnt++;
@@ -775,7 +751,6 @@ static void ast2600_sdrammc_common_init(struct ast2600_sdrammc_regs *regs)
 
 static int ast2600_sdrammc_probe(struct udevice *dev)
 {
-	struct reset_ctl reset_ctl;
 	struct dram_info *priv = (struct dram_info *)dev_get_priv(dev);
 	struct ast2600_sdrammc_regs *regs = priv->regs;
 	struct udevice *clk_dev;
@@ -823,6 +798,7 @@ static int ast2600_sdrammc_probe(struct udevice *dev)
 
 #if 0
 	/* FIXME: enable the following code if reset-driver is ready */
+	struct reset_ctl reset_ctl;
 	ret = reset_get_by_index(dev, 0, &reset_ctl);
 	if (ret) {
 		debug("%s(): Failed to get reset signal\n", __func__);
@@ -853,7 +829,7 @@ static int ast2600_sdrammc_probe(struct udevice *dev)
 	ast2600_sdramphy_show_status(priv);
 	ast2600_sdrammc_calc_size(priv);
 
-	if (0 != ast2600_sdrammc_test()) {
+	if (0 != ast2600_sdrammc_test(priv)) {
 		printf("%s: DDR4 init fail\n", __func__);
 		return -EINVAL;
 	}
@@ -869,7 +845,6 @@ static int ast2600_sdrammc_probe(struct udevice *dev)
 static int ast2600_sdrammc_ofdata_to_platdata(struct udevice *dev)
 {
 	struct dram_info *priv = dev_get_priv(dev);
-	int ret;
 
 	priv->regs = (void *)(uintptr_t)devfdt_get_addr_index(dev, 0);
 	priv->phy_setting = (void *)(uintptr_t)devfdt_get_addr_index(dev, 1);
