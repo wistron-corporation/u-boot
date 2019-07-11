@@ -51,10 +51,13 @@ DECLARE_GLOBAL_DATA_PTR;
 union ast2600_pll_reg {
 	unsigned int w;
 	struct {
-		unsigned int m : 13;	/* 12:0  */
-		unsigned int n : 6;	/* 18:13  */
-		unsigned int p : 4;	/* 22:19  */
-		unsigned int reserved : 9; /* 31:20  */
+		unsigned int m : 13;		/* bit[12:0]	*/
+		unsigned int n : 6;		/* bit[18:13]	*/
+		unsigned int p : 4;		/* bit[22:19]	*/
+		unsigned int off : 1;		/* bit[23]	*/
+		unsigned int bypass : 1;	/* bit[24]	*/
+		unsigned int reset : 1;		/* bit[25]	*/
+		unsigned int reserved : 6;	/* bit[31:26]	*/
 	} b;
 };
 
@@ -451,11 +454,60 @@ static bool ast2600_search_clock_config(struct ast2600_pll_desc *pll)
 	}
 	return is_found;
 }
+static u32 ast2600_configure_pll(struct ast2600_scu *scu,
+				 struct ast2600_pll_cfg *p_cfg, int pll_idx)
+{
+	u32 addr, addr_ext;
+	u32 reg;
 
+	switch (pll_idx) {
+	case ASPEED_CLK_HPLL:
+		addr = (u32)(&scu->h_pll_param);
+		addr_ext = (u32)(&scu->h_pll_ext_param);
+		break;
+	case ASPEED_CLK_MPLL:
+		addr = (u32)(&scu->m_pll_param);
+		addr_ext = (u32)(&scu->m_pll_ext_param);
+		break;
+	case ASPEED_CLK_DPLL:
+		addr = (u32)(&scu->d_pll_param);
+		addr_ext = (u32)(&scu->d_pll_ext_param);
+		break;
+	case ASPEED_CLK_EPLL:
+		addr = (u32)(&scu->e_pll_param);
+		addr_ext = (u32)(&scu->e_pll_ext_param);
+		break;
+	default:
+		debug("unknown PLL index\n");
+		return 1;
+	}
+
+	p_cfg->reg.b.bypass = 0;
+	p_cfg->reg.b.off = 1;
+	p_cfg->reg.b.reset = 1;
+
+	reg = readl(addr);
+	reg &= ~GENMASK(25, 0);
+	reg |= p_cfg->reg.w;
+	writel(reg, addr);
+	
+	/* write extend parameter */
+	writel(p_cfg->ext_reg, addr_ext);
+	udelay(100);
+	p_cfg->reg.b.off = 0;
+	p_cfg->reg.b.reset = 0;
+	reg &= ~GENMASK(25, 0);
+	reg |= p_cfg->reg.w;
+	writel(reg, addr);
+
+	/* polling PLL lock status */
+	while(0 == (readl(addr_ext) & BIT(31)));
+
+	return 0;
+}
 static u32 ast2600_configure_ddr(struct ast2600_scu *scu, ulong rate)
 {
-	u32 mpll_reg;
-	struct ast2600_pll_desc mpll;	
+	struct ast2600_pll_desc mpll;
 
 	mpll.in = AST2600_CLK_IN;
 	mpll.out = rate;
@@ -463,14 +515,7 @@ static u32 ast2600_configure_ddr(struct ast2600_scu *scu, ulong rate)
 		printf("error!! unable to find valid DDR clock setting\n");
 		return 0;
 	}
-
-	mpll_reg = readl(&scu->m_pll_param);
-	mpll_reg &= ~GENMASK(22, 0);
-	mpll_reg |= mpll.cfg.reg.w;
-	writel(mpll_reg, &scu->m_pll_param);	
-	
-	/* write extend parameter */
-	writel(mpll.cfg.ext_reg, &scu->m_pll_ext_param);
+	ast2600_configure_pll(scu, &(mpll.cfg), ASPEED_CLK_MPLL);
 
 	return ast2600_get_pll_rate(scu, ASPEED_CLK_MPLL);
 }
@@ -498,7 +543,6 @@ static ulong ast2600_clk_set_rate(struct clk *clk, ulong rate)
 
 static u32 ast2600_configure_mac12_clk(struct ast2600_scu *scu)
 {
-	u32 epll_reg;
 	u32 clksel;
 	u32 clkdelay;
 	
@@ -515,14 +559,7 @@ static u32 ast2600_configure_mac12_clk(struct ast2600_scu *scu)
 		      epll.cfg.reg.b.m, epll.cfg.reg.b.n, epll.cfg.reg.b.p);
 		return 0;
 	}
-
-	epll_reg = readl(&scu->e_pll_param);
-	epll_reg &= ~GENMASK(22, 0);
-	epll_reg |= epll.cfg.reg.w;
-	writel(epll_reg, &scu->e_pll_param);	
-	
-	/* write extend parameter */
-	writel(epll.cfg.ext_reg, &scu->e_pll_ext_param);	
+	ast2600_configure_pll(scu, &(epll.cfg), ASPEED_CLK_EPLL);
 
 	/* select MAC#1 and MAC#2 clock source = EPLL / 8 */
 	clksel = readl(&scu->clk_sel2);
