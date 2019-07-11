@@ -293,7 +293,7 @@ static u32 ast2600_get_sdio_clk_rate(struct ast2600_scu *scu)
 	if(clk_sel & BIT(8)) {
 		clkin = ast2600_get_apll_rate(scu);
 	} else {
-		clkin = 200 * 1000 * 1000;
+		clkin = ast2600_get_hclk(scu);
 	}
 	div = (div + 1) << 1;
 
@@ -702,8 +702,9 @@ static ulong ast2600_enable_extsdclk(struct ast2600_scu *scu)
 
 	enableclk_bit = BIT(SCU_CLKSTOP_EXTSD);
 
+	//default use apll for clock source 800/2 = 400
 	clk_sel &= ~SCU_CLK_SD_MASK;
-	clk_sel |= SCU_CLK_SD_DIV(0);
+	clk_sel |= SCU_CLK_SD_DIV(0) | BIT(8);
 	writel(clk_sel, &scu->clk_sel4);
 	
 	//enable clk 
