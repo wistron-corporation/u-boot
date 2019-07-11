@@ -1,0 +1,29 @@
+choice
+	prompt "DDR4 target data rate"
+	default ASPEED_DDR4_1600
+
+config ASPEED_DDR4_800
+        bool "DDR4 targets at 800Mbps"
+        depends on DM && OF_CONTROL && ARCH_ASPEED
+        select RAM
+        select SPL_RAM if SPL
+        help
+                select DDR4 target data rate at 800M
+
+config ASPEED_DDR4_1600
+        bool "DDR4 targets at 1600Mbps"
+        depends on DM && OF_CONTROL && ARCH_ASPEED
+        select RAM
+        select SPL_RAM if SPL
+        help
+                select DDR4 target data rate at 1600M
+endchoice
+
+config ASPEED_DDR4_DUALX8
+        bool "dual X8 DDR4 die"
+        depends on DM && OF_CONTROL && ARCH_ASPEED
+        select RAM
+        select SPL_RAM if SPL
+        default n
+        help
+                select dual X8 DDR4 die
