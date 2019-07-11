@@ -17,6 +17,8 @@
 		ethernet0 = &mac0;
 #ifndef CONFIG_FPGA_ASPEED
 		ethernet1 = &mac1;
+		ethernet2 = &mac2;
+		ethernet3 = &mac3;
 #endif
 	};
 };
