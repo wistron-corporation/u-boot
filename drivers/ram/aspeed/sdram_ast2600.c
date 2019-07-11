@@ -419,7 +419,8 @@ static int ast2600_sdrammc_test(struct dram_info *info)
 			finish = true;
 		}
 	}
-	printf("statistics: pass/fail/total:%d/%d/%d\n", pass_cnt, fail_cnt, target_cnt);
+	printf("statistics: pass/fail/total:%d/%d/%d\n", pass_cnt, fail_cnt,
+	       target_cnt);
 	return fail_cnt;
 }
 
