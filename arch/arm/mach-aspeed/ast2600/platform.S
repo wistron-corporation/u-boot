@@ -34,6 +34,7 @@
 #include <version.h>
 #include <asm/secure.h>
 #include <asm/armv7.h>
+#include <linux/linkage.h>
 
 /*
  *       SMP mailbox
@@ -62,6 +63,7 @@
 #define AST_SCU_PROT_KEY1       (AST_SCU_BASE)
 #define AST_SCU_PROT_KEY2       (AST_SCU_BASE + 0x010)
 #define AST_SCU_REV_ID          (AST_SCU_BASE + 0x014)
+#define AST_SCU_HW_STRAP1       (AST_SCU_BASE + 0x500)
 
 #define AST_FMC_BASE            0x1E620000
 #define AST_FMC_WDT1_CTRL_MODE  (AST_FMC_BASE + 0x060)
@@ -71,6 +73,15 @@
 
 /* Revision ID */
 #define REV_ID_AST2600A0    0x05000303
+
+ENTRY(ast_bootmode)
+    ldr     r1, =AST_SCU_HW_STRAP1
+    ldr     r0, [r1]
+    tst     r0, #0x4
+    moveq   r0, #0x0            @; AST_BOOTMODE_SPI
+    movne   r0, #0x1            @; AST_BOOTMODE_EMMC
+    mov     pc, lr
+ENDPROC(ast_bootmode)
 
 .macro timer_init
 #ifdef CONFIG_FPGA_ASPEED

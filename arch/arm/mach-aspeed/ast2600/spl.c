@@ -12,6 +12,11 @@
 
 DECLARE_GLOBAL_DATA_PTR;
 
+#define AST_BOOTMODE_SPI  0
+#define AST_BOOTMODE_EMMC 1
+
+u32 ast_bootmode(void);
+
 void board_init_f(ulong dummy)
 {
 	spl_early_init();
@@ -22,8 +27,18 @@ void board_init_f(ulong dummy)
 
 u32 spl_boot_device(void)
 {
-	return BOOT_DEVICE_RAM;
-}
+	switch(ast_bootmode()) {
+#ifdef CONFIG_SPL_MMC_SUPPORT
+		case AST_BOOTMODE_EMMC:
+			return BOOT_DEVICE_MMC1;
+#endif
+		case AST_BOOTMODE_SPI:
+			return BOOT_DEVICE_RAM;
+		default:
+			break;
+	}
+	return BOOT_DEVICE_NONE;
+ }
 
 struct image_header *spl_get_load_buffer(ssize_t offset, size_t size)
 {
