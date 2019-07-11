@@ -15,9 +15,9 @@ DECLARE_GLOBAL_DATA_PTR;
 void board_init_f(ulong dummy)
 {
 	spl_early_init();
+	timer_init();
 	preloader_console_init();
 	dram_init();
-	timer_init();
 }
 
 u32 spl_boot_device(void)
