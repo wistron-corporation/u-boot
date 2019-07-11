@@ -34,9 +34,9 @@
 
 
 /* bit-field of AST_SCU_HW_STRAP */
-#define SCU_HWSTRAP_VGAMEM_SHIFT	2
-#define SCU_HWSTRAP_VGAMEM_MASK		(3 << SCU_HWSTRAP_VGAMEM_SHIFT)
-#define SCU_HWSTRAP_DDR3		(1 << 25)
+#define SCU_HWSTRAP_VGAMEM_SHIFT	13
+#define SCU_HWSTRAP_VGAMEM_MASK		GENMASK(14, 13)
+#define SCU_HWSTRAP_DDR3		BIT(25)
 
 
 /* bit-field of AST_SCU_HANDSHAKE */
@@ -424,6 +424,19 @@ static int ast2600_sdrammc_test(struct dram_info *info)
 	return fail_cnt;
 }
 
+/**
+ * scu500[14:13]
+ * 	2b'00: VGA memory size = 8MB * 2^((0+1) & 0x3) = 16MB
+ * 	2b'01: VGA memory size = 8MB * 2^((1+1) & 0x3) = 32MB
+ * 	2b'10: VGA memory size = 8MB * 2^((2+1) & 0x3) = 64MB
+ * 	2b'11: VGA memory size = 8MB * 2^((3+1) & 0x3) = 8MB
+ *
+ * mcr04[3:2]
+ * 	2b'00: VGA memory size = 8MB
+ * 	2b'01: VGA memory size = 16MB
+ * 	2b'10: VGA memory size = 32MB
+ * 	2b'11: VGA memory size = 64MB
+*/
 static size_t ast2600_sdrammc_get_vga_mem_size(struct dram_info *info)
 {
         u32 vga_hwconf;
@@ -431,8 +444,13 @@ static size_t ast2600_sdrammc_get_vga_mem_size(struct dram_info *info)
 
         vga_hwconf = readl(info->scu + AST_SCU_HW_STRAP) &
                      SCU_HWSTRAP_VGAMEM_MASK >> SCU_HWSTRAP_VGAMEM_SHIFT;
+	vga_hwconf = (vga_hwconf + 1) & 0x3;
 
-        return vga_mem_size_base << vga_hwconf;
+	clrsetbits_le32(&info->regs->config, SDRAM_CONF_VGA_SIZE_MASK,
+			((vga_hwconf << SDRAM_CONF_VGA_SIZE_SHIFT) &
+			 SDRAM_CONF_VGA_SIZE_MASK));
+
+	return vga_mem_size_base << vga_hwconf;
 }
 #ifdef CONFIG_FPGA_ASPEED
 static void ast2600_sdrammc_fpga_set_pll(struct dram_info *info)
@@ -616,10 +634,10 @@ static void ast2600_sdrammc_calc_size(struct dram_info *info)
 
 	info->info.base = CONFIG_SYS_SDRAM_BASE;
 	info->info.size = ram_size - ast2600_sdrammc_get_vga_mem_size(info);
-	clrsetbits_le32(&info->regs->config,
-			(SDRAM_CONF_CAP_MASK << SDRAM_CONF_CAP_SHIFT),
-			((cap_param & SDRAM_CONF_CAP_MASK)
-			 << SDRAM_CONF_CAP_SHIFT));
+
+	clrsetbits_le32(
+	    &info->regs->config, SDRAM_CONF_CAP_MASK,
+	    ((cap_param << SDRAM_CONF_CAP_SHIFT) & SDRAM_CONF_CAP_MASK));
 }
 
 static int ast2600_sdrammc_init_ddr4(struct dram_info *info)
