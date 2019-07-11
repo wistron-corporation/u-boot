@@ -260,7 +260,7 @@ static void ast2600_sdramphy_show_status(struct dram_info *info)
         u32 value, tmp;
         u32 reg_base = (u32)info->phy_status;
 	
-	printf("\n");
+	printf("\nSDRAM PHY training report:\n");
 	/* training status */
         value = readl(reg_base + 0x00);
 	printf("rO_DDRPHY_reg offset 0x00 = 0x%08x\n", value);
@@ -394,31 +394,32 @@ static int ast2600_sdrammc_test(struct dram_info *info)
 
 	u32 pass_cnt = 0;
 	u32 fail_cnt = 0;
-	u32 target_cnt = 2;
+	u32 target_cnt = 4;
 	u32 test_cnt = 0;
 	u32 pattern;
 	u32 i = 0;
 	bool finish = false;
 
+	printf("sdram mc test:\n");
 	while (finish == false) {
 		pattern = as2600_sdrammc_test_pattern[i++];
 		i = i % MC_TEST_PATTERN_N;
-		printf("Pattern = %08X : ",pattern);
+		printf("  pattern = %08X : ",pattern);
 		writel(pattern, regs->test_init_val);
 
 		if (!ast2600_sdrammc_cbr_test(info)) {
+			printf("fail\n");
 			fail_cnt++;
 		} else {
+			printf("pass\n");
 			pass_cnt++;
 		}
 
 		if (++test_cnt == target_cnt) {
 			finish = true;
 		}
-		printf("pass/fail/total %d/%d/%d\n", pass_cnt, fail_cnt,
-		       target_cnt);
 	}
-
+	printf("statistics: pass/fail/total:%d/%d/%d\n", pass_cnt, fail_cnt, target_cnt);
 	return fail_cnt;
 }
 
