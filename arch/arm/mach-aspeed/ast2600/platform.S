@@ -69,8 +69,6 @@
 #define AST_FMC_WDT1_CTRL_MODE  (AST_FMC_BASE + 0x060)
 #define AST_FMC_WDT2_CTRL_MODE  (AST_FMC_BASE + 0x064)
 
-#define AST_UART_BASE           0x1E784000
-
 /* Revision ID */
 #define REV_ID_AST2600A0    0x05000303
 
@@ -118,7 +116,9 @@ lowlevel_init:
      * put secondary core (cpuN) to sleep
      */
     mrc   p15, 0, r0, c0, c0, 5             @; Read CPU ID register
-    ands  r0, r0, #0x03                     @; Mask off, leaving the CPU ID field
+    ands  r0, r0, #0xFF                     @; Mask off, leaving the CPU ID field
+    ldr   r2, =0xABBAAB00
+    orr   r2, r2, r0
 
     beq   do_primary_core_setup
 
@@ -126,16 +126,14 @@ lowlevel_init:
 poll_mailbox_ready:
     wfe
     ldr   r0, =AST_SMP_MBOX_FIELD_READY
+    ldr   r0, [r0]
     ldr   r1, =0xBABECAFE
-    ldr   r2, [r0]
-    cmp   r1, r2
+    cmp   r1, r0
     bne   poll_mailbox_ready
 
     /* parameters for relocated SMP go polling insn. */
     ldr   r0, =AST_SMP_MBOX_FIELD_GOSIGN
     ldr   r1, =AST_SMP_MBOX_FIELD_ENTRY
-    ldr   r2, =0xABBAADDA
-    ldr   r3, =AST_UART_BASE
 
     /* no return */
     ldr   pc, =AST_SMP_MBOX_FIELD_POLLINSN
@@ -187,28 +185,14 @@ mailbox_insn:
      * r0 ~ r3 are parameters:
      *   r0 = AST_SMP_MBOX_FIELD_GOSIGN
      *   r1 = AST_SMP_MBOX_FIELD_ENTRY
-     *   r2 = 0xABBAADDA
-     *   r3 = AST_UART_BASE (for debug purpose)
+     *   r2 = per-cpu go sign value
+     *   r3 = no used now
      */
 poll_mailbox_smp_go:
     wfe
     ldr   r4, [r0]
     cmp   r2, r4
     bne   poll_mailbox_smp_go
-
-    /* debug message */
-    mov   r4, #'C'
-    str   r4, [r3]
-    mov   r4, #'P'
-    str   r4, [r3]
-    mov   r4, #'U'
-    str   r4, [r3]
-    mov   r4, #'1'
-    str   r4, [r3]
-    mov   r4, #'\r'
-    str   r4, [r3]
-    mov   r4, #'\n'
-    str   r4, [r3]
 
     /* SMP GO signal confirmed, release cpuN */
     ldr   pc, [r1]
