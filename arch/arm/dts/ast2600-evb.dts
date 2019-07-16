@@ -101,6 +101,8 @@
 &sdhci_slot0 {
 	status = "okay";
 	bus-width = <4>;
+	pwr-gpios = <&gpio0 ASPEED_GPIO(V, 0) GPIO_ACTIVE_HIGH>;
+	pwr-sw-gpios = <&gpio0 ASPEED_GPIO(V, 1) GPIO_ACTIVE_HIGH>;
 	pinctrl-names = "default";
 	pinctrl-0 = <&pinctrl_sd1_default>;
 };
@@ -108,6 +110,8 @@
 &sdhci_slot1 {
 	status = "okay";
 	bus-width = <4>;
+    pwr-gpios = <&gpio0 ASPEED_GPIO(V, 2) GPIO_ACTIVE_HIGH>;
+    pwr-sw-gpios = <&gpio0 ASPEED_GPIO(V, 3) GPIO_ACTIVE_HIGH>;
 	pinctrl-names = "default";
 	pinctrl-0 = <&pinctrl_sd2_default>;
 };

@@ -53,13 +53,24 @@ static int aspeed_sdhci_probe(struct udevice *dev)
 
 	debug("%s: CLK %ld\n", __func__, clock);
 
+	//1: sd card pwr, 0: no pwr
 	gpio_request_by_name_nodev(offset_to_ofnode(node), "pwr-gpios", 0,
 				   &host->pwr_gpio, GPIOD_IS_OUT);
+	if (dm_gpio_is_valid(&host->pwr_gpio)) {
+		printf("\n");
+		dm_gpio_set_value(&host->pwr_gpio, 1);
+		if (ret) {
+			debug("MMC not configured\n");
+			return ret;
+		}
+	}
+
+	//1: 3.3v, 0: 1.8v
 	gpio_request_by_name_nodev(offset_to_ofnode(node), "pwr-sw-gpios", 0,
 				   &host->pwr_sw_gpio, GPIOD_IS_OUT);
 
-	if (dm_gpio_is_valid(&host->pwr_gpio)) {
-		dm_gpio_set_value(&host->pwr_gpio, 1);
+	if (dm_gpio_is_valid(&host->pwr_sw_gpio)) {
+		dm_gpio_set_value(&host->pwr_sw_gpio, 1);
 		if (ret) {
 			debug("MMC not configured\n");
 			return ret;
