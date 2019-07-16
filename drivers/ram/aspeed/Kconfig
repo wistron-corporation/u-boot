@@ -30,6 +30,9 @@ config ASPEED_DDR4_DUALX8
 
 config ASPEED_PALLADIUM
 	bool "aspeed palladium RAM model"
+	select RAM
+        select SPL_RAM if SPL
+	default n
 	help
 	  Say Y here to enable the Aspeed Palladium driver
 
