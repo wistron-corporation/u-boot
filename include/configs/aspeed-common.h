@@ -59,9 +59,4 @@
 	"spi_dma=yes\0" \
 	""
 
-/*
- * Ethernet related
- */
-#define PHY_ANEG_TIMEOUT		800
-#define CONFIG_PHY_GIGE
 #endif	/* __ASPEED_COMMON_CONFIG_H */

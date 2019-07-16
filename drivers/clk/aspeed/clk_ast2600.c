@@ -543,7 +543,9 @@ static ulong ast2600_clk_set_rate(struct clk *clk, ulong rate)
 
 static u32 ast2600_configure_mac12_clk(struct ast2600_scu *scu)
 {
-#if 0	
+	u32 clksel;
+	u32 clkdelay;
+	
 	struct ast2600_pll_desc epll;
 
 	epll.in = AST2600_CLK_IN;
@@ -564,53 +566,61 @@ static u32 ast2600_configure_mac12_clk(struct ast2600_scu *scu)
 	clksel &= ~BIT(23);
 	clksel |= 0x7 << 20;
 	writel(clksel, &scu->clk_sel2);
-#endif
-	/* scu340[25:0]: 1G default delay */
-	clrsetbits_le32(&scu->mac12_clk_delay, GENMASK(25, 0),
-			MAC_DEF_DELAY_1G);
+
+	/* 
+	BIT(31): select RGMII 125M from internal source
+	BIT(28): RGMII 125M output enable
+	BIT(25:0): 1G default delay
+	*/
+	clkdelay = MAC_DEF_DELAY_1G | BIT(31) | BIT(28);
+	writel(clkdelay, &scu->mac12_clk_delay);	
 
 	/* set 100M/10M default delay */
 	writel(MAC_DEF_DELAY_100M, &scu->mac12_clk_delay_100M);
 	writel(MAC_DEF_DELAY_10M, &scu->mac12_clk_delay_10M);
 
 	/* MAC AHB = HPLL / 6 */
-	clrsetbits_le32(&scu->clk_sel1, GENMASK(18, 16), (0x2 << 16));
+	clksel = readl(&scu->clk_sel1);
+	clksel &= ~GENMASK(18, 16);
+	clksel |= 0x2 << 16;
+	writel(clksel, &scu->clk_sel1);	
 
 	return 0;
 }
 
 static u32 ast2600_configure_mac34_clk(struct ast2600_scu *scu)
 {
+	u32 reg;
+
 	ast2600_configure_mac12_clk(scu);
 
-	/*
-	 * scu350[31]   RGMII 125M source: 0 = from IO pin
-	 * scu350[25:0] MAC 1G delay
-	 */
-	clrsetbits_le32(&scu->mac34_clk_delay, (BIT(31) | GENMASK(25, 0)),
-			MAC34_DEF_DELAY_1G);
+	/* 
+	BIT[31]   RGMII 125M source: 0 = from IO pin
+	BIT[25:0] MAC 1G delay 
+	*/
+	reg = readl(&scu->mac34_clk_delay);
+	reg &= ~(BIT(31) | GENMASK(25, 0));
+	reg |= MAC34_DEF_DELAY_1G;
+	writel(reg, &scu->mac34_clk_delay);
 	writel(MAC34_DEF_DELAY_100M, &scu->mac34_clk_delay_100M);
 	writel(MAC34_DEF_DELAY_10M, &scu->mac34_clk_delay_10M);
 
-	/*
-	 * clock source seletion and divider
-	 * scu310[26:24] : MAC AHB bus clock = HCLK / 2
-	 * scu310[18:16] : RMII 50M = HCLK_200M / 4
-	 */
-	clrsetbits_le32(&scu->clk_sel4, (GENMASK(26, 24) | GENMASK(18, 16)),
-			((0x0 << 24) | (0x3 << 16)));
+	/* clock source seletion and divider */
+	reg = readl(&scu->clk_sel4);
+	reg &= ~GENMASK(26, 24);	/* MAC AHB = HCLK / 2 */
+	reg &= ~GENMASK(18, 16);
+	reg |= 0x3 << 16;		/* RMII 50M = SLICLK_200M / 4 */
+	writel(reg, &scu->clk_sel4);
 
-	/*
-	 * set driving strength
-	 * scu458[3:2] : MAC4 driving strength
-	 * scu458[1:0] : MAC3 driving strength
-	 */
-	clrsetbits_le32(&scu->pinmux_ctrl16, GENMASK(3, 0),
-			(0x2 << 2) | (0x2 << 0));	
+	/* set driving strength */
+	reg = readl(&scu->pinmux_ctrl16);
+	reg &= GENMASK(3, 0);
+	reg |= (0x2 << 0) | (0x2 << 2);
+	writel(reg, &scu->pinmux_ctrl16);
 
 	return 0;
 }
-
+#if 0
 /**
  * ast2600 RGMII clock source tree
  * 
@@ -619,135 +629,13 @@ static u32 ast2600_configure_mac34_clk(struct ast2600_scu *scu)
  *            | |---->| divider |---->|/                             +
  *    EPLL -->|/                                                     |
  *                                                                   |
- *    +---------<-----------|RGMIICK PAD output enable|<-------------+
+ *    +---------<-----------|PAD output enable|<---------------------+
  *    |
- *    +--------------------------->|\
+ *    +--->|PAD input enable|----->|\
  *                                 | |----> RGMII 125M for MAC#3 & MAC#4
- *    HCLK 200M ---->|divider|---->|/
+ *    SLICLK 200M -->|divider|---->|/
  * 
- * To simplify the control flow:
- * 	1. RGMII 1/2 always use EPLL as the internal clock source
- * 	2. RGMII 3/4 always use RGMIICK pad as the RGMII 125M source
  * 
- *    125M from external PAD -------->|\
- *                                    | |---->RGMII 125M for MAC#1 & MAC#2
- *            EPLL---->| divider |--->|/                             + 
- *                                                                   |
- *    +<--------------------|RGMIICK PAD output enable|<-------------+
- *    |
- *    +--------------------------->RGMII 125M for MAC#3 & MAC#4
-*/
-#define RGMIICK_SRC_PAD			0
-#define RGMIICK_SRC_EPLL		1	/* recommended */
-#define RGMIICK_SRC_HPLL		2
-
-#define RGMIICK_DIV2			1
-#define RGMIICK_DIV3			2
-#define RGMIICK_DIV4			3
-#define RGMIICK_DIV5			4
-#define RGMIICK_DIV6			5
-#define RGMIICK_DIV7			6
-#define RGMIICK_DIV8			7	/* recommended */
-
-#define RMIICK_DIV4			0
-#define RMIICK_DIV8			1
-#define RMIICK_DIV12			2
-#define RMIICK_DIV16			3
-#define RMIICK_DIV20			4	/* recommended */
-#define RMIICK_DIV24			5
-#define RMIICK_DIV28			6
-#define RMIICK_DIV32			7
-
-struct ast2600_mac_clk_div {
-	u32 src;	/* 0=external PAD, 1=internal PLL */
-	u32 fin;	/* divider input speed */
-	u32 n;		/* 0=div2, 1=div2, 2=div3, 3=div4,...,7=div8 */
-	u32 fout;	/* fout = fin / n */
-};
-
-struct ast2600_mac_clk_div rgmii_clk_defconfig = {
-	.src = ASPEED_CLK_EPLL,
-	.fin = 1000000000,
-	.n = RGMIICK_DIV8,
-	.fout = 125000000,
-};
-
-struct ast2600_mac_clk_div rmii_clk_defconfig = {
-	.src = ASPEED_CLK_EPLL,
-	.fin = 1000000000,
-	.n = RMIICK_DIV20,
-	.fout = 50000000,
-};
-static void ast2600_init_mac_pll(struct ast2600_scu *p_scu,
-				 struct ast2600_mac_clk_div *p_cfg) 
-{
-	struct ast2600_pll_desc pll;
-
-	pll.in = AST2600_CLK_IN;
-	pll.out = p_cfg->fin;
-	if (false == ast2600_search_clock_config(&pll)) {
-		printf("error!! unable to find valid ETHNET MAC clock "
-		       "setting\n");
-		debug("%s: pll cfg = 0x%08x 0x%08x\n", __func__, pll.cfg.reg.w,
-		      pll.cfg.ext_reg);
-		debug("%s: pll cfg = %02x %02x %02x\n", __func__,
-		      pll.cfg.reg.b.m, pll.cfg.reg.b.n, pll.cfg.reg.b.p);
-		return;
-	}
-	ast2600_configure_pll(p_scu, &(pll.cfg), p_cfg->src);
-}
-
-static void ast2600_init_rgmii_clk(struct ast2600_scu *p_scu,
-				   struct ast2600_mac_clk_div *p_cfg) 
-{
-	u32 reg_304 = readl(&p_scu->clk_sel2);
-	u32 reg_340 = readl(&p_scu->mac12_clk_delay);
-	u32 reg_350 = readl(&p_scu->mac34_clk_delay);
-
-	reg_340 &= ~GENMASK(31, 29);
-	/* scu340[28]: RGMIICK PAD output enable (to MAC 3/4) */
-	reg_340 |= BIT(28);
-	if ((p_cfg->src == ASPEED_CLK_EPLL) ||
-	    (p_cfg->src == ASPEED_CLK_HPLL)) {
-		/*
-		 * re-init PLL if the current PLL output frequency doesn't match
-		 * the divider setting
-		 */
-		if (p_cfg->fin != ast2600_get_pll_rate(p_scu, p_cfg->src)) {
-			ast2600_init_mac_pll(p_scu, p_cfg);
-		}
-		/* scu340[31]: select RGMII 125M from internal source */
-		reg_340 |= BIT(31);
-	}
-
-	reg_304 &= ~GENMASK(23, 20);
-	
-	/* set clock divider */
-	reg_304 |= (p_cfg->n & 0x7) << 20;
-	
-	/* select internal clock source */
-	if (ASPEED_CLK_HPLL == p_cfg->src) {
-		reg_304 |= BIT(23);
-	}
-
-	/* RGMII 3/4 clock source select */
-	reg_350 &= ~BIT(31);
-#if 0
-	if (RGMII_3_4_CLK_SRC_HCLK == p_cfg->rgmii_3_4_clk_src) {
-		reg_350 |= BIT(31);
-	}
-
-	/* set clock divider */
-	reg_310 &= ~GENMASK(22, 20);
-	reg_310 |= (p_cfg->hclk_clk_div & 0x7) << 20;
-#endif
-
-	writel(reg_304, &p_scu->clk_sel2);
-	writel(reg_340, &p_scu->mac12_clk_delay);
-	writel(reg_350, &p_scu->mac34_clk_delay);
-}
-
-/**
  * ast2600 RMII/NCSI clock source tree
  * 
  *    HPLL -->|\                      
@@ -756,67 +644,29 @@ static void ast2600_init_rgmii_clk(struct ast2600_scu *p_scu,
  * 
  *    HCLK(SCLICLK)---->| divider |----> RMII 50M for MAC#3 & MAC#4
 */
-static void ast2600_init_rmii_clk(struct ast2600_scu *p_scu,
-				  struct ast2600_mac_clk_div *p_cfg) 
+struct ast2600_rgmii_clk_config {
+	u32 mac_1_2_src;	/* 0=external PAD, 1=internal PLL */
+	u32 int_clk_src;	/* 0=EPLL, 1=HPLL */
+	u32 int_clk_div;
+	
+	u32 mac_3_4_src;	/* 0=external PAD, 1=SLICLK */
+	u32 sli_clk_div;	/* reserved */
+};
+
+static void ast2600_init_rgmii_clk(struct ast2600_scu *scu, int index)
 {
-	u32 reg_304;
-	u32 reg_310;
-
-	if ((p_cfg->src == ASPEED_CLK_EPLL) ||
-	    (p_cfg->src == ASPEED_CLK_HPLL)) {
-		/*
-		 * re-init PLL if the current PLL output frequency doesn't match
-		 * the divider setting
-		 */
-		if (p_cfg->fin != ast2600_get_pll_rate(p_scu, p_cfg->src)) {
-			ast2600_init_mac_pll(p_scu, p_cfg);
-		}
-	}
-
-	reg_304 = readl(&p_scu->clk_sel2);
-	reg_310 = readl(&p_scu->clk_sel4);
-
-	reg_304 &= ~GENMASK(19, 16);
-
-	/* set RMII 1/2 clock divider */
-	reg_304 |= (p_cfg->n & 0x7) << 16;
-
-	/* RMII clock source selection */
-	if (ASPEED_CLK_HPLL == p_cfg->src) {
-		reg_304 |= BIT(19);
-	}	
-
-	/* set RMII 3/4 clock divider */
-	reg_310 &= ~GENMASK(18, 16);
-	reg_310 |= (0x3 << 16);
-
-	writel(reg_304, &p_scu->clk_sel2);
-	writel(reg_310, &p_scu->clk_sel4);
+	debug("%s not ready\n", __func__);
 }
 
+static void ast2600_init_rmii_clk(struct ast2600_scu *scu, int index)
+{
+	debug("%s not ready\n", __func__);
+}
+#endif
 static u32 ast2600_configure_mac(struct ast2600_scu *scu, int index)
 {
 	u32 reset_bit;
 	u32 clkstop_bit;
-
-	/* check board level setup */
-	u32 mac_1_2_cfg = readl(&scu->hwstrap1) & GENMASK(7, 6);
-	u32 mac_3_4_cfg = readl(&scu->hwstrap2) & GENMASK(1, 0);
-
-	if ((mac_1_2_cfg == 0) && (mac_3_4_cfg != 0)) {
-		/**
-		 * HW limitation:
-		 * impossible to set MAC 3/4 = RGMII when MAC 1/2 = RMII
-		*/
-		printf("%s: unsupported configuration\n", __func__);
-		return -EINVAL;
-	} else if (mac_1_2_cfg | mac_3_4_cfg) {
-		/* setup RGMII clock */
-		ast2600_init_rgmii_clk(scu, &rgmii_clk_defconfig);
-	} else {
-		/* setup RMII clock */
-		ast2600_init_rmii_clk(scu, &rmii_clk_defconfig);
-	}
 
 	if (index < 3)
 		ast2600_configure_mac12_clk(scu);
