@@ -19,10 +19,12 @@ u32 ast_bootmode(void);
 
 void board_init_f(ulong dummy)
 {
+#ifndef CONFIG_SPL_TINY
 	spl_early_init();
 	timer_init();
 	preloader_console_init();
 	dram_init();
+#endif
 }
 
 u32 spl_boot_device(void)
