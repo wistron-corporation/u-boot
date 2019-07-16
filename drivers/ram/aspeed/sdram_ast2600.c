@@ -252,10 +252,10 @@ static void ast2600_sdramphy_show_status(struct dram_info *info)
         u32 value, tmp;
         u32 reg_base = (u32)info->phy_status;
 	
-	printf("\nSDRAM PHY training report:\n");
+	debug("\nSDRAM PHY training report:\n");
 	/* training status */
         value = readl(reg_base + 0x00);
-	printf("rO_DDRPHY_reg offset 0x00 = 0x%08x\n", value);
+	debug("rO_DDRPHY_reg offset 0x00 = 0x%08x\n", value);
         if (value & BIT(3)) {
                 debug("\tinitial PVT calibration fail\n");
         }
@@ -265,59 +265,59 @@ static void ast2600_sdramphy_show_status(struct dram_info *info)
 
 	/* PU & PD */
 	value = readl(reg_base + 0x30);	
-	printf("rO_DDRPHY_reg offset 0x30 = 0x%08x\n", value);
-        printf("  PU = 0x%02x\n", value & 0xff);
-        printf("  PD = 0x%02x\n", (value >> 16) & 0xff);
+	debug("rO_DDRPHY_reg offset 0x30 = 0x%08x\n", value);
+        debug("  PU = 0x%02x\n", value & 0xff);
+        debug("  PD = 0x%02x\n", (value >> 16) & 0xff);
 
 	/* read eye window */
         value = readl(reg_base + 0x68);
-	printf("rO_DDRPHY_reg offset 0x68 = 0x%08x\n", value);
-	printf("  rising edge of read data eye training pass window\n");
+	debug("rO_DDRPHY_reg offset 0x68 = 0x%08x\n", value);
+	debug("  rising edge of read data eye training pass window\n");
 	tmp = (((value & GENMASK(7, 0)) >> 0) * 100) / 255;
-	printf("    B0:%d%%\n", tmp);
+	debug("    B0:%d%%\n", tmp);
 	tmp = (((value & GENMASK(15, 8)) >> 8) * 100) / 255;
-        printf("    B1:%d%%\n", tmp);
+        debug("    B1:%d%%\n", tmp);
 
 	value = readl(reg_base + 0xC8);
-	printf("rO_DDRPHY_reg offset 0xC8 = 0x%08x\n", value);
-	printf("  falling edge of read data eye training pass window\n");
+	debug("rO_DDRPHY_reg offset 0xC8 = 0x%08x\n", value);
+	debug("  falling edge of read data eye training pass window\n");
 	tmp = (((value & GENMASK(7, 0)) >> 0) * 100) / 255;
-	printf("    B0:%d%%\n", tmp);
+	debug("    B0:%d%%\n", tmp);
 	tmp = (((value & GENMASK(15, 8)) >> 8) * 100) / 255;
-        printf("    B1:%d%%\n", tmp);
+        debug("    B1:%d%%\n", tmp);
 
         /* write eye window */
         value = readl(reg_base + 0x7c);
-	printf("rO_DDRPHY_reg offset 0x7C = 0x%08x\n", value);
-	printf("  rising edge of write data eye training pass window\n");
+	debug("rO_DDRPHY_reg offset 0x7C = 0x%08x\n", value);
+	debug("  rising edge of write data eye training pass window\n");
 	tmp = (((value & GENMASK(7, 0)) >> 0) * 100) / 255;
-	printf("    B0:%d%%\n", tmp);
+	debug("    B0:%d%%\n", tmp);
 	tmp = (((value & GENMASK(15, 8)) >> 8) * 100) / 255;
-        printf("    B1:%d%%\n", tmp);
+        debug("    B1:%d%%\n", tmp);
 
 	/* read Vref training result */
         value = readl(reg_base + 0x88);
-	printf("rO_DDRPHY_reg offset 0x88 = 0x%08x\n", value);
-        printf("  read Vref training result\n");
+	debug("rO_DDRPHY_reg offset 0x88 = 0x%08x\n", value);
+        debug("  read Vref training result\n");
 	tmp = (((value & GENMASK(7, 0)) >> 0) * 100) / 127;
-	printf("    B0:%d%%\n", tmp);
+	debug("    B0:%d%%\n", tmp);
 	tmp = (((value & GENMASK(15, 8)) >> 8) * 100) / 127;
-        printf("    B1:%d%%\n", tmp);
+        debug("    B1:%d%%\n", tmp);
 
         /* write Vref training result */
         value = readl(reg_base + 0x90);
-	printf("rO_DDRPHY_reg offset 0x90 = 0x%08x\n", value);
+	debug("rO_DDRPHY_reg offset 0x90 = 0x%08x\n", value);
 	tmp = (((value & GENMASK(5, 0)) >> 0) * 100) / 127;
-        printf("  write Vref training result = %d%%\n", tmp);
+        debug("  write Vref training result = %d%%\n", tmp);
 
         /* gate train */
 	value = readl(reg_base + 0x50);
-	printf("rO_DDRPHY_reg offset 0x50 = 0x%08x\n", value);
-	printf("  gate training pass window\n");
+	debug("rO_DDRPHY_reg offset 0x50 = 0x%08x\n", value);
+	debug("  gate training pass window\n");
 	tmp = (((value & GENMASK(7, 0)) >> 0) * 100) / 255;
-	printf("    module 0: %d.%03d\n", (value >> 8) & 0xff, tmp);        
+	debug("    module 0: %d.%03d\n", (value >> 8) & 0xff, tmp);        
         tmp = (((value & GENMASK(23, 16)) >> 0) * 100) / 255;
-	printf("    module 1: %d.%03d\n", (value >> 24) & 0xff, tmp);                
+	debug("    module 1: %d.%03d\n", (value >> 24) & 0xff, tmp);                
 #endif              
 }
 
@@ -392,18 +392,18 @@ static int ast2600_sdrammc_test(struct dram_info *info)
 	u32 i = 0;
 	bool finish = false;
 
-	printf("sdram mc test:\n");
+	debug("sdram mc test:\n");
 	while (finish == false) {
 		pattern = as2600_sdrammc_test_pattern[i++];
 		i = i % MC_TEST_PATTERN_N;
-		printf("  pattern = %08X : ",pattern);
+		debug("  pattern = %08X : ",pattern);
 		writel(pattern, regs->test_init_val);
 
 		if (!ast2600_sdrammc_cbr_test(info)) {
-			printf("fail\n");
+			debug("fail\n");
 			fail_cnt++;
 		} else {
-			printf("pass\n");
+			debug("pass\n");
 			pass_cnt++;
 		}
 
@@ -411,7 +411,7 @@ static int ast2600_sdrammc_test(struct dram_info *info)
 			finish = true;
 		}
 	}
-	printf("statistics: pass/fail/total:%d/%d/%d\n", pass_cnt, fail_cnt,
+	debug("statistics: pass/fail/total:%d/%d/%d\n", pass_cnt, fail_cnt,
 	       target_cnt);
 	return fail_cnt;
 }
@@ -837,6 +837,9 @@ static int ast2600_sdrammc_probe(struct udevice *dev)
         ast2600_sdrammc_search_read_window(priv);
 #endif
 
+#ifndef DEBUG
+	mdelay(10);
+#endif	
 	ast2600_sdramphy_show_status(priv);
 	ast2600_sdrammc_calc_size(priv);
 
