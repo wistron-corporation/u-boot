@@ -120,7 +120,7 @@ DECLARE_GLOBAL_DATA_PTR;
  * Bandwidth configuration parameters for different SDRAM requests.
  * These are hardcoded settings taken from Aspeed SDK.
  */
-#ifdef CONFIG_FPGA_ASPEED
+ #ifdef CONFIG_FPGA_ASPEED
 static const u32 ddr4_ac_timing[4] = {0x030C0207, 0x04451133, 0x0E010200,
                                       0x00000140};
 
@@ -132,7 +132,7 @@ static const u32 ddr4_ac_timing[4] = {0x040e0307, 0x0f4711f1, 0x0e060304,
 
 static const u32 ddr_max_grant_params[4] = {0x44444444, 0x44444444, 0x44444444,
                                             0x44444444};
-#endif                                            
+#endif  
 
 struct dram_info {
 	struct ram_info info;
@@ -149,36 +149,28 @@ static void ast2600_sdramphy_kick_training(struct dram_info *info)
 {
 #ifndef CONFIG_FPGA_ASPEED
         struct ast2600_sdrammc_regs *regs = info->regs;
-        u32 data;
-
-	writel(0, &regs->phy_ctrl[0]);
-	udelay(5000);
+        u32 volatile data;
+	
         writel(SDRAM_PHYCTRL0_NRST, &regs->phy_ctrl[0]);
-	udelay(1000);
+	udelay(5);
         writel(SDRAM_PHYCTRL0_NRST | SDRAM_PHYCTRL0_INIT, &regs->phy_ctrl[0]);
 	udelay(1000);
-        /* wait for (PLL_LOCKED == 1) and (INIT == 0) */
-	debug("%s: wait for PHY PLL lock\n", __func__);
+
 	while (1) {
-		data = readl(&regs->phy_ctrl[0]) & SDRAM_PHYCTRL0_PLL_LOCKED;
-		if (data) {
-			break;
-		}
-	}
-	
-	debug("%s: wait for PHY init done\n", __func__);
-	while (1) {
-		data = readl(&regs->phy_ctrl[0]) | SDRAM_PHYCTRL0_INIT;
-		if (~data) {
+		data = readl(&regs->phy_ctrl[0]) & SDRAM_PHYCTRL0_INIT;
+		if (~data) {			
 			break;
 		}
 	}
 
-#ifdef CONFIG_ASPEED_DDR4_800
-	do {
-		data = readl(0x1e6e0400);
-	} while((data & 0x7) != 0x7);
-#endif
+#if 0
+	while (1) {
+		data = readl(0x1e6e0400) & BIT(1);
+		if (data) {			
+			break;
+		}
+	}
+#endif	
 #endif
 }
 
@@ -450,8 +442,8 @@ static size_t ast2600_sdrammc_get_vga_mem_size(struct dram_info *info)
 
 	clrsetbits_le32(&info->regs->config, SDRAM_CONF_VGA_SIZE_MASK,
 			((vga_hwconf << SDRAM_CONF_VGA_SIZE_SHIFT) &
-			 SDRAM_CONF_VGA_SIZE_MASK));
-	
+			 SDRAM_CONF_VGA_SIZE_MASK));	    
+
 	return vga_mem_size_base << vga_hwconf;
 }
 #ifdef CONFIG_FPGA_ASPEED
@@ -649,17 +641,12 @@ static int ast2600_sdrammc_init_ddr4(struct dram_info *info)
                                MCR34_ODT_EN | MCR34_ODT_AUTO_ON |
                                (0x1 << MCR34_ODT_EXT_SHIFT);
 
-#ifdef CONFIG_ASPEED_DDR4_DUALX8
-	setbits_le32(&info->regs->config, SDRAM_CONF_DDR4 | SDRAM_CONF_DUALX8);
-#else
-	setbits_le32(&info->regs->config, SDRAM_CONF_DDR4);
-#endif	
-
         /* init SDRAM-PHY only on real chip */
 	ast2600_sdramphy_init(ast2600_sdramphy_config, info);
-	ast2600_sdramphy_kick_training(info);
         writel((MCR34_CKE_EN | MCR34_MREQI_DIS | MCR34_RESETN_DIS),
                &info->regs->power_ctrl);
+	udelay(5);	       
+	ast2600_sdramphy_kick_training(info);
 	udelay(500);
         writel(SDRAM_RESET_DLL_ZQCL_EN, &info->regs->refresh_timing);
 
@@ -733,19 +720,19 @@ static void ast2600_sdrammc_common_init(struct ast2600_sdrammc_regs *regs)
 {
 	int i;
 
-        writel(SDRAM_VIDEO_UNLOCK_KEY, &regs->gm_protection_key);
         writel(MCR34_MREQI_DIS | MCR34_RESETN_DIS, &regs->power_ctrl);
+        writel(SDRAM_VIDEO_UNLOCK_KEY, &regs->gm_protection_key);
         writel(0x10 << MCR38_RW_MAX_GRANT_CNT_RQ_SHIFT,
                &regs->arbitration_ctrl);
-        writel(0xFFFFFFFF, &regs->req_limit_mask);
+        writel(0xFFBBFFF4, &regs->req_limit_mask);
 
-        for (i = 0; i < ARRAY_SIZE(ddr_max_grant_params); ++i)
-                writel(ddr_max_grant_params[i], &regs->max_grant_len[i]);
+	for (i = 0; i < ARRAY_SIZE(ddr_max_grant_params); ++i)
+                writel(ddr_max_grant_params[i], &regs->max_grant_len[i]);	
 
         writel(MCR50_RESET_ALL_INTR, &regs->intr_ctrl);
 
         /* FIXME: the sample code does NOT match the datasheet */
-        writel(0x7FFFFFF, &regs->ecc_range_ctrl);
+        writel(0x07FFFFFF, &regs->ecc_range_ctrl);
 
         writel(0, &regs->ecc_test_ctrl);
         writel(0, &regs->test_addr);
@@ -755,11 +742,13 @@ static void ast2600_sdrammc_common_init(struct ast2600_sdrammc_regs *regs)
         writel(0xFFFFFFFF, &regs->req_input_ctrl);
         writel(0, &regs->req_high_pri_ctrl);
 
-        udelay(500);
+        udelay(600);
 
-	/* set capacity to the max size */
-        clrsetbits_le32(&regs->config, SDRAM_CONF_CAP_MASK,
-                        SDRAM_CONF_CAP_2048M);
+#ifdef CONFIG_ASPEED_DDR4_DUALX8
+	writel(0x37, &regs->config);
+#else
+	writel(0x17, &regs->config);
+#endif
 
 	/* load controller setting */
 	for (i = 0; i < ARRAY_SIZE(ddr4_ac_timing); ++i)
@@ -816,7 +805,7 @@ static int ast2600_sdrammc_probe(struct udevice *dev)
 		return ret;
 	}
 	clk_set_rate(&priv->ddr_clk, priv->clock_rate);
-#endif	
+#endif
 
 #if 0
 	/* FIXME: enable the following code if reset-driver is ready */
@@ -836,7 +825,7 @@ static int ast2600_sdrammc_probe(struct udevice *dev)
 
 	ast2600_sdrammc_unlock(priv);
 	ast2600_sdrammc_common_init(regs);
-
+	
 	if (readl(priv->scu + AST_SCU_HW_STRAP) & SCU_HWSTRAP_DDR3) {
 		debug("Unsupported SDRAM type: DDR3\n");
 		return -EINVAL;
@@ -851,7 +840,7 @@ static int ast2600_sdrammc_probe(struct udevice *dev)
 	ast2600_sdramphy_show_status(priv);
 	ast2600_sdrammc_calc_size(priv);
 
-	if (0 != ast2600_sdrammc_test(priv)) {
+        if (0 != ast2600_sdrammc_test(priv)) {
 		printf("%s: DDR4 init fail\n", __func__);
 		return -EINVAL;
 	}
