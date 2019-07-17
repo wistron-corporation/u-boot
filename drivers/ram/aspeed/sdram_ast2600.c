@@ -388,7 +388,7 @@ static int ast2600_sdrammc_test(struct dram_info *info)
 
 	u32 pass_cnt = 0;
 	u32 fail_cnt = 0;
-	u32 target_cnt = 4;
+	u32 target_cnt = 2;
 	u32 test_cnt = 0;
 	u32 pattern;
 	u32 i = 0;
