@@ -877,12 +877,13 @@ static ulong ast2600_enable_sdclk(struct ast2600_scu *scu)
 	reset_bit = BIT(ASPEED_RESET_SD - 32);
 	clkstop_bit = BIT(SCU_CLKSTOP_SDIO);
 
-	writel(reset_bit, &scu->sysreset_clr_ctrl2);
+	writel(reset_bit, &scu->sysreset_ctrl2);
+
 	udelay(100);
 	//enable clk 
 	writel(clkstop_bit, &scu->clk_stop_clr_ctrl2);
 	mdelay(10);
-	writel(reset_bit, &scu->sysreset_ctrl2);
+	writel(reset_bit, &scu->sysreset_clr_ctrl2);
 
 	return 0;
 }
@@ -898,9 +899,9 @@ static ulong ast2600_enable_extsdclk(struct ast2600_scu *scu)
 
 	enableclk_bit = BIT(SCU_CLKSTOP_EXTSD);
 
-	//default use apll for clock source 800/2 = 400
+	//default use apll for clock source 800/4 = 200 : controller max is 200mhz
 	clk_sel &= ~SCU_CLK_SD_MASK;
-	clk_sel |= SCU_CLK_SD_DIV(0) | BIT(8);
+	clk_sel |= SCU_CLK_SD_DIV(1) | BIT(8);
 	writel(clk_sel, &scu->clk_sel4);
 	
 	//enable clk 
@@ -918,12 +919,12 @@ static ulong ast2600_enable_emmcclk(struct ast2600_scu *scu)
 	reset_bit = BIT(ASPEED_RESET_EMMC);
 	clkstop_bit = BIT(SCU_CLKSTOP_EMMC);
 
-	writel(reset_bit, &scu->sysreset_clr_ctrl1);
+	writel(reset_bit, &scu->sysreset_ctrl1);
 	udelay(100);
 	//enable clk 
 	writel(clkstop_bit, &scu->clk_stop_clr_ctrl1);
 	mdelay(10);
-	writel(reset_bit, &scu->sysreset_ctrl2);
+	writel(reset_bit, &scu->sysreset_clr_ctrl1);
 
 	return 0;
 }
