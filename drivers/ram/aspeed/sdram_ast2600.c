@@ -766,7 +766,7 @@ static int ast2600_sdrammc_probe(struct udevice *dev)
 	struct ast2600_sdrammc_regs *regs = priv->regs;
 	struct udevice *clk_dev;
 	int ret;
-	uint32_t reg;
+	volatile uint32_t reg;
 
 	/* find SCU base address from clock device */
 	ret = uclass_get_device_by_driver(UCLASS_CLK, DM_GET_DRIVER(aspeed_scu),
@@ -837,9 +837,11 @@ static int ast2600_sdrammc_probe(struct udevice *dev)
         ast2600_sdrammc_search_read_window(priv);
 #endif
 
-#ifndef DEBUG
-	mdelay(10);
-#endif	
+	/* make sure DDR-PHY is ready before access */
+	do {
+		reg = readl(priv->phy_status) & BIT(1);
+	} while(reg == 0);
+
 	ast2600_sdramphy_show_status(priv);
 	ast2600_sdrammc_calc_size(priv);
 
