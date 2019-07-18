@@ -14,7 +14,7 @@
 
 	aliases {
 		spi0 = &fmc;
-#ifdef CONFIG_FPGA_ASPEED
+#if 0
 		ethernet0 = &mac0;
 #else		
 		ethernet1 = &mac1;
@@ -52,7 +52,7 @@
 	status = "okay";
 };
 
-#ifdef CONFIG_FPGA_ASPEED
+#if 0
 &mac0 {
 	status = "okay";
 	phy-mode = "rgmii";
