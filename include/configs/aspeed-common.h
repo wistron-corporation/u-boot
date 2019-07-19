@@ -36,16 +36,12 @@
 #define CONFIG_SYS_INIT_RAM_SIZE	(36*1024)
 #endif
 
-#define SYS_INIT_RAM_END		(CONFIG_SYS_INIT_RAM_ADDR \
-					 + CONFIG_SYS_INIT_RAM_SIZE)
-#define CONFIG_SYS_INIT_SP_ADDR		(SYS_INIT_RAM_END \
-					 - GENERATED_GBL_DATA_SIZE)
+#define SYS_INIT_RAM_END \
+	(CONFIG_SYS_INIT_RAM_ADDR + CONFIG_SYS_INIT_RAM_SIZE)
+#define CONFIG_SYS_INIT_SP_ADDR \
+	(SYS_INIT_RAM_END - GENERATED_GBL_DATA_SIZE)
 
 #define CONFIG_SYS_MALLOC_LEN		(32 << 20)
-
-/*
- * NS16550 Configuration
- */
 
 /*
  * BOOTP options
@@ -55,7 +51,6 @@
 /*
  * Miscellaneous configurable options
  */
-
 #define CONFIG_BOOTCOMMAND		"bootm 20080000 20400000 20070000"
 #define CONFIG_ENV_OVERWRITE
 
@@ -64,4 +59,9 @@
 	"spi_dma=yes\0" \
 	""
 
+/*
+ * Ethernet related
+ */
+#define PHY_ANEG_TIMEOUT		800
+#define CONFIG_PHY_GIGE
 #endif	/* __ASPEED_COMMON_CONFIG_H */

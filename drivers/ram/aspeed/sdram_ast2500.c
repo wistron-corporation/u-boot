@@ -15,10 +15,23 @@
 #include <asm/io.h>
 #include <asm/arch/scu_ast2500.h>
 #include <asm/arch/sdram_ast2500.h>
-#include <asm/arch/wdt.h>
 #include <linux/err.h>
 #include <linux/kernel.h>
 #include <dt-bindings/clock/ast2500-clock.h>
+
+/* in order to speed up DRAM init time, write pre-defined values to registers
+ * directly */
+#define AST2500_SDRAMMC_MANUAL_CLK
+
+/* bit-field of m_pll_param */
+#define SCU_MPLL_FREQ_MASK		(SCU_MPLL_DENUM_MASK | SCU_MPLL_NUM_MASK | SCU_MPLL_POST_MASK)
+#define SCU_MPLL_FREQ_400M		0x93002400
+#define SCU_MPLL_FREQ_360M		0x930023A0
+#define SCU_MPLL_FREQ_CFG		SCU_MPLL_FREQ_360M
+
+#define SCU_MPLL_TURN_OFF		BIT(19)
+#define SCU_MPLL_BYPASS			BIT(20)
+#define SCU_MPLL_RESET			BIT(21)
 
 /* These configuration parameters are taken from Aspeed SDK */
 #define DDR4_MR46_MODE		0x08000000
@@ -333,6 +346,7 @@ static int ast2500_sdrammc_probe(struct udevice *dev)
 	struct udevice *clk_dev;
 	int i;
 	int ret = clk_get_by_index(dev, 0, &priv->ddr_clk);
+	uint32_t reg;
 
 	if (ret) {
 		debug("DDR:No CLK\n");
@@ -353,14 +367,30 @@ static int ast2500_sdrammc_probe(struct udevice *dev)
 		return PTR_ERR(priv->scu);
 	}
 
+	if (readl(&priv->scu->vga_handshake[0]) & (0x1 << 6)) {
+		printf("%s(): DDR SDRAM had been initialized\n", __func__);
+		ast2500_sdrammc_calc_size(priv);
+		return 0;
+	}
+
+#ifdef AST2500_SDRAMMC_MANUAL_CLK
+	reg = readl(&priv->scu->m_pll_param);
+	reg |= (SCU_MPLL_RESET | SCU_MPLL_TURN_OFF);
+	writel(reg, &priv->scu->m_pll_param);
+	reg &= ~(SCU_MPLL_RESET | SCU_MPLL_TURN_OFF| SCU_MPLL_FREQ_MASK);
+	reg |= SCU_MPLL_FREQ_CFG;
+	writel(reg, &priv->scu->m_pll_param);
+#else
 	clk_set_rate(&priv->ddr_clk, priv->clock_rate);
+#endif
+
+#if 0
 	ret = reset_get_by_index(dev, 0, &reset_ctl);
 	if (ret) {
 		debug("%s(): Failed to get reset signal\n", __func__);
 		return ret;
 	}
 
-#if 0
 	ret = reset_assert(&reset_ctl);
 	if (ret) {
 		debug("%s(): SDRAM reset failed: %u\n", __func__, ret);
@@ -398,19 +428,13 @@ static int ast2500_sdrammc_probe(struct udevice *dev)
 static int ast2500_sdrammc_ofdata_to_platdata(struct udevice *dev)
 {
 	struct dram_info *priv = dev_get_priv(dev);
-	struct regmap *map;
 	int ret;
 
-	ret = regmap_init_mem(dev_ofnode(dev), &map);
-	if (ret)
-		return ret;
-
-	priv->regs = regmap_get_range(map, 0);
-	priv->phy = regmap_get_range(map, 1);
+	priv->regs = (void *)(uintptr_t)devfdt_get_addr_index(dev, 0);
+	priv->phy = (void *)(uintptr_t)devfdt_get_addr_index(dev, 1);
 
 	priv->clock_rate = fdtdec_get_int(gd->fdt_blob, dev_of_offset(dev),
 					  "clock-frequency", 0);
-
 	if (!priv->clock_rate) {
 		debug("DDR Clock Rate not defined\n");
 		return -EINVAL;

@@ -33,6 +33,7 @@ static int aspeed_sdhci_probe(struct udevice *dev)
 	struct mmc_uclass_priv *upriv = dev_get_uclass_priv(dev);
 	struct aspeed_sdhci_plat *plat = dev_get_platdata(dev);
 	struct aspeed_sdhci_priv *prv = dev_get_priv(dev);
+	int node = dev_of_offset(dev);
 	struct sdhci_host *host = prv->host;
 	unsigned long clock;
 	struct clk clk;
@@ -52,8 +53,34 @@ static int aspeed_sdhci_probe(struct udevice *dev)
 
 	debug("%s: CLK %ld\n", __func__, clock);
 
+	//1: sd card pwr, 0: no pwr
+	gpio_request_by_name_nodev(offset_to_ofnode(node), "pwr-gpios", 0,
+				   &host->pwr_gpio, GPIOD_IS_OUT);
+	if (dm_gpio_is_valid(&host->pwr_gpio)) {
+		printf("\n");
+		dm_gpio_set_value(&host->pwr_gpio, 1);
+		if (ret) {
+			debug("MMC not configured\n");
+			return ret;
+		}
+	}
+
+	//1: 3.3v, 0: 1.8v
+	gpio_request_by_name_nodev(offset_to_ofnode(node), "pwr-sw-gpios", 0,
+				   &host->pwr_sw_gpio, GPIOD_IS_OUT);
+
+	if (dm_gpio_is_valid(&host->pwr_sw_gpio)) {
+		dm_gpio_set_value(&host->pwr_sw_gpio, 1);
+		if (ret) {
+			debug("MMC not configured\n");
+			return ret;
+		}
+	}
+
 //	host->quirks = SDHCI_QUIRK_WAIT_SEND_CMD;
 	host->max_clk = clock;
+
+	host->bus_width = dev_read_u32_default(dev, "bus-width", 4);
 
 	if (host->bus_width == 8)
 		host->host_caps |= MMC_MODE_8BIT;
@@ -77,10 +104,10 @@ static int aspeed_sdhci_ofdata_to_platdata(struct udevice *dev)
 	priv->host = calloc(1, sizeof(struct sdhci_host));
 	if (!priv->host)
 			return -1;
-	
+
 	priv->host->name = dev->name;
 	priv->host->ioaddr = (void *)dev_read_addr(dev);
-	
+
 	return 0;
 }
 
@@ -93,6 +120,8 @@ static int aspeed_sdhci_bind(struct udevice *dev)
 
 static const struct udevice_id aspeed_sdhci_ids[] = {
 	{ .compatible = "aspeed,sdhci-ast2500" },
+	{ .compatible = "aspeed,sdhci-ast2600" },
+	{ .compatible = "aspeed,emmc-ast2600" },
 	{ }
 };
 

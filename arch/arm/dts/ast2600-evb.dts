@@ -14,8 +14,13 @@
 
 	aliases {
 		spi0 = &fmc;
+#if 0
 		ethernet0 = &mac0;
+#else		
 		ethernet1 = &mac1;
+		ethernet2 = &mac2;
+		ethernet3 = &mac3;
+#endif		
 	};
 };
 
@@ -47,6 +52,7 @@
 	status = "okay";
 };
 
+#if 0
 &mac0 {
 	status = "okay";
 	phy-mode = "rgmii";
@@ -54,16 +60,28 @@
 	pinctrl-names = "default";
 	pinctrl-0 = <&pinctrl_mac1link_default &pinctrl_mdio1_default>;
 };
-
-#if 0
+#else
 &mac1 {
 	status = "okay";
 	phy-mode = "rgmii";
 	pinctrl-names = "default";
 	pinctrl-0 = <&pinctrl_mac2link_default &pinctrl_mdio2_default>;
 };
-#endif
 
+&mac2 {
+	status = "okay";
+	phy-mode = "rgmii";
+	pinctrl-names = "default";
+	pinctrl-0 = <&pinctrl_mac3link_default &pinctrl_mdio3_default>;
+};
+
+&mac3 {
+	status = "okay";
+	phy-mode = "rgmii";
+	pinctrl-names = "default";
+	pinctrl-0 = <&pinctrl_mac4link_default &pinctrl_mdio4_default>;
+};
+#endif
 &fmc {
 	status = "okay";
 	flash@0 {
@@ -81,6 +99,33 @@
                 spi-tx-bus-width = <2>;
                 spi-rx-bus-width = <2>;
         };
+};
+
+#if 0
+&sdhci_slot0 {
+	status = "okay";
+	bus-width = <4>;
+	pwr-gpios = <&gpio0 ASPEED_GPIO(V, 0) GPIO_ACTIVE_HIGH>;
+	pwr-sw-gpios = <&gpio0 ASPEED_GPIO(V, 1) GPIO_ACTIVE_HIGH>;
+	pinctrl-names = "default";
+	pinctrl-0 = <&pinctrl_sd1_default>;
+};
+
+&sdhci_slot1 {
+	status = "okay";
+	bus-width = <4>;
+    pwr-gpios = <&gpio0 ASPEED_GPIO(V, 2) GPIO_ACTIVE_HIGH>;
+    pwr-sw-gpios = <&gpio0 ASPEED_GPIO(V, 3) GPIO_ACTIVE_HIGH>;
+	pinctrl-names = "default";
+	pinctrl-0 = <&pinctrl_sd2_default>;
+};
+#endif
+
+&emmc_slot0 {
+	status = "okay";
+	bus-width = <4>;
+	pinctrl-names = "default";
+	pinctrl-0 = <&pinctrl_emmc_default>;
 };
 
 &i2c0 {

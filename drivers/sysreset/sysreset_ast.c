@@ -9,7 +9,6 @@
 #include <sysreset.h>
 #include <wdt.h>
 #include <asm/io.h>
-#include <asm/arch/wdt.h>
 #include <linux/err.h>
 
 static int ast_sysreset_request(struct udevice *dev, enum sysreset_t type)
@@ -20,17 +19,6 @@ static int ast_sysreset_request(struct udevice *dev, enum sysreset_t type)
 
 	if (ret)
 		return ret;
-
-	switch (type) {
-	case SYSRESET_WARM:
-		reset_mode = WDT_CTRL_RESET_CPU;
-		break;
-	case SYSRESET_COLD:
-		reset_mode = WDT_CTRL_RESET_CHIP;
-		break;
-	default:
-		return -EPROTONOSUPPORT;
-	}
 
 	ret = wdt_expire_now(wdt, reset_mode);
 	if (ret) {

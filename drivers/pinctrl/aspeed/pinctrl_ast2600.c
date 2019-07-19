@@ -46,69 +46,95 @@ static int ast2600_pinctrl_probe(struct udevice *dev)
 }
 
 static struct aspeed_sig_desc mac1_link[] = {
-	{ 0x410, BIT(4), 0	},
+#ifdef CONFIG_FPGA_ASPEED
+	{ 0x410, BIT(4), 0 },
+#else
+	{ 0x400, GENMASK(11, 0), 0 },
+	{ 0x410, BIT(4), 0 },
+	{ 0x470, BIT(4), 1 },
+#endif
 };
 
 static struct aspeed_sig_desc mac2_link[] = {
+	{ 0x400, GENMASK(23, 12), 0 },
 	{ 0x410, BIT(5), 0	},
+	{ 0x470, BIT(5), 1 },
 };
 
-static struct aspeed_sig_desc mac3_link[] = {
-	{ 0x410, BIT(6), 0	},
+static struct aspeed_sig_desc mac3_link[] = {	
+	{ 0x410, GENMASK(27, 16), 0	},
+	{ 0x410, BIT(6), 0		},
+	{ 0x470, BIT(6), 1      	},
 };
 
 static struct aspeed_sig_desc mac4_link[] = {
-	{ 0x410, BIT(7), 0	},
+	{ 0x410, GENMASK(31, 28), 1	},
+	{ 0x4b0, GENMASK(31, 28), 0	},
+	{ 0x474, GENMASK(7, 0), 1	},
+	{ 0x414, GENMASK(7, 0), 1	},
+	{ 0x4b4, GENMASK(7, 0), 0	},
+	{ 0x410, BIT(7), 0		},
+	{ 0x470, BIT(7), 1		},
 };
 
 static struct aspeed_sig_desc mdio1_link[] = {
-	{ 0x430, BIT(17), 0	},
+	{ 0x430, BIT(17) | BIT(16), 0	},
 };
 
 static struct aspeed_sig_desc mdio2_link[] = {
-	{ 0x410, BIT(14) | BIT(13), 0	},
+	{ 0x470, BIT(13) | BIT(12), 1	},
+	{ 0x410, BIT(13) | BIT(12), 0	},
 };
 
 static struct aspeed_sig_desc mdio3_link[] = {
+	{ 0x470, BIT(1) | BIT(0), 1	},
 	{ 0x410, BIT(1) | BIT(0), 0	},
 };
 
 static struct aspeed_sig_desc mdio4_link[] = {
+	{ 0x470, BIT(3) | BIT(2), 1	},
 	{ 0x410, BIT(3) | BIT(2), 0	},
 };
 
-//8bit mode offset 0x414 (21~18) 0x450 bit0: sd0 bit1: sd1,  bit3: sd0 8bits
-
-
 static struct aspeed_sig_desc sdio2_link[] = {
+	{ 0x414, GENMASK(23, 16), 1	},
 	{ 0x4B4, GENMASK(23, 16), 0	},
 	{ 0x450, BIT(1), 0		},
-	{ 0x414, GENMASK(23, 16), 0	},
 };
 
-//sdio1 414 (23~16) = 0, 4b4 (23~16) = 1, 450 bit1 = 1
 static struct aspeed_sig_desc sdio1_link[] = {
 	{ 0x414, GENMASK(15, 8), 0	},
-	{ 0x4b4, GENMASK(23, 16), 0	},
-	{ 0x450, BIT(0), 0	},
+};	
+
+//when sdio1 8bits, sdio2 can't use
+static struct aspeed_sig_desc sdio1_8bit_link[] = {
+	{ 0x414, GENMASK(15, 8), 0	},
+	{ 0x4b4, GENMASK(21, 18), 0	},
+	{ 0x450, BIT(3), 0	},
+	{ 0x450, BIT(1), 1	},
 };	
 
 static struct aspeed_sig_desc emmc_link[] = {
 	{ 0x400, GENMASK(31, 24), 0 },
+#if 0	//8bit emmc	
 	{ 0x404, GENMASK(3, 0), 0 },
+	{ 0x500, BIT(3), 1 },
+	{ 0x500, BIT(5), 1 },
+#endif	
 };
 
 static const struct aspeed_group_config ast2600_groups[] = {
-	{ "MAC1LINK", 1, mac1_link },
-	{ "MAC2LINK", 1, mac2_link },
-	{ "MAC3LINK", 1, mac3_link },
-	{ "MAC4LINK", 1, mac4_link },
-	{ "MDIO1", 1, mdio1_link },
-	{ "MDIO2", 1, mdio2_link },
-	{ "MDIO3", 1, mdio3_link },
-	{ "MDIO4", 1, mdio4_link },
-	{ "SDIO1", ARRAY_SIZE(sdio2_link), sdio2_link },
-	{ "SDIO0", ARRAY_SIZE(sdio1_link), sdio1_link },
+	{ "MAC1LINK", ARRAY_SIZE(mac1_link), mac1_link },
+	{ "MAC2LINK", ARRAY_SIZE(mac2_link), mac2_link },
+	{ "MAC3LINK", ARRAY_SIZE(mac3_link), mac3_link },
+	{ "MAC4LINK", ARRAY_SIZE(mac4_link), mac4_link },
+	{ "MDIO1", ARRAY_SIZE(mdio1_link), mdio1_link },
+	{ "MDIO2", ARRAY_SIZE(mdio2_link), mdio2_link },
+	{ "MDIO3", ARRAY_SIZE(mdio3_link), mdio3_link },
+	{ "MDIO4", ARRAY_SIZE(mdio4_link), mdio4_link },
+	{ "SD1", ARRAY_SIZE(sdio1_link), sdio1_link },
+	{ "SD1_8bits", ARRAY_SIZE(sdio1_8bit_link), sdio1_8bit_link },
+	{ "SD2", ARRAY_SIZE(sdio2_link), sdio2_link },
 	{ "EMMC", ARRAY_SIZE(emmc_link), emmc_link },
 };
 
@@ -133,16 +159,24 @@ static int ast2600_pinctrl_group_set(struct udevice *dev, unsigned selector,
 	struct ast2600_pinctrl_priv *priv = dev_get_priv(dev);
 	const struct aspeed_group_config *config;
 	const struct aspeed_sig_desc *descs;
-	u32 ctrl_reg = (u32)&priv->scu;
+	u32 ctrl_reg = (u32)priv->scu;
+	u32 i;
 
 	debug("PINCTRL: group_set <%u, %u>\n", selector, func_selector);
 	if (selector >= ARRAY_SIZE(ast2600_groups))
 		return -EINVAL;
 
 	config = &ast2600_groups[selector];
-	descs = config->descs;
-
-	setbits_le32(ctrl_reg + descs->offset, descs->reg_set);
+	for (i = 0; i < config->ndescs; i++) {
+		descs = &config->descs[i];
+		if (descs->clr) {
+			clrbits_le32((u32)ctrl_reg + descs->offset,
+				     descs->reg_set);
+		} else {
+			setbits_le32((u32)ctrl_reg + descs->offset,
+				     descs->reg_set);
+		}
+	}
 
 	return 0;
 }

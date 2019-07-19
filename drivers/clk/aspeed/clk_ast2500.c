@@ -165,7 +165,7 @@ static u32 ast2500_get_sdio_clk_rate(struct ast2500_scu *scu)
 	return (clkin / div);
 }
 
-static u32 ast2500_get_uart_clk_rate(struct ast2500_scu *scu, int uart_index)
+static u32 ast2500_get_uart_clk_rate(struct ast2500_scu *scu, int uart_idx)
 {
 	/*
 	 * ast2500 datasheet is very confusing when it comes to UART clocks,
@@ -177,7 +177,7 @@ static u32 ast2500_get_uart_clk_rate(struct ast2500_scu *scu, int uart_index)
 	u32 uart_clkin;
 
 	if (readl(&scu->misc_ctrl2) &
-	    (1 << (uart_index - 1 + SCU_MISC2_UARTCLK_SHIFT)))
+	    (1 << (uart_idx - 1 + SCU_MISC2_UARTCLK_SHIFT)))
 		uart_clkin = 192 * 1000 * 1000;
 	else
 		uart_clkin = 24 * 1000 * 1000;
@@ -199,6 +199,12 @@ static ulong ast2500_clk_get_rate(struct clk *clk)
 		break;
 	case ASPEED_CLK_MPLL:
 		rate = ast2500_get_mpll_rate(priv->scu);
+		break;
+	case ASPEED_CLK_DPLL:
+		rate = ast2500_get_dpll_rate(priv->scu);
+		break;	
+	case ASPEED_CLK_D2PLL:
+		rate = ast2500_get_d2pll_rate(priv->scu);
 		break;
 	case ASPEED_CLK_AHB:
 		rate = ast2500_get_hclk(priv->scu);
@@ -597,6 +603,67 @@ static int ast2500_clk_bind(struct udevice *dev)
 
 	return 0;
 }
+
+#if CONFIG_IS_ENABLED(CMD_CLK)
+struct aspeed_clks {
+	ulong id;
+	const char *name;
+};
+
+static struct aspeed_clks aspeed_clk_names[] = {
+	{ ASPEED_CLK_HPLL, "hpll" },
+	{ ASPEED_CLK_MPLL, "mpll" },
+	{ ASPEED_CLK_DPLL, "dpll" },
+	{ ASPEED_CLK_D2PLL, "d2pll" },
+	{ ASPEED_CLK_AHB, "hclk" },
+	{ ASPEED_CLK_APB, "pclk" },
+};
+
+int soc_clk_dump(void)
+{
+	struct udevice *dev;
+	struct clk clk;
+	unsigned long rate;
+	int i, ret;
+
+	ret = uclass_get_device_by_driver(UCLASS_CLK,
+					  DM_GET_DRIVER(aspeed_scu), &dev);
+	if (ret)
+		return ret;
+
+	printf("Clk\t\tHz\n");
+
+	for (i = 0; i < ARRAY_SIZE(aspeed_clk_names); i++) {
+		clk.id = aspeed_clk_names[i].id;
+		ret = clk_request(dev, &clk);
+		if (ret < 0) {
+			debug("%s clk_request() failed: %d\n", __func__, ret);
+			continue;
+		}
+
+		ret = clk_get_rate(&clk);
+		rate = ret;
+
+		clk_free(&clk);
+
+		if (ret == -ENOTSUPP) {
+			printf("clk ID %lu not supported yet\n",
+			       aspeed_clk_names[i].id);
+			continue;
+		}
+		if (ret < 0) {
+			printf("%s %lu: get_rate err: %d\n",
+			       __func__, aspeed_clk_names[i].id, ret);
+			continue;
+		}
+
+		printf("%s(%3lu):\t%lu\n",
+		       aspeed_clk_names[i].name, aspeed_clk_names[i].id, rate);
+	}
+
+	return 0;
+}
+#endif
 
 static const struct udevice_id ast2500_clk_ids[] = {
 	{ .compatible = "aspeed,ast2500-scu" },

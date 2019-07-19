@@ -663,8 +663,13 @@ bypass_USB_init:
     ldr   r1, =0xFC600309
     str   r1, [r0]
     
+#ifdef CONFIG_SPL_BUILD
+    /* SPL: leave the rest to U-Boot proper */
+    mov   pc, lr
+#else
     /* skip SDRAM initialization (will be done in C function) */
     b     platform_exit
+#endif
 
     /* Check Scratch Register Bit 6 */
     ldr   r0, =0x1e6e2040

@@ -268,6 +268,7 @@
 				reg-shift = <2>;
 				interrupts = <9>;
 				clocks = <&scu ASPEED_CLK_GATE_UART1CLK>;
+				clock-frequency = <24000000>;
 				no-loopback-test;
 				status = "disabled";
 			};
@@ -278,6 +279,7 @@
 				reg-shift = <2>;
 				interrupts = <10>;
 				clocks = <&scu ASPEED_CLK_GATE_UART5CLK>;
+				clock-frequency = <24000000>;
 				no-loopback-test;
 				status = "disabled";
 			};
@@ -379,6 +381,7 @@
 				reg-shift = <2>;
 				interrupts = <32>;
 				clocks = <&scu ASPEED_CLK_GATE_UART2CLK>;
+				clock-frequency = <24000000>;
 				no-loopback-test;
 				status = "disabled";
 			};
@@ -389,6 +392,7 @@
 				reg-shift = <2>;
 				interrupts = <33>;
 				clocks = <&scu ASPEED_CLK_GATE_UART3CLK>;
+				clock-frequency = <24000000>;
 				no-loopback-test;
 				status = "disabled";
 			};
@@ -399,6 +403,7 @@
 				reg-shift = <2>;
 				interrupts = <34>;
 				clocks = <&scu ASPEED_CLK_GATE_UART4CLK>;
+				clock-frequency = <24000000>;
 				no-loopback-test;
 				status = "disabled";
 			};
@@ -420,6 +425,7 @@
 		reg = <0x0 0x40>;
 		interrupts = <12>;
 		interrupt-controller;
+		resets = <&rst ASPEED_RESET_I2C>;
 	};
 
 	i2c0: i2c-bus@40 {

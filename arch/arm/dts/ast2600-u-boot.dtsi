@@ -40,6 +40,3 @@
 	};
 };
 
-&i2cglobal {
-	resets = <&rst ASPEED_RESET_I2C>;
-};
