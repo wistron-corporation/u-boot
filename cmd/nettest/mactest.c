@@ -666,7 +666,7 @@ int mac_test(int argc, char * const argv[], uint32_t mode)
 		eng->reg.SCU_048_check   = ( eng->reg.SCU_048 & 0x03ffffff );
 		eng->reg.SCU_048_default =   SCU_48h_AST2500  & 0x03ffffff;
 
-		if ( eng->arg.ctrl.b.rmii_50m_out && !eng->run.is_rgmii ) {
+		if ( eng->arg.ctrl.b.rmii_50m_out && 0 == eng->run.is_rgmii ) {
 			switch ( eng->run.mac_idx ) {
 				case 1: eng->reg.SCU_048_mix = eng->reg.SCU_048_mix | 0x40000000; break;
 				case 0: eng->reg.SCU_048_mix = eng->reg.SCU_048_mix | 0x20000000; break;

@@ -179,7 +179,7 @@ void phy_out (MAC_ENGINE *eng, int adr) {
 void phy_dump (MAC_ENGINE *eng) {
         int        index;
 
-        printf("[PHY%d][%d]----------------\n", eng->run.MAC_idx + 1, eng->phy.Adr);
+        printf("[PHY%d][%d]----------------\n", eng->run.mac_idx + 1, eng->phy.Adr);
         for (index = 0; index < 32; index++) {
                 printf("%02d: %04x ", index, phy_read( eng, index ));
 
@@ -627,21 +627,17 @@ void phy_marvell3 (MAC_ENGINE *eng) {//88E3019
         // 10 => RMII
         // 11 => MII
         eng->phy.PHY_1ch = phy_read( eng, 28 );
-        if (!(p_eng->run.is_rgmii)) {
-                if ( ( eng->phy.PHY_1ch & 0x0c00 ) != 0x0800 ) {
-                        printf("\n\n[Warning] Register 28, bit 10~11 must be 2 (RMII Mode)[Reg1ch:%04x]\n\n", eng->phy.PHY_1ch);
-                        eng->phy.PHY_1ch = ( eng->phy.PHY_1ch & 0xf3ff ) | 0x0800;
-                        phy_write( eng, 28, eng->phy.PHY_1ch );
-//                      phy_write( eng,  0, phy_read( eng,  0 ) | 0x8000 );
-//                      phy_Wait_Reset_Done( eng );
-                }
-        } else {
+        if (eng->run.is_rgmii) {
                 if ( ( eng->phy.PHY_1ch & 0x0c00 ) != 0x0000 ) {
                         printf("\n\n[Warning] Register 28, bit 10~11 must be 0 (RGMIIRX Edge-align Mode)[Reg1ch:%04x]\n\n", eng->phy.PHY_1ch);
                         eng->phy.PHY_1ch = ( eng->phy.PHY_1ch & 0xf3ff ) | 0x0000;
                         phy_write( eng, 28, eng->phy.PHY_1ch );
-//                      phy_write( eng,  0, phy_read( eng,  0 ) | 0x8000 );
-//                      phy_Wait_Reset_Done( eng );
+                }
+        } else {
+                if ( ( eng->phy.PHY_1ch & 0x0c00 ) != 0x0800 ) {
+                        printf("\n\n[Warning] Register 28, bit 10~11 must be 2 (RMII Mode)[Reg1ch:%04x]\n\n", eng->phy.PHY_1ch);
+                        eng->phy.PHY_1ch = ( eng->phy.PHY_1ch & 0xf3ff ) | 0x0800;
+                        phy_write( eng, 28, eng->phy.PHY_1ch );
                 }
         }
 

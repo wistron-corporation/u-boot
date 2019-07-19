@@ -35,7 +35,6 @@
 
 //#define Enable_Runt
 //#define Enable_BufMerge
-//#define Disable_VGA
 //#define Enable_ShowBW
 
 #define AST2500_IOStageStep                    1

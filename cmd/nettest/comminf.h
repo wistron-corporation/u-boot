@@ -486,12 +486,8 @@ typedef struct {
 	uint8_t is_1g_valid[4];
 	uint8_t at_least_1g_valid;	
 	
-	uint8_t                 MAC34_vld;	
-
-	CHAR                 MHCLK_Ratio                   ;
-
-	uint32_t VGAMode                       ;
-	char                 VGAModeVld                    ;
+	uint8_t MAC34_vld;	
+	uint8_t MHCLK_Ratio;	
 } mac_env_t;
 
 typedef union {
