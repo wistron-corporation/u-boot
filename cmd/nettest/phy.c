@@ -34,9 +34,6 @@ int     GPIO_24h_Value;
 // PHY R/W basic
 //------------------------------------------------------------
 void phy_write (MAC_ENGINE *eng, int adr, uint32_t data) {
-#if defined(PHY_GPIO)
-        phy_gpio_write( eng, adr, data );
-#else
         int        timeout = 0;
 
         if ( eng->inf.NewMDIO ) {
@@ -73,7 +70,6 @@ void phy_write (MAC_ENGINE *eng, int adr, uint32_t data) {
                         }
                 }
         } // End if ( eng->inf.NewMDIO )
-#endif /* defined(PHY_GPIO) */
 
 #ifdef PHY_debug
         if ( 1 ) {
@@ -90,9 +86,6 @@ void phy_write (MAC_ENGINE *eng, int adr, uint32_t data) {
 uint32_t phy_read (MAC_ENGINE *eng, int adr) {
         uint32_t      read_value;
 
-#if defined(PHY_GPIO)
-        read_value = phy_gpio_read( eng, adr );
-#else
         int        timeout = 0;
 
         if ( eng->inf.NewMDIO ) {
@@ -137,7 +130,6 @@ uint32_t phy_read (MAC_ENGINE *eng, int adr) {
   #endif
                 read_value = Read_Reg_PHY_DD( eng, 0x64 ) >> 16;
         }
-#endif /* End defined(PHY_GPIO) */
 
 #ifdef PHY_debug
         if ( 1 ) {
@@ -847,7 +839,7 @@ void phy_realtek0 (MAC_ENGINE *eng) {//RTL8201E
                 if ( !eng->run.TM_Burst ) PRINTF( FP_LOG, "\n\n[Warning] Register 25, bit 10 must be 1 [Reg19h:%04x]\n\n", eng->phy.PHY_19h );
         }
         //Check TXC Input/Output Direction
-        if ( eng->arg.GEn_RMIIPHY_IN == 0 ) {
+        if ( eng->arg.ctrl.b.rmii_phy_in == 0 ) {
                 if ( ( eng->phy.PHY_19h & 0x0800 ) == 0x0800 ) {
                         phy_write( eng, 25, eng->phy.PHY_19h & 0xf7ff );
                         printf("\n\n[Warning] Register 25, bit 11 must be 0 (TXC should be output mode)[Reg19h:%04x]\n\n", eng->phy.PHY_19h);
@@ -1570,7 +1562,7 @@ void phy_realtek4 (MAC_ENGINE *eng) {//RTL8201F
                 if ( !eng->run.TM_Burst ) PRINTF( FP_LOG, "\n\n[Warning] Page 7 Register 16, bit 3 must be 1 [Reg10h_7:%04x]\n\n", eng->phy.PHY_10h );
         }
         //Check TXC Input/Output Direction
-        if ( eng->arg.GEn_RMIIPHY_IN == 0 ) {
+        if ( eng->arg.ctrl.b.rmii_phy_in == 0 ) {
                 if ( ( eng->phy.PHY_10h & 0x1000 ) == 0x1000 ) {
                         phy_write( eng, 16, eng->phy.PHY_10h & 0xefff );
                         printf("\n\n[Warning] Page 7 Register 16, bit 12 must be 0 (TXC should be output mode)[Reg10h_7:%04x]\n\n", eng->phy.PHY_10h);
@@ -2263,10 +2255,10 @@ BOOLEAN find_phyadr (MAC_ENGINE *eng)
         if ( PHY_IS_VALID( PHY_val ) ) {
                 ret = TRUE;
         }
-        else if ( eng->arg.GEn_SkipChkPHY ) {
+        else if ( eng->arg.ctrl.b.phy_skip_check ) {
                 PHY_val = phy_read( eng, PHY_REG_BMCR );
 
-                if ( ( PHY_val & 0x8000 ) & eng->arg.GEn_InitPHY ) {
+                if ( ( PHY_val & 0x8000 ) & eng->arg.ctrl.b.phy_init ) {
                 }
                 else {
                         ret = TRUE;
@@ -2276,7 +2268,7 @@ BOOLEAN find_phyadr (MAC_ENGINE *eng)
 #ifdef Enable_SearchPHYID
         if ( ret == FALSE ) {
                 // Scan PHY address from 0 to 31
-                if ( eng->arg.GEn_InitPHY )
+                if ( eng->arg.ctrl.b.phy_init )
                         printf("Search PHY address\n");
                 for ( eng->phy.Adr = 0; eng->phy.Adr < 32; eng->phy.Adr++ ) {
                         PHY_val = phy_read( eng, PHY_REG_ID_1 );
@@ -2291,7 +2283,7 @@ BOOLEAN find_phyadr (MAC_ENGINE *eng)
                 eng->phy.Adr = eng->arg.GPHYADR;
 #endif
 
-        if ( eng->arg.GEn_InitPHY ) {
+        if ( eng->arg.ctrl.b.phy_init ) {
                 if ( ret == TRUE ) {
                         if ( PHY_ADR_org != eng->phy.Adr ) {
                                 phy_id( eng, STD_OUT );
@@ -2311,15 +2303,15 @@ BOOLEAN find_phyadr (MAC_ENGINE *eng)
         eng->phy.PHY_ID2 = phy_read( eng, PHY_REG_ID_1 );
         eng->phy.PHY_ID3 = phy_read( eng, PHY_REG_ID_2 );
 
-        if      ( (eng->phy.PHY_ID2 == 0xffff) && ( eng->phy.PHY_ID3 == 0xffff ) && !eng->arg.GEn_SkipChkPHY ) {
+        if      ( (eng->phy.PHY_ID2 == 0xffff) && ( eng->phy.PHY_ID3 == 0xffff ) && !eng->arg.ctrl.b.phy_skip_check ) {
                 sprintf( eng->phy.PHYName, "--" );
-                if ( eng->arg.GEn_InitPHY )
+                if ( eng->arg.ctrl.b.phy_init )
                         FindErr( eng, Err_Flag_PHY_Type );
         }
 #ifdef Enable_CheckZeroPHYID
-        else if ( (eng->phy.PHY_ID2 == 0x0000) && ( eng->phy.PHY_ID3 == 0x0000 ) && !eng->arg.GEn_SkipChkPHY ) {
+        else if ( (eng->phy.PHY_ID2 == 0x0000) && ( eng->phy.PHY_ID3 == 0x0000 ) && !eng->arg.ctrl.b.phy_skip_check ) {
                 sprintf( eng->phy.PHYName, "--" );
-                if ( eng->arg.GEn_InitPHY )
+                if ( eng->arg.ctrl.b.phy_init )
                         FindErr( eng, Err_Flag_PHY_Type );
         }
 #endif
@@ -2408,25 +2400,14 @@ void phy_sel (MAC_ENGINE *eng, PHY_ENGINE *phyeng)
                 else if ( phy_chk( eng, 0x000f, 0xc4b1, 0xfff0      ) ) { sprintf( eng->phy.PHYName, "VSC8211"           ); phyeng->fp_set = phy_vitesse  ; phyeng->fp_clr = recov_phy_vitesse  ;}//VSC8211          1G/100/10M  RGMII
                 else if ( phy_chk( eng, 0x0007, 0x0421, 0xfff0      ) ) { sprintf( eng->phy.PHYName, "VSC8601"           ); phyeng->fp_set = phy_vitesse  ; phyeng->fp_clr = recov_phy_vitesse  ;}//VSC8601          1G/100/10M  RGMII
                 else if ( phy_chk( eng, 0x0007, 0x0431, 0xfff0      ) ) { sprintf( eng->phy.PHYName, "VSC8641"           ); phyeng->fp_set = phy_vitesse  ; phyeng->fp_clr = recov_phy_vitesse  ;}//VSC8641          1G/100/10M  RGMII
-#if defined(PHY_SPECIAL)                    
-                else if ( phy_chk( eng, 0x0143, 0xbd70, 0xfff0      ) ) { sprintf( eng->phy.PHYName, "[S]BCM5387/BCM5389"); phyeng->fp_set = 0            ; phyeng->fp_clr = 0                  ;}//BCM5389          1G/100/10M  RGMII(IMP Port)
-                else if ( phy_chk( eng, 0x0000, 0x0000, 0xfff0      ) ) { sprintf( eng->phy.PHYName, "[S]BCM5396"        ); phyeng->fp_set = 0            ; phyeng->fp_clr = 0                  ;}//BCM5396          1G/100/10M  RGMII(IMP Port)
-#endif                    
+
                 else                                                    { sprintf( eng->phy.PHYName, "default"           ); phyeng->fp_set = phy_default  ;                                      }//
 
-#if defined(PHY_SPECIAL)
-                switch ( eng->phy.PHY_ID3 & 0xfff0 ) {
-                        case 0xbd70:    eng->phy.Adr = 30; eng->BCMIMP.PHY_sel = 0;                            break; // for BCM5387/BCM5389
-//                        case 0x0960:    eng->phy.Adr = 30; eng->BCMIMP.PHY_sel = 1; eng->GPIO.Dat_RdDelay = 1; break;
-//                        case 0x0000:    eng->phy.Adr = 30; eng->BCMIMP.PHY_sel = 1; eng->GPIO.Dat_RdDelay = 1; break;
-//                        default:        eng->phy.Adr = 30; eng->BCMIMP.PHY_sel = 1; eng->GPIO.Dat_RdDelay = 1; break;
-                        default:        eng->phy.Adr = 30; eng->BCMIMP.PHY_sel = 1;                            break; // for BCM5396
-                }
-#endif
+
         }
 
-        if ( eng->arg.GEn_InitPHY ) {
-                if ( eng->arg.GDis_RecovPHY )
+        if ( eng->arg.ctrl.b.phy_init ) {
+                if ( eng->arg.ctrl.b.phy_recov_dis )
                         phyeng->fp_clr = 0;
         } else {
                 phyeng->fp_set = 0;

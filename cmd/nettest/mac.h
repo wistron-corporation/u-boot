@@ -37,7 +37,6 @@
 //#define Enable_CLK_Stable              //[off]
 
 //#define Enable_Runt
-//#define Enable_Jumbo
 //#define Enable_BufMerge
 //#define Disable_VGA
 //#define Enable_ShowBW
@@ -95,16 +94,6 @@
 #define   RAND_SIZE_MAX                          1514
 
 #define FRAME_SELH_PERD                          7
-#ifdef Enable_Jumbo
-    #define FRAME_LENH                           9592           //max:9592
-    #define FRAME_LENL                           9592           //max:9592
-//    #define FRAME_LENH                           9212           //max:9212
-//    #define FRAME_LENL                           9211           //max:9212
-//    #define FRAME_LENH                           9212           //max:9212
-//    #define FRAME_LENL                           9212           //max:9212
-//    #define FRAME_LENH                           2048
-//    #define FRAME_LENL                           2048
-#else
   #ifdef SelectSimpleLength
 //    #define FRAME_LENH                           ( SelectSimpleLength + 1 )
 //    #define FRAME_LENL                           ( SelectSimpleLength     )
@@ -116,6 +105,5 @@
     #define FRAME_LENH                           1514           //max:1514
     #define FRAME_LENL                           1514           //max:1514
   #endif
-#endif
 
 #endif // MAC_H

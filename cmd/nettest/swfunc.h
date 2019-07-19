@@ -17,39 +17,13 @@
 //---------------------------------------------------------
 // Program information
 //---------------------------------------------------------
-//#define PHY_GPIO
-//#define PHY_SPECIAL
-//#define MELLANOX_CONNECTX_4 // for Mellanox ConnectX-4 OCP card
-
-#if defined(MELLANOX_CONNECTX_4)
-      #define    VER_NAME    "Ver 0.75 version @2017/05/25 1338 for Mellanox ConnectX-4 OCP card"
-#else
-  #ifdef PHY_SPECIAL
-    /* PHY in SPECIAL mode */
-    #if defined(PHY_GPIO)
-      #define    VER_NAME    "Verification @2016/07/21 1524 [GPIO]PHY_SPECIAL"
-    #else
-      #define    VER_NAME    "Verification @2016/07/21 1524 PHY_SPECIAL"
-    #endif /* End defined(PHY_GPIO) */
-  #else
-    /* PHY in Normal mode */
-    #if defined(PHY_GPIO)
-      #define    VER_NAME    "Ver 0.75 version @2017/05/25 1338 [GPIO]"
-    #else
-      #define    VER_NAME    "Ver 0.77 version @2017/12/20 1310"
-    #endif /* End defined(PHY_GPIO) */
-  #endif
-#endif // End MELLANOX_CONNECTX_4
-
-//#define  UBOOT_FOR_LINUX_4_9
+/* PHY in Normal mode */
+#define VER_NAME "Ver 0.77 version @2017/12/20 1310"
 
 /* ========================================================== */
 #define NETESTCMD_MAX_ARGS CONFIG_SYS_MAXARGS
 
 /* == Step 4:==========   Select PHY    ================== */
-//#define SUPPORT_PHY_LAN9303                                   // Initial PHY via I2C bus
-#define LAN9303_I2C_BUSNUM                       6              // 1-based
-#define LAN9303_I2C_ADR                          0x14
 
 /* ======================== Program flow control ======================== */
 #define RUN_STEP                                 5

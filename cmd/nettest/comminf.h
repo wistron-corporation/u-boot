@@ -83,18 +83,21 @@
 #define  DEF_GPHY_ADR                            0
 #define  DEF_GTESTMODE                           0              //[0]0: no burst mode, 1: 0xff, 2: 0x55, 3: random, 4: ARP, 5: ARP, 6: IO timing, 7: IO timing+IO Strength
 #define  DEF_GLOOP_MAX                           1
-#define  DEF_MAC_LOOP_BACK                       0              //GCtrl bit6
-#define  DEF_SKIP_CHECK_PHY                      0              //GCtrl bit5
-#define  DEF_INTERNAL_LOOP_PHY                   0              //GCtrl bit4
-#define  DEF_INIT_PHY                            1              //GCtrl bit3
-#define  DEF_DIS_RECOVPHY                        0              //GCtrl bit2
+#define  DEF_MAC_LOOP_BACK                       0              //ctrl bit6
+#define  DEF_SKIP_CHECK_PHY                      0              //ctrl bit5
+#define  DEF_INTERNAL_LOOP_PHY                   0              //ctrl bit4
+#define  DEF_INIT_PHY                            1              //ctrl bit3
+#define  DEF_DIS_RECOVPHY                        0              //ctrl bit2
+
+
 #define  DEF_GCTRL                               (( DEF_MAC_LOOP_BACK << 6 ) | ( DEF_SKIP_CHECK_PHY << 5 ) | ( DEF_INTERNAL_LOOP_PHY << 4 ) | ( DEF_INIT_PHY << 3 ) | ( DEF_DIS_RECOVPHY << 2 ))
 
-#define  SET_1GBPS                               0              // 1G bps
-#define  SET_100MBPS                             1              // 100M bps
-#define  SET_10MBPS                              2              // 10M bps
-#define  SET_1G_100M_10MBPS                      3              // 1G and 100M and 10M bps
-#define  SET_100M_10MBPS                         4              // 100M and 10M bps
+#define  SET_1GBPS                               BIT(2)
+#define  SET_100MBPS                             BIT(1)
+#define  SET_10MBPS                              BIT(0)
+#define  SET_1G_100M_10MBPS                      (SET_1GBPS | SET_100MBPS | SET_10MBPS)
+#define  SET_100M_10MBPS                         (SET_100MBPS | SET_10MBPS)
+
 #ifdef Enable_MAC_ExtLoop
 #define  DEF_GSPEED                              SET_1GBPS
 #else
@@ -139,7 +142,7 @@
 //---------------------------------------------------------
 // Data information
 //---------------------------------------------------------
-#if defined(Enable_MAC_ExtLoop) || defined(Enable_MAC_ExtLoop_PakcegMode) || defined(SelectSimpleBoundary) || defined(PHY_SPECIAL)
+#if defined(Enable_MAC_ExtLoop) || defined(Enable_MAC_ExtLoop_PakcegMode) || defined(SelectSimpleBoundary)
       #define ZeroCopy_OFFSET                    0
 #else
       #define ZeroCopy_OFFSET                    (( eng->run.TM_Burst ) ? 0 : 2)
@@ -268,7 +271,6 @@
 //---------------------------------------------------------
 // SCU information
 //---------------------------------------------------------
-#define SMB_BASE				0x1e720000
 #define SCU_BASE				0x1e6e2000
 #define SDR_BASE				0x1e6e0000
 #define WDT_BASE				0x1e785000
@@ -296,11 +298,7 @@
 #endif
 
 
-#ifdef Enable_Jumbo
-  #define DMA_PakSize                            ( 10 * 1024 )
-#else
-  #define DMA_PakSize                            ( 2 * 1024 ) // The size of one LAN packet
-#endif
+#define DMA_PakSize                            ( 2 * 1024 ) // The size of one LAN packet
 
 #ifdef SelectSimpleBoundary
   #define DMA_BufSize                            (     ( ( ( ( eng->dat.Des_Num + 15 ) * DMA_PakSize ) >> 2 ) << 2 ) ) //vary by Des_Num
@@ -476,315 +474,328 @@ typedef struct {
 #endif
 
 typedef struct {
-	unsigned char        All_ID                                   ;//__attribute__ ((aligned (4)));
-	unsigned char        Package_ID                               ;//__attribute__ ((aligned (4)));
-	unsigned char        Channel_ID                               ;//__attribute__ ((aligned (4)));
-	uint32_t Capabilities_Flags                       ;//__attribute__ ((aligned (4)));
-	uint32_t Broadcast_Packet_Filter_Capabilities     ;//__attribute__ ((aligned (4)));
-	uint32_t Multicast_Packet_Filter_Capabilities     ;//__attribute__ ((aligned (4)));
-	uint32_t Buffering_Capabilities                   ;//__attribute__ ((aligned (4)));
-	uint32_t AEN_Control_Support                      ;//__attribute__ ((aligned (4)));
-	unsigned char        VLAN_Filter_Count                        ;//__attribute__ ((aligned (4)));
-	unsigned char        Mixed_Filter_Count                       ;//__attribute__ ((aligned (4)));
-	unsigned char        Multicast_Filter_Count                   ;//__attribute__ ((aligned (4)));
-	unsigned char        Unicast_Filter_Count                     ;//__attribute__ ((aligned (4)));
-	unsigned char        VLAN_Mode_Support                        ;//__attribute__ ((aligned (4)));
-	unsigned char        Channel_Count                            ;//__attribute__ ((aligned (4)));
-	uint32_t PCI_DID_VID                              ;//__attribute__ ((aligned (4)));
-	uint32_t ManufacturerID                           ;//__attribute__ ((aligned (4)));
+	unsigned char        All_ID                                   ;
+	unsigned char        Package_ID                               ;
+	unsigned char        Channel_ID                               ;
+	uint32_t Capabilities_Flags                       ;
+	uint32_t Broadcast_Packet_Filter_Capabilities     ;
+	uint32_t Multicast_Packet_Filter_Capabilities     ;
+	uint32_t Buffering_Capabilities                   ;
+	uint32_t AEN_Control_Support                      ;
+	unsigned char        VLAN_Filter_Count                        ;
+	unsigned char        Mixed_Filter_Count                       ;
+	unsigned char        Multicast_Filter_Count                   ;
+	unsigned char        Unicast_Filter_Count                     ;
+	unsigned char        VLAN_Mode_Support                        ;
+	unsigned char        Channel_Count                            ;
+	uint32_t PCI_DID_VID                              ;
+	uint32_t manufacturer_id                           ;
 } NCSI_Capability;
 typedef struct {
 #ifdef CONFIG_ASPEED_AST2600
-	uint32_t SCU_FPGASel                   ;//__attribute__ ((aligned (4)));
-	uint32_t SCU_510                       ;//__attribute__ ((aligned (4)));
+	uint32_t SCU_FPGASel                   ;
+	uint32_t SCU_510                       ;
 #endif
-	uint32_t MAC_000                       ;//__attribute__ ((aligned (4)));
-	uint32_t MAC_008                       ;//__attribute__ ((aligned (4)));
-	uint32_t MAC_00c                       ;//__attribute__ ((aligned (4)));
-	uint32_t MAC_040                       ;//__attribute__ ((aligned (4)));
-	uint32_t MAC_040_new                   ;//__attribute__ ((aligned (4)));
-	uint32_t MAC_050                       ;//__attribute__ ((aligned (4)));
-	uint32_t MAC_050_Speed                 ;//__attribute__ ((aligned (4)));
-	uint32_t SCU_004                       ;//__attribute__ ((aligned (4)));
-	uint32_t SCU_004_mix                   ;//__attribute__ ((aligned (4)));
-	uint32_t SCU_004_rstbit                ;//__attribute__ ((aligned (4)));
-	uint32_t SCU_004_dis                   ;//__attribute__ ((aligned (4)));
-	uint32_t SCU_004_en                    ;//__attribute__ ((aligned (4)));
-	uint32_t SCU_008                       ;//__attribute__ ((aligned (4)));
-	uint32_t SCU_00c                       ;//__attribute__ ((aligned (4)));
-	uint32_t SCU_00c_mix                   ;//__attribute__ ((aligned (4)));
-	uint32_t SCU_00c_clkbit                ;//__attribute__ ((aligned (4)));
-	uint32_t SCU_00c_dis                   ;//__attribute__ ((aligned (4)));
-	uint32_t SCU_00c_en                    ;//__attribute__ ((aligned (4)));
-	uint32_t SCU_048                       ;//__attribute__ ((aligned (4)));
-	uint32_t SCU_048_mix                   ;//__attribute__ ((aligned (4)));
-	uint32_t SCU_048_default               ;//__attribute__ ((aligned (4)));
-	uint32_t SCU_048_check                 ;//__attribute__ ((aligned (4)));
-	uint32_t SCU_070                       ;//__attribute__ ((aligned (4)));
-	uint32_t SCU_074                       ;//__attribute__ ((aligned (4)));
-	uint32_t SCU_074_mix                   ;//__attribute__ ((aligned (4)));
-	uint32_t SCU_07c                       ;//__attribute__ ((aligned (4)));
-	uint32_t SCU_080                       ;//__attribute__ ((aligned (4)));
-	uint32_t SCU_088                       ;//__attribute__ ((aligned (4)));
-	uint32_t SCU_090                       ;//__attribute__ ((aligned (4)));
-	uint32_t SCU_09c                       ;//__attribute__ ((aligned (4)));
-	uint32_t SCU_0b8                       ;//__attribute__ ((aligned (4)));
-	uint32_t SCU_0bc                       ;//__attribute__ ((aligned (4)));
-	uint32_t SCU_0f0                       ;//__attribute__ ((aligned (4)));
-	uint32_t WDT_00c                       ;//__attribute__ ((aligned (4)));
-	uint32_t WDT_02c                       ;//__attribute__ ((aligned (4)));
-	uint32_t WDT_04c                       ;//__attribute__ ((aligned (4)));
+	uint32_t MAC_000                       ;
+	uint32_t MAC_008                       ;
+	uint32_t MAC_00c                       ;
+	uint32_t MAC_040                       ;
+	uint32_t MAC_040_new                   ;
+	uint32_t MAC_050                       ;
+	uint32_t MAC_050_Speed                 ;
+	uint32_t SCU_004                       ;
+	uint32_t SCU_004_mix                   ;
+	uint32_t SCU_004_rstbit                ;
+	uint32_t SCU_004_dis                   ;
+	uint32_t SCU_004_en                    ;
+	uint32_t SCU_008                       ;
+	uint32_t SCU_00c                       ;
+	uint32_t SCU_00c_mix                   ;
+	uint32_t SCU_00c_clkbit                ;
+	uint32_t SCU_00c_dis                   ;
+	uint32_t SCU_00c_en                    ;
+	uint32_t SCU_048                       ;
+	uint32_t SCU_048_mix                   ;
+	uint32_t SCU_048_default               ;
+	uint32_t SCU_048_check                 ;
+	uint32_t SCU_070                       ;
+	uint32_t SCU_074                       ;
+	uint32_t SCU_074_mix                   ;
+	uint32_t SCU_07c                       ;
+	uint32_t SCU_080                       ;
+	uint32_t SCU_088                       ;
+	uint32_t SCU_090                       ;
+	uint32_t SCU_09c                       ;
+	uint32_t SCU_0b8                       ;
+	uint32_t SCU_0bc                       ;
+	uint32_t SCU_0f0                       ;
+	uint32_t WDT_00c                       ;
+	uint32_t WDT_02c                       ;
+	uint32_t WDT_04c                       ;
 
-	CHAR                 SCU_oldvld                    ;//__attribute__ ((aligned (4)));
-} MAC_Register;
+	CHAR                 SCU_oldvld                    ;
+} mac_reg_t;
 typedef struct {
-	CHAR                 ASTChipType                   ;//__attribute__ ((aligned (4)));
-	CHAR                 ASTChipName[64]               ;//__attribute__ ((aligned (4)));
-	CHAR                 AST1100                       ;//__attribute__ ((aligned (4)));//Different in phy & dram initiation & dram size & RMII
-	CHAR                 AST2300                       ;//__attribute__ ((aligned (4)));
-	CHAR                 AST2400                       ;//__attribute__ ((aligned (4)));
-	CHAR                 AST1010                       ;//__attribute__ ((aligned (4)));
-	CHAR                 AST2500                       ;//__attribute__ ((aligned (4)));
-	CHAR                 AST2500A1                     ;//__attribute__ ((aligned (4)));
+	CHAR                 ASTChipType                   ;
+	CHAR                 AST1100                       ;//Different in phy & dram initiation & dram size & RMII
+	CHAR                 AST2300                       ;
+	CHAR                 AST2400                       ;
+	CHAR                 AST1010                       ;
+	CHAR                 AST2500                       ;
+	CHAR                 AST2500A1                     ;
 
-	CHAR                 MAC_Mode                      ;//__attribute__ ((aligned (4)));
-	CHAR                 MAC1_1Gvld                    ;//__attribute__ ((aligned (4)));
-	CHAR                 MAC2_1Gvld                    ;//__attribute__ ((aligned (4)));
+	CHAR                 MAC_Mode                      ;
+	CHAR                 MAC1_1Gvld                    ;
+	CHAR                 MAC2_1Gvld                    ;
 #ifdef CONFIG_ASPEED_AST2600
-	CHAR                 MAC3_1Gvld                    ;//__attribute__ ((aligned (4)));
-	CHAR                 MAC4_1Gvld                    ;//__attribute__ ((aligned (4)));
+	CHAR                 MAC3_1Gvld                    ;
+	CHAR                 MAC4_1Gvld                    ;
 #endif
-	CHAR                 MAC1_RMII                     ;//__attribute__ ((aligned (4)));
-	CHAR                 MAC2_RMII                     ;//__attribute__ ((aligned (4)));
+	CHAR                 MAC1_RMII                     ;
+	CHAR                 MAC2_RMII                     ;
 #ifdef CONFIG_ASPEED_AST2600
-	CHAR                 MAC3_RMII                     ;//__attribute__ ((aligned (4)));
-	CHAR                 MAC4_RMII                     ;//__attribute__ ((aligned (4)));
+	CHAR                 MAC3_RMII                     ;
+	CHAR                 MAC4_RMII                     ;
 #endif
-	CHAR                 MAC_atlast_1Gvld              ;//__attribute__ ((aligned (4)));
-	CHAR                 MAC2_vld                      ;//__attribute__ ((aligned (4)));
-	CHAR                 MAC34_vld                     ;//__attribute__ ((aligned (4)));
+	CHAR                 MAC_atlast_1Gvld              ;
+	CHAR                 MAC2_vld                      ;
+	CHAR                 MAC34_vld                     ;
 
-	CHAR                 MAC_1Gvld                     ;//__attribute__ ((aligned (4)));
-	CHAR                 MAC_RMII                      ;//__attribute__ ((aligned (4)));
+	CHAR                 MAC_1Gvld                     ;
+	CHAR                 MAC_RMII                      ;
 
-	CHAR                 MHCLK_Ratio                   ;//__attribute__ ((aligned (4)));
+	CHAR                 MHCLK_Ratio                   ;
 
-	uint32_t VGAMode                       ;//__attribute__ ((aligned (4)));
-	char                 VGAModeVld                    ;//__attribute__ ((aligned (4)));
-} MAC_Environment;
+	uint32_t VGAMode                       ;
+	char                 VGAModeVld                    ;
+} mac_env_t;
+
+typedef union {
+	uint32_t w;
+	struct {
+		uint32_t single_packet	: 1;	/* bit[0] */
+		uint32_t phy_addr_inv	: 1;	/* bit[1] */
+		uint32_t phy_recov_dis	: 1;	/* bit[2] */
+		uint32_t phy_init	: 1;	/* bit[3] */
+		uint32_t phy_int_loopback : 1;	/* bit[4] */
+		uint32_t phy_skip_check	: 1;	/* bit[5] */
+		uint32_t full_range	: 1;	/* bit[6] */
+		uint32_t mac_int_loopback : 1;	/* bit[7] */
+		uint32_t rmii_50m_out	: 1;	/* bit[8] */
+		uint32_t rmii_phy_in	: 1;	/* bit[9] */
+		uint32_t reserved_0	: 2;	/* bit[11:10] */
+		uint32_t print_ncsi	: 1;	/* bit[12] */
+		uint32_t skip_rx_err	: 1;	/* bit[13] */
+		uint32_t reserved_1	: 18;	/* bit[31:14] */
+	} b;
+} mac_arg_ctrl_t;
 typedef struct {
-	uint32_t GARPNumCnt                    ;//__attribute__ ((aligned (4)));//argv     [6]
-	uint32_t GUserDVal                     ;//__attribute__ ((aligned (4)));//argv[8]
-	BYTE                 GChk_TimingBund               ;//__attribute__ ((aligned (4)));//argv[7]  [5]
-	CHAR                 GPHYADR                       ;//__attribute__ ((aligned (4)));//argv[6]
-	BYTE                 GTestMode                     ;//__attribute__ ((aligned (4)));//argv[5]  [4]
-	CHAR                 GLOOP_Str[32]                 ;//__attribute__ ((aligned (4)));//argv[4]
-	BYTE                 GCtrl                         ;//__attribute__ ((aligned (4)));//argv[3]  [7]
-	BYTE                 GSpeed                        ;//__attribute__ ((aligned (4)));//argv[2]
-	BYTE                 GChannelTolNum                ;//__attribute__ ((aligned (4)));//argv     [3]
-	BYTE                 GPackageTolNum                ;//__attribute__ ((aligned (4)));//argv     [2]
-	BYTE                 GRun_Mode                     ;//__attribute__ ((aligned (4)));//argv[1]  [1]
+	uint32_t run_mode;		/* select dedicated or NCSI */
+	uint32_t run_idx;		/* argv[1] */
+	uint32_t run_speed;		/* argv[2] for dedicated */
+	mac_arg_ctrl_t ctrl;		/* argv[3] for dedicated 
+					   argv[6] for ncsi */
+	uint32_t loop_max;		/* argv[4] for dedicated */
+	uint32_t loop_inf;		/* argv[4] for dedicated */
 
-	CHAR                 GIEEE_sel                     ;//__attribute__ ((aligned (4)));//argv[7]
-	CHAR                 GLOOP_INFINI                  ;//__attribute__ ((aligned (4)));//argv[4]
-	uint32_t GLOOP_MAX                     ;//__attribute__ ((aligned (4)));//argv[4]
+	uint32_t GPackageTolNum;	/* argv[2] for ncsi */
+	uint32_t GChannelTolNum;	/* argv[3] for ncsi */
+	
+	uint32_t test_mode;		/* argv[5] for dedicated
+					   argv[4] for ncsi */
 
-	CHAR                 GEn_SkipRxEr                  ;//__attribute__ ((aligned (4)));//GCtrl    [1]
-	CHAR                 GEn_PrintNCSI                 ;//__attribute__ ((aligned (4)));//GCtrl    [0]
-	CHAR                 GEn_RMIIPHY_IN                ;//__attribute__ ((aligned (4)));//GCtrl[9]
-	CHAR                 GEn_RMII_50MOut               ;//__attribute__ ((aligned (4)));//GCtrl[8] [8]
-	CHAR                 GEn_MACLoopback               ;//__attribute__ ((aligned (4)));//GCtrl[7] [7]
-	CHAR                 GEn_FullRange                 ;//__attribute__ ((aligned (4)));//GCtrl[6] [6]
-	CHAR                 GEn_SkipChkPHY                ;//__attribute__ ((aligned (4)));//GCtrl[5]
-	CHAR                 GEn_IntLoopPHY                ;//__attribute__ ((aligned (4)));//GCtrl[4]
-	CHAR                 GEn_InitPHY                   ;//__attribute__ ((aligned (4)));//GCtrl[3]
-	CHAR                 GDis_RecovPHY                 ;//__attribute__ ((aligned (4)));//GCtrl[2]
-	CHAR                 GEn_PHYAdrInv                 ;//__attribute__ ((aligned (4)));//GCtrl[1]
-	CHAR                 GEn_SinglePacket              ;//__attribute__ ((aligned (4)));//GCtrl[0]
-} MAC_Argument;
+	uint32_t GPHYADR;		/* argv[6] for dedicated */
+	uint32_t GChk_TimingBund;	/* argv[7] for dedicated
+					   argv[5] for ncsi */
+	
+	uint32_t GIEEE_sel;		/* derived from GChk_TimingBund */
+
+	uint32_t GARPNumCnt;		/* argv[7] for ncsi */
+	uint32_t GUserDVal;		/* argv[8] for dedicated */
+} mac_arg_t;
 typedef struct {
-	CHAR                 MAC_idx                       ;//__attribute__ ((aligned (4)));//GRun_Mode
-	CHAR                 MAC_idx_PHY                   ;//__attribute__ ((aligned (4)));//GRun_Mode
-	uint32_t MAC_BASE                      ;//__attribute__ ((aligned (4)));//GRun_Mode
+	CHAR                 MAC_idx                       ;
+	CHAR                 MAC_idx_PHY                   ;
+	uint32_t MAC_BASE;
 
-	CHAR                 Speed_1G                      ;//__attribute__ ((aligned (4)));//GSpeed
-	CHAR                 Speed_org[3]                  ;//__attribute__ ((aligned (4)));//GSpeed
-	CHAR                 Speed_sel[3]                  ;//__attribute__ ((aligned (4)));
-	CHAR                 Speed_idx                     ;//__attribute__ ((aligned (4)));
+	CHAR                 Speed_1G                      ;//run_speed
+	CHAR                 Speed_org[3]                  ;//run_speed
+	CHAR                 Speed_sel[3]                  ;
+	CHAR                 Speed_idx                     ;
 
-	CHAR                 TM_Burst                      ;//__attribute__ ((aligned (4)));//GTestMode
-	CHAR                 TM_IEEE                       ;//__attribute__ ((aligned (4)));//GTestMode
-	CHAR                 TM_IOTiming                   ;//__attribute__ ((aligned (4)));//GTestMode
-	CHAR                 TM_IOStrength                 ;//__attribute__ ((aligned (4)));//GTestMode
-	CHAR                 TM_TxDataEn                   ;//__attribute__ ((aligned (4)));//GTestMode
-	CHAR                 TM_RxDataEn                   ;//__attribute__ ((aligned (4)));//GTestMode
-	CHAR                 TM_WaitStart                  ;//__attribute__ ((aligned (4)));//GTestMode
-	CHAR                 TM_DefaultPHY                 ;//__attribute__ ((aligned (4)));//GTestMode
-	CHAR                 TM_NCSI_DiSChannel            ;//__attribute__ ((aligned (4)));//GTestMode
+	CHAR                 TM_Burst                      ;//test_mode
+	CHAR                 TM_IEEE                       ;//test_mode
+	CHAR                 TM_IOTiming                   ;//test_mode
+	CHAR                 TM_IOStrength                 ;//test_mode
+	CHAR                 TM_TxDataEn                   ;//test_mode
+	CHAR                 TM_RxDataEn                   ;//test_mode
+	CHAR                 TM_WaitStart                  ;//test_mode
+	CHAR                 TM_DefaultPHY                 ;//test_mode
+	CHAR                 TM_NCSI_DiSChannel            ;//test_mode
 
-	BYTE                 IO_Bund                       ;//__attribute__ ((aligned (4)));
-	CHAR                 IO_MrgChk                     ;//__attribute__ ((aligned (4)));
+	BYTE                 IO_Bund                       ;
+	CHAR                 IO_MrgChk                     ;
 
-	uint32_t TDES_BASE                     ;//__attribute__ ((aligned (4)));
-	uint32_t RDES_BASE                     ;//__attribute__ ((aligned (4)));
+	uint32_t TDES_BASE                     ;
+	uint32_t RDES_BASE                     ;
 
-	uint32_t NCSI_TxDesBase                ;//__attribute__ ((aligned (4)));
-	uint32_t NCSI_RxDesBase                ;//__attribute__ ((aligned (4)));
-	int                  NCSI_RxTimeOutScale           ;//__attribute__ ((aligned (4)));
+	uint32_t NCSI_TxDesBase                ;
+	uint32_t NCSI_RxDesBase                ;
+	int                  NCSI_RxTimeOutScale           ;
 
-	int                  LOOP_MAX                      ;//__attribute__ ((aligned (4)));
-	uint32_t LOOP_CheckNum                 ;//__attribute__ ((aligned (4)));
-	uint32_t CheckBuf_MBSize               ;//__attribute__ ((aligned (4)));
-	uint32_t TIME_OUT_Des                  ;//__attribute__ ((aligned (4)));
-	uint32_t TIME_OUT_Des_PHYRatio         ;//__attribute__ ((aligned (4)));
+	int                  LOOP_MAX                      ;
+	uint32_t LOOP_CheckNum                 ;
+	uint32_t CheckBuf_MBSize               ;
+	uint32_t TIME_OUT_Des                  ;
+	uint32_t TIME_OUT_Des_PHYRatio         ;
 
-	int                  Loop_ofcnt                    ;//__attribute__ ((aligned (4)));
-	int                  Loop                          ;//__attribute__ ((aligned (4)));
-	int                  Loop_rl[3]                    ;//__attribute__ ((aligned (4)));
+	int                  Loop_ofcnt                    ;
+	int                  Loop                          ;
+	int                  Loop_rl[3]                    ;
 } MAC_Running;
 typedef struct {
-	CHAR                 SA[6]                         ;//__attribute__ ((aligned (4)));
-	CHAR                 NewMDIO                       ;//__attribute__ ((aligned (4))); //start from AST2300
+	CHAR                 SA[6]                         ;
+	CHAR                 NewMDIO                       ; //start from AST2300
 } MAC_Information;
 typedef struct {
-	uint32_t PHY_BASE                      ;//__attribute__ ((aligned (4)));
-	int                  loop_phy                      ;//__attribute__ ((aligned (4)));
-	CHAR                 default_phy                   ;//__attribute__ ((aligned (4)));
-	CHAR                 Adr                           ;//__attribute__ ((aligned (4)));
+	uint32_t PHY_BASE                      ;
+	int                  loop_phy                      ;
+	CHAR                 default_phy                   ;
+	CHAR                 Adr                           ;
 
-	CHAR                 PHYName[64]                   ;//__attribute__ ((aligned (4)));
-	uint32_t PHY_ID3                       ;//__attribute__ ((aligned (4)));
-	uint32_t PHY_ID2                       ;//__attribute__ ((aligned (4)));
+	CHAR                 PHYName[64]                   ;
+	uint32_t PHY_ID3                       ;
+	uint32_t PHY_ID2                       ;
 
-	uint32_t PHY_00h                       ;//__attribute__ ((aligned (4)));
-	uint32_t PHY_06h                       ;//__attribute__ ((aligned (4)));
-	uint32_t PHY_09h                       ;//__attribute__ ((aligned (4)));
-	uint32_t PHY_0eh                       ;//__attribute__ ((aligned (4)));
-	uint32_t PHY_10h                       ;//__attribute__ ((aligned (4)));
-	uint32_t PHY_11h                       ;//__attribute__ ((aligned (4)));
-	uint32_t PHY_12h                       ;//__attribute__ ((aligned (4)));
-	uint32_t PHY_14h                       ;//__attribute__ ((aligned (4)));
-	uint32_t PHY_15h                       ;//__attribute__ ((aligned (4)));
-	uint32_t PHY_18h                       ;//__attribute__ ((aligned (4)));
-	uint32_t PHY_19h                       ;//__attribute__ ((aligned (4)));
-	uint32_t PHY_1ch                       ;//__attribute__ ((aligned (4)));
-	uint32_t PHY_1eh                       ;//__attribute__ ((aligned (4)));
-	uint32_t PHY_1fh                       ;//__attribute__ ((aligned (4)));
-	uint32_t PHY_06hA[7]                   ;//__attribute__ ((aligned (4)));
-	BOOLEAN              PHYAdrValid                   ;//__attribute__ ((aligned (4)));
+	uint32_t PHY_00h                       ;
+	uint32_t PHY_06h                       ;
+	uint32_t PHY_09h                       ;
+	uint32_t PHY_0eh                       ;
+	uint32_t PHY_10h                       ;
+	uint32_t PHY_11h                       ;
+	uint32_t PHY_12h                       ;
+	uint32_t PHY_14h                       ;
+	uint32_t PHY_15h                       ;
+	uint32_t PHY_18h                       ;
+	uint32_t PHY_19h                       ;
+	uint32_t PHY_1ch                       ;
+	uint32_t PHY_1eh                       ;
+	uint32_t PHY_1fh                       ;
+	uint32_t PHY_06hA[7]                   ;
+	BOOLEAN              PHYAdrValid                   ;
 
-	uint32_t RMIICK_IOMode                 ;//__attribute__ ((aligned (4)));
+	uint32_t RMIICK_IOMode                 ;
 } MAC_PHY;
 typedef struct {
-	CHAR                 init_done                     ;//__attribute__ ((aligned (4)));
+	CHAR                 init_done                     ;
 
-	BYTE                 Dly_MrgEn                     ;//__attribute__ ((aligned (4)));
-	CHAR                 Dly_3Regiser                  ;//__attribute__ ((aligned (4)));
+	BYTE                 Dly_MrgEn                     ;
+	CHAR                 Dly_3Regiser                  ;
 
-	uint32_t Str_reg_idx                   ;//__attribute__ ((aligned (4)));
-	BYTE                 Str_reg_Lbit                  ;//__attribute__ ((aligned (4)));
-	BYTE                 Str_reg_Hbit                  ;//__attribute__ ((aligned (4)));
-	uint32_t Str_reg_value                 ;//__attribute__ ((aligned (4)));
-	uint32_t Str_reg_mask                  ;//__attribute__ ((aligned (4)));
-	BYTE                 Str_max                       ;//__attribute__ ((aligned (4)));
-	BYTE                 Str_shf                       ;//__attribute__ ((aligned (4)));
-	BYTE                 Dly_stagebit                  ;//__attribute__ ((aligned (4)));
-	BYTE                 Dly_stage                     ;//__attribute__ ((aligned (4)));
-	BYTE                 Dly_stage_in                  ;//__attribute__ ((aligned (4)));
-	BYTE                 Dly_stage_out                 ;//__attribute__ ((aligned (4)));
-	BYTE                 Dly_step                      ;//__attribute__ ((aligned (4)));
-	uint32_t Dly_mask_bit_in               ;//__attribute__ ((aligned (4)));
-	uint32_t Dly_mask_bit_out              ;//__attribute__ ((aligned (4)));
-	uint32_t Dly_mask_pos                  ;//__attribute__ ((aligned (4)));
-	BYTE                 Dly_in_shf                    ;//__attribute__ ((aligned (4)));
-	BYTE                 Dly_out_shf                   ;//__attribute__ ((aligned (4)));
-	BYTE                 Dly_in_shf_regH               ;//__attribute__ ((aligned (4)));
-	BYTE                 Dly_out_shf_regH              ;//__attribute__ ((aligned (4)));
-	BYTE                 value_ary[64]                 ;//__attribute__ ((aligned (4)));
-	BYTE                 Dly_stage_shf_i               ;//__attribute__ ((aligned (4)));
-	BYTE                 Dly_stage_shf_o               ;//__attribute__ ((aligned (4)));
+	uint32_t Str_reg_idx                   ;
+	BYTE                 Str_reg_Lbit                  ;
+	BYTE                 Str_reg_Hbit                  ;
+	uint32_t Str_reg_value                 ;
+	uint32_t Str_reg_mask                  ;
+	BYTE                 Str_max                       ;
+	BYTE                 Str_shf                       ;
+	BYTE                 Dly_stagebit                  ;
+	BYTE                 Dly_stage                     ;
+	BYTE                 Dly_stage_in                  ;
+	BYTE                 Dly_stage_out                 ;
+	BYTE                 Dly_step                      ;
+	uint32_t Dly_mask_bit_in               ;
+	uint32_t Dly_mask_bit_out              ;
+	uint32_t Dly_mask_pos                  ;
+	BYTE                 Dly_in_shf                    ;
+	BYTE                 Dly_out_shf                   ;
+	BYTE                 Dly_in_shf_regH               ;
+	BYTE                 Dly_out_shf_regH              ;
+	BYTE                 value_ary[64]                 ;
+	BYTE                 Dly_stage_shf_i               ;
+	BYTE                 Dly_stage_shf_o               ;
 
-	uint32_t Dly_reg_idx                   ;//__attribute__ ((aligned (4)));
-	uint32_t Dly_reg_value                 ;//__attribute__ ((aligned (4)));
-	char                 Dly_reg_name_tx[32]           ;//__attribute__ ((aligned (4)));
-	char                 Dly_reg_name_rx[32]           ;//__attribute__ ((aligned (4)));
-	char                 Dly_reg_name_tx_new[32]       ;//__attribute__ ((aligned (4)));
-	char                 Dly_reg_name_rx_new[32]       ;//__attribute__ ((aligned (4)));
-	uint32_t Dly_in_reg                    ;//__attribute__ ((aligned (4)));
-	BYTE                 Dly_in_reg_idx                ;//__attribute__ ((aligned (4)));
-	SCHAR                Dly_in_min                    ;//__attribute__ ((aligned (4)));
-	BYTE                 Dly_in_max                    ;//__attribute__ ((aligned (4)));
-	uint32_t Dly_out_reg                   ;//__attribute__ ((aligned (4)));
-	BYTE                 Dly_out_reg_idx               ;//__attribute__ ((aligned (4)));
-	SCHAR                Dly_out_min                   ;//__attribute__ ((aligned (4)));
-	BYTE                 Dly_out_max                   ;//__attribute__ ((aligned (4)));
-	uint32_t Dly_in_cval                   ;//__attribute__ ((aligned (4)));
-	SCHAR                Dly_in_str                    ;//__attribute__ ((aligned (4)));
-	BYTE                 Dly_in_end                    ;//__attribute__ ((aligned (4)));
-	uint32_t Dly_out_cval                  ;//__attribute__ ((aligned (4)));
-	SCHAR                Dly_out_str                   ;//__attribute__ ((aligned (4)));
-	BYTE                 Dly_out_end                   ;//__attribute__ ((aligned (4)));
+	uint32_t Dly_reg_idx                   ;
+	uint32_t Dly_reg_value                 ;
+	char                 Dly_reg_name_tx[32]           ;
+	char                 Dly_reg_name_rx[32]           ;
+	char                 Dly_reg_name_tx_new[32]       ;
+	char                 Dly_reg_name_rx_new[32]       ;
+	uint32_t Dly_in_reg                    ;
+	BYTE                 Dly_in_reg_idx                ;
+	SCHAR                Dly_in_min                    ;
+	BYTE                 Dly_in_max                    ;
+	uint32_t Dly_out_reg                   ;
+	BYTE                 Dly_out_reg_idx               ;
+	SCHAR                Dly_out_min                   ;
+	BYTE                 Dly_out_max                   ;
+	uint32_t Dly_in_cval                   ;
+	SCHAR                Dly_in_str                    ;
+	BYTE                 Dly_in_end                    ;
+	uint32_t Dly_out_cval                  ;
+	SCHAR                Dly_out_str                   ;
+	BYTE                 Dly_out_end                   ;
 
-	BYTE                 Str_i                         ;//__attribute__ ((aligned (4)));
-	uint32_t Str_val                       ;//__attribute__ ((aligned (4)));
-	BYTE                 Dly_in                        ;//__attribute__ ((aligned (4)));
-	BYTE                 Dly_in_selval                 ;//__attribute__ ((aligned (4)));
-	BYTE                 Dly_out                       ;//__attribute__ ((aligned (4)));
-	BYTE                 Dly_out_selval                ;//__attribute__ ((aligned (4)));
-	uint32_t Dly_val                       ;//__attribute__ ((aligned (4)));
-	BYTE                 Dly_out_reg_hit               ;//__attribute__ ((aligned (4)));
-	CHAR                 Dly_result                    ;//__attribute__ ((aligned (4)));
-	CHAR                 dlymap[64][64]                ;//__attribute__ ((aligned (4)));
+	BYTE                 Str_i                         ;
+	uint32_t Str_val                       ;
+	BYTE                 Dly_in                        ;
+	BYTE                 Dly_in_selval                 ;
+	BYTE                 Dly_out                       ;
+	BYTE                 Dly_out_selval                ;
+	uint32_t Dly_val                       ;
+	BYTE                 Dly_out_reg_hit               ;
+	CHAR                 Dly_result                    ;
+	CHAR                 dlymap[64][64]                ;
 } MAC_IO;
 typedef struct {
 #ifdef Enable_ShowBW
 	double               Total_frame_len               ;//__attribute__ ((aligned (8)));
 #endif
-	uint32_t Des_Num                       ;//__attribute__ ((aligned (4)));
-	uint32_t Des_Num_Org                   ;//__attribute__ ((aligned (4)));
-	uint32_t DMABuf_Size                   ;//__attribute__ ((aligned (4)));
-	uint32_t DMABuf_Num                    ;//__attribute__ ((aligned (4)));
+	uint32_t Des_Num                       ;
+	uint32_t Des_Num_Org                   ;
+	uint32_t DMABuf_Size                   ;
+	uint32_t DMABuf_Num                    ;
 
-	uint32_t *FRAME_LEN                    ;//__attribute__ ((aligned (4)));
-	uint32_t FRAME_LEN_Cur                 ;//__attribute__ ((aligned (4)));
-	uint32_t *wp_lst                       ;//__attribute__ ((aligned (4)));
-	uint32_t wp_fir                        ;//__attribute__ ((aligned (4)));
+	uint32_t *FRAME_LEN                    ;
+	uint32_t FRAME_LEN_Cur                 ;
+	uint32_t *wp_lst                       ;
+	uint32_t wp_fir                        ;
 
-	uint32_t DMA_Base_Setup                 ;//__attribute__ ((aligned (4)));
-	uint32_t DMA_Base_Tx                  ;//__attribute__ ((aligned (4)));
-	uint32_t DMA_Base_Rx                   ;//__attribute__ ((aligned (4)));
+	uint32_t DMA_Base_Setup                 ;
+	uint32_t DMA_Base_Tx                  ;
+	uint32_t DMA_Base_Rx                   ;
 
-	uint32_t ARP_data[16]                  ;//__attribute__ ((aligned (4)));
-	uint32_t TxDes0DW                      ;//__attribute__ ((aligned (4)));
-	uint32_t RxDes0DW                      ;//__attribute__ ((aligned (4)));
-	uint32_t RxDes3DW                      ;//__attribute__ ((aligned (4)));
+	uint32_t ARP_data[16]                  ;
+	uint32_t TxDes0DW                      ;
+	uint32_t RxDes0DW                      ;
+	uint32_t RxDes3DW                      ;
 
-	BYTE                 number_chl                    ;//__attribute__ ((aligned (4)));
-	BYTE                 number_pak                    ;//__attribute__ ((aligned (4)));
-	char                 NCSI_RxEr                     ;//__attribute__ ((aligned (4)));
-	uint32_t NCSI_TxDWBUF[512]             ;//__attribute__ ((aligned (4)));
-	uint32_t NCSI_RxDWBUF[512]             ;//__attribute__ ((aligned (4)));
-	char                 NCSI_CommandStr[512]          ;//__attribute__ ((aligned (4)));
-	unsigned char        *NCSI_TxByteBUF               ;//__attribute__ ((aligned (4)));
-	unsigned char        *NCSI_RxByteBUF               ;//__attribute__ ((aligned (4)));
-	unsigned char        NCSI_Payload_Data[16]         ;//__attribute__ ((aligned (4)));
-	uint32_t Payload_Checksum_NCSI         ;//__attribute__ ((aligned (4)));
+	BYTE                 number_chl                    ;
+	BYTE                 number_pak                    ;
+	char                 NCSI_RxEr                     ;
+	uint32_t NCSI_TxDWBUF[512]             ;
+	uint32_t NCSI_RxDWBUF[512]             ;
+	char                 NCSI_CommandStr[512]          ;
+	unsigned char        *NCSI_TxByteBUF               ;
+	unsigned char        *NCSI_RxByteBUF               ;
+	unsigned char        NCSI_Payload_Data[16]         ;
+	uint32_t Payload_Checksum_NCSI         ;
 } MAC_Data;
 typedef struct {
-	uint32_t Wrn_Flag                      ;//__attribute__ ((aligned (4)));
-	uint32_t Err_Flag                      ;//__attribute__ ((aligned (4)));
-	uint32_t Des_Flag                      ;//__attribute__ ((aligned (4)));
-	uint32_t NCSI_Flag                     ;//__attribute__ ((aligned (4)));
-	uint32_t Bak_Err_Flag                  ;//__attribute__ ((aligned (4)));
-	uint32_t Bak_NCSI_Flag                 ;//__attribute__ ((aligned (4)));
-	CHAR                 Flag_PrintEn                  ;//__attribute__ ((aligned (4)));
-	uint32_t CheckDesFail_DesNum           ;//__attribute__ ((aligned (4)));
-	CHAR                 AllFail                       ;//__attribute__ ((aligned (4)));
+	uint32_t Wrn_Flag                      ;
+	uint32_t Err_Flag                      ;
+	uint32_t Des_Flag                      ;
+	uint32_t NCSI_Flag                     ;
+	uint32_t Bak_Err_Flag                  ;
+	uint32_t Bak_NCSI_Flag                 ;
+	CHAR                 Flag_PrintEn                  ;
+	uint32_t CheckDesFail_DesNum           ;
+	CHAR                 AllFail                       ;
 } MAC_Flag;
 typedef struct {
-	MAC_Register         reg;
-	MAC_Environment      env;
-	MAC_Argument         arg;
+	mac_reg_t reg;
+	mac_env_t env;
+	mac_arg_t arg;
 	MAC_Running          run;
 	MAC_Information      inf;
 	MAC_PHY              phy;
@@ -793,11 +804,7 @@ typedef struct {
 	MAC_Flag             flg;
 	NCSI_Command_Packet  ncsi_req;
 	NCSI_Response_Packet ncsi_rsp;
-	NCSI_Capability      ncsi_cap;
-
-	PHY_GPIOstr          GPIO;
-	PHY_BCMIMP           BCMIMP;
-	CHAR                 ModeSwitch;
+	NCSI_Capability      ncsi_cap;	
 } MAC_ENGINE;
 typedef void (* PHY_SETTING) (MAC_ENGINE *);
 typedef struct {
@@ -825,7 +832,7 @@ GLOBAL  char phy_ncsi (MAC_ENGINE *eng);
 #endif
 
 #define MODE_DEDICATED                           0x01
-#define MODE_NSCI                                0x02
+#define MODE_NCSI                                0x02
 
 GLOBAL  UCHAR            *mmiobase;
 GLOBAL  uint32_t ulPCIBaseAddress;
@@ -858,7 +865,6 @@ GLOBAL uint32_t Read_Reg_SCU_DD_AST2600 (uint32_t addr);
 GLOBAL uint32_t Read_Reg_SCU_DD (uint32_t addr);
 GLOBAL uint32_t Read_Reg_WDT_DD (uint32_t addr);
 GLOBAL uint32_t Read_Reg_SDR_DD (uint32_t addr);
-GLOBAL uint32_t Read_Reg_SMB_DD (uint32_t addr);
 GLOBAL uint32_t Read_Reg_TIMER_DD (uint32_t addr);
 GLOBAL uint32_t Read_Reg_GPIO_DD (uint32_t addr);
 GLOBAL void Write_Mem_Dat_NCSI_DD (uint32_t addr, uint32_t data);
@@ -876,14 +882,14 @@ GLOBAL void    init_iodelay (MAC_ENGINE *eng);
 GLOBAL int     get_iodelay (MAC_ENGINE *eng);
 GLOBAL void    read_scu (MAC_ENGINE *eng);
 GLOBAL void    Setting_scu (MAC_ENGINE *eng);
-GLOBAL void    PrintMode (MAC_ENGINE *eng);
-GLOBAL void    PrintPakNUm (MAC_ENGINE *eng);
-GLOBAL void    PrintChlNUm (MAC_ENGINE *eng);
+
+
+
 GLOBAL void    PrintTest (MAC_ENGINE *eng);
 GLOBAL void    PrintIOTimingBund (MAC_ENGINE *eng);
-GLOBAL void    PrintSpeed (MAC_ENGINE *eng);
-GLOBAL void    PrintCtrl (MAC_ENGINE *eng);
-GLOBAL void    PrintLoop (MAC_ENGINE *eng);
+
+
+
 GLOBAL void    PrintPHYAdr (MAC_ENGINE *eng);
 GLOBAL void    Finish_Close (MAC_ENGINE *eng);
 GLOBAL void    Calculate_LOOP_CheckNum (MAC_ENGINE *eng);
@@ -910,26 +916,13 @@ GLOBAL void    recov_phy (MAC_ENGINE *eng, PHY_ENGINE *phyeng);
 GLOBAL int     FindErr (MAC_ENGINE *eng, int value);
 GLOBAL int     FindErr_Des (MAC_ENGINE *eng, int value);
 GLOBAL void    PrintIO_Header (MAC_ENGINE *eng, BYTE option);
-GLOBAL void    Print_Header (MAC_ENGINE *eng, BYTE option);
+
 GLOBAL void    PrintIO_LineS (MAC_ENGINE *eng, BYTE option);
 GLOBAL void    PrintIO_Line (MAC_ENGINE *eng, BYTE option);
 GLOBAL void    FPri_ErrFlag (MAC_ENGINE *eng, BYTE option);
 
 GLOBAL void init_hwtimer( void );
 GLOBAL void delay_hwtimer(uint16_t msec);
-
-#ifdef SUPPORT_PHY_LAN9303
-// ========================================================
-// For LAN9303.c
-#undef GLOBAL
-#ifdef LAN9303_C
-#define GLOBAL
-#else
-#define GLOBAL    extern
-#endif
-
-GLOBAL void LAN9303(int num, int phy_adr, int speed, int int_loopback);
-#endif // SUPPORT_PHY_LAN9303
 
 // ========================================================
 // For PHYGPIO.c
@@ -940,11 +933,6 @@ GLOBAL void LAN9303(int num, int phy_adr, int speed, int int_loopback);
 #define GLOBAL    extern
 #endif
 
-#if defined(PHY_GPIO)
-GLOBAL void    phy_gpio_init( MAC_ENGINE *eng );
-GLOBAL void    phy_gpio_write( MAC_ENGINE *eng, int regadr, int wrdata );
-GLOBAL uint32_t phy_gpio_read( MAC_ENGINE *eng, int regadr );
-#endif
 
 // ========================================================
 // For PHYSPECIAL.c
@@ -955,16 +943,5 @@ GLOBAL uint32_t phy_gpio_read( MAC_ENGINE *eng, int regadr );
 #define GLOBAL    extern
 #endif
 
-#ifdef PHY_SPECIAL
-GLOBAL void    special_PHY_init (MAC_ENGINE *eng);
-GLOBAL void    special_PHY_MDIO_init (MAC_ENGINE *eng);
-GLOBAL void    special_PHY_buf_init (MAC_ENGINE *eng);
-GLOBAL void    special_PHY_recov (MAC_ENGINE *eng);
-GLOBAL void    special_PHY_reg_init (MAC_ENGINE *eng);
-GLOBAL void    special_PHY_debug (MAC_ENGINE *eng);
-GLOBAL uint32_t special_PHY_FRAME_LEN (MAC_ENGINE *eng);
-GLOBAL uint32_t *special_PHY_txpkt_ptr (MAC_ENGINE *eng);
-GLOBAL uint32_t *special_PHY_rxpkt_ptr (MAC_ENGINE *eng);
-#endif
 
 #endif // End COMMINF_H

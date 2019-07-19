@@ -16,9 +16,7 @@
 // Define
 //
 #define Enable_SearchPHYID             //[ON] (Search vlid PHY ID)
-#ifndef PHY_SPECIAL
 #define Enable_CheckZeroPHYID          //[ON] (Check PHY ID with value 0)
-#endif
 
 #ifdef Enable_CheckZeroPHYID
   #define PHY_IS_VALID( dat )      ( ( (dat & 0xffff) != 0xffff ) && ( ( dat & 0xffff ) != 0x0 ) )

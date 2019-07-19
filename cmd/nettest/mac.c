@@ -159,15 +159,6 @@ uint32_t Read_Reg_SDR_DD(uint32_t addr)
 	return (SWAP_4B_LEDN_REG(ReadSOC_DD(SDR_BASE + addr)));
 }
 
-uint32_t Read_Reg_SMB_DD(uint32_t addr)
-{
-#ifdef MAC_DEBUG_REGRW_SMB
-	printf("[RegRd-SMB] %08x = %08x\n", SMB_BASE + addr,
-	       SWAP_4B_LEDN_REG(ReadSOC_DD(SMB_BASE + addr)));
-#endif
-	return (SWAP_4B_LEDN_REG(ReadSOC_DD(SMB_BASE + addr)));
-}
-
 uint32_t Read_Reg_TIMER_DD(uint32_t addr)
 {
 #ifdef MAC_DEBUG_REGRW_TIMER
@@ -356,8 +347,8 @@ void init_iodelay (MAC_ENGINE *eng)
 	// [IO]setup Dly_mask_bit_in
 	// [IO]setup Dly_mask_bit_out
 	//------------------------------
-	eng->io.Dly_stage_shf_i = (eng->arg.GEn_FullRange) ? 0 : AST2500_IOStageShiftBit_In ;
-	eng->io.Dly_stage_shf_o = (eng->arg.GEn_FullRange) ? 0 : AST2500_IOStageShiftBit_Out;
+	eng->io.Dly_stage_shf_i = (eng->arg.ctrl.b.full_range) ? 0 : AST2500_IOStageShiftBit_In ;
+	eng->io.Dly_stage_shf_o = (eng->arg.ctrl.b.full_range) ? 0 : AST2500_IOStageShiftBit_Out;
 
 	eng->io.Dly_stagebit  = 6;
 	eng->io.Dly_stage     =   ( 1 << eng->io.Dly_stagebit );
@@ -641,7 +632,7 @@ void read_scu (MAC_ENGINE *eng)
 	eng->reg.SCU_048 = 0x00082208;
 	eng->reg.SCU_0b8 = 0x00082208;
 	eng->reg.SCU_0bc = 0x00082208;
-	eng->reg.SCU_07c = 0x04000000;//ASTChipName
+	eng->reg.SCU_07c = 0x04000000;
 
 	eng->reg.SCU_FPGASel = Read_Reg_SCU_DD_AST2600( 0x10c ) & 0x0fffffff;
 	eng->reg.SCU_070     = Read_Reg_SCU_DD_AST2600( 0x500 ) & 0x000000c0;
@@ -701,7 +692,7 @@ void init_scu1 (MAC_ENGINE *eng)
 {
 	nt_log_func_name();
 
-	if ( eng->ModeSwitch == MODE_DEDICATED )
+	if ( eng->arg.run_mode == MODE_DEDICATED )
 		init_scu_macio ( eng );
 
 #ifdef Enable_BufMerge
@@ -719,13 +710,9 @@ void init_scu_macio (MAC_ENGINE *eng) {
 //------------------------------
 	if ( eng->env.AST2300 ) {
 		switch ( eng->run.MAC_idx_PHY ) {
-  #if defined(PHY_GPIO)
-			case 0  : Write_Reg_SCU_DD( 0x88, (eng->reg.SCU_088 & 0x3fffffff)              ); break;//[31]MAC1 MDIO, [30]MAC1 MDC
-			case 1  : Write_Reg_SCU_DD( 0x90, (eng->reg.SCU_090 & 0xfffffffb)              ); break;//[2 ]MAC2 MDC/MDIO
-  #else
-			case 0  : Write_Reg_SCU_DD( 0x88, (eng->reg.SCU_088 & 0x3fffffff) | 0xc0000000 ); break;//[31]MAC1 MDIO, [30]MAC1 MDC
+  			case 0  : Write_Reg_SCU_DD( 0x88, (eng->reg.SCU_088 & 0x3fffffff) | 0xc0000000 ); break;//[31]MAC1 MDIO, [30]MAC1 MDC
 			case 1  : Write_Reg_SCU_DD( 0x90, (eng->reg.SCU_090 & 0xfffffffb) | 0x00000004 ); break;//[2 ]MAC2 MDC/MDIO
-  #endif
+
 			default : break;
 		}
 //		Write_Reg_SCU_DD( 0x80, (eng->reg.SCU_080 & 0xfffffff0) | 0x0000000f );//MAC1LINK/MAC2LINK
@@ -736,13 +723,8 @@ void init_scu_macio (MAC_ENGINE *eng) {
 //				eng->reg.SCU_074_mix = (eng->reg.SCU_074_mix & 0xfdffffff) | 0x02000000;//[25]MAC1 PHYLINK
 //				break;
 			case 1  :
-  #if defined(PHY_GPIO)
-//				eng->reg.SCU_074_mix = (eng->reg.SCU_074_mix & 0xfbefffff) | 0x04000000;//[26]MAC2 PHYLINK, [20]MAC2 MDC/MDIO
-				eng->reg.SCU_074_mix = (eng->reg.SCU_074_mix & 0xffefffff)             ;//[26]MAC2 PHYLINK, [20]MAC2 MDC/MDIO
-  #else
-//				eng->reg.SCU_074_mix = (eng->reg.SCU_074_mix & 0xfbefffff) | 0x04100000;//[26]MAC2 PHYLINK, [20]MAC2 MDC/MDIO
-				eng->reg.SCU_074_mix = (eng->reg.SCU_074_mix & 0xffefffff) | 0x00100000;//[26]MAC2 PHYLINK, [20]MAC2 MDC/MDIO
-  #endif
+  
+				eng->reg.SCU_074_mix = (eng->reg.SCU_074_mix & 0xffefffff) | 0x00100000;//[26]MAC2 PHYLINK, [20]MAC2 MDC/MDIO  
 				break;
 			default : 
 				break;
@@ -850,14 +832,6 @@ void get_mac_info (MAC_ENGINE *eng)
 		eng->reg.MAC_00c = 0xf7837dd4;//LSB(0xd4)
 	}
 
-#if defined( MELLANOX_CONNECTX_4 )
-	eng->reg.MAC_008 = 0x00000000;//MSB(0x00)  20170523
-	eng->reg.MAC_00c = 0x00000000;//LSB(0xd4)	20170523
-
-	Write_Reg_MAC_DD( eng, 0x08, eng->reg.MAC_008 ); // 20170523
-	Write_Reg_MAC_DD( eng, 0x0c, eng->reg.MAC_00c ); // 20170523
-#endif
-
 	eng->inf.SA[ 0 ] = ( eng->reg.MAC_008 >>  8 ) & 0xff;//MSB
 	eng->inf.SA[ 1 ] = ( eng->reg.MAC_008       ) & 0xff;
 	eng->inf.SA[ 2 ] = ( eng->reg.MAC_00c >> 24 ) & 0xff;
@@ -869,7 +843,7 @@ void get_mac_info (MAC_ENGINE *eng)
 	// [Reg]setup MAC_040_new
 	//------------------------------
 	eng->reg.MAC_040 = Read_Reg_MAC_DD( eng, 0x40 );
-	if ( eng->arg.GEn_MACLoopback )
+	if ( eng->arg.ctrl.b.mac_int_loopback )
 		eng->reg.MAC_040_new = eng->reg.MAC_040 | 0x40000000;
 	else
 		eng->reg.MAC_040_new = eng->reg.MAC_040;
@@ -924,7 +898,7 @@ void init_mac (MAC_ENGINE *eng)
 	Write_Reg_MAC_DD( eng, 0x58, MAC_058_def );
 #endif
 
-	if ( eng->ModeSwitch == MODE_NSCI )
+	if ( eng->arg.run_mode == MODE_NCSI )
 		Write_Reg_MAC_DD( eng, 0x4c, NCSI_RxDMA_PakSize );
 	else
 		Write_Reg_MAC_DD( eng, 0x4c, DMA_PakSize );
@@ -965,13 +939,13 @@ void FPri_End (MAC_ENGINE *eng, BYTE option)
 {
 	nt_log_func_name();
 	if ( eng->env.MAC_RMII && ( eng->phy.RMIICK_IOMode != 0 ) && eng->run.IO_MrgChk && eng->flg.AllFail ) {
-		if ( eng->arg.GEn_RMIIPHY_IN == 0 ) {
+		if ( eng->arg.ctrl.b.rmii_phy_in == 0 ) {
 			PRINTF( option, "\n\n\n\n\n\n[Info] The PHY's RMII reference clock pin is setting to the OUTPUT mode now.\n" );
-			PRINTF( option, "       Maybe you can run the INPUT mode command \"mactest  %d %d %d %d %d %d %d\".\n\n\n\n", eng->arg.GRun_Mode, eng->arg.GSpeed, (eng->arg.GCtrl | 0x80), eng->arg.GLOOP_MAX, eng->arg.GTestMode, eng->arg.GPHYADR, eng->arg.GChk_TimingBund );
+			PRINTF( option, "       Maybe you can run the INPUT mode command \"mactest  %d %d %d %d %d %d %d\".\n\n\n\n", eng->arg.run_idx, eng->arg.run_speed, (eng->arg.ctrl.w | 0x80), eng->arg.loop_max, eng->arg.test_mode, eng->arg.GPHYADR, eng->arg.GChk_TimingBund );
 		}
 		else {
 			PRINTF( option, "\n\n\n\n\n\n[Info] The PHY's RMII reference clock pin is setting to the INPUT mode now.\n" );
-			PRINTF( option, "       Maybe you can run the OUTPUT mode command \"mactest  %d %d %d %d %d %d %d\".\n\n\n\n", eng->arg.GRun_Mode, eng->arg.GSpeed, (eng->arg.GCtrl & 0x7f), eng->arg.GLOOP_MAX, eng->arg.GTestMode, eng->arg.GPHYADR, eng->arg.GChk_TimingBund );
+			PRINTF( option, "       Maybe you can run the OUTPUT mode command \"mactest  %d %d %d %d %d %d %d\".\n\n\n\n", eng->arg.run_idx, eng->arg.run_speed, (eng->arg.ctrl.w & 0x7f), eng->arg.loop_max, eng->arg.test_mode, eng->arg.GPHYADR, eng->arg.GChk_TimingBund );
 		}
 	} // End if ( eng->env.MAC_RMII && ( eng->phy.RMIICK_IOMode != 0 ) && eng->run.IO_MrgChk && eng->flg.AllFail )
 
@@ -987,7 +961,7 @@ void FPri_End (MAC_ENGINE *eng, BYTE option)
 	//------------------------------
 	//[Warning] PHY Address
 	//------------------------------
-	if ( eng->ModeSwitch == MODE_DEDICATED ) {
+	if ( eng->arg.run_mode == MODE_DEDICATED ) {
 		if ( eng->arg.GPHYADR != eng->phy.Adr )
 			PRINTF( option, "\n[Warning] PHY Address change from %d to %d !!!\n", eng->arg.GPHYADR, eng->phy.Adr );
 	}
@@ -1020,70 +994,69 @@ void FPri_End (MAC_ENGINE *eng, BYTE option)
 		}
 	} // End if ( eng->env.AST2300 )
 
-	if ( eng->ModeSwitch == MODE_NSCI ) {
-		PRINTF( option, "\n[Arg] %d %d %d %d %d %d %d (%s){%d}\n", eng->arg.GRun_Mode, eng->arg.GPackageTolNum, eng->arg.GChannelTolNum, eng->arg.GTestMode, eng->arg.GChk_TimingBund, eng->arg.GCtrl, eng->arg.GARPNumCnt, eng->env.ASTChipName, TIME_OUT_NCSI );
+	if ( eng->arg.run_mode == MODE_NCSI ) {
+		PRINTF( option, "\n[Arg] %d %d %d %d %d %d %d {%d}\n", eng->arg.run_idx, eng->arg.GPackageTolNum, eng->arg.GChannelTolNum, eng->arg.test_mode, eng->arg.GChk_TimingBund, eng->arg.ctrl.w, eng->arg.GARPNumCnt, TIME_OUT_NCSI );
 
 		switch ( eng->ncsi_cap.PCI_DID_VID ) {
-			case PCI_DID_VID_Intel_82574L             : { PRINTF( option, "[NC]%08x %08x: Intel 82574L       \n", eng->ncsi_cap.ManufacturerID, eng->ncsi_cap.PCI_DID_VID ); break; }
-			case PCI_DID_VID_Intel_82575_10d6         : { PRINTF( option, "[NC]%08x %08x: Intel 82575        \n", eng->ncsi_cap.ManufacturerID, eng->ncsi_cap.PCI_DID_VID ); break; }
-			case PCI_DID_VID_Intel_82575_10a7         : { PRINTF( option, "[NC]%08x %08x: Intel 82575        \n", eng->ncsi_cap.ManufacturerID, eng->ncsi_cap.PCI_DID_VID ); break; }
-			case PCI_DID_VID_Intel_82575_10a9         : { PRINTF( option, "[NC]%08x %08x: Intel 82575        \n", eng->ncsi_cap.ManufacturerID, eng->ncsi_cap.PCI_DID_VID ); break; }
-			case PCI_DID_VID_Intel_82576_10c9         : { PRINTF( option, "[NC]%08x %08x: Intel 82576        \n", eng->ncsi_cap.ManufacturerID, eng->ncsi_cap.PCI_DID_VID ); break; }
-			case PCI_DID_VID_Intel_82576_10e6         : { PRINTF( option, "[NC]%08x %08x: Intel 82576        \n", eng->ncsi_cap.ManufacturerID, eng->ncsi_cap.PCI_DID_VID ); break; }
-			case PCI_DID_VID_Intel_82576_10e7         : { PRINTF( option, "[NC]%08x %08x: Intel 82576        \n", eng->ncsi_cap.ManufacturerID, eng->ncsi_cap.PCI_DID_VID ); break; }
-			case PCI_DID_VID_Intel_82576_10e8         : { PRINTF( option, "[NC]%08x %08x: Intel 82576        \n", eng->ncsi_cap.ManufacturerID, eng->ncsi_cap.PCI_DID_VID ); break; }
-			case PCI_DID_VID_Intel_82576_1518         : { PRINTF( option, "[NC]%08x %08x: Intel 82576        \n", eng->ncsi_cap.ManufacturerID, eng->ncsi_cap.PCI_DID_VID ); break; }
-			case PCI_DID_VID_Intel_82576_1526         : { PRINTF( option, "[NC]%08x %08x: Intel 82576        \n", eng->ncsi_cap.ManufacturerID, eng->ncsi_cap.PCI_DID_VID ); break; }
-			case PCI_DID_VID_Intel_82576_150a         : { PRINTF( option, "[NC]%08x %08x: Intel 82576        \n", eng->ncsi_cap.ManufacturerID, eng->ncsi_cap.PCI_DID_VID ); break; }
-			case PCI_DID_VID_Intel_82576_150d         : { PRINTF( option, "[NC]%08x %08x: Intel 82576        \n", eng->ncsi_cap.ManufacturerID, eng->ncsi_cap.PCI_DID_VID ); break; }
-			case PCI_DID_VID_Intel_82599_10fb         : { PRINTF( option, "[NC]%08x %08x: Intel 82599        \n", eng->ncsi_cap.ManufacturerID, eng->ncsi_cap.PCI_DID_VID ); break; }
-			case PCI_DID_VID_Intel_82599_1557         : { PRINTF( option, "[NC]%08x %08x: Intel 82599        \n", eng->ncsi_cap.ManufacturerID, eng->ncsi_cap.PCI_DID_VID ); break; }
-			case PCI_DID_VID_Intel_I210_1533          : { PRINTF( option, "[NC]%08x %08x: Intel I210         \n", eng->ncsi_cap.ManufacturerID, eng->ncsi_cap.PCI_DID_VID ); break; }
-			case PCI_DID_VID_Intel_I210_1537          : { PRINTF( option, "[NC]%08x %08x: Intel I210         \n", eng->ncsi_cap.ManufacturerID, eng->ncsi_cap.PCI_DID_VID ); break; }
-			case PCI_DID_VID_Intel_I350_1521          : { PRINTF( option, "[NC]%08x %08x: Intel I350         \n", eng->ncsi_cap.ManufacturerID, eng->ncsi_cap.PCI_DID_VID ); break; }
-			case PCI_DID_VID_Intel_I350_1523          : { PRINTF( option, "[NC]%08x %08x: Intel I350         \n", eng->ncsi_cap.ManufacturerID, eng->ncsi_cap.PCI_DID_VID ); break; }
-			case PCI_DID_VID_Intel_X540               : { PRINTF( option, "[NC]%08x %08x: Intel X540         \n", eng->ncsi_cap.ManufacturerID, eng->ncsi_cap.PCI_DID_VID ); break; }
-			case PCI_DID_VID_Intel_X550               : { PRINTF( option, "[NC]%08x %08x: Intel X550         \n", eng->ncsi_cap.ManufacturerID, eng->ncsi_cap.PCI_DID_VID ); break; }
-			case PCI_DID_VID_Intel_Broadwell_DE       : { PRINTF( option, "[NC]%08x %08x: Intel Broadwell-DE \n", eng->ncsi_cap.ManufacturerID, eng->ncsi_cap.PCI_DID_VID ); break; }
-			case PCI_DID_VID_Intel_X722_37d0          : { PRINTF( option, "[NC]%08x %08x: Intel X722         \n", eng->ncsi_cap.ManufacturerID, eng->ncsi_cap.PCI_DID_VID ); break; }
-			case PCI_DID_VID_Broadcom_BCM5718         : { PRINTF( option, "[NC]%08x %08x: Broadcom BCM5718   \n", eng->ncsi_cap.ManufacturerID, eng->ncsi_cap.PCI_DID_VID ); break; }
-			case PCI_DID_VID_Broadcom_BCM5719         : { PRINTF( option, "[NC]%08x %08x: Broadcom BCM5719   \n", eng->ncsi_cap.ManufacturerID, eng->ncsi_cap.PCI_DID_VID ); break; }
-			case PCI_DID_VID_Broadcom_BCM5720         : { PRINTF( option, "[NC]%08x %08x: Broadcom BCM5720   \n", eng->ncsi_cap.ManufacturerID, eng->ncsi_cap.PCI_DID_VID ); break; }
-			case PCI_DID_VID_Broadcom_BCM5725         : { PRINTF( option, "[NC]%08x %08x: Broadcom BCM5725   \n", eng->ncsi_cap.ManufacturerID, eng->ncsi_cap.PCI_DID_VID ); break; }
-			case PCI_DID_VID_Broadcom_BCM57810S       : { PRINTF( option, "[NC]%08x %08x: Broadcom BCM57810S \n", eng->ncsi_cap.ManufacturerID, eng->ncsi_cap.PCI_DID_VID ); break; }
-			case PCI_DID_VID_Broadcom_Cumulus         : { PRINTF( option, "[NC]%08x %08x: Broadcom Cumulus   \n", eng->ncsi_cap.ManufacturerID, eng->ncsi_cap.PCI_DID_VID ); break; }
-			case PCI_DID_VID_Broadcom_BCM57302        : { PRINTF( option, "[NC]%08x %08x: Broadcom BCM57302  \n", eng->ncsi_cap.ManufacturerID, eng->ncsi_cap.PCI_DID_VID ); break; }
-			case PCI_DID_VID_Broadcom_BCM957452       : { PRINTF( option, "[NC]%08x %08x: Broadcom BCM957452 \n", eng->ncsi_cap.ManufacturerID, eng->ncsi_cap.PCI_DID_VID ); break; }
-			case PCI_DID_VID_Mellanox_ConnectX_3_1003 : { PRINTF( option, "[NC]%08x %08x: Mellanox ConnectX-3\n", eng->ncsi_cap.ManufacturerID, eng->ncsi_cap.PCI_DID_VID ); break; }
-			case PCI_DID_VID_Mellanox_ConnectX_3_1007 : { PRINTF( option, "[NC]%08x %08x: Mellanox ConnectX-3\n", eng->ncsi_cap.ManufacturerID, eng->ncsi_cap.PCI_DID_VID ); break; }
-			case PCI_DID_VID_Mellanox_ConnectX_4      : { PRINTF( option, "[NC]%08x %08x: Mellanox ConnectX-4\n", eng->ncsi_cap.ManufacturerID, eng->ncsi_cap.PCI_DID_VID ); break; }
+			case PCI_DID_VID_Intel_82574L             : { PRINTF( option, "[NC]%08x %08x: Intel 82574L       \n", eng->ncsi_cap.manufacturer_id, eng->ncsi_cap.PCI_DID_VID ); break; }
+			case PCI_DID_VID_Intel_82575_10d6         : { PRINTF( option, "[NC]%08x %08x: Intel 82575        \n", eng->ncsi_cap.manufacturer_id, eng->ncsi_cap.PCI_DID_VID ); break; }
+			case PCI_DID_VID_Intel_82575_10a7         : { PRINTF( option, "[NC]%08x %08x: Intel 82575        \n", eng->ncsi_cap.manufacturer_id, eng->ncsi_cap.PCI_DID_VID ); break; }
+			case PCI_DID_VID_Intel_82575_10a9         : { PRINTF( option, "[NC]%08x %08x: Intel 82575        \n", eng->ncsi_cap.manufacturer_id, eng->ncsi_cap.PCI_DID_VID ); break; }
+			case PCI_DID_VID_Intel_82576_10c9         : { PRINTF( option, "[NC]%08x %08x: Intel 82576        \n", eng->ncsi_cap.manufacturer_id, eng->ncsi_cap.PCI_DID_VID ); break; }
+			case PCI_DID_VID_Intel_82576_10e6         : { PRINTF( option, "[NC]%08x %08x: Intel 82576        \n", eng->ncsi_cap.manufacturer_id, eng->ncsi_cap.PCI_DID_VID ); break; }
+			case PCI_DID_VID_Intel_82576_10e7         : { PRINTF( option, "[NC]%08x %08x: Intel 82576        \n", eng->ncsi_cap.manufacturer_id, eng->ncsi_cap.PCI_DID_VID ); break; }
+			case PCI_DID_VID_Intel_82576_10e8         : { PRINTF( option, "[NC]%08x %08x: Intel 82576        \n", eng->ncsi_cap.manufacturer_id, eng->ncsi_cap.PCI_DID_VID ); break; }
+			case PCI_DID_VID_Intel_82576_1518         : { PRINTF( option, "[NC]%08x %08x: Intel 82576        \n", eng->ncsi_cap.manufacturer_id, eng->ncsi_cap.PCI_DID_VID ); break; }
+			case PCI_DID_VID_Intel_82576_1526         : { PRINTF( option, "[NC]%08x %08x: Intel 82576        \n", eng->ncsi_cap.manufacturer_id, eng->ncsi_cap.PCI_DID_VID ); break; }
+			case PCI_DID_VID_Intel_82576_150a         : { PRINTF( option, "[NC]%08x %08x: Intel 82576        \n", eng->ncsi_cap.manufacturer_id, eng->ncsi_cap.PCI_DID_VID ); break; }
+			case PCI_DID_VID_Intel_82576_150d         : { PRINTF( option, "[NC]%08x %08x: Intel 82576        \n", eng->ncsi_cap.manufacturer_id, eng->ncsi_cap.PCI_DID_VID ); break; }
+			case PCI_DID_VID_Intel_82599_10fb         : { PRINTF( option, "[NC]%08x %08x: Intel 82599        \n", eng->ncsi_cap.manufacturer_id, eng->ncsi_cap.PCI_DID_VID ); break; }
+			case PCI_DID_VID_Intel_82599_1557         : { PRINTF( option, "[NC]%08x %08x: Intel 82599        \n", eng->ncsi_cap.manufacturer_id, eng->ncsi_cap.PCI_DID_VID ); break; }
+			case PCI_DID_VID_Intel_I210_1533          : { PRINTF( option, "[NC]%08x %08x: Intel I210         \n", eng->ncsi_cap.manufacturer_id, eng->ncsi_cap.PCI_DID_VID ); break; }
+			case PCI_DID_VID_Intel_I210_1537          : { PRINTF( option, "[NC]%08x %08x: Intel I210         \n", eng->ncsi_cap.manufacturer_id, eng->ncsi_cap.PCI_DID_VID ); break; }
+			case PCI_DID_VID_Intel_I350_1521          : { PRINTF( option, "[NC]%08x %08x: Intel I350         \n", eng->ncsi_cap.manufacturer_id, eng->ncsi_cap.PCI_DID_VID ); break; }
+			case PCI_DID_VID_Intel_I350_1523          : { PRINTF( option, "[NC]%08x %08x: Intel I350         \n", eng->ncsi_cap.manufacturer_id, eng->ncsi_cap.PCI_DID_VID ); break; }
+			case PCI_DID_VID_Intel_X540               : { PRINTF( option, "[NC]%08x %08x: Intel X540         \n", eng->ncsi_cap.manufacturer_id, eng->ncsi_cap.PCI_DID_VID ); break; }
+			case PCI_DID_VID_Intel_X550               : { PRINTF( option, "[NC]%08x %08x: Intel X550         \n", eng->ncsi_cap.manufacturer_id, eng->ncsi_cap.PCI_DID_VID ); break; }
+			case PCI_DID_VID_Intel_Broadwell_DE       : { PRINTF( option, "[NC]%08x %08x: Intel Broadwell-DE \n", eng->ncsi_cap.manufacturer_id, eng->ncsi_cap.PCI_DID_VID ); break; }
+			case PCI_DID_VID_Intel_X722_37d0          : { PRINTF( option, "[NC]%08x %08x: Intel X722         \n", eng->ncsi_cap.manufacturer_id, eng->ncsi_cap.PCI_DID_VID ); break; }
+			case PCI_DID_VID_Broadcom_BCM5718         : { PRINTF( option, "[NC]%08x %08x: Broadcom BCM5718   \n", eng->ncsi_cap.manufacturer_id, eng->ncsi_cap.PCI_DID_VID ); break; }
+			case PCI_DID_VID_Broadcom_BCM5719         : { PRINTF( option, "[NC]%08x %08x: Broadcom BCM5719   \n", eng->ncsi_cap.manufacturer_id, eng->ncsi_cap.PCI_DID_VID ); break; }
+			case PCI_DID_VID_Broadcom_BCM5720         : { PRINTF( option, "[NC]%08x %08x: Broadcom BCM5720   \n", eng->ncsi_cap.manufacturer_id, eng->ncsi_cap.PCI_DID_VID ); break; }
+			case PCI_DID_VID_Broadcom_BCM5725         : { PRINTF( option, "[NC]%08x %08x: Broadcom BCM5725   \n", eng->ncsi_cap.manufacturer_id, eng->ncsi_cap.PCI_DID_VID ); break; }
+			case PCI_DID_VID_Broadcom_BCM57810S       : { PRINTF( option, "[NC]%08x %08x: Broadcom BCM57810S \n", eng->ncsi_cap.manufacturer_id, eng->ncsi_cap.PCI_DID_VID ); break; }
+			case PCI_DID_VID_Broadcom_Cumulus         : { PRINTF( option, "[NC]%08x %08x: Broadcom Cumulus   \n", eng->ncsi_cap.manufacturer_id, eng->ncsi_cap.PCI_DID_VID ); break; }
+			case PCI_DID_VID_Broadcom_BCM57302        : { PRINTF( option, "[NC]%08x %08x: Broadcom BCM57302  \n", eng->ncsi_cap.manufacturer_id, eng->ncsi_cap.PCI_DID_VID ); break; }
+			case PCI_DID_VID_Broadcom_BCM957452       : { PRINTF( option, "[NC]%08x %08x: Broadcom BCM957452 \n", eng->ncsi_cap.manufacturer_id, eng->ncsi_cap.PCI_DID_VID ); break; }
+			case PCI_DID_VID_Mellanox_ConnectX_3_1003 : { PRINTF( option, "[NC]%08x %08x: Mellanox ConnectX-3\n", eng->ncsi_cap.manufacturer_id, eng->ncsi_cap.PCI_DID_VID ); break; }
+			case PCI_DID_VID_Mellanox_ConnectX_3_1007 : { PRINTF( option, "[NC]%08x %08x: Mellanox ConnectX-3\n", eng->ncsi_cap.manufacturer_id, eng->ncsi_cap.PCI_DID_VID ); break; }
+			case PCI_DID_VID_Mellanox_ConnectX_4      : { PRINTF( option, "[NC]%08x %08x: Mellanox ConnectX-4\n", eng->ncsi_cap.manufacturer_id, eng->ncsi_cap.PCI_DID_VID ); break; }
 			default:
-			switch ( eng->ncsi_cap.ManufacturerID ) {
-				case ManufacturerID_Intel    : { PRINTF( option, "[NC]%08x %08x: Intel              \n", eng->ncsi_cap.ManufacturerID, eng->ncsi_cap.PCI_DID_VID ); break; }
-				case ManufacturerID_Broadcom : { PRINTF( option, "[NC]%08x %08x: Broadcom           \n", eng->ncsi_cap.ManufacturerID, eng->ncsi_cap.PCI_DID_VID ); break; }
-				case ManufacturerID_Mellanox : { PRINTF( option, "[NC]%08x %08x: Mellanox           \n", eng->ncsi_cap.ManufacturerID, eng->ncsi_cap.PCI_DID_VID ); break; }
-				case ManufacturerID_Mellanox1: { PRINTF( option, "[NC]%08x %08x: Mellanox           \n", eng->ncsi_cap.ManufacturerID, eng->ncsi_cap.PCI_DID_VID ); break; }
-				case ManufacturerID_Emulex   : { PRINTF( option, "[NC]%08x %08x: Emulex             \n", eng->ncsi_cap.ManufacturerID, eng->ncsi_cap.PCI_DID_VID ); break; }
-				default                      : { PRINTF( option, "[NC]%08x %08x                     \n", eng->ncsi_cap.ManufacturerID, eng->ncsi_cap.PCI_DID_VID ); break; }
-			} // End switch ( eng->ncsi_cap.ManufacturerID )
+			switch ( eng->ncsi_cap.manufacturer_id ) {
+				case ManufacturerID_Intel    : { PRINTF( option, "[NC]%08x %08x: Intel              \n", eng->ncsi_cap.manufacturer_id, eng->ncsi_cap.PCI_DID_VID ); break; }
+				case ManufacturerID_Broadcom : { PRINTF( option, "[NC]%08x %08x: Broadcom           \n", eng->ncsi_cap.manufacturer_id, eng->ncsi_cap.PCI_DID_VID ); break; }
+				case ManufacturerID_Mellanox : { PRINTF( option, "[NC]%08x %08x: Mellanox           \n", eng->ncsi_cap.manufacturer_id, eng->ncsi_cap.PCI_DID_VID ); break; }
+				case ManufacturerID_Mellanox1: { PRINTF( option, "[NC]%08x %08x: Mellanox           \n", eng->ncsi_cap.manufacturer_id, eng->ncsi_cap.PCI_DID_VID ); break; }
+				case ManufacturerID_Emulex   : { PRINTF( option, "[NC]%08x %08x: Emulex             \n", eng->ncsi_cap.manufacturer_id, eng->ncsi_cap.PCI_DID_VID ); break; }
+				default                      : { PRINTF( option, "[NC]%08x %08x                     \n", eng->ncsi_cap.manufacturer_id, eng->ncsi_cap.PCI_DID_VID ); break; }
+			} // End switch ( eng->ncsi_cap.manufacturer_id )
 		} // End switch ( eng->ncsi_cap.PCI_DID_VID )
 	}
 	else {
-		if (eng->arg.GLOOP_INFINI) {
-			PRINTF( option, "\n[Arg] %d %d %d # %d %d %d %x (%s){%d x:%d %d %d}[%d %d %d] %d\n"  , eng->arg.GRun_Mode, eng->arg.GSpeed, eng->arg.GCtrl,                     eng->arg.GTestMode, eng->arg.GPHYADR, eng->arg.GChk_TimingBund, eng->arg.GUserDVal, eng->env.ASTChipName, eng->run.TIME_OUT_Des_PHYRatio, TIME_OUT_Des_1G, TIME_OUT_Des_100M, TIME_OUT_Des_10M, eng->run.Loop_rl[0], eng->run.Loop_rl[1], eng->run.Loop_rl[2], eng->dat.Des_Num );
+#if 0		
+		if (eng->arg.loop_inf) {
+			PRINTF( option, "\n[Arg] %d %d %d # %d %d %d %x (%s){%d x:%d %d %d}[%d %d %d] %d\n"  , eng->arg.run_idx, eng->arg.run_speed, eng->arg.ctrl.w,                     eng->arg.test_mode, eng->arg.GPHYADR, eng->arg.GChk_TimingBund, eng->arg.GUserDVal,  eng->run.TIME_OUT_Des_PHYRatio, TIME_OUT_Des_1G, TIME_OUT_Des_100M, TIME_OUT_Des_10M, eng->run.Loop_rl[0], eng->run.Loop_rl[1], eng->run.Loop_rl[2], eng->dat.Des_Num );
 		}
 		else {
-			PRINTF( option, "\n[Arg] %d %d %d %d %d %d %d %x (%s){%d x:%d %d %d}[%d %d %d] %d\n", eng->arg.GRun_Mode, eng->arg.GSpeed, eng->arg.GCtrl, eng->arg.GLOOP_MAX, eng->arg.GTestMode, eng->arg.GPHYADR, eng->arg.GChk_TimingBund, eng->arg.GUserDVal, eng->env.ASTChipName, eng->run.TIME_OUT_Des_PHYRatio, TIME_OUT_Des_1G, TIME_OUT_Des_100M, TIME_OUT_Des_10M, eng->run.Loop_rl[0], eng->run.Loop_rl[1], eng->run.Loop_rl[2], eng->dat.Des_Num );
+			PRINTF( option, "\n[Arg] %d %d %d %d %d %d %d %x (%s){%d x:%d %d %d}[%d %d %d] %d\n", eng->arg.run_idx, eng->arg.run_speed, eng->arg.ctrl.w, eng->arg.loop_max, eng->arg.test_mode, eng->arg.GPHYADR, eng->arg.GChk_TimingBund, eng->arg.GUserDVal, eng->run.TIME_OUT_Des_PHYRatio, TIME_OUT_Des_1G, TIME_OUT_Des_100M, TIME_OUT_Des_10M, eng->run.Loop_rl[0], eng->run.Loop_rl[1], eng->run.Loop_rl[2], eng->dat.Des_Num );
 		}
+#endif		
 
 		PRINTF( option, "[PHY] Adr:%d ID2:%04x ID3:%04x (%s)\n", eng->phy.Adr, eng->phy.PHY_ID2, eng->phy.PHY_ID3, eng->phy.PHYName );
-	} // End if ( eng->ModeSwitch == MODE_NSCI )
+	} // End if ( eng->arg.run_mode == MODE_NCSI )
 
-#ifdef SUPPORT_PHY_LAN9303
-	PRINTF ( option, "[Ver II] %s (for LAN9303 with I2C%d)\n", version_name, LAN9303_I2C_BUSNUM );
-#else
+
 	PRINTF( option, "[Ver II] %s\n", version_name );
-#endif
 } // End void FPri_End (MAC_ENGINE *eng, BYTE option)
 
 //------------------------------------------------------------
@@ -1210,7 +1183,7 @@ void FPri_ErrFlag (MAC_ENGINE *eng, BYTE option)
 				} // End if ( eng->env.AST2300 )
 			} // End if ( eng->flg.Err_Flag & Err_Flag_MACMode )
 
-			if ( eng->ModeSwitch == MODE_NSCI ) {
+			if ( eng->arg.run_mode == MODE_NCSI ) {
 				if ( eng->flg.Err_Flag & Err_Flag_NCSI_LinkFail ) {
 					PRINTF( option, "[Err] NCSI packet retry number over flows when find channel\n" );
 
@@ -1231,7 +1204,7 @@ void FPri_ErrFlag (MAC_ENGINE *eng, BYTE option)
 
 				if ( eng->flg.Err_Flag & Err_Flag_NCSI_Channel_Num ) { PRINTF( option, "[NCSI] Channel number expected: %d, real: %d\n", eng->arg.GChannelTolNum, eng->dat.number_chl ); }
 				if ( eng->flg.Err_Flag & Err_Flag_NCSI_Package_Num ) { PRINTF( option, "[NCSI] Peckage number expected: %d, real: %d\n", eng->arg.GPackageTolNum, eng->dat.number_pak ); }
-			} // End if ( eng->ModeSwitch == MODE_NSCI )
+			} // End if ( eng->arg.run_mode == MODE_NCSI )
 		} // End if ( eng->flg.Err_Flag )
 	} // End if ( eng->flg.Flag_PrintEn )
 } // End void FPri_ErrFlag (MAC_ENGINE *eng, BYTE option)
@@ -1263,7 +1236,7 @@ char Finish_Check (MAC_ENGINE *eng, int value)
 	}
 #endif
 
-	if ( eng->ModeSwitch ==  MODE_DEDICATED ) {
+	if ( eng->arg.run_mode ==  MODE_DEDICATED ) {
 		if ( eng->dat.FRAME_LEN )
 			free( eng->dat.FRAME_LEN );
 
@@ -1297,16 +1270,12 @@ char Finish_Check (MAC_ENGINE *eng, int value)
 		FPri_RegValue( eng, FP_LOG );
 	if ( eng->run.TM_IOTiming )
 		FPri_RegValue( eng, FP_IO  );
-#ifdef PHY_SPECIAL
-	if ( !eng->run.TM_Burst )
-		special_PHY_debug( eng );
-#endif
 
 	Finish_Close( eng );
 
 #if defined(CONFIG_ASPEED_AST2500)
 	reg = Read_Reg_SCU_DD( 0x40 );
-	if ( eng->ModeSwitch == MODE_DEDICATED )
+	if ( eng->arg.run_mode == MODE_DEDICATED )
 		shift_value = 18 + eng->run.MAC_idx;
 	else
 		shift_value = 16 + eng->run.MAC_idx;
@@ -1430,8 +1399,6 @@ void setup_framesize (MAC_ENGINE *eng)
 				eng->dat.FRAME_LEN[ des_num ] = FRAME_LENH;
 			else
 				eng->dat.FRAME_LEN[ des_num ] = FRAME_LENL;
-#elif defined(PHY_SPECIAL)
-			eng->dat.FRAME_LEN[ des_num ] = special_PHY_FRAME_LEN( eng );
 #else
 			if ( eng->run.TM_Burst ) {
 				if ( eng->run.TM_IEEE )
@@ -1526,12 +1493,8 @@ void setup_buf (MAC_ENGINE *eng)
 	uint32_t      adr_end;
 	uint32_t      Current_framelen;
 	uint32_t      gdata = 0;
-#ifdef PHY_SPECIAL
-	uint32_t      *gdata_ptr;
-#else
 	int        cnt;
 	uint32_t      len;
-#endif
 
 #ifdef ENABLE_ARP_2_WOL
 	int        DA[3];
@@ -1567,7 +1530,7 @@ void setup_buf (MAC_ENGINE *eng)
 				for ( adr =  adr_srt;       adr < (adr_srt + DMA_PakSize); adr += 4 )
 #endif
 				{
-					switch( eng->arg.GTestMode ) {
+					switch( eng->arg.test_mode ) {
 						case 1: gdata = 0xffffffff;              break;
 						case 2: gdata = 0x55555555;              break;
 						case 3: gdata = rand() | (rand() << 16); break;
@@ -1602,23 +1565,11 @@ void setup_buf (MAC_ENGINE *eng)
 		} // End if ( eng->run.TM_IEEE )
 	}
 	else {
-		if ( eng->arg.GEn_SinglePacket )
+		if ( eng->arg.ctrl.b.single_packet )
 			des_num_max = 1;
 		else
 			des_num_max = eng->dat.Des_Num;
-#ifdef PHY_SPECIAL
-		for ( des_num = 0; des_num < des_num_max; des_num++ ) {
-			Current_framelen = eng->dat.FRAME_LEN[ des_num ];
-			gdata_ptr = special_PHY_txpkt_ptr( eng );
 
-			adr_end = adr_srt + ( ( ( Current_framelen + 3 ) >> 2 ) << 2 );
-			for ( adr = adr_srt; adr < adr_end; adr += 4 ) {
-				Write_Mem_Dat_DD( adr, *gdata_ptr );
-				gdata_ptr++;
-			}
-			adr_srt += DMA_PakSize;
-		} // End for (des_num = 0; des_num < eng->dat.Des_Num; des_num++)
-#else
 		for ( des_num = 0; des_num < des_num_max; des_num++ ) {
 			if ( DbgPrn_BufAdr )
 				printf("[loop[%d]:%4d][des:%4d][setup_buf  ] %08x\n", eng->run.Loop_ofcnt, eng->run.Loop, des_num, adr_srt);
@@ -1671,7 +1622,6 @@ void setup_buf (MAC_ENGINE *eng)
 			}
 			adr_srt += DMA_PakSize;
 		} // End for (des_num = 0; des_num < eng->dat.Des_Num; des_num++)
-#endif
 	} // End if ( eng->run.TM_Burst )
 } // End void setup_buf (MAC_ENGINE *eng)
 
@@ -1694,14 +1644,12 @@ char check_Data (MAC_ENGINE *eng, uint32_t datbase, int32_t number)
 	uint32_t      gdata_bak;
 #endif
 	uint32_t      gdata;
-#ifdef PHY_SPECIAL
-	uint32_t      *gdata_ptr;
-#endif
+
 	uint32_t      wp;
 
 	nt_log_func_name();
 
-	if ( eng->arg.GEn_SinglePacket )
+	if ( eng->arg.ctrl.b.single_packet )
 		number_dat = 0;
 	else
 		number_dat = number;
@@ -1715,10 +1663,7 @@ char check_Data (MAC_ENGINE *eng, uint32_t datbase, int32_t number)
 	adr_srt = datbase;
 	adr_end = adr_srt + PktByteSize;
 
-#ifdef PHY_SPECIAL
-	gdata_ptr = special_PHY_rxpkt_ptr( eng );
-	gdata = *gdata_ptr;
-#elif defined(SelectSimpleData)
+#if defined(SelectSimpleData)
     #ifdef SimpleData_Fix
 	switch( number_dat % SimpleData_FixNum ) {
 		case  0 : gdata = SimpleData_FixVal00; break;
@@ -1783,10 +1728,7 @@ char check_Data (MAC_ENGINE *eng, uint32_t datbase, int32_t number)
 			gdata = gdata_bak;
 #endif
 
-#ifdef PHY_SPECIAL
-		gdata_ptr++;
-		gdata = *gdata_ptr;
-#elif defined(SelectSimpleData)
+#if defined(SelectSimpleData)
 		gdata = gdata ^ SimpleData_XORVal;
 #else
 		gdata += DATA_IncVal;
@@ -1836,7 +1778,7 @@ void setup_txdes (MAC_ENGINE *eng, uint32_t desadr, uint32_t bufbase)
 	nt_log_func_name();
 
 	bufadr = bufbase;
-	if ( eng->arg.GEn_SinglePacket )
+	if ( eng->arg.ctrl.b.single_packet )
 		bufadrgap = 0;
 	else
 		bufadrgap = DMA_PakSize;
@@ -2199,112 +2141,7 @@ char check_des (MAC_ENGINE *eng, uint32_t bufnum, int checkpoint) {
 
 //------------------------------------------------------------
 // Print
-//------------------------------------------------------------
-void PrintMode (MAC_ENGINE *eng) {
-	if (eng->env.MAC34_vld) printf("run_mode[dec]    | 0->MAC1 1->MAC2 2->MAC3 3->MAC4\n");
-	else                    printf("run_mode[dec]    | 0->MAC1 1->MAC2\n");
-}
-
-//------------------------------------------------------------
-void PrintSpeed (MAC_ENGINE *eng) {
-#ifdef Enable_MAC_ExtLoop
-	printf("speed[dec]       | 0->1G   1->100M 2->10M (default:%3d)\n", DEF_GSPEED);
-#else
-	printf("speed[dec]       | 0->1G   1->100M 2->10M  3->all speed (default:%3d)\n", DEF_GSPEED);
-#endif
-}
-
-//------------------------------------------------------------
-void PrintCtrl (MAC_ENGINE *eng) {
-	printf("ctrl[dec]        | bit0  : Reserved\n");
-	printf("(default:%3d)    | bit1  : Enable to use the other MAC's MDC/MDIO\n", DEF_GCTRL);
-	printf("                 | bit2  : Disable recovery PHY's status\n");
-	printf("                 | bit3  : 1->Enable PHY init       0->Disable PHY init\n");
-	printf("                 | bit4  : 1->PHY internal loopback 0->PHY external loopback\n");
-	printf("                 | bit5  : 1->Ignore PHY ID         0->Check PHY ID\n");
-	if ( eng->env.AST2500 ) {
-	printf("                 | bit6  : 1->Enable MAC int-loop   0->Disable MAC int-loop\n");
-	}
-	if ( eng->env.AST2400 ) {
-	printf("                 | bit7  : 1->Enable MAC int-loop   0->Disable MAC int-loop\n");
-	}
-}
-
-//------------------------------------------------------------
-void PrintLoop (MAC_ENGINE *eng) {
-	printf("loop_max[dec]    | 1G  :  (default:%3d)\n", DEF_GLOOP_MAX * 20);
-	printf("                 | 100M:  (default:%3d)\n", DEF_GLOOP_MAX * 2);
-	printf("                 | 10M :  (default:%3d)\n", DEF_GLOOP_MAX);
-}
-
-//------------------------------------------------------------
-void PrintTest (MAC_ENGINE *eng) {
-	if ( eng->ModeSwitch == MODE_NSCI ) {
-		printf("test_mode[dec]   | 0: NCSI configuration with    Disable_Channel request\n");
-		printf("(default:%3d)    | 1: NCSI configuration without Disable_Channel request\n", DEF_GTESTMODE);
-	}
-	else {
-		printf("test_mode[dec]   | 0: Tx/Rx frame checking\n");
-		printf("(default:%3d)    | 1: Tx output 0xff frame\n", DEF_GTESTMODE);
-		printf("                 | 2: Tx output 0x55 frame\n");
-		printf("                 | 3: Tx output random frame\n");
-		printf("                 | 4: Tx output ARP frame\n");
-		printf("                 | 5: Tx output user defined value frame (default:0x%8x)\n", DEF_GUSER_DEF_PACKET_VAL);
-	} // End if ( eng->ModeSwitch == MODE_NSCI )
-
-	if ( eng->env.AST2300 ) {
-		printf("                 | 6: IO timing testing\n");
-		printf("                 | 7: IO timing/strength testing\n");
-	}
-}
-
-//------------------------------------------------------------
-void PrintPHYAdr (MAC_ENGINE *eng) {
-	printf("phy_adr[dec]     | 0~31: PHY Address (default:%d)\n", DEF_GPHY_ADR);
-}
-
-//------------------------------------------------------------
-void PrintIOTimingBund (MAC_ENGINE *eng) {
-	if ( eng->env.AST2300 )
-		printf("IO margin[dec]   | 0/1/3/5/7/... (default:%d)\n", DEF_GIOTIMINGBUND);
-}
-
-//------------------------------------------------------------
-void PrintPakNUm (MAC_ENGINE *eng) {
-	printf("package_num[dec] | 1~ 8: Total Number of NCSI Package (default:%d)\n", DEF_GPACKAGE2NUM);
-}
-
-//------------------------------------------------------------
-void PrintChlNUm (MAC_ENGINE *eng) {
-	printf("channel_num[dec] | 1~32: Total Number of NCSI Channel (default:%d)\n", DEF_GCHANNEL2NUM);
-}
-
-//------------------------------------------------------------
-void Print_Header (MAC_ENGINE *eng, BYTE option) {
-
-	if      ( eng->run.Speed_sel[ 0 ] ) { PRINTF( option, " 1G   " ); }
-	else if ( eng->run.Speed_sel[ 1 ] ) { PRINTF( option, " 100M " ); }
-	else                                { PRINTF( option, " 10M  " ); }
-
-#ifdef Enable_MAC_ExtLoop
-	PRINTF( option, "Tx/Rx loop\n" );
-#else
-	switch ( eng->arg.GTestMode ) {
-		case 0 : { PRINTF( option, "Tx/Rx frame checking       \n" ); break;                     }
-		case 1 : { PRINTF( option, "Tx output 0xff frame       \n" ); break;                     }
-		case 2 : { PRINTF( option, "Tx output 0x55 frame       \n" ); break;                     }
-		case 3 : { PRINTF( option, "Tx output random frame     \n" ); break;                     }
-		case 4 : { PRINTF( option, "Tx output ARP frame        \n" ); break;                     }
-		case 5 : { PRINTF( option, "Tx output 0x%08x frame    \n", eng->arg.GUserDVal ); break; }
-		case 6 : { PRINTF( option, "IO delay testing           \n" ); break;                     }
-		case 7 : { PRINTF( option, "IO delay testing(Strength) \n" ); break;                     }
-		case 8 : { PRINTF( option, "Tx frame                   \n" ); break;                     }
-		case 9 : { PRINTF( option, "Rx frame checking          \n" ); break;                     }
-	}
-#endif
-}
-
-//------------------------------------------------------------
+//-----------------------------------------------------------
 void PrintIO_Header (MAC_ENGINE *eng, BYTE option) {
 
 	if ( eng->run.TM_IOStrength ) {
@@ -2365,9 +2202,7 @@ void PrintIO_Line (MAC_ENGINE *eng, BYTE option) {
 
 //------------------------------------------------------------
 void PrintIO_Line_LOG (MAC_ENGINE *eng) {
-#ifdef PHY_SPECIAL
-	special_PHY_debug( eng );
-#endif
+
 	if ( eng->io.Dly_result ) {
 		PRINTF( FP_LOG, "\n=====>[Check]%s%2x, %s%2x:  X\n", eng->io.Dly_reg_name_rx, eng->io.Dly_in_selval, eng->io.Dly_reg_name_tx, eng->io.Dly_out_selval );
 	}
@@ -2388,11 +2223,11 @@ void Calculate_LOOP_CheckNum (MAC_ENGINE *eng)
 #ifdef CheckDataEveryTime
 	eng->run.LOOP_CheckNum = 1;
 #else
-	if ( eng->run.IO_MrgChk || ( eng->arg.GSpeed == SET_1G_100M_10MBPS ) || ( eng->arg.GSpeed == SET_100M_10MBPS ) ) {
+	if ( eng->run.IO_MrgChk || ( eng->arg.run_speed == SET_1G_100M_10MBPS ) || ( eng->arg.run_speed == SET_100M_10MBPS ) ) {
 		eng->run.LOOP_CheckNum = eng->run.LOOP_MAX;
 	}
 	else {
-		switch ( eng->arg.GSpeed ) {
+		switch ( eng->arg.run_speed ) {
 			case SET_1GBPS    : eng->run.CheckBuf_MBSize =  MOVE_DATA_MB_SEC      ; break; // 1G
 			case SET_100MBPS  : eng->run.CheckBuf_MBSize = (MOVE_DATA_MB_SEC >> 3); break; // 100M ~ 1G / 8
 			case SET_10MBPS   : eng->run.CheckBuf_MBSize = (MOVE_DATA_MB_SEC >> 6); break; // 10M  ~ 1G / 64
@@ -2410,7 +2245,7 @@ void TestingSetup (MAC_ENGINE *eng)
 
 	//[Disable VGA]--------------------
 #ifdef Disable_VGA
-//	if ( eng->arg.GLOOP_INFINI & ~( eng->run.TM_Burst || eng->run.TM_IOTiming ) ) {
+//	if ( eng->arg.loop_inf & ~( eng->run.TM_Burst || eng->run.TM_IOTiming ) ) {
 		eng->env.VGAModeVld = 1;
 		outp(0x3d4, 0x17);
 		eng->env.VGAMode = inp(0x3d5);
@@ -2462,9 +2297,9 @@ char TestingLoop (MAC_ENGINE *eng, uint32_t loop_checknum)
 #ifdef Enable_MAC_ExtLoop
 	while ( 0 ) {
 #else
-	while ( ( eng->run.Loop < eng->run.LOOP_MAX ) || eng->arg.GLOOP_INFINI ) {
+	while ( ( eng->run.Loop < eng->run.LOOP_MAX ) || eng->arg.loop_inf ) {
 #endif
-		looplast = !eng->arg.GLOOP_INFINI && ( eng->run.Loop == eng->run.LOOP_MAX - 1 );
+		looplast = !eng->arg.loop_inf && ( eng->run.Loop == eng->run.LOOP_MAX - 1 );
 
 #ifdef CheckRxBuf
 		if ( !eng->run.TM_Burst )
@@ -2478,15 +2313,15 @@ char TestingLoop (MAC_ENGINE *eng, uint32_t loop_checknum)
 			printf("for start ======> [%d]%d/%d(%d) looplast:%d "
 			       "checkprd:%d checken:%d\n",
 			       eng->run.Loop_ofcnt, eng->run.Loop,
-			       eng->run.LOOP_MAX, eng->arg.GLOOP_INFINI,
+			       eng->run.LOOP_MAX, eng->arg.loop_inf,
 			       looplast, checkprd, checken);
 			debug_pause();
 		}
 
-#ifndef PHY_SPECIAL
+
 		if ( eng->run.TM_RxDataEn )
 			eng->dat.DMA_Base_Tx = eng->dat.DMA_Base_Rx;
-#endif
+
 //		eng->dat.DMA_Base_Rx = CPU_BUS_ADDR_SDRAM_OFFSET + ZeroCopy_OFFSET + GET_DMA_BASE( eng->run.Loop + 1 ); // 20130730
 		eng->dat.DMA_Base_Rx = ZeroCopy_OFFSET + GET_DMA_BASE( eng->run.Loop + 1 ); // 20130730
 		//[Check DES]--------------------
@@ -2547,23 +2382,17 @@ char TestingLoop (MAC_ENGINE *eng, uint32_t loop_checknum)
 			setup_des_loop( eng, eng->run.Loop );
 #endif
 
-		if ( eng->arg.GLOOP_INFINI )
+		if ( eng->arg.loop_inf )
 			printf("===============> Loop[%d]: %d  \r", eng->run.Loop_ofcnt, eng->run.Loop);
-		else if ( eng->arg.GTestMode == 0 ) {
+		else if ( eng->arg.test_mode == 0 ) {
 			if ( !( DbgPrn_BufAdr || eng->run.IO_Bund ) )
 				printf(" [%d]%d                        \r", eng->run.Loop_ofcnt, eng->run.Loop);
-//			switch ( eng->run.Loop % 4 ) {
-//				case 0x00: printf("| [%d]%d                        \r", eng->run.Loop_ofcnt, eng->run.Loop); break;
-//				case 0x01: printf("/ [%d]%d                        \r", eng->run.Loop_ofcnt, eng->run.Loop); break;
-//				case 0x02: printf("- [%d]%d                        \r", eng->run.Loop_ofcnt, eng->run.Loop); break;
-//				default  : printf("\ [%d]%d                        \r", eng->run.Loop_ofcnt, eng->run.Loop); break;
-//			}
 		}
 
 		if (DbgPrn_BufAdr) {
 			printf("for end   ======> [%d]%d/%d(%d)\n",
 			       eng->run.Loop_ofcnt, eng->run.Loop,
-			       eng->run.LOOP_MAX, eng->arg.GLOOP_INFINI);
+			       eng->run.LOOP_MAX, eng->arg.loop_inf);
 			debug_pause();
 		}
 
@@ -2574,7 +2403,7 @@ char TestingLoop (MAC_ENGINE *eng, uint32_t loop_checknum)
 		}
 		else
 			eng->run.Loop++;
-	} // End while ( ( eng->run.Loop < eng->run.LOOP_MAX ) || eng->arg.GLOOP_INFINI )
+	} // End while ( ( eng->run.Loop < eng->run.LOOP_MAX ) || eng->arg.loop_inf )
 	eng->run.Loop_rl[ (int)eng->run.Speed_idx ] = eng->run.Loop;
 
 
