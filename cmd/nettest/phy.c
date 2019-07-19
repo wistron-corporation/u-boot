@@ -2238,14 +2238,12 @@ BOOLEAN find_phyadr (MAC_ENGINE *eng)
         CHAR       PHY_ADR_org;
 
 	nt_log_func_name();
-
-        if ( eng->env.AST2300 ) {
+        
 #ifdef Force_Enable_NewMDIO
-                Write_Reg_PHY_DD( eng, 0x40, Read_Reg_PHY_DD( eng, 0x40 ) | 0x80000000 );
+        Write_Reg_PHY_DD( eng, 0x40, Read_Reg_PHY_DD( eng, 0x40 ) | 0x80000000 );
 #endif
-                eng->inf.NewMDIO = ( Read_Reg_PHY_DD( eng, 0x40 ) & 0x80000000 ) ? 1 : 0;
-        } else
-                eng->inf.NewMDIO = 0;
+        eng->inf.NewMDIO = ( Read_Reg_PHY_DD( eng, 0x40 ) & 0x80000000 ) ? 1 : 0;
+        
 #ifdef CONFIG_ASPEED_AST2600
 		eng->inf.NewMDIO = 1;
 #endif

@@ -26,11 +26,8 @@
 #define Enable_RecovSCU                //[ON]
 //#define Enable_Fast_SCU                //[off]
 #define ENABLE_DASA                    //[ON]
-//#define Enable_Int125MHz               //[off] only for AST2300/AST2500
 //#define ENABLE_ARP_2_WOL               //[off]
 //#define Enable_MAC_SWRst               //[off]
-//#define Enable_MAC_ExtLoop             //[off]
-//#define   Enable_MAC_ExtLoop_PakcegMode//[off]
 #define   Enable_No_IOBoundary         //[ON]
 //#define Enable_LOOP_INFINI             //[off]
 //#define Enable_Dual_Mode               //[off]
@@ -78,11 +75,7 @@
 #define   SelectWOLDA_DatH                       0x206a
 #define   SelectWOLDA_DatL                       0x8a374d9b
 
-#ifdef Enable_MAC_ExtLoop_PakcegMode
-  #define MOVE_DATA_MB_SEC                       80             // MByte per second to move data
-#else
-  #define MOVE_DATA_MB_SEC                       800            // MByte per second to move data
-#endif
+#define MOVE_DATA_MB_SEC                       800            // MByte per second to move data
 
 //---------------------------------------------------------
 // Frame size

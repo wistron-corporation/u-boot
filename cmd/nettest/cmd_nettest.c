@@ -15,6 +15,7 @@
 
 #include "swfunc.h"
 #include "comminf.h"
+#include "mem_io.h"
 
 extern int mac_test(int argc, char * const argv[], uint32_t mode);
 
@@ -101,11 +102,11 @@ int do_phyread (cmd_tbl_t * cmdtp, int flag, int argc, char * const argv[])
 
 		if (MACnum == 0) {
 			// Set MAC 0
-			eng->run.MAC_BASE = MAC_BASE1;
+			eng->run.mac_base = MAC1_BASE;
 			eng->run.MAC_idx_PHY = 0;
 		} else if (MACnum == 1) {
 			// Set MAC 1
-			eng->run.MAC_BASE = MAC_BASE2;
+			eng->run.mac_base = MAC2_BASE;
 			eng->run.MAC_idx_PHY = 1;
 		} else {
 			printf("wrong parameter (mac number)\n");
@@ -207,12 +208,12 @@ int do_phywrite (cmd_tbl_t * cmdtp, int flag, int argc, char * const argv[])
 
 		if ( MACnum == 0 ) {
 			// Set MAC 0
-			eng->run.MAC_BASE  = MAC_BASE1;
+			eng->run.mac_base  = MAC1_BASE;
 			eng->run.MAC_idx_PHY  = 0;
 		}
 		else if ( MACnum == 1 ) {
 			// Set MAC 1
-			eng->run.MAC_BASE  = MAC_BASE2;
+			eng->run.mac_base  = MAC2_BASE;
 			eng->run.MAC_idx_PHY  = 1;
 		}
 		else {
@@ -298,12 +299,12 @@ int do_phydump (cmd_tbl_t * cmdtp, int flag, int argc, char *argv[])
 
 		if ( MACnum == 0 ) {
 			// Set MAC 0
-			eng->run.MAC_BASE = MAC_BASE1;
+			eng->run.mac_base = MAC1_BASE;
 			eng->run.MAC_idx_PHY  = 0;
 		}
 		else if ( MACnum == 1 ) {
 			// Set MAC 1
-			eng->run.MAC_BASE = MAC_BASE2;
+			eng->run.mac_base = MAC2_BASE;
 			eng->run.MAC_idx_PHY  = 1;            
 		}
 		else {

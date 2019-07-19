@@ -98,20 +98,13 @@
 #define  SET_1G_100M_10MBPS                      (SET_1GBPS | SET_100MBPS | SET_10MBPS)
 #define  SET_100M_10MBPS                         (SET_100MBPS | SET_10MBPS)
 
-#ifdef Enable_MAC_ExtLoop
-#define  DEF_GSPEED                              SET_1GBPS
-#else
 #define  DEF_GSPEED                              SET_1G_100M_10MBPS
-#endif
 #define  DEF_GARPNUMCNT                          0
 
 //---------------------------------------------------------
 // MAC information
 //---------------------------------------------------------
-#define MAC_BASE1                              0x1e660000
-#define MAC_BASE2                              0x1e680000
-#define MAC_BASE3                              0x1e670000
-#define MAC_BASE4                              0x1e690000
+
 #define MDC_Thres                                0x3f
 #define MAC_PHYWr                                0x08000000
 #define MAC_PHYRd                                0x04000000
@@ -125,13 +118,6 @@
 #define MAC_PHYBusy_AST2600                       0x80000000
 #define MAC_PHYIDLE_AST2600                       0x00010000
 
-//#define MAC_030_def                              0x00001010
-//#define MAC_034_def                              0x00000000
-//#define MAC_038_def                              0x00d22f00 //default 0x22f00
-//#define MAC_038_def                              0x00022f00 //default 0x22f00
-//#define MAC_038_def                              0x00022400 //default 0x22500 (AST2500)
-//#define MAC_040_def                              0x00000000
-
 #ifdef Enable_BufMerge
     #define MAC_048_def                          0x007702F1 //default 0xf1
 #else
@@ -142,11 +128,7 @@
 //---------------------------------------------------------
 // Data information
 //---------------------------------------------------------
-#if defined(Enable_MAC_ExtLoop) || defined(Enable_MAC_ExtLoop_PakcegMode) || defined(SelectSimpleBoundary)
-      #define ZeroCopy_OFFSET                    0
-#else
-      #define ZeroCopy_OFFSET                    (( eng->run.TM_Burst ) ? 0 : 2)
-#endif
+#define ZeroCopy_OFFSET                    (( eng->run.TM_Burst ) ? 0 : 2)
 
 //      --------------------------------- DRAM_MapAdr            = TDES_BASE
 //              | TX descriptor ring    |
@@ -181,22 +163,13 @@
 //              |   #n, n = DMA_BufNum  |
 //              |                       |
 //      ---------------------------------
-#ifdef Enable_MAC_ExtLoop
-  #define DRAM_OFS_BUF                         0x00000000
-#else
-  #define DRAM_OFS_BUF                         0x04000000
-  // #define DRAM_OFS_BUF                         0x06000000 // in-house setting
-#endif
+#define DRAM_OFS_BUF                         0x04000000
 
 #define DRAM_OFS_WINDOW                      0x80000000
 #define DRAM_OFS_REMAP                       0x00000000
 
   #define TDES_BASE1                             ( 0x00000000 + DRAM_OFS_BUF - DRAM_OFS_REMAP + DRAM_OFS_WINDOW )
-#ifdef Enable_MAC_ExtLoop
-  #define RDES_BASE1                             ( 0x00080000 + DRAM_OFS_BUF - DRAM_OFS_REMAP + DRAM_OFS_WINDOW )
-#else
   #define RDES_BASE1                             ( 0x00040000 + DRAM_OFS_BUF - DRAM_OFS_REMAP + DRAM_OFS_WINDOW )
-#endif
   #define DMA_BASE                               ( 0x00100000 + DRAM_OFS_BUF - DRAM_OFS_REMAP + DRAM_OFS_WINDOW )
 
   #define TDES_IniVal                            ( 0xb0000000 + eng->dat.FRAME_LEN_Cur )
@@ -277,16 +250,10 @@
 #define TIMER_BASE				0x1e782000
 #define GPIO_BASE				0x1e780000
 
-#define SCU_48h_AST1010				0x00000200
 #define SCU_48h_AST2300				0x00222255
 #define SCU_48h_AST2500				0x00082208
 #define SCU_B8h_AST2500				0x00082208
 #define SCU_BCh_AST2500				0x00082208
-
-//#define SCU_80h                                  0x0000000f     //AST2300[3:0]MAC1~4 PHYLINK
-//#define SCU_88h                                  0xc0000000     //AST2300[31]MAC1 MDIO, [30]MAC1 MDC
-//#define SCU_90h                                  0x00000004     //AST2300[2 ]MAC2 MDC/MDIO
-//#define SCU_74h                                  0x06300000     //AST3000[20]MAC2 MDC/MDIO, [21]MAC2 MII, [25]MAC1 PHYLINK, [26]MAC2 PHYLINK
 
 //---------------------------------------------------------
 // DMA Buffer information
@@ -354,40 +321,16 @@
 #define Delay_MACDump                            1
 
 //#define Delay_DES                                1
-#ifdef Enable_MAC_ExtLoop_PakcegMode
-  #define Delay_CheckData                        100
-  #define Delay_CheckData_LoopNum                100
-#else
-//  #define Delay_CheckData                        100
-//  #define Delay_CheckData_LoopNum                100
-#endif
 
 //---------------------------------------------------------
 // Time Out
 //---------------------------------------------------------
-#ifdef Enable_MAC_ExtLoop_PakcegMode
-//    #define TIME_OUT_Des_1G                      40000
-//    #define TIME_OUT_Des_100M                    400000
-//    #define TIME_OUT_Des_10M                     2000000
-    #define TIME_OUT_Des_1G                      0
-    #define TIME_OUT_Des_100M                    0
-    #define TIME_OUT_Des_10M                     0
-    #define TIME_OUT_NCSI                        0
-    #define TIME_OUT_PHY_RW                      10000
-    #define TIME_OUT_PHY_Rst                     10000
-#else
-    #define TIME_OUT_Des_1G                      10000     //400
-    #define TIME_OUT_Des_100M                    20000     //4000
-    #define TIME_OUT_Des_10M                     50000     //20000
-    #define TIME_OUT_NCSI                        100000    //40000
-    #define TIME_OUT_PHY_RW                      2000000   //100000
-    #define TIME_OUT_PHY_Rst                     20000     //1000
-#endif
-//#define TIME_OUT_PHY_RW                          10000
-//#define TIME_OUT_PHY_Rst                         10000
-
-////#define TIME_OUT_NCSI                            300000
-//#define TIME_OUT_NCSI                            30000     //20150423
+#define TIME_OUT_Des_1G                      10000     //400
+#define TIME_OUT_Des_100M                    20000     //4000
+#define TIME_OUT_Des_10M                     50000     //20000
+#define TIME_OUT_NCSI                        100000    //40000
+#define TIME_OUT_PHY_RW                      2000000   //100000
+#define TIME_OUT_PHY_Rst                     20000     //1000
 
 //---------------------------------------------------------
 // Others
@@ -536,32 +479,14 @@ typedef struct {
 	CHAR                 SCU_oldvld                    ;
 } mac_reg_t;
 typedef struct {
-	CHAR                 ASTChipType                   ;
-	CHAR                 AST1100                       ;//Different in phy & dram initiation & dram size & RMII
-	CHAR                 AST2300                       ;
-	CHAR                 AST2400                       ;
-	CHAR                 AST1010                       ;
-	CHAR                 AST2500                       ;
-	CHAR                 AST2500A1                     ;
+	uint8_t ASTChipType;
+	uint8_t ast2600;
+	uint8_t ast2500;
 
-	CHAR                 MAC_Mode                      ;
-	CHAR                 MAC1_1Gvld                    ;
-	CHAR                 MAC2_1Gvld                    ;
-#ifdef CONFIG_ASPEED_AST2600
-	CHAR                 MAC3_1Gvld                    ;
-	CHAR                 MAC4_1Gvld                    ;
-#endif
-	CHAR                 MAC1_RMII                     ;
-	CHAR                 MAC2_RMII                     ;
-#ifdef CONFIG_ASPEED_AST2600
-	CHAR                 MAC3_RMII                     ;
-	CHAR                 MAC4_RMII                     ;
-#endif
-	CHAR                 MAC_atlast_1Gvld              ;
-	CHAR                 MAC2_vld                      ;
-	CHAR                 MAC34_vld                     ;
-
-	CHAR                 MAC_1Gvld                     ;
+	uint8_t is_1g_valid[4];
+	uint8_t at_least_1g_valid;	
+	
+	uint8_t                 MAC34_vld;
 	CHAR                 MAC_RMII                      ;
 
 	CHAR                 MHCLK_Ratio                   ;
@@ -614,9 +539,9 @@ typedef struct {
 	uint32_t GUserDVal;		/* argv[8] for dedicated */
 } mac_arg_t;
 typedef struct {
-	CHAR                 MAC_idx                       ;
-	CHAR                 MAC_idx_PHY                   ;
-	uint32_t MAC_BASE;
+	uint32_t mac_idx;
+	uint32_t MAC_idx_PHY;
+	uint32_t mac_base;
 
 	CHAR                 Speed_1G                      ;//run_speed
 	CHAR                 Speed_org[3]                  ;//run_speed

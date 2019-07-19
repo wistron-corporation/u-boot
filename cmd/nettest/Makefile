@@ -5,4 +5,4 @@
 # https://spdx.org/licenses
 
 
-obj-$(CONFIG_CMD_NETTEST) += cmd_nettest.o mactest.o io.o mac.o ncsi.o phy.o phygpio.o stduboot.o
+obj-$(CONFIG_CMD_NETTEST) += cmd_nettest.o mactest.o io.o mac.o ncsi.o phy.o stduboot.o

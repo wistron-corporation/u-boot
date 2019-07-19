@@ -20,6 +20,15 @@
 #include <malloc.h>
 #include <net.h>
 #include <post.h>
+#include "mem_io.h"
+
+#if defined(CONFIG_ASPEED_AST2600)
+const uint32_t mac_base_lookup_tbl[4] = {MAC1_BASE, MAC2_BASE, MAC3_BASE,
+					 MAC4_BASE};
+#else
+const uint32_t mac_base_lookup_tbl[2] = {MAC1_BASE, MAC2_BASE};
+#endif
+
 #if 0
 void Print_Header (MAC_ENGINE *eng, BYTE option) 
 {
@@ -28,9 +37,6 @@ void Print_Header (MAC_ENGINE *eng, BYTE option)
 	else if ( eng->run.Speed_sel[ 1 ] ) { PRINTF( option, " 100M " ); }
 	else                                { PRINTF( option, " 10M  " ); }
 
-#ifdef Enable_MAC_ExtLoop
-	PRINTF( option, "Tx/Rx loop\n" );
-#else
 	switch ( eng->arg.test_mode ) {
 		case 0 : { PRINTF( option, "Tx/Rx frame checking       \n" ); break;                     }
 		case 1 : { PRINTF( option, "Tx output 0xff frame       \n" ); break;                     }
@@ -43,7 +49,6 @@ void Print_Header (MAC_ENGINE *eng, BYTE option)
 		case 8 : { PRINTF( option, "Tx frame                   \n" ); break;                     }
 		case 9 : { PRINTF( option, "Rx frame checking          \n" ); break;                     }
 	}
-#endif
 }
 #endif
 static void print_arg_test_mode(MAC_ENGINE *p_eng) 
@@ -173,17 +178,318 @@ static void print_usage(MAC_ENGINE *p_eng)
 	}
 }
 
+/**
+ * @brief setup MAC_ENGINE according to HW strap registers
+*/
+static uint32_t setup_interface(MAC_ENGINE *p_eng)
+{
+#ifdef CONFIG_ASPEED_AST2600
+	hw_strap1_t strap1;
+	hw_strap2_t strap2;
+	
+	strap1.w = SCU_RD(0x500);
+	strap2.w = SCU_RD(0x510);
+
+	p_eng->env.is_1g_valid[0] = strap1.b.mac1_interface;
+	p_eng->env.is_1g_valid[1] = strap1.b.mac2_interface;
+	p_eng->env.is_1g_valid[2] = strap2.b.mac3_interface;
+	p_eng->env.is_1g_valid[3] = strap2.b.mac4_interface;	
+	
+	p_eng->env.at_least_1g_valid =
+	    p_eng->env.is_1g_valid[0] | p_eng->env.is_1g_valid[1] |
+	    p_eng->env.is_1g_valid[2] | p_eng->env.is_1g_valid[3];
+#else
+	hw_strap1_t strap1;
+	strap1.w = SCU_RD(0x70);
+	p_eng->env.is_1g_valid[0] = strap1.b.mac1_interface;
+	p_eng->env.is_1g_valid[1] = strap1.b.mac2_interface;
+
+	p_eng->env.at_least_1g_valid =
+	    p_eng->env.is_1g_valid[0] | p_eng->env.is_1g_valid[1];
+#endif
+	return 0;
+}
+
+static uint32_t check_test_mode(MAC_ENGINE *p_eng)
+{
+	if (p_eng->arg.run_mode == MODE_NCSI ) {
+		switch (p_eng->arg.test_mode) {
+		case 0:
+			break;
+		case 1:
+			p_eng->run.TM_NCSI_DiSChannel = 0;
+			break;
+		case 6:
+			p_eng->run.TM_IOTiming = 1;
+			break;
+		case 7:
+			p_eng->run.TM_IOTiming = 1;
+			p_eng->run.TM_IOStrength = 1;
+			break;
+		default:
+			printf("Error test_mode!!!\n");
+			print_arg_test_mode(p_eng);
+			return (1);
+		}
+	} else {
+		switch (p_eng->arg.test_mode) {
+		case 0:
+			break;
+		case 1:
+		case 2:
+		case 3:
+		case 5:			
+			p_eng->run.TM_RxDataEn = 0;
+			p_eng->run.TM_Burst = 1;
+			p_eng->run.TM_IEEE = 1;
+			break;
+		case 4:
+			p_eng->run.TM_RxDataEn = 0;
+			p_eng->run.TM_Burst = 1;
+			p_eng->run.TM_IEEE = 0;
+			break;
+		case 6:
+			p_eng->run.TM_IOTiming = 1;
+			break;
+		case 7:
+			p_eng->run.TM_IOTiming = 1;
+			p_eng->run.TM_IOStrength = 1;
+			break;
+#if 0			
+		case 8:
+			p_eng->run.TM_RxDataEn = 0;
+			p_eng->run.TM_DefaultPHY = 1;
+			break;
+		case 9:
+			p_eng->run.TM_TxDataEn = 0;
+			p_eng->run.TM_DefaultPHY = 1;
+			break;
+		case 10:
+			p_eng->run.TM_WaitStart = 1;
+			break;
+#endif			
+		default:
+			printf("Error test_mode!!!\n");
+			print_arg_test_mode(p_eng);
+			return (1);
+		}
+	}
+	return 0;
+}
+
+static uint32_t check_chip_id(MAC_ENGINE *p_eng)
+{
+	uint32_t reg_addr;
+	uint32_t id, version;
+	uint32_t is_valid;
+
+	p_eng->env.ast2600 = 0;
+	p_eng->env.ast2500 = 0;
+
+#if defined(CONFIG_ASPEED_AST2600)
+	reg_addr = 0x04;
+#else
+	reg_addr = 0x7c;
+#endif
+	is_valid = 0;
+	id = (SCU_RD(reg_addr) & GENMASK(31, 24)) >> 24;
+	version = (SCU_RD(reg_addr) & GENMASK(23, 16)) >> 16;
+
+	if (id == 0x5) {
+		printf("chip: AST2600 A%d\n", version);
+		p_eng->env.ast2600 = 1;
+		p_eng->env.ast2500 = 1;
+		is_valid = 1;
+	} else if (id == 0x4) {
+		printf("chip: AST2500 A%d\n", version);
+		p_eng->env.ast2500 = 1;
+		is_valid = 1;
+	}
+
+	if (0 == is_valid) {
+		printf("unknown chip\n");
+		return 1;
+	}
+
+	return 0;
+}
+
+static uint32_t setup_env(MAC_ENGINE *p_eng)
+{
+	uint32_t is_valid;
+
+	if (0 != check_chip_id(p_eng)) {
+		return 1;
+	}
+
+	/* check if legal run_idx */
+	is_valid = 0;
+	if (p_eng->env.MAC34_vld) {
+		if (p_eng->arg.run_idx <= 3) {
+			is_valid = 1;
+		}
+	} else {
+		if (p_eng->arg.run_idx <= 1) {
+			is_valid = 1;
+		}
+	}
+	if (0 == is_valid) {
+		printf("invalid run_idx = %d\n", p_eng->arg.run_idx);	
+		return 1;
+	}
+	p_eng->run.mac_idx = p_eng->arg.run_idx;
+	p_eng->run.mac_base = mac_base_lookup_tbl[p_eng->run.mac_idx];
+
+	if (p_eng->arg.ctrl.b.phy_addr_inv) {
+		/* inverse bit[0]:
+		 * MAC0 -> MAC1
+		 * MAC1 -> MAC0
+		 * MAC2 -> MAC3
+		 * MAC3 -> MAC2
+		 */
+		p_eng->run.MAC_idx_PHY = p_eng->run.mac_idx ^ BIT(0);
+		debug("swapped phy index = %d\n", p_eng->run.MAC_idx_PHY);
+	} else {
+		p_eng->run.MAC_idx_PHY = p_eng->run.mac_idx;
+	}
+	p_eng->phy.PHY_BASE = mac_base_lookup_tbl[p_eng->run.MAC_idx_PHY];
+
+	/* 
+	 * FIXME: too ugly...
+	 * check if legal speed setup
+	 * */
+	switch (p_eng->arg.run_speed) {
+	case SET_1GBPS:
+		p_eng->run.Speed_1G = 1;
+		p_eng->run.Speed_org[0] = 1;
+		p_eng->run.Speed_org[1] = 0;
+		p_eng->run.Speed_org[2] = 0;
+		break;
+	case SET_100MBPS:
+		p_eng->run.Speed_1G = 0;
+		p_eng->run.Speed_org[0] = 0;
+		p_eng->run.Speed_org[1] = 1;
+		p_eng->run.Speed_org[2] = 0;
+		break;
+	case SET_10MBPS:
+		p_eng->run.Speed_1G = 0;
+		p_eng->run.Speed_org[0] = 0;
+		p_eng->run.Speed_org[1] = 0;
+		p_eng->run.Speed_org[2] = 1;
+		break;
+	case SET_1G_100M_10MBPS:
+		p_eng->run.Speed_1G = 0;
+		p_eng->run.Speed_org[0] = 1;
+		p_eng->run.Speed_org[1] = 1;
+		p_eng->run.Speed_org[2] = 1;
+		break;
+	case SET_100M_10MBPS:
+		p_eng->run.Speed_1G = 0;
+		p_eng->run.Speed_org[0] = 0;
+		p_eng->run.Speed_org[1] = 1;
+		p_eng->run.Speed_org[2] = 1;
+		break;
+	default:
+		printf("Error speed!!!\n");
+		print_arg_speed(p_eng);
+		return (1);
+	}
+
+	if (1 == p_eng->run.Speed_1G) {
+		if (0 == p_eng->env.is_1g_valid[p_eng->run.mac_idx]) {
+			printf("MAC%d doesn't support 1G\n",
+			       p_eng->arg.run_idx);
+			return 1;
+		}
+	}
+
+	if (p_eng->arg.run_mode == MODE_NCSI) {
+		/*
+		 * [Arg]check GPackageTolNum
+		 * [Arg]check GChannelTolNum
+		 */
+		if ((p_eng->arg.GPackageTolNum < 1) ||
+		    (p_eng->arg.GPackageTolNum > 8)) {
+			print_arg_package_num(p_eng);
+			return (1);
+		}
+		if ((p_eng->arg.GChannelTolNum < 1) ||
+		    (p_eng->arg.GChannelTolNum > 32)) {
+			print_arg_channel_num(p_eng);
+			return (1);
+		}
+	} else {
+		/* [Arg]check ctrl */		
+		if (p_eng->arg.ctrl.w & 0xfffffe00) {
+			print_arg_ctrl(p_eng);
+			return (1);
+		}
+
+		if (p_eng->arg.GPHYADR > 31) {
+			printf("Error phy_adr!!!\n");
+			print_arg_phy_addr(p_eng);
+			return (1);
+		}
+
+		if (0 != p_eng->arg.loop_max) {
+			switch (p_eng->arg.run_speed) {
+			case SET_1GBPS:
+				p_eng->arg.loop_max = DEF_GLOOP_MAX * 20;
+				break;
+			case SET_100MBPS:
+				p_eng->arg.loop_max = DEF_GLOOP_MAX * 2;
+				break;
+			case SET_10MBPS:
+				p_eng->arg.loop_max = DEF_GLOOP_MAX;
+				break;
+			case SET_1G_100M_10MBPS:
+				p_eng->arg.loop_max = DEF_GLOOP_MAX * 20;
+				break;
+			case SET_100M_10MBPS:
+				p_eng->arg.loop_max = DEF_GLOOP_MAX * 2;
+				break;
+			}
+		}		
+	}
+
+	if (0 != check_test_mode(p_eng)) {
+		return 1;
+	};
+
+	return 0;
+}
 static void load_default_cfg(MAC_ENGINE *p_eng, uint32_t mode)
 {
 	memset(p_eng, 0, sizeof(MAC_ENGINE));
 	
 	p_eng->arg.run_mode = mode;
+	p_eng->arg.GChk_TimingBund = DEF_GIOTIMINGBUND;
+	p_eng->arg.test_mode = DEF_GTESTMODE;
+
+	if (p_eng->arg.run_mode == MODE_NCSI ) {
+		p_eng->arg.GARPNumCnt = DEF_GARPNUMCNT;
+		p_eng->arg.GChannelTolNum = DEF_GCHANNEL2NUM;
+		p_eng->arg.GPackageTolNum = DEF_GPACKAGE2NUM;
+		p_eng->arg.ctrl.w = 0;
+		p_eng->arg.run_speed = SET_100MBPS;        // In NCSI mode, we set to 100M bps
+	} else {
+		p_eng->arg.GUserDVal  = DEF_GUSER_DEF_PACKET_VAL;
+		p_eng->arg.GPHYADR  = DEF_GPHY_ADR;
+		p_eng->arg.loop_inf = 0;
+		p_eng->arg.loop_max = 0;
+		p_eng->arg.ctrl.w = DEF_GCTRL;
+		p_eng->arg.run_speed = DEF_GSPEED;
+	}
 
 #ifdef CONFIG_ASPEED_AST2600	
 	p_eng->env.MAC34_vld = 1;
 #endif
 	p_eng->flg.Flag_PrintEn  = 1;
 	p_eng->run.TIME_OUT_Des_PHYRatio = 1;
+	
+	p_eng->run.TM_TxDataEn = 1;
+	p_eng->run.TM_RxDataEn = 1;
+	p_eng->run.TM_NCSI_DiSChannel = 1;
 }
 
 static uint32_t parse_arg_dedicated(int argc, char *const argv[],
@@ -263,7 +569,12 @@ int mac_test(int argc, char * const argv[], uint32_t mode)
 	else		
 		parse_arg_ncsi(argc, argv, &mac_eng);
 
-	
+
+	setup_interface(&mac_eng);
+	if (0 != setup_env(&mac_eng)) {
+		return 1;
+	}
+
 	/* init PHY engine */
 	phy_eng.fp_set = 0;
 	phy_eng.fp_clr = 0;	
@@ -276,538 +587,36 @@ int mac_test(int argc, char * const argv[], uint32_t mode)
 	uint32_t                temp;
 
 //------------------------------------------------------------
-// main Start
-//------------------------------------------------------------	
-
-//------------------------------------------------------------
 // Get Chip Feature
 //------------------------------------------------------------
 	read_scu( eng );
 
-	if ( RUN_STEP >= 1 ) {
-		//------------------------------
-		// [Reg]check SCU_07c		
-		// [Env]setup ASTChipType
-		//------------------------------
-		switch ( eng->reg.SCU_07c ) {
-			default:
-				temp = ( eng->reg.SCU_07c ) & 0xff000000;
-				switch ( temp ) {
-					case 0x04000000 : eng->env.ASTChipType = 8; goto PASS_CHIP_ID;
-					default:
-						printf("Error Silicon Revision ID(SCU7C) %08x [%08x]!!!\n", eng->reg.SCU_07c, temp);
-				}
-				return(1);
-		} // End switch ( eng->reg.SCU_07c )
-PASS_CHIP_ID:
-		//------------------------------
-		// [Env]check ASTChipType
-		// [Env]setup AST1100
-		// [Env]setup AST2300
-		// [Env]setup AST2400
-		// [Env]setup AST1010
-		// [Env]setup AST2500
-		// [Env]setup AST2500A1
-		//------------------------------
-		eng->env.AST1100   = 0;
-		eng->env.AST2300   = 0;
-		eng->env.AST2400   = 0;
-		eng->env.AST1010   = 0;
-		eng->env.AST2500   = 0;
-		eng->env.AST2500A1 = 0;
-		switch ( eng->env.ASTChipType ) {
-			case 8  : eng->env.AST2500A1 = 1;
-			case 7  : eng->env.AST2500   = 1;
-			case 5  : eng->env.AST2400   = 1;
-			case 4  : eng->env.AST2300   = 1; break;
-
-			case 6  : eng->env.AST2300 = 1; eng->env.AST2400 = 1; eng->env.AST1010 = 1; break;
-			case 1  : eng->env.AST1100 = 1; break;
-			default : break;
-		} // End switch ( eng->env.ASTChipType )
-
-		//------------------------------
-		// [Env]check ASTChipType
-		// [Reg]check SCU_0f0		
-		//------------------------------
-
-//------------------------------------------------------------
-// Get Argument Input
-//------------------------------------------------------------
-		//------------------------------
-		// Load default value
-		//------------------------------
-		if ( eng->arg.run_mode == MODE_NCSI ) {
-			eng->arg.GARPNumCnt     = DEF_GARPNUMCNT;
-			eng->arg.GChannelTolNum = DEF_GCHANNEL2NUM;
-			eng->arg.GPackageTolNum = DEF_GPACKAGE2NUM;
-			eng->arg.ctrl.w          = 0;
-			eng->arg.run_speed         = SET_100MBPS;        // In NCSI mode, we set to 100M bps
-		}
-		else {
-			eng->arg.GUserDVal    = DEF_GUSER_DEF_PACKET_VAL;
-			eng->arg.GPHYADR      = DEF_GPHY_ADR;
-			eng->arg.loop_inf = 0;
-			eng->arg.loop_max    = 0;
-			eng->arg.ctrl.w        = DEF_GCTRL;
-			eng->arg.run_speed       = DEF_GSPEED;
-		}
-		eng->arg.GChk_TimingBund = DEF_GIOTIMINGBUND;
-		eng->arg.test_mode       = DEF_GTESTMODE;
-
-		//------------------------------
-		// Get setting information by user
-		//------------------------------
-		eng->arg.run_idx = (BYTE)atoi(argv[1]);
-		if (argc > 1) {
-			if ( eng->arg.run_mode == MODE_NCSI ) {
-				switch ( argc ) {
-					case 8: eng->arg.GARPNumCnt      = (uint32_t)atoi(argv[7]);					
-					case 6: eng->arg.GChk_TimingBund = (BYTE)atoi(argv[5]);
-					case 5: eng->arg.test_mode       = (BYTE)atoi(argv[4]);
-					case 4: eng->arg.GChannelTolNum  = (BYTE)atoi(argv[3]);
-					case 3: eng->arg.GPackageTolNum  = (BYTE)atoi(argv[2]);
-					default: break;
-				}
-			}
-			else {
-				eng->arg.GARPNumCnt = 0;
-				switch ( argc ) {
-					case 9: eng->arg.GUserDVal       = strtoul(argv[8], &stop_at, 16);
-					case 8: eng->arg.GChk_TimingBund = (BYTE)atoi(argv[7]);
-					case 7: eng->arg.GPHYADR         = (BYTE)atoi(argv[6]);
-					case 6: eng->arg.test_mode       = (BYTE)atoi(argv[5]);
-					case 3: eng->arg.run_speed          = (BYTE)atoi(argv[2]);
-					default: break;
-				}
-			} // End if ( eng->arg.run_mode == MODE_NCSI )
-		}
-		else {
-			// Wrong parameter
-			if ( eng->arg.run_mode == MODE_NCSI ) {
-				if ( eng->env.AST2300 )
-					printf("\nNCSITEST.exe  run_mode  <package_num>  <channel_num>  <test_mode>  <IO margin>\n\n");
-				else
-					printf("\nNCSITEST.exe  run_mode  <package_num>  <channel_num>  <test_mode>\n\n");
-				print_arg_run_idx         ( eng );
-				print_arg_package_num       ( eng );
-				print_arg_channel_num       ( eng );
-				print_arg_test_mode         ( eng );
-				print_arg_timing_boundary ( eng );
-			}
-			else {
-#ifdef Enable_MAC_ExtLoop
-				printf("\nMACLOOP.exe  run_mode  <speed>\n\n");
-#else
-				if ( eng->env.AST2300 )
-					printf("\nMACTEST.exe  run_mode  <speed>  <ctrl>  <loop_max>  <test_mode>  <phy_adr>  <IO margin>\n\n");
-				else
-					printf("\nMACTEST.exe  run_mode  <speed>  <ctrl>  <loop_max>  <test_mode>  <phy_adr>\n\n");
-#endif
-				print_arg_run_idx         ( eng );
-				print_arg_speed        ( eng );
-#ifndef Enable_MAC_ExtLoop
-				print_arg_ctrl(eng);
-				print_arg_loop(eng);
-				print_arg_test_mode         ( eng );
-				print_arg_phy_addr       ( eng );
-				print_arg_timing_boundary ( eng );
-#endif
-			} // End if ( eng->arg.run_mode == MODE_NCSI )
-			Finish_Close( eng );
-
-			return(1);
-		} // End if (argc > 1)
-
-#ifdef Enable_MAC_ExtLoop
-		eng->arg.GChk_TimingBund = 0;
-		eng->arg.test_mode       = 0;
-		eng->arg.loop_inf    = 1;
-		eng->arg.ctrl.b.phy_init = 1;
-#endif
-
-//------------------------------------------------------------
-// Check Argument & Setup
-//------------------------------------------------------------
-		//------------------------------
-		// [Env]check MAC34_vld
-		// [Arg]check run_idx
-		// [Run]setup MAC_idx
-		// [Run]setup MAC_BASE
-		//------------------------------
-		switch ( eng->arg.run_idx ) {
-			case 0:                            printf("\n[MAC1]\n"); eng->run.MAC_idx = 0; eng->run.MAC_BASE = MAC_BASE1; break;
-			case 1:                            printf("\n[MAC2]\n"); eng->run.MAC_idx = 1; eng->run.MAC_BASE = MAC_BASE2; break;
-			case 2: if ( eng->env.MAC34_vld ) {printf("\n[MAC3]\n"); eng->run.MAC_idx = 2; eng->run.MAC_BASE = MAC_BASE3; break;}
-			        else
-			            goto Error_run_idx;
-			case 3: if ( eng->env.MAC34_vld ) {printf("\n[MAC4]\n"); eng->run.MAC_idx = 3; eng->run.MAC_BASE = MAC_BASE4; break;}
-			        else
-			            goto Error_run_idx;
-			default:
-Error_run_idx:
-				printf("Error run_mode!!!\n");
-				print_arg_run_idx ( eng );
-				return(1);
-		} // End switch ( eng->arg.run_idx )
-#ifdef CONFIG_ASPEED_AST2600
-switch ( eng->run.MAC_idx ) {
-	case 0: Write_Reg_SCU_DD_AST2600( 0x10c , 0x00000000 | eng->reg.SCU_FPGASel ); break;
-	case 1: Write_Reg_SCU_DD_AST2600( 0x10c , 0x50000000 | eng->reg.SCU_FPGASel ); break;
-	case 2: Write_Reg_SCU_DD_AST2600( 0x10c , 0xa0000000 | eng->reg.SCU_FPGASel ); break;
-	case 3: Write_Reg_SCU_DD_AST2600( 0x10c , 0xf0000000 | eng->reg.SCU_FPGASel ); break;
-} // End switch ( eng->arg.run_idx )
-#endif
-		//------------------------------
-		// [Arg]check run_speed
-		// [Run]setup Speed_1G
-		// [Run]setup Speed_org
-		//------------------------------
-		switch ( eng->arg.run_speed ) {
-			case SET_1GBPS          : eng->run.Speed_1G = 1; eng->run.Speed_org[ 0 ] = 1; eng->run.Speed_org[ 1 ] = 0; eng->run.Speed_org[ 2 ] = 0; break;
-			case SET_100MBPS        : eng->run.Speed_1G = 0; eng->run.Speed_org[ 0 ] = 0; eng->run.Speed_org[ 1 ] = 1; eng->run.Speed_org[ 2 ] = 0; break;
-			case SET_10MBPS         : eng->run.Speed_1G = 0; eng->run.Speed_org[ 0 ] = 0; eng->run.Speed_org[ 1 ] = 0; eng->run.Speed_org[ 2 ] = 1; break;
-#ifndef Enable_MAC_ExtLoop
-			case SET_1G_100M_10MBPS : eng->run.Speed_1G = 0; eng->run.Speed_org[ 0 ] = 1; eng->run.Speed_org[ 1 ] = 1; eng->run.Speed_org[ 2 ] = 1; break;
-			case SET_100M_10MBPS    : eng->run.Speed_1G = 0; eng->run.Speed_org[ 0 ] = 0; eng->run.Speed_org[ 1 ] = 1; eng->run.Speed_org[ 2 ] = 1; break;
-#endif
-			default:
-				printf("Error speed!!!\n");
-				print_arg_speed ( eng );
-				return(1);
-		} // End switch ( eng->arg.run_speed )
-
-
-		if ( eng->arg.run_mode == MODE_NCSI ) {
-			//------------------------------
-			// [Arg]check GPackageTolNum
-			// [Arg]check GChannelTolNum
-			//------------------------------
-			if (( eng->arg.GPackageTolNum < 1 ) || ( eng->arg.GPackageTolNum >  8 )) {
-				print_arg_package_num ( eng );
-				return(1);
-			}
-			if (( eng->arg.GChannelTolNum < 1 ) || ( eng->arg.GChannelTolNum > 32 )) {
-				print_arg_channel_num ( eng );
-				return(1);
-			}
-		}
-		else {
-			//------------------------------
-			// [Arg]check ctrl
-			//------------------------------
-			if ( eng->arg.ctrl.w & 0xfffffe00 ) {
-				printf("Error ctrl!!!\n");
-				print_arg_ctrl(eng);
-				return(1);
-			}
-			else {
-				if ( !eng->env.AST2400 && eng->arg.ctrl.b.mac_int_loopback ) {
-					printf("Error ctrl!!!\n");
-					print_arg_ctrl(eng);
-					return(1);
-				}
-			} // End if ( eng->arg.ctrl.w & 0xffffff83 )
-
-			//------------------------------
-			// [Arg]check GPHYADR
-			//------------------------------
-			if ( eng->arg.GPHYADR > 31 ) {
-				printf("Error phy_adr!!!\n");
-				print_arg_phy_addr ( eng );
-				return(1);
-			} // End if ( eng->arg.GPHYADR > 31)
-			//------------------------------
-			// [Arg]check loop_max
-			// [Arg]check run_speed
-			// [Arg]setup loop_max
-			//------------------------------
-			if ( !eng->arg.loop_max )
-				switch ( eng->arg.run_speed ) {
-					case SET_1GBPS         : eng->arg.loop_max = DEF_GLOOP_MAX * 20; break;
-					case SET_100MBPS       : eng->arg.loop_max = DEF_GLOOP_MAX * 2 ; break;
-					case SET_10MBPS        : eng->arg.loop_max = DEF_GLOOP_MAX     ; break;
-					case SET_1G_100M_10MBPS: eng->arg.loop_max = DEF_GLOOP_MAX * 20; break;
-					case SET_100M_10MBPS   : eng->arg.loop_max = DEF_GLOOP_MAX * 2 ; break;
-				}
-		} // End if ( eng->arg.run_mode == MODE_NCSI )
-
 //------------------------------------------------------------
 // Check Argument & Setup Running Parameter
-//------------------------------------------------------------
-		//------------------------------
-		// [Env]check AST2300
-		// [Arg]check test_mode
-		// [Run]setup TM_IOTiming
-		// [Run]setup TM_IOStrength
-		// [Run]setup TM_TxDataEn
-		// [Run]setup TM_RxDataEn
-		// [Run]setup TM_NCSI_DiSChannel
-		// [Run]setup TM_Burst
-		// [Run]setup TM_IEEE
-		// [Run]setup TM_WaitStart
-		//------------------------------
-		eng->run.TM_IOTiming        = 0;
-		eng->run.TM_IOStrength      = 0;
-		eng->run.TM_TxDataEn        = 1;
-		eng->run.TM_RxDataEn        = 1;
-		eng->run.TM_NCSI_DiSChannel = 1; // For ncsitest function
-		eng->run.TM_Burst           = 0; // For mactest function
-		eng->run.TM_IEEE            = 0; // For mactest function
-		eng->run.TM_WaitStart       = 0; // For mactest function
-		eng->run.TM_DefaultPHY      = 0; // For mactest function
-		if ( eng->arg.run_mode == MODE_NCSI ) {
-			switch ( eng->arg.test_mode ) {
-				case 0 :     break;
-				case 1 :     eng->run.TM_NCSI_DiSChannel = 0; break;
-				case 6 : if ( eng->env.AST2300 ) {
-					     eng->run.TM_IOTiming = 1; break;}
-					 else
-					     goto Error_GTestMode_NCSI;
-				case 7 : if ( eng->env.AST2300 ) {
-					     eng->run.TM_IOTiming = 1; eng->run.TM_IOStrength = 1; break;}
-					 else
-					     goto Error_GTestMode_NCSI;
-				default:
-Error_GTestMode_NCSI:
-					printf("Error test_mode!!!\n");
-					print_arg_test_mode ( eng );
-					return(1);
-			} // End switch ( eng->arg.test_mode )
-		}
-		else {
-			switch ( eng->arg.test_mode ) {
-				case  0 :     break;
-				case  1 :     eng->run.TM_RxDataEn = 0; eng->run.TM_Burst = 1; eng->run.TM_IEEE = 1; break;
-				case  2 :     eng->run.TM_RxDataEn = 0; eng->run.TM_Burst = 1; eng->run.TM_IEEE = 1; break;
-				case  3 :     eng->run.TM_RxDataEn = 0; eng->run.TM_Burst = 1; eng->run.TM_IEEE = 1; break;
-				case  4 :     eng->run.TM_RxDataEn = 0; eng->run.TM_Burst = 1; eng->run.TM_IEEE = 0; break;
-				case  5 :     eng->run.TM_RxDataEn = 0; eng->run.TM_Burst = 1; eng->run.TM_IEEE = 1; break;
-				case  6 : if ( eng->env.AST2300 ) {
-				              eng->run.TM_IOTiming = 1; break;}
-				          else
-				              goto Error_GTestMode;
-				case  7 : if ( eng->env.AST2300 ) {
-				              eng->run.TM_IOTiming = 1; eng->run.TM_IOStrength = 1; break;}
-				          else
-				              goto Error_GTestMode;
-				case  8 :     eng->run.TM_RxDataEn = 0; eng->run.TM_DefaultPHY = 1; break;
-				case  9 :     eng->run.TM_TxDataEn = 0; eng->run.TM_DefaultPHY = 1; break;
-				case 10 :     eng->run.TM_WaitStart = 1; break;
-				case 11 :     break;
-				default:
-Error_GTestMode:
-					printf("Error test_mode!!!\n");
-					print_arg_test_mode ( eng );
-					return(1);
-			} // End switch ( eng->arg.test_mode )
-#ifdef Enable_MAC_ExtLoop
-			eng->run.TM_DefaultPHY = 1;
-#endif
-		} // End if ( eng->arg.run_mode == MODE_NCSI )
+//------------------------------------------------------------		
+	if ( eng->run.TM_Burst ) {
+		eng->arg.GIEEE_sel = eng->arg.GChk_TimingBund;
+		eng->run.IO_Bund = 0;
+	} else {
+		eng->arg.GIEEE_sel = 0;			
+		eng->run.IO_Bund = eng->arg.GChk_TimingBund;
 
-		//------------------------------
-		// [Env]check AST2300
-		// [Arg]check GChk_TimingBund
-		// [Run]check TM_Burst
-		// [Arg]setup GIEEE_sel
-		// [Run]setup IO_Bund
-		//------------------------------
-		if ( eng->run.TM_Burst ) {
-			eng->arg.GIEEE_sel = eng->arg.GChk_TimingBund;
-			eng->run.IO_Bund = 0;
-		}
-		else {
-			eng->arg.GIEEE_sel = 0;
-			if ( eng->env.AST2300 ) {
-				eng->run.IO_Bund = eng->arg.GChk_TimingBund;
+		if ( !( ( eng->run.IO_Bund & 0x1 ) ||
+		        ( eng->run.IO_Bund == 0  )
+		       ) ) {
+			printf("Error IO margin!!!\n");
+			print_arg_timing_boundary ( eng );
+			return(1);
+		}						
+	} // End if ( eng->run.TM_Burst )
 
-//				if ( !( ( ( 7 >= eng->run.IO_Bund ) && ( eng->run.IO_Bund & 0x1 ) ) ||
-//				        ( eng->run.IO_Bund == 0                                   )
-//				       ) ) {
-//					printf("Error IO margin!!!\n");
-//					print_arg_timing_boundary ( eng );
-//					return(1);
-//				}
-				if ( !( ( eng->run.IO_Bund & 0x1 ) ||
-				        ( eng->run.IO_Bund == 0  )
-				       ) ) {
-					printf("Error IO margin!!!\n");
-					print_arg_timing_boundary ( eng );
-					return(1);
-				}
-			}
-			else {
-				eng->run.IO_Bund = 0;
-			}
-		} // End if ( eng->run.TM_Burst )
-//------------------------------------------------------------
-// Setup Environment
-//------------------------------------------------------------
-		//------------------------------
-		// [Env]check AST1010
-		// [Env]check AST2300
-		// [Reg]check SCU_070
-		// [Env]setup MAC_Mode
-		// [Env]setup MAC1_1Gvld
-		// [Env]setup MAC2_1Gvld
-		// [Env]setup MAC1_RMII
-		// [Env]setup MAC2_RMII
-		// [Env]setup MAC2_vld
-		//------------------------------
-		if ( eng->env.AST2300 ) {
-			eng->env.MAC_Mode   = ( eng->reg.SCU_070 >> 6 ) & 0x3;
-			eng->env.MAC1_1Gvld = ( eng->env.MAC_Mode & 0x1 ) ? 1 : 0;//1:RGMII, 0:RMII
-			eng->env.MAC2_1Gvld = ( eng->env.MAC_Mode & 0x2 ) ? 1 : 0;//1:RGMII, 0:RMII
-			eng->env.MAC1_RMII  = !eng->env.MAC1_1Gvld;
-			eng->env.MAC2_RMII  = !eng->env.MAC2_1Gvld;
-			eng->env.MAC2_vld   = 1;
-#ifdef CONFIG_ASPEED_AST2600
-			eng->env.MAC3_1Gvld = ( eng->reg.SCU_510 & 0x1 ) ? 1 : 0;//1:RGMII, 0:RMII
-			eng->env.MAC4_1Gvld = ( eng->reg.SCU_510 & 0x2 ) ? 1 : 0;//1:RGMII, 0:RMII
-			eng->env.MAC3_RMII  = !eng->env.MAC3_1Gvld;
-			eng->env.MAC4_RMII  = !eng->env.MAC4_1Gvld;
-#endif
-		}
-		else {
-			eng->env.MAC_Mode   = ( eng->reg.SCU_070 >> 6 ) & 0x7;
-			eng->env.MAC1_1Gvld = ( eng->env.MAC_Mode == 0x0 ) ? 1 : 0;
-			eng->env.MAC2_1Gvld = 0;
+	if ( !eng->env.is_1g_valid[eng->run.mac_idx])
+		eng->run.Speed_org[ 0 ] = 0;
 
-			switch ( eng->env.MAC_Mode ) {
-				case 0 : eng->env.MAC1_RMII = 0; eng->env.MAC2_RMII = 0; eng->env.MAC2_vld = 0; break; //000: Select GMII(MAC#1) only
-				case 1 : eng->env.MAC1_RMII = 0; eng->env.MAC2_RMII = 0; eng->env.MAC2_vld = 1; break; //001: Select MII (MAC#1) and MII(MAC#2)
-				case 2 : eng->env.MAC1_RMII = 1; eng->env.MAC2_RMII = 0; eng->env.MAC2_vld = 1; break; //010: Select RMII(MAC#1) and MII(MAC#2)
-				case 3 : eng->env.MAC1_RMII = 0; eng->env.MAC2_RMII = 0; eng->env.MAC2_vld = 0; break; //011: Select MII (MAC#1) only
-				case 4 : eng->env.MAC1_RMII = 1; eng->env.MAC2_RMII = 0; eng->env.MAC2_vld = 0; break; //100: Select RMII(MAC#1) only
-//				case 5 : eng->env.MAC1_RMII = 0; eng->env.MAC2_RMII = 0; eng->env.MAC2_vld = 0; break; //101: Reserved
-				case 6 : eng->env.MAC1_RMII = 1; eng->env.MAC2_RMII = 1; eng->env.MAC2_vld = 1; break; //110: Select RMII(MAC#1) and RMII(MAC#2)
-//				case 7 : eng->env.MAC1_RMII = 0; eng->env.MAC2_RMII = 0; eng->env.MAC2_vld = 0; break; //111: Disable dual MAC
-				default:
-					return( Finish_Check( eng, Err_Flag_MACMode ) );
-			}
-		} // End if ( eng->env.AST2300 )
-		eng->env.MAC_atlast_1Gvld = eng->env.MAC1_1Gvld | eng->env.MAC2_1Gvld;
-
-//------------------------------------------------------------
-// Check & Setup Environment
-//------------------------------------------------------------
-		//------------------------------
-		// [Phy]setup PHY_BASE
-		// [Env]setup MAC_1Gvld
-		// [Env]setup MAC_RMII
-		//------------------------------
-		if ( eng->run.MAC_idx == 0 ) {
-			if ( eng->arg.ctrl.b.phy_addr_inv ) {
-				eng->phy.PHY_BASE    = MAC_BASE2;
-				eng->run.MAC_idx_PHY = 1;
-			} else {
-				eng->phy.PHY_BASE    = MAC_BASE1;
-				eng->run.MAC_idx_PHY = 0;
-			}
-			eng->env.MAC_1Gvld = eng->env.MAC1_1Gvld;
-			eng->env.MAC_RMII  = eng->env.MAC1_RMII;
-
-			if ( eng->run.Speed_1G & !eng->env.MAC1_1Gvld ) {
-				printf("\nMAC1 don't support 1Gbps !!!\n");
-				return( Finish_Check( eng, Err_Flag_MACMode ) );
-			}
-		}
-		else if ( eng->run.MAC_idx == 1 ) {
-			if ( eng->arg.ctrl.b.phy_addr_inv ) {
-				eng->phy.PHY_BASE    = MAC_BASE1;
-				eng->run.MAC_idx_PHY = 0;
-			} else {
-				eng->phy.PHY_BASE    = MAC_BASE2;
-				eng->run.MAC_idx_PHY = 1;
-			}
-			eng->env.MAC_1Gvld = eng->env.MAC2_1Gvld;
-			eng->env.MAC_RMII  = eng->env.MAC2_RMII;
-
-			if ( eng->run.Speed_1G & !eng->env.MAC2_1Gvld ) {
-				printf("\nMAC2 don't support 1Gbps !!!\n");
-				return( Finish_Check( eng, Err_Flag_MACMode ) );
-			}
-			if ( !eng->env.MAC2_vld ) {
-				printf("\nMAC2 not valid !!!\n");
-				return( Finish_Check( eng, Err_Flag_MACMode ) );
-			}
-		}
-		else {
-			if ( eng->run.MAC_idx == 2 ) {
-				if ( eng->arg.ctrl.b.phy_addr_inv ) {
-					eng->phy.PHY_BASE    = MAC_BASE4;
-					eng->run.MAC_idx_PHY = 3;
-				} else {
-					eng->phy.PHY_BASE    = MAC_BASE3;
-					eng->run.MAC_idx_PHY = 2;
-				}
-#ifdef CONFIG_ASPEED_AST2600
-				eng->env.MAC_1Gvld = eng->env.MAC3_1Gvld;
-				eng->env.MAC_RMII  = eng->env.MAC3_RMII;
-
-				if ( eng->run.Speed_1G & !eng->env.MAC3_1Gvld ) {
-					printf("\nMAC3 don't support 1Gbps !!!\n");
-					return( Finish_Check( eng, Err_Flag_MACMode ) );
-				}
-#endif
-			} else {
-				if ( eng->arg.ctrl.b.phy_addr_inv ) {
-					eng->phy.PHY_BASE    = MAC_BASE3;
-					eng->run.MAC_idx_PHY = 2;
-				} else {
-					eng->phy.PHY_BASE    = MAC_BASE4;
-					eng->run.MAC_idx_PHY = 3;
-				}
-#ifdef CONFIG_ASPEED_AST2600
-				eng->env.MAC_1Gvld = eng->env.MAC4_1Gvld;
-				eng->env.MAC_RMII  = eng->env.MAC4_RMII;
-
-				if ( eng->run.Speed_1G & !eng->env.MAC4_1Gvld ) {
-					printf("\nMAC4 don't support 1Gbps !!!\n");
-					return( Finish_Check( eng, Err_Flag_MACMode ) );
-				}
-#endif
-			}
-#ifdef CONFIG_ASPEED_AST2600
-#else
-			eng->env.MAC_1Gvld = 0;
-			eng->env.MAC_RMII  = 1;
-
-			if ( eng->run.Speed_1G ) {
-				printf("\nMAC3/MAC4 don't support 1Gbps !!!\n");
-				return( Finish_Check( eng, Err_Flag_MACMode ) );
-			}
-#endif			
-		} // End if ( eng->run.MAC_idx == 0 )
-
-		if ( !eng->env.MAC_1Gvld )
-			eng->run.Speed_org[ 0 ] = 0;
-
-		if ( ( eng->arg.run_mode == MODE_NCSI ) && ( !eng->env.MAC_RMII ) ) {
-			printf("\nNCSI must be RMII interface !!!\n");
-			return( Finish_Check( eng, Err_Flag_MACMode ) );
-		}
-
-		//------------------------------
-		// [Env]setup MHCLK_Ratio
-		//------------------------------
-#ifdef CONFIG_ASPEED_AST2600
-#else
-		eng->env.MHCLK_Ratio = ( eng->reg.SCU_008 >> 16 ) & 0x7;
-		if ( eng->env.MAC_atlast_1Gvld ) {
-			if ( eng->env.MHCLK_Ratio != 2 ) {
-				FindErr( eng, Err_Flag_MHCLK_Ratio );
-//				return( Finish_Check( eng, Err_Flag_MHCLK_Ratio ) );
-			}
-		}
-		else {
-			if ( eng->env.MHCLK_Ratio != 4 ) {
-				FindErr( eng, Err_Flag_MHCLK_Ratio );
-//				return( Finish_Check( eng, Err_Flag_MHCLK_Ratio ) );
-			}
-		}
-#endif
+	if ( ( eng->arg.run_mode == MODE_NCSI ) && ( !eng->env.MAC_RMII ) ) {
+		printf("\nNCSI must be RMII interface !!!\n");
+		return( Finish_Check( eng, Err_Flag_MACMode ) );
+	}	
 
 //------------------------------------------------------------
 // Parameter Initial
@@ -822,7 +631,7 @@ Error_GTestMode:
 			eng->reg.SCU_004_rstbit = 0x00001800; //Reset Engine
 		}
 		else {
-			if ( eng->run.MAC_idx == 1 )
+			if ( eng->run.mac_idx == 1 )
 				eng->reg.SCU_004_rstbit = 0x00001000; //Reset Engine
 			else
 				eng->reg.SCU_004_rstbit = 0x00000800; //Reset Engine
@@ -836,25 +645,12 @@ Error_GTestMode:
 		// [Reg]setup SCU_00c_mix
 		// [Reg]setup SCU_00c_dis
 		// [Reg]setup SCU_00c_en
-		//------------------------------
-		if ( eng->env.AST2300 ) {
-//			if ( eng->arg.ctrl.b.phy_addr_inv ) {
-				if ( eng->env.MAC34_vld )
-					eng->reg.SCU_00c_clkbit = 0x00f00000; //Clock Stop Control
-				else
-					eng->reg.SCU_00c_clkbit = 0x00300000; //Clock Stop Control
-//			}
-//			else {
-//				switch ( eng->run.MAC_idx ) {
-//					case 3: eng->reg.SCU_00c_clkbit = 0x00800000; break; //Clock Stop Control
-//					case 2: eng->reg.SCU_00c_clkbit = 0x00400000; break; //Clock Stop Control
-//					case 1: eng->reg.SCU_00c_clkbit = 0x00200000; break; //Clock Stop Control
-//					case 0: eng->reg.SCU_00c_clkbit = 0x00100000; break; //Clock Stop Control
-//			}
-		}
-		else {
-			eng->reg.SCU_00c_clkbit = 0x00000000;
-		} // End if ( eng->env.AST2300 )
+		//------------------------------		
+		if ( eng->env.MAC34_vld )
+			eng->reg.SCU_00c_clkbit = 0x00f00000; //Clock Stop Control
+		else
+			eng->reg.SCU_00c_clkbit = 0x00300000; //Clock Stop Control
+				
 		eng->reg.SCU_00c_mix = eng->reg.SCU_00c;
 		eng->reg.SCU_00c_en  = eng->reg.SCU_00c_mix & (~eng->reg.SCU_00c_clkbit);
 		eng->reg.SCU_00c_dis = eng->reg.SCU_00c_mix |   eng->reg.SCU_00c_clkbit;
@@ -870,7 +666,7 @@ Error_GTestMode:
 		eng->reg.SCU_048_default =   SCU_48h_AST2500  & 0x03ffffff;
 
 		if ( eng->arg.ctrl.b.rmii_50m_out & eng->env.MAC_RMII ) {
-			switch ( eng->run.MAC_idx ) {
+			switch ( eng->run.mac_idx ) {
 				case 1: eng->reg.SCU_048_mix = eng->reg.SCU_048_mix | 0x40000000; break;
 				case 0: eng->reg.SCU_048_mix = eng->reg.SCU_048_mix | 0x20000000; break;
 			}
@@ -885,12 +681,8 @@ Error_GTestMode:
 			eng->reg.MAC_050 = 0x000a0500;// [100Mbps] RX_BROADPKT_EN & CRC_APD & Full duplex
 //			eng->reg.MAC_050 = 0x000a4500;// [100Mbps] RX_BROADPKT_EN & RX_ALLADR & CRC_APD & Full duplex
 		else {
-#ifdef Enable_MAC_ExtLoop
-//			eng->reg.MAC_050 = 0x00000100;// Full duplex
-			eng->reg.MAC_050 = 0x00004100;// RX_ALLADR & Full duplex
-#else
+
 			eng->reg.MAC_050 = 0x00004500;// RX_ALLADR & CRC_APD & Full duplex
-#endif
 #ifdef Enable_Runt
 			eng->reg.MAC_050 = eng->reg.MAC_050 | 0x00001000;
 #endif
@@ -946,13 +738,9 @@ Error_GTestMode:
 //------------------------------------------------------------
 // Setup Running Parameter
 //------------------------------------------------------------
-#ifdef Enable_MAC_ExtLoop
-		eng->run.TDES_BASE = RDES_BASE1;
-		eng->run.RDES_BASE = RDES_BASE1;
-#else
+
 		eng->run.TDES_BASE = TDES_BASE1;
 		eng->run.RDES_BASE = RDES_BASE1;
-#endif
 
 		if ( eng->run.TM_IOTiming || eng->run.IO_Bund )
 			eng->run.IO_MrgChk = 1;
@@ -1078,20 +866,14 @@ LOOP_INFINI:;
 
 					//------------------------------
 					// PHY Initial
-					//------------------------------
-					if ( eng->env.AST1100 )
-						init_scu2 ( eng );
-
+					//------------------------------					
 
 					if ( phyeng->fp_set != 0 ) {
 						init_phy( eng, phyeng );
   #ifdef Delay_PHYRst
 //						DELAY( Delay_PHYRst * 10 );
 					}
-#endif
-
-					if ( eng->env.AST1100 )
-						init_scu3 ( eng );
+#endif					
 
 					if ( eng->flg.Err_Flag )
 						return( Finish_Check( eng, 0 ) );

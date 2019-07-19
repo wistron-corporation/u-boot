@@ -55,8 +55,6 @@
 #define nt_log_func_name(...)
 #endif
 /* ============ Enable or Disable Check item of the descriptor ============ */
-#ifdef Enable_MAC_ExtLoop
-#else
     #define CheckRxOwn
     #define CheckRxLen
     #define CheckRxErr
@@ -65,18 +63,13 @@
     #define CheckRunt
 //    #define CheckOddNibble
     #define CheckRxFIFOFull
-  #ifdef Enable_MAC_ExtLoop_PakcegMode
-    #define CheckDataEveryTime
-  #else
-//    #define CheckDataEveryTime
-  #endif
+  
 
 //    #define CheckRxbufUNAVA
     #define CheckRPktLost
 //    #define CheckNPTxbufUNAVA
     #define CheckTPktLost
     #define CheckRxBuf
-#endif
 
 #ifdef CheckRxErr
   #define Check_ErrMask_RxErr                    0x00040000 //bit18

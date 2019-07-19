@@ -90,10 +90,10 @@ uint32_t Read_Mem_Des_DD(uint32_t addr)
 uint32_t Read_Reg_MAC_DD(MAC_ENGINE *eng, uint32_t addr)
 {
 #ifdef MAC_DEBUG_REGRW_MAC
-	printf("[RegRd-MAC] %08x = %08x\n", eng->run.MAC_BASE + addr,
-	       SWAP_4B_LEDN_REG(ReadSOC_DD(eng->run.MAC_BASE + addr)));
+	printf("[RegRd-MAC] %08x = %08x\n", eng->run.mac_base + addr,
+	       SWAP_4B_LEDN_REG(ReadSOC_DD(eng->run.mac_base + addr)));
 #endif
-	return (SWAP_4B_LEDN_REG(ReadSOC_DD(eng->run.MAC_BASE + addr)));
+	return (SWAP_4B_LEDN_REG(ReadSOC_DD(eng->run.mac_base + addr)));
 }
 
 uint32_t Read_Reg_PHY_DD(MAC_ENGINE *eng, uint32_t addr)
@@ -210,9 +210,9 @@ void Write_Mem_Des_DD (uint32_t addr, uint32_t data) {
 //------------------------------------------------------------
 void Write_Reg_MAC_DD (MAC_ENGINE *eng, uint32_t addr, uint32_t data) {
 #ifdef MAC_DEBUG_REGRW_MAC
-	printf("[RegWr-MAC] %08x = %08x\n", eng->run.MAC_BASE + addr, SWAP_4B_LEDN_REG( data ));
+	printf("[RegWr-MAC] %08x = %08x\n", eng->run.mac_base + addr, SWAP_4B_LEDN_REG( data ));
 #endif
-	WriteSOC_DD( eng->run.MAC_BASE + addr, SWAP_4B_LEDN_REG( data ) );
+	WriteSOC_DD( eng->run.mac_base + addr, SWAP_4B_LEDN_REG( data ) );
 }
 void Write_Reg_PHY_DD (MAC_ENGINE *eng, uint32_t addr, uint32_t data) {
 #ifdef MAC_DEBUG_REGRW_PHY
@@ -297,7 +297,7 @@ void init_iodelay (MAC_ENGINE *eng)
 
 	nt_log_func_name();
 
-	if ( eng->env.AST2500A1 && ( !eng->env.MAC_RMII ) )
+	if ( !eng->env.MAC_RMII )
 		eng->io.Dly_3Regiser = 1;
 	else
 		eng->io.Dly_3Regiser = 0;
@@ -319,7 +319,7 @@ void init_iodelay (MAC_ENGINE *eng)
 	eng->io.Str_reg_mask  = ( eng->reg.SCU_090 & 0xfffff0ff );
 	eng->io.Str_max       = 1;//0~1
 	if ( eng->env.MAC_RMII ) {
-		switch ( eng->run.MAC_idx ) {
+		switch ( eng->run.mac_idx ) {
 			case 0  : eng->io.Str_shf =  9; break;
 			case 1  : eng->io.Str_shf = 11; break;
 		}
@@ -327,7 +327,7 @@ void init_iodelay (MAC_ENGINE *eng)
 	else {//AST2500 RGMII only support high drive RGMIITXCK
 		if ( eng->run.TM_IOStrength )
 			printf("The RGMII driving strength testing v1.0\n");
-		switch ( eng->run.MAC_idx ) {
+		switch ( eng->run.mac_idx ) {
 			case 0  : eng->io.Str_shf =  8; break;
 			case 1  : eng->io.Str_shf = 10; break;
 		}
@@ -372,13 +372,13 @@ void init_iodelay (MAC_ENGINE *eng)
 	// [IO]setup Dly_out_shf_regH
 	//------------------------------
 	if ( eng->env.MAC_RMII ) {
-		switch ( eng->run.MAC_idx ) {
+		switch ( eng->run.mac_idx ) {
 			case 0  : eng->io.Dly_out_shf = 24; eng->io.Dly_in_shf = 12; break;
 			case 1  : eng->io.Dly_out_shf = 25; eng->io.Dly_in_shf = 18; break;
 		}
 	}
 	else {
-		switch ( eng->run.MAC_idx ) {
+		switch ( eng->run.mac_idx ) {
 			case 0  : eng->io.Dly_out_shf =  0; eng->io.Dly_in_shf  = 12; break;
 			case 1  : eng->io.Dly_out_shf =  6; eng->io.Dly_in_shf  = 18; break;
 		}
@@ -398,8 +398,7 @@ void init_iodelay (MAC_ENGINE *eng)
 	//------------------------------
 	// [IO]setup value_ary
 	//------------------------------
-	if ( eng->env.AST2300 && (eng->reg.SCU_07c == 0x01000003) ) {
-		//AST2300-A0
+	if (eng->reg.SCU_07c == 0x01000003) {
 		for (index = 0; index < 16; index++) {
 			eng->io.value_ary[ index ] = IOValue_Array_A0[ index ];
 		}
@@ -584,11 +583,7 @@ void recov_scu (MAC_ENGINE *eng) {
 	Write_Reg_SCU_DD( 0x008, eng->reg.SCU_008 );
 //	Write_Reg_SCU_DD( 0x00c, eng->reg.SCU_00c );
 	Write_Reg_SCU_DD( 0x048, eng->reg.SCU_048 );
-//#if defined(SLT_UBOOT) || defined(Enable_MAC_ExtLoop)
-//#else
-//	Write_Reg_SCU_DD( 0x07c, (~eng->reg.SCU_070) );
-//	Write_Reg_SCU_DD( 0x070, eng->reg.SCU_070  );
-//#endif
+
 	Write_Reg_SCU_DD( 0x074, eng->reg.SCU_074 );
 	Write_Reg_SCU_DD( 0x080, eng->reg.SCU_080 );
 	Write_Reg_SCU_DD( 0x088, eng->reg.SCU_088 );
@@ -673,10 +668,7 @@ void Setting_scu (MAC_ENGINE *eng)
 
 	//------------------------------
 	// [WDT]Disable Timer
-	//------------------------------
-	if ( eng->env.AST2400 ) {
-		Write_Reg_SCU_DD( 0x9c, eng->reg.SCU_09c & 0xffffff9f ); //[5:6]Watchdog Reset for MAC
-	}
+	//------------------------------	
 
 	Write_Reg_WDT_DD( 0x00c, eng->reg.WDT_00c & 0xfffffffc );
 	Write_Reg_WDT_DD( 0x02c, eng->reg.WDT_02c & 0xfffffffc );
@@ -696,53 +688,27 @@ void init_scu1 (MAC_ENGINE *eng)
 		init_scu_macio ( eng );
 
 #ifdef Enable_BufMerge
-	if ( eng->env.AST2300 ) {
-		Write_Reg_SCU_DD( 0xf0, 0x66559959 );//MAC buffer merge
-	}
+	Write_Reg_SCU_DD( 0xf0, 0x66559959 );//MAC buffer merge
 #endif
 } // End void init_scu1 (MAC_ENGINE *eng)
 
 //------------------------------------------------------------
-void init_scu_macio (MAC_ENGINE *eng) {
+void init_scu_macio (MAC_ENGINE *eng) 
+{
 	nt_log_func_name();
-//------------------------------
-// MDC/MDIO, LINK
-//------------------------------
-	if ( eng->env.AST2300 ) {
-		switch ( eng->run.MAC_idx_PHY ) {
-  			case 0  : Write_Reg_SCU_DD( 0x88, (eng->reg.SCU_088 & 0x3fffffff) | 0xc0000000 ); break;//[31]MAC1 MDIO, [30]MAC1 MDC
-			case 1  : Write_Reg_SCU_DD( 0x90, (eng->reg.SCU_090 & 0xfffffffb) | 0x00000004 ); break;//[2 ]MAC2 MDC/MDIO
+	switch (eng->run.MAC_idx_PHY) {
+	case 0:
+		Write_Reg_SCU_DD(0x88,
+				 (eng->reg.SCU_088 & 0x3fffffff) | 0xc0000000);
+		break; //[31]MAC1 MDIO, [30]MAC1 MDC
+	case 1:
+		Write_Reg_SCU_DD(0x90,
+				 (eng->reg.SCU_090 & 0xfffffffb) | 0x00000004);
+		break; //[2 ]MAC2 MDC/MDIO
 
-			default : break;
-		}
-//		Write_Reg_SCU_DD( 0x80, (eng->reg.SCU_080 & 0xfffffff0) | 0x0000000f );//MAC1LINK/MAC2LINK
+	default:
+		break;
 	}
-	else {
-		switch ( eng->run.MAC_idx_PHY ) {
-//			case 0  :
-//				eng->reg.SCU_074_mix = (eng->reg.SCU_074_mix & 0xfdffffff) | 0x02000000;//[25]MAC1 PHYLINK
-//				break;
-			case 1  :
-  
-				eng->reg.SCU_074_mix = (eng->reg.SCU_074_mix & 0xffefffff) | 0x00100000;//[26]MAC2 PHYLINK, [20]MAC2 MDC/MDIO  
-				break;
-			default : 
-				break;
-		} // End switch ( eng->run.MAC_idx_PHY )
-		//------------------------------
-		// MAC2 MII Interface
-		//------------------------------
-		switch ( eng->run.MAC_idx ) {
-			case 1  :
-				if ( eng->env.MAC2_RMII )
-					eng->reg.SCU_074_mix = (eng->reg.SCU_074_mix & 0xffdfffff)             ;//[21]MAC2 MII
-				else
-					eng->reg.SCU_074_mix = (eng->reg.SCU_074_mix & 0xffdfffff) | 0x00200000;//[21]MAC2 MII
-			default :
-				break;
-		} // End switch ( eng->run.MAC_idx )
-		Write_Reg_SCU_DD( 0x74, eng->reg.SCU_074_mix);
-	} // End if ( eng->env.AST2300 )
 } // End void init_scu_macio (MAC_ENGINE *eng)
 
 //------------------------------------------------------------
@@ -966,33 +932,49 @@ void FPri_End (MAC_ENGINE *eng, BYTE option)
 			PRINTF( option, "\n[Warning] PHY Address change from %d to %d !!!\n", eng->arg.GPHYADR, eng->phy.Adr );
 	}
 
-	if ( eng->env.AST2300 ) {
-		//------------------------------
-		//[Warning] IO Strength
-		//------------------------------
-		if ( eng->io.init_done && eng->io.Str_reg_value ) {
-			PRINTF( option, "\n[Warning] SCU%02X[%2d:%2d] == 0x%02x is not the suggestion value 0.\n", eng->io.Str_reg_idx, eng->io.Str_reg_Hbit, eng->io.Str_reg_Lbit, eng->io.Str_reg_value );
-			PRINTF( option, "          This change at this platform must been proven again by the ASPEED.\n" );
-		}
+	//------------------------------
+	//[Warning] IO Strength
+	//------------------------------
+	if (eng->io.init_done && eng->io.Str_reg_value) {
+		PRINTF(option,
+		       "\n[Warning] SCU%02X[%2d:%2d] == 0x%02x is not the "
+		       "suggestion value 0.\n",
+		       eng->io.Str_reg_idx, eng->io.Str_reg_Hbit,
+		       eng->io.Str_reg_Lbit, eng->io.Str_reg_value);
+		PRINTF(option, "          This change at this platform must "
+			       "been proven again by the ASPEED.\n");
+	}
 
-		//------------------------------
-		//[Warning] IO Timing
- 		//------------------------------
-		if ( ( eng->reg.SCU_048_check != eng->reg.SCU_048_default ) ) {
-			PRINTF( option, "\n[Warning] SCU48 == 0x%08x is not the suggestion value 0x%08x.\n", eng->reg.SCU_048, eng->reg.SCU_048_default );
-			PRINTF( option, "          This change at this platform must been proven again by the ASPEED.\n" );
+	//------------------------------
+	//[Warning] IO Timing
+	//------------------------------
+	if ((eng->reg.SCU_048_check != eng->reg.SCU_048_default)) {
+		PRINTF(option,
+		       "\n[Warning] SCU48 == 0x%08x is not the suggestion "
+		       "value 0x%08x.\n",
+		       eng->reg.SCU_048, eng->reg.SCU_048_default);
+		PRINTF(option, "          This change at this platform must "
+			       "been proven again by the ASPEED.\n");
+	}
+	
+		if ((eng->reg.SCU_0b8 != SCU_B8h_AST2500)) {
+			PRINTF(option,
+			       "\n[Warning] SCUB8 == 0x%08x is not the "
+			       "suggestion value 0x%08x.\n",
+			       eng->reg.SCU_0b8, SCU_B8h_AST2500);
+			PRINTF(option,
+			       "          This change at this platform must "
+			       "been proven again by the ASPEED.\n");
 		}
-		if ( eng->env.AST2500A1 ) {
-			if ( ( eng->reg.SCU_0b8 != SCU_B8h_AST2500 ) ) {
-				PRINTF( option, "\n[Warning] SCUB8 == 0x%08x is not the suggestion value 0x%08x.\n", eng->reg.SCU_0b8, SCU_B8h_AST2500 );
-				PRINTF( option, "          This change at this platform must been proven again by the ASPEED.\n" );
-			}
-			if ( ( eng->reg.SCU_0bc != SCU_BCh_AST2500 ) ) {
-				PRINTF( option, "\n[Warning] SCUBC == 0x%08x is not the suggestion value 0x%08x.\n", eng->reg.SCU_0bc, SCU_BCh_AST2500 );
-				PRINTF( option, "          This change at this platform must been proven again by the ASPEED.\n" );
-			}
+		if ((eng->reg.SCU_0bc != SCU_BCh_AST2500)) {
+			PRINTF(option,
+			       "\n[Warning] SCUBC == 0x%08x is not the "
+			       "suggestion value 0x%08x.\n",
+			       eng->reg.SCU_0bc, SCU_BCh_AST2500);
+			PRINTF(option,
+			       "          This change at this platform must "
+			       "been proven again by the ASPEED.\n");
 		}
-	} // End if ( eng->env.AST2300 )
 
 	if ( eng->arg.run_mode == MODE_NCSI ) {
 		PRINTF( option, "\n[Arg] %d %d %d %d %d %d %d {%d}\n", eng->arg.run_idx, eng->arg.GPackageTolNum, eng->arg.GChannelTolNum, eng->arg.test_mode, eng->arg.GChk_TimingBund, eng->arg.ctrl.w, eng->arg.GARPNumCnt, TIME_OUT_NCSI );
@@ -1117,7 +1099,7 @@ void FPri_ErrFlag (MAC_ENGINE *eng, BYTE option)
 
 			if ( eng->flg.Err_Flag & Err_Flag_MHCLK_Ratio             ) {
 				PRINTF( option, "[Err] Error setting of MAC AHB bus clock (SCU08[18:16])      \n" );
-				if ( eng->env.MAC_atlast_1Gvld )
+				if ( eng->env.at_least_1g_valid )
 					{ PRINTF( option, "      SCU08[18:16] == 0x%01x is not the suggestion value 2.\n", eng->env.MHCLK_Ratio ); }
 				else
 					{ PRINTF( option, "      SCU08[18:16] == 0x%01x is not the suggestion value 4.\n", eng->env.MHCLK_Ratio ); }
@@ -1160,27 +1142,17 @@ void FPri_ErrFlag (MAC_ENGINE *eng, BYTE option)
 
 			if ( eng->flg.Err_Flag & Err_Flag_MACMode ) {
 				PRINTF( option, "[Err] MAC interface mode mismatch\n" );
+				PRINTF(option, "");
 
-				if ( eng->env.AST2300 ) {
-					switch ( eng->env.MAC_Mode ) {
-						case 0 : { PRINTF( option, "      SCU70h[7:6] == 0: [MAC#1] RMII   [MAC#2] RMII \n" ); break; }
-						case 1 : { PRINTF( option, "      SCU70h[7:6] == 1: [MAC#1] RGMII  [MAC#2] RMII \n" ); break; }
-						case 2 : { PRINTF( option, "      SCU70h[7:6] == 2: [MAC#1] RMII   [MAC#2] RGMII\n" ); break; }
-						case 3 : { PRINTF( option, "      SCU70h[7:6] == 3: [MAC#1] RGMII  [MAC#2] RGMII\n" ); break; }
+				for (int i = 0; i < 4; i++) {
+					if (eng->env.is_1g_valid[i]) {
+						PRINTF(option,
+						       "[MAC%d] is RGMII\n");
+					} else {
+						PRINTF(option,
+						       "[MAC%d] RMII\n");
 					}
 				}
-				else {
-					switch ( eng->env.MAC_Mode ) {
-						case 0 : { PRINTF( option, "      SCU70h[8:6] == 000: [MAC#1] GMII               \n" ); break; }
-						case 1 : { PRINTF( option, "      SCU70h[8:6] == 001: [MAC#1] MII    [MAC#2] MII \n" ); break; }
-						case 2 : { PRINTF( option, "      SCU70h[8:6] == 010: [MAC#1] RMII   [MAC#2] MII \n" ); break; }
-						case 3 : { PRINTF( option, "      SCU70h[8:6] == 011: [MAC#1] MII                \n" ); break; }
-						case 4 : { PRINTF( option, "      SCU70h[8:6] == 100: [MAC#1] RMII               \n" ); break; }
-						case 5 : { PRINTF( option, "      SCU70h[8:6] == 101: Reserved                   \n" ); break; }
-						case 6 : { PRINTF( option, "      SCU70h[8:6] == 110: [MAC#1] RMII   [MAC#2] RMII\n" ); break; }
-						case 7 : { PRINTF( option, "      SCU70h[8:6] == 111: Disable MAC                \n" ); break; }
-					}
-				} // End if ( eng->env.AST2300 )
 			} // End if ( eng->flg.Err_Flag & Err_Flag_MACMode )
 
 			if ( eng->arg.run_mode == MODE_NCSI ) {
@@ -1276,9 +1248,9 @@ char Finish_Check (MAC_ENGINE *eng, int value)
 #if defined(CONFIG_ASPEED_AST2500)
 	reg = Read_Reg_SCU_DD( 0x40 );
 	if ( eng->arg.run_mode == MODE_DEDICATED )
-		shift_value = 18 + eng->run.MAC_idx;
+		shift_value = 18 + eng->run.mac_idx;
 	else
-		shift_value = 16 + eng->run.MAC_idx;
+		shift_value = 16 + eng->run.mac_idx;
 #endif
 
 	if ( eng->flg.Err_Flag )
@@ -1853,9 +1825,7 @@ void setup_des (MAC_ENGINE *eng, uint32_t bufnum)
 //	eng->dat.DMA_Base_Rx = CPU_BUS_ADDR_SDRAM_OFFSET + ZeroCopy_OFFSET + GET_DMA_BASE(0); // 20130730
 	eng->dat.DMA_Base_Tx = ZeroCopy_OFFSET + eng->dat.DMA_Base_Setup; // 20130730
 	eng->dat.DMA_Base_Rx = ZeroCopy_OFFSET + GET_DMA_BASE(0); // 20130730
-#ifndef Enable_MAC_ExtLoop
 	setup_txdes( eng, eng->run.TDES_BASE, AT_MEMRW_BUF( eng->dat.DMA_Base_Tx ) );//base for read/write //base of the descriptor
-#endif
 	setup_rxdes( eng, eng->run.RDES_BASE, AT_MEMRW_BUF( eng->dat.DMA_Base_Rx ) );//base for read/write //base of the descriptor
 } // End void setup_des (uint32_t bufnum)
 
@@ -2268,11 +2238,6 @@ char TestingLoop (MAC_ENGINE *eng, uint32_t loop_checknum)
 	char       checkprd;
 	char       looplast;
 	char       checken;
-#ifdef Enable_MAC_ExtLoop
-  #ifdef Enable_MAC_ExtLoop_PakcegMode
-	uint32_t      desadr;
-  #endif
-#endif
 
 	nt_log_func_name();
 
@@ -2294,11 +2259,8 @@ char TestingLoop (MAC_ENGINE *eng, uint32_t loop_checknum)
 		GET_CAHR();
 	}
 
-#ifdef Enable_MAC_ExtLoop
-	while ( 0 ) {
-#else
+
 	while ( ( eng->run.Loop < eng->run.LOOP_MAX ) || eng->arg.loop_inf ) {
-#endif
 		looplast = !eng->arg.loop_inf && ( eng->run.Loop == eng->run.LOOP_MAX - 1 );
 
 #ifdef CheckRxBuf
@@ -2405,44 +2367,6 @@ char TestingLoop (MAC_ENGINE *eng, uint32_t loop_checknum)
 			eng->run.Loop++;
 	} // End while ( ( eng->run.Loop < eng->run.LOOP_MAX ) || eng->arg.loop_inf )
 	eng->run.Loop_rl[ (int)eng->run.Speed_idx ] = eng->run.Loop;
-
-
-#ifdef Enable_MAC_ExtLoop
-  #ifdef Enable_MAC_ExtLoop_PakcegMode
-	desadr = eng->run.RDES_BASE + ( eng->dat.Des_Num - 1 ) * 16;//base for read/write
-	Write_Reg_MAC_DD( eng, 0x1c, 0x00000000 );//Rx Poll
-	while ( 1 ) {
-		while ( !HWOwnTx( Read_Mem_Des_DD( desadr ) ) ) {
-		}
-		Write_Reg_MAC_DD( eng, 0x18, 0x00000000 );//Tx Poll
-
-		while ( !HWOwnRx( Read_Mem_Des_DD( eng->run.RDES_BASE ) ) ) {
-		}
-		Write_Reg_MAC_DD( eng, 0x1c, 0x00000000 );//Rx Poll
-		switch ( eng->run.Loop % 4 ) {
-			case 0x00: printf("| [%d]%d                        \r", eng->run.Loop_ofcnt, eng->run.Loop); break;
-			case 0x01: printf("/ [%d]%d                        \r", eng->run.Loop_ofcnt, eng->run.Loop); break;
-			case 0x02: printf("- [%d]%d                        \r", eng->run.Loop_ofcnt, eng->run.Loop); break;
-			default  : printf("\ [%d]%d                        \r", eng->run.Loop_ofcnt, eng->run.Loop); break;
-		}
-//		printf("===============> Loop[%d]: %d  \r", eng->run.Loop_ofcnt, eng->run.Loop);
-		eng->run.Loop++;
-		Write_Reg_MAC_DD( eng, 0x1c, 0x00000000 );//Rx Poll
-	}
-  #else
-	while ( !kbhit() ) {
-		Write_Reg_MAC_DD( eng, 0x1c, 0x00000000 );//Rx Poll
-		Write_Reg_MAC_DD( eng, 0x18, 0x00000000 );//Tx Poll
-
-		if ( Read_Reg_MAC_DD( eng, 0xb0 ) == 0xffffffff ) {
-			Write_Reg_MAC_DD( eng, 0xa0, 0x00000000 );
-			eng->run.Loop_ofcnt++;
-		}
-
-		printf("[%d]Tx:%08x(%08x), Rx:%08x %08x\r", eng->run.Loop_ofcnt, Read_Reg_MAC_DD( eng, 0xa0 ), Read_Reg_MAC_DD( eng, 0x90 ), Read_Reg_MAC_DD( eng, 0xb0 ), Read_Reg_MAC_DD( eng, 0xb4 ));
-	}
-  #endif
-#endif
 
 	eng->flg.AllFail = 0;
 	return(0);
