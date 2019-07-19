@@ -104,15 +104,15 @@ uint32_t Read_Reg_PHY_DD(MAC_ENGINE *eng, uint32_t addr)
 #endif
 #ifdef CONFIG_ASPEED_AST2600
 	if (addr == 0x60) {
-		if (eng->env.MAC_RMII)
-			return (SWAP_4B_LEDN_REG(ReadSOC_DD(0x1e650008)));
-		else
+		if (eng->run.is_rgmii)
 			return (SWAP_4B_LEDN_REG(ReadSOC_DD(0x1e650000)));
-	} else {
-		if (eng->env.MAC_RMII)
-			return (SWAP_4B_LEDN_REG(ReadSOC_DD(0x1e65000c)));
 		else
+			return (SWAP_4B_LEDN_REG(ReadSOC_DD(0x1e650008)));
+	} else {
+		if (eng->run.is_rgmii)
 			return (SWAP_4B_LEDN_REG(ReadSOC_DD(0x1e650004)));
+		else
+			return (SWAP_4B_LEDN_REG(ReadSOC_DD(0x1e65000c)));
 	}
 #else
 	return (SWAP_4B_LEDN_REG(ReadSOC_DD(eng->phy.PHY_BASE + addr)));
@@ -220,15 +220,15 @@ void Write_Reg_PHY_DD (MAC_ENGINE *eng, uint32_t addr, uint32_t data) {
 #endif
 #ifdef CONFIG_ASPEED_AST2600
 	if (addr == 0x60) {
-		if (eng->env.MAC_RMII)
-			WriteSOC_DD( 0x1e650008, SWAP_4B_LEDN_REG( data ) );
-		else
+		if (eng->run.is_rgmii)
 			WriteSOC_DD( 0x1e650000, SWAP_4B_LEDN_REG( data ) );
-	} else {
-		if (eng->env.MAC_RMII)
-			WriteSOC_DD( 0x1e65000c, SWAP_4B_LEDN_REG( data ) );
 		else
+			WriteSOC_DD( 0x1e650008, SWAP_4B_LEDN_REG( data ) );
+	} else {
+		if (eng->run.is_rgmii)
 			WriteSOC_DD( 0x1e650004, SWAP_4B_LEDN_REG( data ) );
+		else
+			WriteSOC_DD( 0x1e65000c, SWAP_4B_LEDN_REG( data ) );
 	}
 #else
 	WriteSOC_DD( eng->phy.PHY_BASE + addr, SWAP_4B_LEDN_REG( data ) );
@@ -297,7 +297,7 @@ void init_iodelay (MAC_ENGINE *eng)
 
 	nt_log_func_name();
 
-	if ( !eng->env.MAC_RMII )
+	if (eng->run.is_rgmii)
 		eng->io.Dly_3Regiser = 1;
 	else
 		eng->io.Dly_3Regiser = 0;
@@ -318,7 +318,7 @@ void init_iodelay (MAC_ENGINE *eng)
 	eng->io.Str_reg_value = ( eng->reg.SCU_090 >> eng->io.Str_reg_Lbit ) & 0xf;
 	eng->io.Str_reg_mask  = ( eng->reg.SCU_090 & 0xfffff0ff );
 	eng->io.Str_max       = 1;//0~1
-	if ( eng->env.MAC_RMII ) {
+	if (!eng->run.is_rgmii) {
 		switch ( eng->run.mac_idx ) {
 			case 0  : eng->io.Str_shf =  9; break;
 			case 1  : eng->io.Str_shf = 11; break;
@@ -357,7 +357,7 @@ void init_iodelay (MAC_ENGINE *eng)
 	eng->io.Dly_step      = AST2500_IOStageStep;
 
 	eng->io.Dly_mask_bit_in = eng->io.Dly_stage - 1;
-	if ( eng->env.MAC_RMII )
+	if (!eng->run.is_rgmii)
 		eng->io.Dly_mask_bit_out = 1;
 	else
 		eng->io.Dly_mask_bit_out = eng->io.Dly_mask_bit_in;
@@ -371,7 +371,7 @@ void init_iodelay (MAC_ENGINE *eng)
 	// [IO]setup Dly_in_shf_regH
 	// [IO]setup Dly_out_shf_regH
 	//------------------------------
-	if ( eng->env.MAC_RMII ) {
+	if (!eng->run.is_rgmii) {
 		switch ( eng->run.mac_idx ) {
 			case 0  : eng->io.Dly_out_shf = 24; eng->io.Dly_in_shf = 12; break;
 			case 1  : eng->io.Dly_out_shf = 25; eng->io.Dly_in_shf = 18; break;
@@ -382,7 +382,7 @@ void init_iodelay (MAC_ENGINE *eng)
 			case 0  : eng->io.Dly_out_shf =  0; eng->io.Dly_in_shf  = 12; break;
 			case 1  : eng->io.Dly_out_shf =  6; eng->io.Dly_in_shf  = 18; break;
 		}
-	} // End if ( eng->env.MAC_RMII )
+	} // End if (!eng->run.is_rgmii)
 
 	eng->io.Dly_in_shf_regH  = eng->io.Dly_in_shf  + eng->io.Dly_stagebit - 1;
 	eng->io.Dly_out_shf_regH = eng->io.Dly_out_shf + eng->io.Dly_stagebit - 1;
@@ -446,13 +446,13 @@ int get_iodelay (MAC_ENGINE *eng) {
 	// [IO]setup Dly_reg_name_tx_new
 	// [IO]setup Dly_reg_name_rx_new
 	//------------------------------
-	if ( eng->env.MAC_RMII )
+	if (!eng->run.is_rgmii)
 		sprintf( eng->io.Dly_reg_name_tx, "Tx:SCU%2X[   %2d]=",  eng->io.Dly_reg_idx,                           eng->io.Dly_out_shf );
 	else
 		sprintf( eng->io.Dly_reg_name_tx, "Tx:SCU%2X[%2d:%2d]=", eng->io.Dly_reg_idx, eng->io.Dly_out_shf_regH, eng->io.Dly_out_shf );
 	sprintf( eng->io.Dly_reg_name_rx, "Rx:SCU%2X[%2d:%2d]=", eng->io.Dly_reg_idx, eng->io.Dly_in_shf_regH,  eng->io.Dly_in_shf );
 
-	if (eng->env.MAC_RMII)
+	if (!eng->run.is_rgmii)
 		sprintf(eng->io.Dly_reg_name_tx_new,
 			"Tx[   %2d]=", eng->io.Dly_out_shf);
 	else
@@ -493,7 +493,7 @@ int get_iodelay (MAC_ENGINE *eng) {
 	for ( index = 0; index < index_max; index++ )
 		if ( eng->io.Dly_out_reg == eng->io.value_ary[ index ] ) {
 			eng->io.Dly_out_reg_idx = index;
-			if ( eng->env.MAC_RMII ) {
+			if (!eng->run.is_rgmii) {
 				eng->io.Dly_out_min = index;
 				eng->io.Dly_out_max = index;
 			}
@@ -542,7 +542,7 @@ int get_iodelay (MAC_ENGINE *eng) {
 		eng->io.Dly_in_str   = 0;
 		eng->io.Dly_in_end   = eng->io.Dly_stage_in-1;
 		eng->io.Dly_out_str  = 0;
-		if ( eng->env.MAC_RMII )
+		if (!eng->run.is_rgmii)
 			eng->io.Dly_out_end  = 1;
 		else
 			eng->io.Dly_out_end  = eng->io.Dly_stage_out-1;
@@ -904,7 +904,7 @@ void FPri_RegValue (MAC_ENGINE *eng, BYTE option)
 void FPri_End (MAC_ENGINE *eng, BYTE option) 
 {
 	nt_log_func_name();
-	if ( eng->env.MAC_RMII && ( eng->phy.RMIICK_IOMode != 0 ) && eng->run.IO_MrgChk && eng->flg.AllFail ) {
+	if ((!eng->run.is_rgmii) && ( eng->phy.RMIICK_IOMode != 0 ) && eng->run.IO_MrgChk && eng->flg.AllFail ) {
 		if ( eng->arg.ctrl.b.rmii_phy_in == 0 ) {
 			PRINTF( option, "\n\n\n\n\n\n[Info] The PHY's RMII reference clock pin is setting to the OUTPUT mode now.\n" );
 			PRINTF( option, "       Maybe you can run the INPUT mode command \"mactest  %d %d %d %d %d %d %d\".\n\n\n\n", eng->arg.run_idx, eng->arg.run_speed, (eng->arg.ctrl.w | 0x80), eng->arg.loop_max, eng->arg.test_mode, eng->arg.GPHYADR, eng->arg.GChk_TimingBund );
@@ -1049,7 +1049,7 @@ void FPri_ErrFlag (MAC_ENGINE *eng, BYTE option)
 		if ( eng->flg.Wrn_Flag ) {
 			if ( eng->flg.Wrn_Flag & Wrn_Flag_IOMarginOUF ) {
 				PRINTF( option, "[Warning] IO timing testing range out of boundary\n" );
-				if ( eng->env.MAC_RMII ) {
+				if (!eng->run.is_rgmii) {
 					PRINTF( option, "      (reg:%d,%d) %dx1(%d~%d,%d)\n", eng->io.Dly_in_reg_idx,
 											      eng->io.Dly_out_reg_idx,
 											      eng->run.IO_Bund,
@@ -1107,7 +1107,7 @@ void FPri_ErrFlag (MAC_ENGINE *eng, BYTE option)
 
 			if ( eng->flg.Err_Flag & Err_Flag_IOMarginOUF ) {
 				PRINTF( option, "[Err] IO timing testing range out of boundary\n");
-				if ( eng->env.MAC_RMII ) {
+				if (!eng->run.is_rgmii) {
 					PRINTF( option, "      (reg:%d,%d) %dx1(%d~%d,%d)\n", eng->io.Dly_in_reg_idx,
 											      eng->io.Dly_out_reg_idx,
 											      eng->run.IO_Bund,

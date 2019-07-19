@@ -486,8 +486,7 @@ typedef struct {
 	uint8_t is_1g_valid[4];
 	uint8_t at_least_1g_valid;	
 	
-	uint8_t                 MAC34_vld;
-	CHAR                 MAC_RMII                      ;
+	uint8_t                 MAC34_vld;	
 
 	CHAR                 MHCLK_Ratio                   ;
 
@@ -542,6 +541,8 @@ typedef struct {
 	uint32_t mac_idx;
 	uint32_t MAC_idx_PHY;
 	uint32_t mac_base;
+	uint8_t is_rgmii;
+
 
 	CHAR                 Speed_1G                      ;//run_speed
 	CHAR                 Speed_org[3]                  ;//run_speed

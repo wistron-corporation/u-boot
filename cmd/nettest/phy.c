@@ -627,7 +627,7 @@ void phy_marvell3 (MAC_ENGINE *eng) {//88E3019
         // 10 => RMII
         // 11 => MII
         eng->phy.PHY_1ch = phy_read( eng, 28 );
-        if ( eng->env.MAC_RMII ) {
+        if (!(p_eng->run.is_rgmii)) {
                 if ( ( eng->phy.PHY_1ch & 0x0c00 ) != 0x0800 ) {
                         printf("\n\n[Warning] Register 28, bit 10~11 must be 2 (RMII Mode)[Reg1ch:%04x]\n\n", eng->phy.PHY_1ch);
                         eng->phy.PHY_1ch = ( eng->phy.PHY_1ch & 0xf3ff ) | 0x0800;

@@ -339,6 +339,7 @@ static uint32_t setup_env(MAC_ENGINE *p_eng)
 	}
 	p_eng->run.mac_idx = p_eng->arg.run_idx;
 	p_eng->run.mac_base = mac_base_lookup_tbl[p_eng->run.mac_idx];
+	p_eng->run.is_rgmii = p_eng->env.is_1g_valid[p_eng->run.mac_idx];
 
 	if (p_eng->arg.ctrl.b.phy_addr_inv) {
 		/* inverse bit[0]:
@@ -613,7 +614,7 @@ int mac_test(int argc, char * const argv[], uint32_t mode)
 	if ( !eng->env.is_1g_valid[eng->run.mac_idx])
 		eng->run.Speed_org[ 0 ] = 0;
 
-	if ( ( eng->arg.run_mode == MODE_NCSI ) && ( !eng->env.MAC_RMII ) ) {
+	if ( ( eng->arg.run_mode == MODE_NCSI ) && (eng->run.is_rgmii) ) {
 		printf("\nNCSI must be RMII interface !!!\n");
 		return( Finish_Check( eng, Err_Flag_MACMode ) );
 	}	
@@ -665,7 +666,7 @@ int mac_test(int argc, char * const argv[], uint32_t mode)
 		eng->reg.SCU_048_check   = ( eng->reg.SCU_048 & 0x03ffffff );
 		eng->reg.SCU_048_default =   SCU_48h_AST2500  & 0x03ffffff;
 
-		if ( eng->arg.ctrl.b.rmii_50m_out & eng->env.MAC_RMII ) {
+		if ( eng->arg.ctrl.b.rmii_50m_out && !eng->run.is_rgmii ) {
 			switch ( eng->run.mac_idx ) {
 				case 1: eng->reg.SCU_048_mix = eng->reg.SCU_048_mix | 0x40000000; break;
 				case 0: eng->reg.SCU_048_mix = eng->reg.SCU_048_mix | 0x20000000; break;
