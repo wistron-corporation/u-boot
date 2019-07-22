@@ -1,5 +1,5 @@
 /*
- * (C) Copyright 2019 ASPEED Technology Inc.
+ * (C) Copyright ASPEED Technology Inc.
  *
  * SPDX-License-Identifier:	GPL-2.0+
  */
