@@ -51,12 +51,12 @@
 /*
  * Miscellaneous configurable options
  */
-#define CONFIG_BOOTCOMMAND		"bootm 20080000 20400000 20070000"
+#define CONFIG_BOOTCOMMAND		"bootm 200a0000"
 #define CONFIG_ENV_OVERWRITE
 
 #define CONFIG_EXTRA_ENV_SETTINGS \
 	"verify=yes\0"	\
-	"spi_dma=yes\0" \
+	"spi_dma=no\0" \
 	""
 
 /*

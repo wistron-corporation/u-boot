@@ -201,7 +201,6 @@
 			status = "disabled";
 		};
 
-#ifdef CONFIG_FPGA_ASPEED
 		mac0: ftgmac@1e660000 {
 			compatible = "aspeed,ast2600-mac", "faraday,ftgmac100";
 			reg = <0x1e660000 0x180>, <0x1e650000 0x4>;
@@ -209,7 +208,7 @@
 			clocks = <&scu ASPEED_CLK_GATE_MAC1CLK>;
 			status = "disabled";
 		};
-#else		
+
 		mac1: ftgmac@1e680000 {
 			compatible = "aspeed,ast2600-mac", "faraday,ftgmac100";
 			reg = <0x1e680000 0x180>, <0x1e650008 0x4>;
@@ -248,7 +247,6 @@
 #endif
 			status = "disabled";
 		};
-#endif
 
 		apb {
 			compatible = "simple-bus";

@@ -1,8 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0
 /*
- * Copyright (C) 2012-2020  ASPEED Technology Inc.
+ * Copyright (C) ASPEED Technology Inc.
  *
- * Copyright 2016 Google, Inc
  */
 
 #include <common.h>
