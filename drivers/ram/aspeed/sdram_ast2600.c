@@ -843,12 +843,12 @@ static int ast2600_sdrammc_probe(struct udevice *dev)
 
 #if defined(CONFIG_FPGA_ASPEED) || defined(CONFIG_ASPEED_PALLADIUM)
         ast2600_sdrammc_search_read_window(priv);
-#endif
-
+#else	
 	/* make sure DDR-PHY is ready before access */
 	do {
 		reg = readl(priv->phy_status) & BIT(1);
 	} while(reg == 0);
+#endif
 
 	ast2600_sdramphy_show_status(priv);
 	ast2600_sdrammc_calc_size(priv);
