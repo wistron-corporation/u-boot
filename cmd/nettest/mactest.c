@@ -178,6 +178,81 @@ static void print_usage(MAC_ENGINE *p_eng)
 	}
 }
 
+static void finish_close(MAC_ENGINE *p_eng) 
+{
+	nt_log_func_name();
+	if (p_eng->reg.SCU_oldvld)
+		recov_scu(p_eng);
+}
+
+char finish_check(MAC_ENGINE *p_eng, int value) 
+{
+
+	uint32_t reg;
+	BYTE shift_value = 0;
+	nt_log_func_name();
+
+	if (p_eng->arg.run_mode == MODE_DEDICATED) {
+		if (p_eng->dat.FRAME_LEN)
+			free(p_eng->dat.FRAME_LEN);
+
+		if (p_eng->dat.wp_lst)
+			free(p_eng->dat.wp_lst);
+	}
+
+	p_eng->flg.Err_Flag = p_eng->flg.Err_Flag | value;
+
+	if (DbgPrn_ErrFlg)
+		printf("\nErr_Flag: [%08x]\n", p_eng->flg.Err_Flag);
+
+	if (!p_eng->run.TM_Burst)
+		FPri_ErrFlag(p_eng, FP_LOG);
+
+	if (p_eng->run.TM_IOTiming)
+		FPri_ErrFlag(p_eng, FP_IO);
+
+	FPri_ErrFlag(p_eng, STD_OUT);
+
+	if (!p_eng->run.TM_Burst)
+		FPri_End(p_eng, FP_LOG);
+
+	if (p_eng->run.TM_IOTiming)
+		FPri_End(p_eng, FP_IO);
+
+	FPri_End(p_eng, STD_OUT);
+
+	if (!p_eng->run.TM_Burst)
+		FPri_RegValue(p_eng, FP_LOG);
+	if (eng->run.TM_IOTiming)
+		FPri_RegValue(p_eng, FP_IO);
+
+	finish_close(p_eng);
+
+#if defined(CONFIG_ASPEED_AST2500)
+	reg = Read_Reg_SCU_DD(0x40);
+	if (eng->arg.run_mode == MODE_DEDICATED)
+		shift_value = 18 + p_eng->run.mac_idx;
+	else
+		shift_value = 16 + p_eng->run.mac_idx;
+#endif
+
+	if (p_eng->flg.Err_Flag) {
+		// Fail
+#if defined(CONFIG_ASPEED_AST2500)
+		reg = reg & ~(1 << shift_value);
+		Write_Reg_SCU_DD(0x40, reg);
+#endif
+		return (1);
+	} else {
+		// PASS
+#if defined(CONFIG_ASPEED_AST2500)
+		reg |= (1 << shift_value);
+		Write_Reg_SCU_DD(0x40, reg);
+#endif
+		return (0);
+	}
+}
+
 /**
  * @brief setup MAC_ENGINE according to HW strap registers
 */
@@ -455,7 +530,29 @@ static uint32_t setup_env(MAC_ENGINE *p_eng)
 
 	if (0 != check_test_mode(p_eng)) {
 		return 1;
-	};
+	}
+
+	if (eng->run.TM_Burst) {
+		eng->arg.GIEEE_sel = eng->arg.GChk_TimingBund;
+		eng->run.IO_Bund = 0;
+	} else {
+		eng->arg.GIEEE_sel = 0;			
+		eng->run.IO_Bund = eng->arg.GChk_TimingBund;
+
+		if (!((eng->run.IO_Bund & 0x1) ||(eng->run.IO_Bund == 0))) {
+			printf("Error IO margin!!!\n");
+			print_arg_timing_boundary ( eng );
+			return(1);
+		}						
+	}
+
+	if (!eng->env.is_1g_valid[eng->run.mac_idx])
+		eng->run.Speed_org[ 0 ] = 0;
+
+	if ((eng->arg.run_mode == MODE_NCSI) && (eng->run.is_rgmii)) {
+		printf("\nNCSI must be RMII interface !!!\n");
+		return( finish_check( eng, Err_Flag_MACMode ) );
+	}
 
 	return 0;
 }
@@ -593,33 +690,6 @@ int mac_test(int argc, char * const argv[], uint32_t mode)
 	read_scu( eng );
 
 //------------------------------------------------------------
-// Check Argument & Setup Running Parameter
-//------------------------------------------------------------		
-	if ( eng->run.TM_Burst ) {
-		eng->arg.GIEEE_sel = eng->arg.GChk_TimingBund;
-		eng->run.IO_Bund = 0;
-	} else {
-		eng->arg.GIEEE_sel = 0;			
-		eng->run.IO_Bund = eng->arg.GChk_TimingBund;
-
-		if ( !( ( eng->run.IO_Bund & 0x1 ) ||
-		        ( eng->run.IO_Bund == 0  )
-		       ) ) {
-			printf("Error IO margin!!!\n");
-			print_arg_timing_boundary ( eng );
-			return(1);
-		}						
-	} // End if ( eng->run.TM_Burst )
-
-	if ( !eng->env.is_1g_valid[eng->run.mac_idx])
-		eng->run.Speed_org[ 0 ] = 0;
-
-	if ( ( eng->arg.run_mode == MODE_NCSI ) && (eng->run.is_rgmii) ) {
-		printf("\nNCSI must be RMII interface !!!\n");
-		return( Finish_Check( eng, Err_Flag_MACMode ) );
-	}	
-
-//------------------------------------------------------------
 // Parameter Initial
 //------------------------------------------------------------
 		//------------------------------
@@ -689,399 +759,329 @@ int mac_test(int argc, char * const argv[], uint32_t mode)
 #endif
 
 		} // End if ( eng->arg.run_mode == MODE_NCSI )
-
+#endif
 //------------------------------------------------------------
 // Descriptor Number
 //------------------------------------------------------------
-		//------------------------------
-		// [Dat]setup Des_Num
-		// [Dat]setup DMABuf_Size
-		// [Dat]setup DMABuf_Num
-		//------------------------------
-		if ( eng->arg.run_mode == MODE_DEDICATED ) {
-			DES_LowNumber = eng->run.TM_IOTiming;
+	//------------------------------
+	// [Dat]setup Des_Num
+	// [Dat]setup DMABuf_Size
+	// [Dat]setup DMABuf_Num
+	//------------------------------
+	if ( eng->arg.run_mode == MODE_DEDICATED ) {
+		DES_LowNumber = eng->run.TM_IOTiming;
 
-			if ( eng->arg.ctrl.b.phy_skip_check && ( eng->arg.test_mode == 0 ) )
-				eng->dat.Des_Num = 114;//for SMSC's LAN9303 issue
-			else {
-				switch ( eng->arg.run_speed ) {
-					case SET_1GBPS          : eng->dat.Des_Num = ( eng->run.IO_Bund ) ? 100 : ( DES_LowNumber ) ? 512 : 4096; break;
-					case SET_100MBPS        : eng->dat.Des_Num = ( eng->run.IO_Bund ) ? 100 : ( DES_LowNumber ) ? 512 : 4096; break;
-					case SET_10MBPS         : eng->dat.Des_Num = ( eng->run.IO_Bund ) ? 100 : ( DES_LowNumber ) ? 100 :  830; break;
-					case SET_1G_100M_10MBPS : eng->dat.Des_Num = ( eng->run.IO_Bund ) ? 100 : ( DES_LowNumber ) ? 100 :  830; break;
-					case SET_100M_10MBPS    : eng->dat.Des_Num = ( eng->run.IO_Bund ) ? 100 : ( DES_LowNumber ) ? 100 :  830; break;
-				}
-			} // End if ( eng->arg.ctrl.b.phy_skip_check && ( eng->arg.test_mode == 0 ) )
-#ifdef SelectDesNumber
-			eng->dat.Des_Num = SelectDesNumber;
-#endif
-#ifdef ENABLE_ARP_2_WOL
-			if ( eng->arg.test_mode == 4 )
-				eng->dat.Des_Num = 1;
-#endif
-			eng->dat.Des_Num_Org = eng->dat.Des_Num;
-			eng->dat.DMABuf_Size = DMA_BufSize; //keep in order: Des_Num --> DMABuf_Size --> DMABuf_Num
-			eng->dat.DMABuf_Num  = DMA_BufNum;  //keep in order: Des_Num --> DMABuf_Size --> DMABuf_Num
-
-			if ( DbgPrn_Info ) {
-				printf("CheckBuf_MBSize : %d\n",       eng->run.CheckBuf_MBSize);
-				printf("LOOP_CheckNum   : %d\n",       eng->run.LOOP_CheckNum);
-				printf("Des_Num         : %d\n",       eng->dat.Des_Num);
-				printf("DMA_BufSize     : %d bytes\n", eng->dat.DMABuf_Size);
-				printf("DMA_BufNum      : %d\n",       eng->dat.DMABuf_Num);
-				printf("DMA_PakSize     : %d\n",        DMA_PakSize);
-				printf("\n");
+		if ( eng->arg.ctrl.b.phy_skip_check && ( eng->arg.test_mode == 0 ) )
+			eng->dat.Des_Num = 114;//for SMSC's LAN9303 issue
+		else {
+			switch ( eng->arg.run_speed ) {
+				case SET_1GBPS          : eng->dat.Des_Num = ( eng->run.IO_Bund ) ? 100 : ( DES_LowNumber ) ? 512 : 4096; break;
+				case SET_100MBPS        : eng->dat.Des_Num = ( eng->run.IO_Bund ) ? 100 : ( DES_LowNumber ) ? 512 : 4096; break;
+				case SET_10MBPS         : eng->dat.Des_Num = ( eng->run.IO_Bund ) ? 100 : ( DES_LowNumber ) ? 100 :  830; break;
+				case SET_1G_100M_10MBPS : eng->dat.Des_Num = ( eng->run.IO_Bund ) ? 100 : ( DES_LowNumber ) ? 100 :  830; break;
+				case SET_100M_10MBPS    : eng->dat.Des_Num = ( eng->run.IO_Bund ) ? 100 : ( DES_LowNumber ) ? 100 :  830; break;
 			}
+		} // End if ( eng->arg.ctrl.b.phy_skip_check && ( eng->arg.test_mode == 0 ) )
+
+
+		eng->dat.Des_Num_Org = eng->dat.Des_Num;
+		eng->dat.DMABuf_Size = DMA_BufSize; //keep in order: Des_Num --> DMABuf_Size --> DMABuf_Num
+		eng->dat.DMABuf_Num  = DMA_BufNum;  //keep in order: Des_Num --> DMABuf_Size --> DMABuf_Num
+
+		if ( DbgPrn_Info ) {
+			printf("CheckBuf_MBSize : %d\n",       eng->run.CheckBuf_MBSize);
+			printf("LOOP_CheckNum   : %d\n",       eng->run.LOOP_CheckNum);
+			printf("Des_Num         : %d\n",       eng->dat.Des_Num);
+			printf("DMA_BufSize     : %d bytes\n", eng->dat.DMABuf_Size);
+			printf("DMA_BufNum      : %d\n",       eng->dat.DMABuf_Num);
+			printf("DMA_PakSize     : %d\n",        DMA_PakSize);
+			printf("\n");
+		}
 			if ( 2 > eng->dat.DMABuf_Num )
-				return( Finish_Check( eng, Err_Flag_DMABufNum ) );
-		} // End if ( eng->arg.run_mode == MODE_DEDICATED )
+				return( finish_check( eng, Err_Flag_DMABufNum ) );
+	} // End if ( eng->arg.run_mode == MODE_DEDICATED )
 
 //------------------------------------------------------------
 // Setup Running Parameter
 //------------------------------------------------------------
 
-		eng->run.TDES_BASE = TDES_BASE1;
-		eng->run.RDES_BASE = RDES_BASE1;
+	eng->run.TDES_BASE = TDES_BASE1;
+	eng->run.RDES_BASE = RDES_BASE1;
 
-		if ( eng->run.TM_IOTiming || eng->run.IO_Bund )
-			eng->run.IO_MrgChk = 1;
-		else
-			eng->run.IO_MrgChk = 0;
+	if ( eng->run.TM_IOTiming || eng->run.IO_Bund )
+		eng->run.IO_MrgChk = 1;
+	else
+		eng->run.IO_MrgChk = 0;
 
-		eng->phy.Adr         = eng->arg.GPHYADR;
-		eng->phy.loop_phy    = eng->arg.ctrl.b.phy_int_loopback;
-		eng->phy.default_phy = eng->run.TM_DefaultPHY;
+	eng->phy.Adr         = eng->arg.GPHYADR;
+	eng->phy.loop_phy    = eng->arg.ctrl.b.phy_int_loopback;
+	eng->phy.default_phy = eng->run.TM_DefaultPHY;
 
-		eng->run.LOOP_MAX = eng->arg.loop_max;
-		Calculate_LOOP_CheckNum( eng );
-
-	} // End if (RUN_STEP >= 1)
+	eng->run.LOOP_MAX = eng->arg.loop_max;
+	Calculate_LOOP_CheckNum( eng );	
 
 //------------------------------------------------------------
 // SCU Initial
 //------------------------------------------------------------
-	if ( RUN_STEP >= 2 ) {
-		get_mac_info( eng );
-		Setting_scu( eng );
-		init_scu1( eng );
-	}
+	get_mac_info( eng );
+	Setting_scu( eng );
+	init_scu1( eng );
+	
 
-	if ( RUN_STEP >= 3 ) {
-//		init_scu_macrst( eng );
-		init_scu_macdis( eng );
-		init_scu_macen( eng );
-		if ( eng->arg.run_mode ==  MODE_DEDICATED ) {
-
-
-			eng->phy.PHYAdrValid = find_phyadr( eng );
-			if ( eng->phy.PHYAdrValid == TRUE )
-				phy_sel( eng, phyeng );
-		}
-	}
+	init_scu_macdis( eng );
+	init_scu_macen( eng );
+	if ( eng->arg.run_mode ==  MODE_DEDICATED ) {
+		eng->phy.PHYAdrValid = find_phyadr( eng );
+		if ( eng->phy.PHYAdrValid == TRUE )
+			phy_sel( eng, phyeng );
+	}	
 
 //------------------------------------------------------------
 // Data Initial
 //------------------------------------------------------------
-	if (RUN_STEP >= 4) {
-		if ( eng->arg.run_mode ==  MODE_DEDICATED ) {
-			if ( eng->run.TM_Burst )
-				setup_arp ( eng );
-			eng->dat.FRAME_LEN = (uint32_t *)malloc( eng->dat.Des_Num    * sizeof( uint32_t ) );
-			eng->dat.wp_lst    = (uint32_t *)malloc( eng->dat.Des_Num    * sizeof( uint32_t ) );
+	if ( eng->arg.run_mode ==  MODE_DEDICATED ) {
+		if ( eng->run.TM_Burst )
+			setup_arp ( eng );
+		eng->dat.FRAME_LEN = (uint32_t *)malloc( eng->dat.Des_Num    * sizeof( uint32_t ) );
+		eng->dat.wp_lst    = (uint32_t *)malloc( eng->dat.Des_Num    * sizeof( uint32_t ) );
 
-			if ( !eng->dat.FRAME_LEN )
-				return( Finish_Check( eng, Err_Flag_MALLOC_FrmSize ) );
-			if ( !eng->dat.wp_lst )
-				return( Finish_Check( eng, Err_Flag_MALLOC_LastWP ) );
+		if ( !eng->dat.FRAME_LEN )
+			return( finish_check( eng, Err_Flag_MALLOC_FrmSize ) );
+		if ( !eng->dat.wp_lst )
+			return( finish_check( eng, Err_Flag_MALLOC_LastWP ) );
 
 			// Setup data and length
 
-			TestingSetup ( eng );
-		} 
-		else {
+		TestingSetup ( eng );
+	} else {
 			if ( eng->arg.GARPNumCnt != 0 )
 				setup_arp ( eng );
-		}// End if ( eng->arg.run_mode ==  MODE_DEDICATED )
+	}// End if ( eng->arg.run_mode ==  MODE_DEDICATED )
 
-		init_iodelay( eng );
-		eng->run.Speed_idx = 0;
-		if ( !eng->io.Dly_3Regiser )
-			if ( get_iodelay( eng ) )
-				return( Finish_Check( eng, 0 ) );
-
-	} // End if (RUN_STEP >= 4)
+	init_iodelay( eng );
+	eng->run.Speed_idx = 0;
+	if ( !eng->io.Dly_3Regiser )
+		if ( get_iodelay( eng ) )
+			return( finish_check( eng, 0 ) );	
 
 //------------------------------------------------------------
 // main
 //------------------------------------------------------------
-	if (RUN_STEP >= 5) {
-		nt_log_func_name();
+	nt_log_func_name();
 
-		eng->flg.AllFail = 1;
-#ifdef Enable_LOOP_INFINI
-LOOP_INFINI:;
-#endif
-		for ( eng->run.Speed_idx = 0; eng->run.Speed_idx < 3; eng->run.Speed_idx++ )
-			eng->run.Speed_sel[ (int)eng->run.Speed_idx ] = eng->run.Speed_org[ (int)eng->run.Speed_idx ];
+	eng->flg.AllFail = 1;
+	for ( eng->run.Speed_idx = 0; eng->run.Speed_idx < 3; eng->run.Speed_idx++ )
+		eng->run.Speed_sel[ (int)eng->run.Speed_idx ] = eng->run.Speed_org[ (int)eng->run.Speed_idx ];
 
-		//------------------------------
-		// [Start] The loop of different speed
-		//------------------------------
-		for ( eng->run.Speed_idx = 0; eng->run.Speed_idx < 3; eng->run.Speed_idx++ ) {
-			eng->flg.Flag_PrintEn = 1;
-			if ( eng->run.Speed_sel[ (int)eng->run.Speed_idx ] ) {
-				// Setting speed of LAN
-				if      ( eng->run.Speed_sel[ 0 ] ) eng->reg.MAC_050_Speed = eng->reg.MAC_050 | 0x0000020f;
-				else if ( eng->run.Speed_sel[ 1 ] ) eng->reg.MAC_050_Speed = eng->reg.MAC_050 | 0x0008000f;
-				else                                eng->reg.MAC_050_Speed = eng->reg.MAC_050 | 0x0000000f;
-#ifdef Enable_CLK_Stable
-//				init_scu_macdis( eng );
-//				init_scu_macen( eng );
-				Write_Reg_SCU_DD( 0x0c, eng->reg.SCU_00c_dis );//Clock Stop Control
-				Read_Reg_SCU_DD( 0x0c );
-				Write_Reg_MAC_DD( eng, 0x50, eng->reg.MAC_050_Speed & 0xfffffff0 );
-				Write_Reg_SCU_DD( 0x0c, eng->reg.SCU_00c_en );//Clock Stop Control
-#endif
+	//------------------------------
+	// [Start] The loop of different speed
+	//------------------------------
+	for ( eng->run.Speed_idx = 0; eng->run.Speed_idx < 3; eng->run.Speed_idx++ ) {
+		eng->flg.Flag_PrintEn = 1;
+		if ( eng->run.Speed_sel[ (int)eng->run.Speed_idx ] ) {
+			// Setting speed of LAN
+			if      ( eng->run.Speed_sel[ 0 ] ) eng->reg.MAC_050_Speed = eng->reg.MAC_050 | 0x0000020f;
+			else if ( eng->run.Speed_sel[ 1 ] ) eng->reg.MAC_050_Speed = eng->reg.MAC_050 | 0x0008000f;
+			else                                eng->reg.MAC_050_Speed = eng->reg.MAC_050 | 0x0000000f;
 
-				// Setting check owner time out
-				if      ( eng->run.Speed_sel[ 0 ] ) eng->run.TIME_OUT_Des = eng->run.TIME_OUT_Des_PHYRatio * TIME_OUT_Des_1G;
-				else if ( eng->run.Speed_sel[ 1 ] ) eng->run.TIME_OUT_Des = eng->run.TIME_OUT_Des_PHYRatio * TIME_OUT_Des_100M;
-				else                                eng->run.TIME_OUT_Des = eng->run.TIME_OUT_Des_PHYRatio * TIME_OUT_Des_10M;
+			// Setting check owner time out
+			if      ( eng->run.Speed_sel[ 0 ] ) eng->run.TIME_OUT_Des = eng->run.TIME_OUT_Des_PHYRatio * TIME_OUT_Des_1G;
+			else if ( eng->run.Speed_sel[ 1 ] ) eng->run.TIME_OUT_Des = eng->run.TIME_OUT_Des_PHYRatio * TIME_OUT_Des_100M;
+			else                                eng->run.TIME_OUT_Des = eng->run.TIME_OUT_Des_PHYRatio * TIME_OUT_Des_10M;
 
-				if ( eng->run.TM_WaitStart )
-					eng->run.TIME_OUT_Des = eng->run.TIME_OUT_Des * 10000;
+			if ( eng->run.TM_WaitStart )
+				eng->run.TIME_OUT_Des = eng->run.TIME_OUT_Des * 10000;
 
 				// Setting the LAN speed
-				if ( eng->arg.run_mode ==  MODE_DEDICATED ) {
-					// Test three speed of LAN, we will modify loop number
-					if ( ( eng->arg.run_speed == SET_1G_100M_10MBPS ) || ( eng->arg.run_speed == SET_100M_10MBPS ) ) {
-						if      ( eng->run.Speed_sel[ 0 ] ) eng->run.LOOP_MAX = eng->arg.loop_max;
-						else if ( eng->run.Speed_sel[ 1 ] ) eng->run.LOOP_MAX = eng->arg.loop_max / 100;
-						else                                eng->run.LOOP_MAX = eng->arg.loop_max / 1000;
+			if ( eng->arg.run_mode ==  MODE_DEDICATED ) {
+				// Test three speed of LAN, we will modify loop number
+				if ( ( eng->arg.run_speed == SET_1G_100M_10MBPS ) || ( eng->arg.run_speed == SET_100M_10MBPS ) ) {
+					if      ( eng->run.Speed_sel[ 0 ] ) eng->run.LOOP_MAX = eng->arg.loop_max;
+					else if ( eng->run.Speed_sel[ 1 ] ) eng->run.LOOP_MAX = eng->arg.loop_max / 100;
+					else                                eng->run.LOOP_MAX = eng->arg.loop_max / 1000;
 
-						if ( !eng->run.LOOP_MAX )
-							eng->run.LOOP_MAX = 1;
+					if ( !eng->run.LOOP_MAX )
+						eng->run.LOOP_MAX = 1;
 
-						Calculate_LOOP_CheckNum( eng );
-					}
-
-					//------------------------------
-					// PHY Initial
-					//------------------------------					
-
-					if ( phyeng->fp_set != 0 ) {
-						init_phy( eng, phyeng );
-  #ifdef Delay_PHYRst
-//						DELAY( Delay_PHYRst * 10 );
-					}
-#endif					
-
-					if ( eng->flg.Err_Flag )
-						return( Finish_Check( eng, 0 ) );
-				} // End if ( eng->arg.run_mode ==  MODE_DEDICATED )
+					Calculate_LOOP_CheckNum( eng );
+				}
 
 				//------------------------------
-				// [Start] The loop of different IO strength
+				// PHY Initial
 				//------------------------------
-				for ( eng->io.Str_i = 0; eng->io.Str_i <= eng->io.Str_max; eng->io.Str_i++ ) {
-					//------------------------------
-					// Print Header of report to monitor and log file
-					//------------------------------
-					if ( eng->io.Dly_3Regiser )
-						if ( get_iodelay( eng ) )
-							return( Finish_Check( eng, 0 ) );
+				if ( phyeng->fp_set != 0 ) {
+					init_phy( eng, phyeng );  
+				}
 
-					if ( eng->run.IO_MrgChk ) {
-						if ( eng->run.TM_IOStrength ) {
-							eng->io.Str_val = eng->io.Str_reg_mask | ( eng->io.Str_i << eng->io.Str_shf );
-//printf("\nIOStrength_val= %08x, ", eng->io.Str_val);
-//printf("SCU90h: %08x ->", Read_Reg_SCU_DD( 0x90 ));
+				if ( eng->flg.Err_Flag )
+					return( finish_check( eng, 0 ) );
+			} // End if ( eng->arg.run_mode ==  MODE_DEDICATED )
+
+			//------------------------------
+			// [Start] The loop of different IO strength
+			//------------------------------
+			for ( eng->io.Str_i = 0; eng->io.Str_i <= eng->io.Str_max; eng->io.Str_i++ ) {
+				//------------------------------
+				// Print Header of report to monitor and log file
+				//------------------------------
+				if ( eng->io.Dly_3Regiser )
+					if ( get_iodelay( eng ) )
+						return( finish_check( eng, 0 ) );
+
+				if ( eng->run.IO_MrgChk ) {
+					if ( eng->run.TM_IOStrength ) {
+						eng->io.Str_val = eng->io.Str_reg_mask | ( eng->io.Str_i << eng->io.Str_shf );
 							Write_Reg_SCU_DD( eng->io.Str_reg_idx, eng->io.Str_val );
-//printf(" %08x\n", Read_Reg_SCU_DD( 0x90 ));
-						}
-
-						if ( eng->run.IO_Bund )
-							PrintIO_Header( eng, FP_LOG );
-						if ( eng->run.TM_IOTiming )
-							PrintIO_Header( eng, FP_IO );
-						PrintIO_Header( eng, STD_OUT );
 					}
-					else {
-						if ( eng->arg.run_mode == MODE_DEDICATED ) {
-							if ( !eng->run.TM_Burst )
-								Print_Header( eng, FP_LOG );
-							Print_Header( eng, STD_OUT );
-						}
+
+					if ( eng->run.IO_Bund )
+						PrintIO_Header( eng, FP_LOG );
+					if ( eng->run.TM_IOTiming )
+						PrintIO_Header( eng, FP_IO );
+					PrintIO_Header( eng, STD_OUT );
+				} else {
+					if ( eng->arg.run_mode == MODE_DEDICATED ) {
+						if ( !eng->run.TM_Burst )
+							Print_Header( eng, FP_LOG );
+						Print_Header( eng, STD_OUT );
+					}
+				} // End if ( eng->run.IO_MrgChk )
+
+				//------------------------------
+				// [Start] The loop of different IO out delay
+				//------------------------------
+				for ( eng->io.Dly_out = eng->io.Dly_out_str; eng->io.Dly_out <= eng->io.Dly_out_end; eng->io.Dly_out+=eng->io.Dly_out_cval ) {
+					if ( eng->run.IO_MrgChk ) {
+						eng->io.Dly_out_selval  = eng->io.value_ary[ eng->io.Dly_out ];
+						eng->io.Dly_out_reg_hit = ( eng->io.Dly_out_reg == eng->io.Dly_out_selval ) ? 1 : 0;
+
+						if ( eng->run.TM_IOTiming )
+							PrintIO_LineS( eng, FP_IO );
+						PrintIO_LineS( eng, STD_OUT );
 					} // End if ( eng->run.IO_MrgChk )
 
-					//------------------------------
-					// [Start] The loop of different IO out delay
-					//------------------------------
-					for ( eng->io.Dly_out = eng->io.Dly_out_str; eng->io.Dly_out <= eng->io.Dly_out_end; eng->io.Dly_out+=eng->io.Dly_out_cval ) {
-						if ( eng->run.IO_MrgChk ) {
-							eng->io.Dly_out_selval  = eng->io.value_ary[ eng->io.Dly_out ];
-							eng->io.Dly_out_reg_hit = ( eng->io.Dly_out_reg == eng->io.Dly_out_selval ) ? 1 : 0;
-#ifdef Enable_Fast_SCU
-							init_scu_macdis( eng );
-							Write_Reg_SCU_DD( eng->io.Dly_reg_idx, eng->reg.SCU_048_mix | ( eng->io.Dly_out_selval << eng->io.Dly_out_shf ) );
-							init_scu_macen( eng );
-#endif
-							if ( eng->run.TM_IOTiming )
-								PrintIO_LineS( eng, FP_IO );
-							PrintIO_LineS( eng, STD_OUT );
-						} // End if ( eng->run.IO_MrgChk )
 
-#ifdef Enable_Fast_SCU
-						//------------------------------
-						// SCU Initial
-						//------------------------------
-//						init_scu_macrst( eng );
+					//------------------------------
+					// [Start] The loop of different IO in delay
+					//------------------------------
+					for ( eng->io.Dly_in = eng->io.Dly_in_str; eng->io.Dly_in <= eng->io.Dly_in_end; eng->io.Dly_in+=eng->io.Dly_in_cval ) {
+						if ( eng->run.IO_MrgChk ) {
+							eng->io.Dly_in_selval  = eng->io.value_ary[ eng->io.Dly_in ];
+							eng->io.Dly_val = ( eng->io.Dly_in_selval  << eng->io.Dly_in_shf  )
+							                | ( eng->io.Dly_out_selval << eng->io.Dly_out_shf );
+
+
+							init_scu_macdis( eng );
+							Write_Reg_SCU_DD( eng->io.Dly_reg_idx, eng->reg.SCU_048_mix | eng->io.Dly_val );
+							init_scu_macen( eng );
+
+						} // End if ( eng->run.IO_MrgChk )
 
 						//------------------------------
 						// MAC Initial
 						//------------------------------
 						init_mac( eng );
 						if ( eng->flg.Err_Flag )
-							return( Finish_Check( eng, 0 ) );
-#endif
-						//------------------------------
-						// [Start] The loop of different IO in delay
-						//------------------------------
-						for ( eng->io.Dly_in = eng->io.Dly_in_str; eng->io.Dly_in <= eng->io.Dly_in_end; eng->io.Dly_in+=eng->io.Dly_in_cval ) {
-							if ( eng->run.IO_MrgChk ) {
-								eng->io.Dly_in_selval  = eng->io.value_ary[ eng->io.Dly_in ];
-								eng->io.Dly_val = ( eng->io.Dly_in_selval  << eng->io.Dly_in_shf  )
-								                | ( eng->io.Dly_out_selval << eng->io.Dly_out_shf );
+							return( finish_check( eng, 0 ) );
 
-//printf("\nDly_val= %08x, ", eng->io.Dly_val);
-//printf("SCU%02xh: %08x ->", eng->io.Dly_reg_idx, Read_Reg_SCU_DD( eng->io.Dly_reg_idx ) );
-								init_scu_macdis( eng );
-								Write_Reg_SCU_DD( eng->io.Dly_reg_idx, eng->reg.SCU_048_mix | eng->io.Dly_val );
-								init_scu_macen( eng );
-//printf(" %08x\n", Read_Reg_SCU_DD( eng->io.Dly_reg_idx ) );
-							} // End if ( eng->run.IO_MrgChk )
-#ifdef Enable_Fast_SCU
-#else
-							//------------------------------
-							// SCU Initial
-							//------------------------------
-//							init_scu_macrst( eng );
-
-							//------------------------------
-							// MAC Initial
-							//------------------------------
-							init_mac( eng );
-							if ( eng->flg.Err_Flag )
-								return( Finish_Check( eng, 0 ) );
-#endif
-							// Testing
-							if ( eng->arg.run_mode == MODE_NCSI )
-								eng->io.Dly_result = phy_ncsi( eng );
+						if ( eng->arg.run_mode == MODE_NCSI )
+							eng->io.Dly_result = phy_ncsi( eng );
+						else
+						{
+							if ((eng->arg.test_mode == 11) && !(
+							((eng->io.Dly_out == eng->io.Dly_out_str) && (eng->io.Dly_in == eng->io.Dly_in_str)) ||
+							((eng->io.Dly_out == eng->io.Dly_out_str) && (eng->io.Dly_in == eng->io.Dly_in_end)) ||
+							((eng->io.Dly_out == eng->io.Dly_out_end) && (eng->io.Dly_in == eng->io.Dly_in_str)) ||
+							((eng->io.Dly_out == eng->io.Dly_out_end) && (eng->io.Dly_in == eng->io.Dly_in_end)) ||
+							((eng->io.Dly_out == eng->io.Dly_out_reg) && (eng->io.Dly_in == eng->io.Dly_in_reg))))
+								eng->io.Dly_result = 0;
 							else
-							{
-								if ((eng->arg.test_mode == 11) && !(
-								((eng->io.Dly_out == eng->io.Dly_out_str) && (eng->io.Dly_in == eng->io.Dly_in_str)) ||
-								((eng->io.Dly_out == eng->io.Dly_out_str) && (eng->io.Dly_in == eng->io.Dly_in_end)) ||
-								((eng->io.Dly_out == eng->io.Dly_out_end) && (eng->io.Dly_in == eng->io.Dly_in_str)) ||
-								((eng->io.Dly_out == eng->io.Dly_out_end) && (eng->io.Dly_in == eng->io.Dly_in_end)) ||
-								((eng->io.Dly_out == eng->io.Dly_out_reg) && (eng->io.Dly_in == eng->io.Dly_in_reg))))
-									eng->io.Dly_result = 0;
-								else
-									eng->io.Dly_result = TestingLoop( eng, eng->run.LOOP_CheckNum );
-							}
-							eng->io.dlymap[ eng->io.Dly_in ][ eng->io.Dly_out ] = eng->io.Dly_result;
-
-							// Display to Log file and monitor
-							if ( eng->run.IO_MrgChk ) {
-								if ( eng->run.TM_IOTiming )
-									PrintIO_Line( eng, FP_IO );
-								PrintIO_Line( eng, STD_OUT );
-
-								FPri_ErrFlag( eng, FP_LOG );
-								PrintIO_Line_LOG( eng );
-
-								eng->flg.Wrn_Flag  = 0;
-								eng->flg.Err_Flag  = 0;
-								eng->flg.Des_Flag  = 0;
-								eng->flg.NCSI_Flag = 0;
-							} //End if ( eng->run.IO_MrgChk )
-						} // End for ( eng->io.Dly_in = eng->io.Dly_in_str; eng->io.Dly_in <= eng->io.Dly_in_end; eng->io.Dly_in+=eng->io.Dly_in_cval )
-
-
-						if ( eng->run.IO_MrgChk ) {
-							if ( eng->run.TM_IOTiming ) {
-								PRINTF( FP_IO, "\n" );
-							}
-							printf("\n");
+								eng->io.Dly_result = TestingLoop( eng, eng->run.LOOP_CheckNum );
 						}
-					} // End for ( eng->io.Dly_out = eng->io.Dly_out_str; eng->io.Dly_out <= eng->io.Dly_out_end; eng->io.Dly_out+=eng->io.Dly_out_cval )
+						eng->io.dlymap[ eng->io.Dly_in ][ eng->io.Dly_out ] = eng->io.Dly_result;
+
+						// Display to Log file and monitor
+						if ( eng->run.IO_MrgChk ) {
+							if ( eng->run.TM_IOTiming )
+								PrintIO_Line( eng, FP_IO );
+							PrintIO_Line( eng, STD_OUT );
+
+							FPri_ErrFlag( eng, FP_LOG );
+							PrintIO_Line_LOG( eng );
+
+							eng->flg.Wrn_Flag  = 0;
+							eng->flg.Err_Flag  = 0;
+							eng->flg.Des_Flag  = 0;
+							eng->flg.NCSI_Flag = 0;
+						} //End if ( eng->run.IO_MrgChk )
+					} // End for ( eng->io.Dly_in = eng->io.Dly_in_str; eng->io.Dly_in <= eng->io.Dly_in_end; eng->io.Dly_in+=eng->io.Dly_in_cval )
 
 
-					//------------------------------
-					// End
-					//------------------------------
 					if ( eng->run.IO_MrgChk ) {
-						for ( eng->io.Dly_out = eng->io.Dly_out_min; eng->io.Dly_out <= eng->io.Dly_out_max; eng->io.Dly_out++ )
-							for ( eng->io.Dly_in = eng->io.Dly_in_min; eng->io.Dly_in <= eng->io.Dly_in_max; eng->io.Dly_in++ )
-								if ( eng->io.dlymap[ eng->io.Dly_in ][ eng->io.Dly_out ] ) {
-									if ( eng->run.TM_IOTiming ) {
-										for ( j = eng->io.Dly_out_min; j <= eng->io.Dly_out_max; j++ ) {
-											for ( i = eng->io.Dly_in_min; i <= eng->io.Dly_in_max; i++ )
-												if ( eng->io.dlymap[i][j] )
-													{ PRINTF( FP_IO, "x " ); }
-												else
-													{ PRINTF( FP_IO, "o " ); }
-											PRINTF( FP_IO, "\n" );
-										}
-									} // End if ( eng->run.TM_IOTiming )
+						if ( eng->run.TM_IOTiming ) {
+							PRINTF( FP_IO, "\n" );
+						}
+						printf("\n");
+					}
+				} // End for ( eng->io.Dly_out = eng->io.Dly_out_str; eng->io.Dly_out <= eng->io.Dly_out_end; eng->io.Dly_out+=eng->io.Dly_out_cval )
 
-									FindErr( eng, Err_Flag_IOMargin );
-									goto Find_Err_Flag_IOMargin;
-								} // End if ( eng->io.dlymap[ eng->io.Dly_in ][ eng->io.Dly_out ] )
-					} // End if ( eng->run.IO_MrgChk )
 
+				//------------------------------
+				// End
+				//------------------------------
+				if ( eng->run.IO_MrgChk ) {
+					for ( eng->io.Dly_out = eng->io.Dly_out_min; eng->io.Dly_out <= eng->io.Dly_out_max; eng->io.Dly_out++ )
+						for ( eng->io.Dly_in = eng->io.Dly_in_min; eng->io.Dly_in <= eng->io.Dly_in_max; eng->io.Dly_in++ )
+							if ( eng->io.dlymap[ eng->io.Dly_in ][ eng->io.Dly_out ] ) {
+								if ( eng->run.TM_IOTiming ) {
+									for ( j = eng->io.Dly_out_min; j <= eng->io.Dly_out_max; j++ ) {
+										for ( i = eng->io.Dly_in_min; i <= eng->io.Dly_in_max; i++ )
+											if ( eng->io.dlymap[i][j] )
+												{ PRINTF( FP_IO, "x " ); }
+											else
+												{ PRINTF( FP_IO, "o " ); }
+										PRINTF( FP_IO, "\n" );
+									}
+								} // End if ( eng->run.TM_IOTiming )
+
+								FindErr( eng, Err_Flag_IOMargin );
+								goto Find_Err_Flag_IOMargin;
+							} // End if ( eng->io.dlymap[ eng->io.Dly_in ][ eng->io.Dly_out ] )
+				} // End if ( eng->run.IO_MrgChk )
 Find_Err_Flag_IOMargin:
-					if ( !eng->run.TM_Burst )
-						FPri_ErrFlag( eng, FP_LOG );
-					if ( eng->run.TM_IOTiming )
-						FPri_ErrFlag( eng, FP_IO );
+				if ( !eng->run.TM_Burst )
+					FPri_ErrFlag( eng, FP_LOG );
+				if ( eng->run.TM_IOTiming )
+					FPri_ErrFlag( eng, FP_IO );
 
-					FPri_ErrFlag( eng, STD_OUT );
+				FPri_ErrFlag( eng, STD_OUT );
 
-					wrn_flag_allspeed  = wrn_flag_allspeed  | eng->flg.Wrn_Flag;
-					err_flag_allspeed  = err_flag_allspeed  | eng->flg.Err_Flag;
-					des_flag_allspeed  = des_flag_allspeed  | eng->flg.Err_Flag;
-					ncsi_flag_allspeed = ncsi_flag_allspeed | eng->flg.Err_Flag;
-					eng->flg.Wrn_Flag  = 0;
-					eng->flg.Err_Flag  = 0;
-					eng->flg.Des_Flag  = 0;
-					eng->flg.NCSI_Flag = 0;
-				} // End for ( eng->io.Str_i = 0; eng->io.Str_i <= eng->io.Str_max; eng->io.Str_i++ ) {
+				wrn_flag_allspeed  = wrn_flag_allspeed  | eng->flg.Wrn_Flag;
+				err_flag_allspeed  = err_flag_allspeed  | eng->flg.Err_Flag;
+				des_flag_allspeed  = des_flag_allspeed  | eng->flg.Err_Flag;
+				ncsi_flag_allspeed = ncsi_flag_allspeed | eng->flg.Err_Flag;
+				eng->flg.Wrn_Flag  = 0;
+				eng->flg.Err_Flag  = 0;
+				eng->flg.Des_Flag  = 0;
+				eng->flg.NCSI_Flag = 0;
+			} // End for ( eng->io.Str_i = 0; eng->io.Str_i <= eng->io.Str_max; eng->io.Str_i++ ) {
 
-				if ( eng->arg.run_mode == MODE_DEDICATED ) {
-					if ( phyeng->fp_clr != 0 )
-						recov_phy( eng, phyeng );
-				}
+			if ( eng->arg.run_mode == MODE_DEDICATED ) {
+				if ( phyeng->fp_clr != 0 )
+					recov_phy( eng, phyeng );
+			}
 
-				eng->run.Speed_sel[ (int)eng->run.Speed_idx ] = 0;
-			} // End if ( eng->run.Speed_sel[ eng->run.Speed_idx ] )
+			eng->run.Speed_sel[ (int)eng->run.Speed_idx ] = 0;
+		} // End if ( eng->run.Speed_sel[ eng->run.Speed_idx ] )
 
-			eng->flg.Flag_PrintEn = 0;
-		} // End for ( eng->run.Speed_idx = 0; eng->run.Speed_idx < 3; eng->run.Speed_idx++ )
+		eng->flg.Flag_PrintEn = 0;
+	} // End for ( eng->run.Speed_idx = 0; eng->run.Speed_idx < 3; eng->run.Speed_idx++ )
 
-		eng->flg.Wrn_Flag  = wrn_flag_allspeed;
-		eng->flg.Err_Flag  = err_flag_allspeed;
-		eng->flg.Des_Flag  = des_flag_allspeed;
-		eng->flg.NCSI_Flag = ncsi_flag_allspeed;
+	eng->flg.Wrn_Flag  = wrn_flag_allspeed;
+	eng->flg.Err_Flag  = err_flag_allspeed;
+	eng->flg.Des_Flag  = des_flag_allspeed;
+	eng->flg.NCSI_Flag = ncsi_flag_allspeed;
 
-#ifdef Enable_LOOP_INFINI
-		if ( eng->flg.Err_Flag == 0 ) {
-			goto LOOP_INFINI;
-		}
-#endif
-	} // End if (RUN_STEP >= 5)
 
-	return( Finish_Check( eng, 0 ) );
-#endif
-	return 0;
+	return( finish_check( eng, 0 ) );
 }

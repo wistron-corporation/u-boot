@@ -1182,91 +1182,6 @@ void FPri_ErrFlag (MAC_ENGINE *eng, BYTE option)
 } // End void FPri_ErrFlag (MAC_ENGINE *eng, BYTE option)
 
 //------------------------------------------------------------
-void Finish_Close (MAC_ENGINE *eng) 
-{
-	nt_log_func_name();
-#ifdef Enable_RecovSCU
-	if ( eng->reg.SCU_oldvld )
-		recov_scu( eng );
-#endif
-
-} // End void Finish_Close (MAC_ENGINE *eng)
-
-//------------------------------------------------------------
-char Finish_Check (MAC_ENGINE *eng, int value) 
-{
-#if defined(CONFIG_ASPEED_AST2500)
-	uint32_t   reg;
-	BYTE    shift_value = 0;
-#endif
-	nt_log_func_name();
-
-
-
-	if ( eng->arg.run_mode ==  MODE_DEDICATED ) {
-		if ( eng->dat.FRAME_LEN )
-			free( eng->dat.FRAME_LEN );
-
-		if ( eng->dat.wp_lst )
-			free( eng->dat.wp_lst );
-	}
-
-	eng->flg.Err_Flag = eng->flg.Err_Flag | value;
-
-	if ( DbgPrn_ErrFlg )
-		printf("\nErr_Flag: [%08x]\n", eng->flg.Err_Flag);
-
-	if ( !eng->run.TM_Burst )
-		FPri_ErrFlag( eng, FP_LOG );
-
-	if ( eng->run.TM_IOTiming )
-		FPri_ErrFlag( eng, FP_IO );
-
-	FPri_ErrFlag( eng, STD_OUT );
-
-	if ( !eng->run.TM_Burst )
-		FPri_End( eng, FP_LOG );
-
-	if ( eng->run.TM_IOTiming )
-		FPri_End( eng, FP_IO );
-
-	FPri_End( eng, STD_OUT );
-
-
-	if ( !eng->run.TM_Burst )
-		FPri_RegValue( eng, FP_LOG );
-	if ( eng->run.TM_IOTiming )
-		FPri_RegValue( eng, FP_IO  );
-
-	Finish_Close( eng );
-
-#if defined(CONFIG_ASPEED_AST2500)
-	reg = Read_Reg_SCU_DD( 0x40 );
-	if ( eng->arg.run_mode == MODE_DEDICATED )
-		shift_value = 18 + eng->run.mac_idx;
-	else
-		shift_value = 16 + eng->run.mac_idx;
-#endif
-
-	if ( eng->flg.Err_Flag )
-	{
-		// Fail
-#if defined(CONFIG_ASPEED_AST2500)
-		reg = reg & ~( 1 << shift_value );
-		Write_Reg_SCU_DD( 0x40, reg );
-#endif
-		return( 1 );
-	}
-	else
-	{
-		// PASS
-#if defined(CONFIG_ASPEED_AST2500)
-		reg |= ( 1 << shift_value );
-		Write_Reg_SCU_DD( 0x40, reg );
-#endif
-		return( 0 );
-	}
-} // End char Finish_Check (MAC_ENGINE *eng, int value)
 
 //------------------------------------------------------------
 int FindErr (MAC_ENGINE *eng, int value) {
@@ -1370,12 +1285,8 @@ void setup_framesize (MAC_ENGINE *eng)
 			if ( eng->run.TM_Burst ) {
 				if ( eng->run.TM_IEEE )
 					eng->dat.FRAME_LEN[ des_num ] = 1514;
-				else
-  #ifdef ENABLE_ARP_2_WOL
-					eng->dat.FRAME_LEN[ des_num ] = 164;
-  #else
-					eng->dat.FRAME_LEN[ des_num ] = 60;
-  #endif
+				else  
+					eng->dat.FRAME_LEN[ des_num ] = 60;  
 			}
 			else {
   #ifdef SelectLengthInc
@@ -1463,18 +1374,6 @@ void setup_buf (MAC_ENGINE *eng)
 	int        cnt;
 	uint32_t      len;
 
-#ifdef ENABLE_ARP_2_WOL
-	int        DA[3];
-
-	DA[ 0 ] =  ( ( SelectWOLDA_DatH >>  8 ) & 0x00ff ) |
-	           ( ( SelectWOLDA_DatH <<  8 ) & 0xff00 );
-
-	DA[ 1 ] =  ( ( SelectWOLDA_DatL >> 24 ) & 0x00ff ) |
-	           ( ( SelectWOLDA_DatL >>  8 ) & 0xff00 );
-
-	DA[ 2 ] =  ( ( SelectWOLDA_DatL >>  8 ) & 0x00ff ) |
-	           ( ( SelectWOLDA_DatL <<  8 ) & 0xff00 );
-#endif
 
 	nt_log_func_name();
 
@@ -1520,13 +1419,7 @@ void setup_buf (MAC_ENGINE *eng)
 				for (i = 0; i < 16; i++)
 					Write_Mem_Dat_DD( adr_srt + ( i << 2 ), eng->dat.ARP_data[i] );
 
-#ifdef ENABLE_ARP_2_WOL
-				for (i = 16; i < 40; i += 3) {
-					Write_Mem_Dat_DD( adr_srt + ( i << 2 ),     ( DA[ 1 ] << 16 ) |  DA[ 0 ] );
-					Write_Mem_Dat_DD( adr_srt + ( i << 2 ) + 4, ( DA[ 0 ] << 16 ) |  DA[ 2 ] );
-					Write_Mem_Dat_DD( adr_srt + ( i << 2 ) + 8, ( DA[ 2 ] << 16 ) |  DA[ 1 ] );
-				}
-#endif
+
 				adr_srt += DMA_PakSize;
 			} // End for (des_num = 0; des_num < eng->dat.Des_Num; des_num++)
 		} // End if ( eng->run.TM_IEEE )

@@ -813,9 +813,8 @@ GLOBAL void    PrintIOTimingBund (MAC_ENGINE *eng);
 
 
 GLOBAL void    PrintPHYAdr (MAC_ENGINE *eng);
-GLOBAL void    Finish_Close (MAC_ENGINE *eng);
+
 GLOBAL void    Calculate_LOOP_CheckNum (MAC_ENGINE *eng);
-GLOBAL char    Finish_Check (MAC_ENGINE *eng, int value);
 GLOBAL void    init_scu1 (MAC_ENGINE *eng);
 GLOBAL void    init_scu_macio (MAC_ENGINE *eng);
 GLOBAL void    init_scu_macrst (MAC_ENGINE *eng);

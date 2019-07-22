@@ -23,15 +23,10 @@
 // Define
 // --------------------------------------------------------------
 //#define Force_Enable_NewMDIO           //[off][SLT:off] (Force enable new MDC/MDIO)
-#define Enable_RecovSCU                //[ON]
-//#define Enable_Fast_SCU                //[off]
 #define ENABLE_DASA                    //[ON]
-//#define ENABLE_ARP_2_WOL               //[off]
 //#define Enable_MAC_SWRst               //[off]
 #define   Enable_No_IOBoundary         //[ON]
-//#define Enable_LOOP_INFINI             //[off]
 //#define Enable_Dual_Mode               //[off]
-//#define Enable_CLK_Stable              //[off]
 
 //#define Enable_Runt
 //#define Enable_BufMerge
@@ -44,7 +39,6 @@
 //#define SelectSimpleBoundary                                    //[off] Using in debug
 //#define SelectSimpleData                                        //[off] Using in debug
 //#define SelectSimpleLength                       1514           //[off] 60(0x3c) ~ 1514(0x5ea); 1512(0x5e8)
-//#define SelectDesNumber                          8             //[off] 1 ~
 //#define SelectSimpleDA                                          //[off] Using in debug
 //#define SelectSimpleDes                                         //[off]
 //#define SelectLengthInc                                         //[off] Using in debug
