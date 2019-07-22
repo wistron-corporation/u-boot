@@ -14,13 +14,9 @@
 
 	aliases {
 		spi0 = &fmc;
-#if 0
-		ethernet0 = &mac0;
-#else		
 		ethernet1 = &mac1;
 		ethernet2 = &mac2;
 		ethernet3 = &mac3;
-#endif		
 	};
 };
 
@@ -60,7 +56,8 @@
 	pinctrl-names = "default";
 	pinctrl-0 = <&pinctrl_mac1link_default &pinctrl_mdio1_default>;
 };
-#else
+#endif
+
 &mac1 {
 	status = "okay";
 	phy-mode = "rgmii";
@@ -81,7 +78,7 @@
 	pinctrl-names = "default";
 	pinctrl-0 = <&pinctrl_mac4link_default &pinctrl_mdio4_default>;
 };
-#endif
+
 &fmc {
 	status = "okay";
 	flash@0 {
@@ -114,8 +111,8 @@
 &sdhci_slot1 {
 	status = "okay";
 	bus-width = <4>;
-    pwr-gpios = <&gpio0 ASPEED_GPIO(V, 2) GPIO_ACTIVE_HIGH>;
-    pwr-sw-gpios = <&gpio0 ASPEED_GPIO(V, 3) GPIO_ACTIVE_HIGH>;
+	pwr-gpios = <&gpio0 ASPEED_GPIO(V, 2) GPIO_ACTIVE_HIGH>;
+	pwr-sw-gpios = <&gpio0 ASPEED_GPIO(V, 3) GPIO_ACTIVE_HIGH>;
 	pinctrl-names = "default";
 	pinctrl-0 = <&pinctrl_sd2_default>;
 };
