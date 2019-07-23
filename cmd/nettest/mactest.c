@@ -13,7 +13,7 @@
 
 #include "swfunc.h"
 #include "comminf.h"
-#include "io.h"
+//#include "io.h"
 #include "stduboot.h"
 #include <command.h>
 #include <common.h>
@@ -37,6 +37,8 @@ struct mac_ctrl_desc {
 #if defined(CONFIG_ASPEED_AST2600)
 const uint32_t mac_base_lookup_tbl[4] = {MAC1_BASE, MAC2_BASE, MAC3_BASE,
 					 MAC4_BASE};
+const uint32_t mdio_base_lookup_tbl[4] = {MDIO0_BASE, MDIO1_BASE, MDIO2_BASE,
+					 MDIO3_BASE};
 const struct mac_ctrl_desc mac_ctrl_lookup_tbl[4] = {
 	{
 		.base_reset_assert = 0x40, .bit_reset_assert = BIT(11),
@@ -65,6 +67,7 @@ const struct mac_ctrl_desc mac_ctrl_lookup_tbl[4] = {
 };
 #else
 const uint32_t mac_base_lookup_tbl[2] = {MAC1_BASE, MAC2_BASE};
+const uint32_t mdio_base_lookup_tbl[2] = {MDIO0_BASE, MDIO1_BASE};
 const struct mac_ctrl_desc mac_ctrl_lookup_tbl[2] = {
 	{
 		.base_reset_assert = 0x04, .bit_reset_assert = 11,
@@ -192,7 +195,7 @@ static void print_arg_speed(MAC_ENGINE *p_eng)
 	       item, DEF_GSPEED);
 }
 
-static void print_arg_run_idx(MAC_ENGINE *p_eng) 
+static void print_arg_mac_idx(MAC_ENGINE *p_eng) 
 {
 	uint8_t item[32] = "mac_idx[dec]";
 
@@ -209,7 +212,7 @@ static void print_usage(MAC_ENGINE *p_eng)
 	if (MODE_DEDICATED == p_eng->arg.run_mode) {
 		printf("mactest <idx> <run_speed> <ctrl> <loop_max> <test "
 		       "mode> <phy addr> <timing boundary> <user data>\n");
-		print_arg_run_idx(p_eng);
+		print_arg_mac_idx(p_eng);
 		print_arg_speed(p_eng);
 		print_arg_ctrl(p_eng);
 		print_arg_loop(p_eng);
@@ -219,7 +222,7 @@ static void print_usage(MAC_ENGINE *p_eng)
 	} else if (MODE_NCSI == p_eng->arg.run_mode) {
 		printf("ncsitest <idx> <packet num> <channel num> <test mode>"
 		       "<timing boundary> <ctrl> <ARP num>\n");
-		print_arg_run_idx(p_eng);
+		print_arg_mac_idx(p_eng);
 		print_arg_package_num(p_eng);
 		print_arg_channel_num(p_eng);
 		print_arg_test_mode(p_eng);
@@ -465,28 +468,17 @@ void scu_enable_mac(MAC_ENGINE *p_eng)
 static uint32_t setup_running(MAC_ENGINE *p_eng)
 {
 	/* check if legal run_idx */
-	if (p_eng->arg.run_idx > p_eng->env.mac_num) {
-		printf("invalid run_idx = %d\n", p_eng->arg.run_idx);	
+	if (p_eng->arg.mac_idx > p_eng->env.mac_num) {
+		printf("invalid run_idx = %d\n", p_eng->arg.mac_idx);	
 		return 1;
 	}
 
-	p_eng->run.mac_idx = p_eng->arg.run_idx;
+	p_eng->run.mac_idx = p_eng->arg.mac_idx;
 	p_eng->run.mac_base = mac_base_lookup_tbl[p_eng->run.mac_idx];
 	p_eng->run.is_rgmii = p_eng->env.is_1g_valid[p_eng->run.mac_idx];
-
-	if (p_eng->arg.ctrl.b.phy_addr_inv) {
-		/* inverse bit[0]:
-		 * MAC0 -> MAC1
-		 * MAC1 -> MAC0
-		 * MAC2 -> MAC3
-		 * MAC3 -> MAC2
-		 */
-		p_eng->run.MAC_idx_PHY = p_eng->run.mac_idx ^ BIT(0);
-		debug("swapped phy index = %d\n", p_eng->run.MAC_idx_PHY);
-	} else {
-		p_eng->run.MAC_idx_PHY = p_eng->run.mac_idx;
-	}
-	p_eng->phy.PHY_BASE = mac_base_lookup_tbl[p_eng->run.MAC_idx_PHY];
+	
+	p_eng->run.mdio_idx = p_eng->arg.mdio_idx;
+	p_eng->run.mdio_base = mdio_base_lookup_tbl[p_eng->run.mdio_idx];
 
 	/* 
 	 * FIXME: too ugly...
@@ -532,7 +524,7 @@ static uint32_t setup_running(MAC_ENGINE *p_eng)
 	if (1 == p_eng->run.Speed_1G) {
 		if (0 == p_eng->env.is_1g_valid[p_eng->run.mac_idx]) {
 			printf("MAC%d doesn't support 1G\n",
-			       p_eng->arg.run_idx);
+			       p_eng->arg.mac_idx);
 			return 1;
 		}
 	}
@@ -685,11 +677,17 @@ static uint32_t setup_chip_compatibility(MAC_ENGINE *p_eng)
 		p_eng->env.ast2600 = 1;
 		p_eng->env.ast2500 = 1;
 		p_eng->env.mac_num = 4;
+		p_eng->env.is_new_mdio_reg[0] = 1;
+		p_eng->env.is_new_mdio_reg[1] = 1;
+		p_eng->env.is_new_mdio_reg[2] = 1;
+		p_eng->env.is_new_mdio_reg[3] = 1;
 		is_valid = 1;
 	} else if (id == 0x4) {
 		printf("chip: AST2500 A%d\n", version);
 		p_eng->env.ast2500 = 1;
 		p_eng->env.mac_num = 2;
+		p_eng->env.is_new_mdio_reg[0] = MAC1_RD(0x40) >> 31;
+		p_eng->env.is_new_mdio_reg[1] = MAC2_RD(0x40) >> 31;;
 		is_valid = 1;
 	}
 
@@ -710,7 +708,7 @@ static uint32_t setup_env(MAC_ENGINE *p_eng)
 		return 1;
 	}
 	
-	setup_interface(&p_eng);
+	setup_interface(&p_eng);	
 
 	return 0;
 }
@@ -825,13 +823,16 @@ int mac_test(int argc, char * const argv[], uint32_t mode)
 		return 1;
 	}
 
-	mac_eng.arg.run_idx = simple_strtol(argv[1], NULL, 16);
+	mac_eng.arg.mac_idx = simple_strtol(argv[1], NULL, 16);
+
+	/* FIXME: add new argv to indicate MDIO index */
+	mac_eng.arg.mdio_idx = mac_eng.arg.mac_idx;
 	if (MODE_DEDICATED == mode)
 		parse_arg_dedicated(argc, argv, &mac_eng);
 	else		
 		parse_arg_ncsi(argc, argv, &mac_eng);
 
-	
+	setup_running(&mac_eng);
 
 	/* init PHY engine */
 	phy_eng.fp_set = 0;

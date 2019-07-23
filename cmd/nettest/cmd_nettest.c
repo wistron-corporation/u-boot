@@ -58,7 +58,7 @@ U_BOOT_CMD(ncsitestd, NETESTCMD_MAX_ARGS, 0, do_ncsitestd,
 void multi_pin_2_mdcmdio_init( MAC_ENGINE *eng )
 {  
 #if defined(CONFIG_ASPEED_AST2500)
-	switch (eng->run.MAC_idx_PHY) {
+	switch (eng->run.mdio_idx) {
 	case 0:
 		Write_Reg_SCU_DD(0x088, (Read_Reg_SCU_DD(0x088) | 0xC0000000));
 		break;
@@ -103,11 +103,11 @@ int do_phyread (cmd_tbl_t * cmdtp, int flag, int argc, char * const argv[])
 		if (MACnum == 0) {
 			// Set MAC 0
 			eng->run.mac_base = MAC1_BASE;
-			eng->run.MAC_idx_PHY = 0;
+			eng->run.mdio_idx = 0;
 		} else if (MACnum == 1) {
 			// Set MAC 1
 			eng->run.mac_base = MAC2_BASE;
-			eng->run.MAC_idx_PHY = 1;
+			eng->run.mdio_idx = 1;
 		} else {
 			printf("wrong parameter (mac number)\n");
 			ret = -1;
@@ -123,18 +123,18 @@ int do_phyread (cmd_tbl_t * cmdtp, int flag, int argc, char * const argv[])
 		multi_pin_2_mdcmdio_init(eng);
 		MAC_040 = Read_Reg_MAC_DD(eng, 0x40);
 #ifdef CONFIG_ASPEED_AST2600
-		eng->inf.NewMDIO = 1;
+		eng->env.is_new_mdio_reg[MACnum] = 1;
 #else
-		eng->inf.NewMDIO = (MAC_040 & 0x80000000) ? 1 : 0;
+		eng->env.is_new_mdio_reg[MACnum] = (MAC_040 & 0x80000000) ? 1 : 0;
 #endif
 
-		if (eng->inf.NewMDIO) {
+		if (eng->env.is_new_mdio_reg[MACnum]) {
 #ifdef CONFIG_ASPEED_AST2600
 			Write_Reg_MAC_DD(eng, 0x60,
-					 MAC_PHYRd_AST2600 | (PHYaddr << 21) |
+					 MAC_PHYRd_New | (PHYaddr << 21) |
 					     ((PHYreg & 0x1f) << 16));
 			while (Read_Reg_MAC_DD(eng, 0x60) &
-			       MAC_PHYBusy_AST2600) {
+			       MAC_PHYBusy_New) {
 #else
 			Write_Reg_MAC_DD(eng, 0x60,
 					 MAC_PHYRd_New | (PHYaddr << 5) |
@@ -209,12 +209,12 @@ int do_phywrite (cmd_tbl_t * cmdtp, int flag, int argc, char * const argv[])
 		if ( MACnum == 0 ) {
 			// Set MAC 0
 			eng->run.mac_base  = MAC1_BASE;
-			eng->run.MAC_idx_PHY  = 0;
+			eng->run.mdio_idx = 0;
 		}
 		else if ( MACnum == 1 ) {
 			// Set MAC 1
 			eng->run.mac_base  = MAC2_BASE;
-			eng->run.MAC_idx_PHY  = 1;
+			eng->run.mdio_idx = 1;
 		}
 		else {
 			printf("wrong parameter (mac number)\n");
@@ -231,16 +231,16 @@ int do_phywrite (cmd_tbl_t * cmdtp, int flag, int argc, char * const argv[])
 		multi_pin_2_mdcmdio_init( eng );
 		MAC_040 = Read_Reg_MAC_DD( eng, 0x40 );
 #ifdef CONFIG_ASPEED_AST2600
-		eng->inf.NewMDIO = 1;
-#else		
-		eng->inf.NewMDIO = (MAC_040 & 0x80000000) ? 1 : 0;
-#endif		
+		eng->env.is_new_mdio_reg[MACnum] = 1;
+#else
+		eng->env.is_new_mdio_reg[MACnum] = (MAC_040 & 0x80000000) ? 1 : 0;
+#endif
 
-		if ( eng->inf.NewMDIO ) {
+		if (eng->env.is_new_mdio_reg[MACnum]) {
 #ifdef CONFIG_ASPEED_AST2600
-			Write_Reg_MAC_DD( eng, 0x60, reg_data | MAC_PHYWr_AST2600 | (PHYaddr<<21) | ((PHYreg & 0x1f)<<16) );
+			Write_Reg_MAC_DD( eng, 0x60, reg_data | MAC_PHYWr_New | (PHYaddr<<21) | ((PHYreg & 0x1f)<<16) );
 			
-			while ( Read_Reg_MAC_DD( eng, 0x60 ) & MAC_PHYBusy_AST2600 ) {
+			while ( Read_Reg_MAC_DD( eng, 0x60 ) & MAC_PHYBusy_New ) {
 #else
 			Write_Reg_MAC_DD( eng, 0x60, ( reg_data << 16 ) | MAC_PHYWr_New | (PHYaddr<<5) | (PHYreg & 0x1f) );
 
@@ -262,7 +262,7 @@ int do_phywrite (cmd_tbl_t * cmdtp, int flag, int argc, char * const argv[])
 					break;
 				}
 			}
-		} // End if ( eng->inf.NewMDIO )
+		} // End if (eng->env.new_mdio_reg)
 
 		printf("Write: PHY[%d] reg[0x%02X] = %04x\n", PHYaddr, PHYreg, reg_data );
 	} while ( 0 );
@@ -300,12 +300,12 @@ int do_phydump (cmd_tbl_t * cmdtp, int flag, int argc, char *argv[])
 		if ( MACnum == 0 ) {
 			// Set MAC 0
 			eng->run.mac_base = MAC1_BASE;
-			eng->run.MAC_idx_PHY  = 0;
+			eng->run.mdio_idx = 0;
 		}
 		else if ( MACnum == 1 ) {
 			// Set MAC 1
 			eng->run.mac_base = MAC2_BASE;
-			eng->run.MAC_idx_PHY  = 1;            
+			eng->run.mdio_idx = 1;
 		}
 		else {
 			printf("wrong parameter (mac number)\n");
@@ -322,17 +322,17 @@ int do_phydump (cmd_tbl_t * cmdtp, int flag, int argc, char *argv[])
 		multi_pin_2_mdcmdio_init( eng );
 		MAC_040 = Read_Reg_MAC_DD( eng, 0x40 );
 #ifdef CONFIG_ASPEED_AST2600
-		eng->inf.NewMDIO = 1;
-#else		
-		eng->inf.NewMDIO = (MAC_040 & 0x80000000) ? 1 : 0;
-#endif		
+		eng->env.is_new_mdio_reg[MACnum] = 1;
+#else
+		eng->env.is_new_mdio_reg[MACnum] = (MAC_040 & 0x80000000) ? 1 : 0;
+#endif
 
-		if ( eng->inf.NewMDIO ) {
+		if (eng->env.is_new_mdio_reg[MACnum]) {
 			for ( PHYreg = 0; PHYreg < 32; PHYreg++ ) {
 #ifdef CONFIG_ASPEED_AST2600
-				Write_Reg_MAC_DD( eng, 0x60, MAC_PHYRd_AST2600 | (PHYaddr << 21) | (( PHYreg & 0x1f ) << 16) );
+				Write_Reg_MAC_DD( eng, 0x60, MAC_PHYRd_New | (PHYaddr << 21) | (( PHYreg & 0x1f ) << 16) );
 				
-				while ( Read_Reg_MAC_DD( eng, 0x60 ) & MAC_PHYBusy_AST2600 ) {
+				while ( Read_Reg_MAC_DD( eng, 0x60 ) & MAC_PHYBusy_New ) {
 #else				
 				Write_Reg_MAC_DD( eng, 0x60, MAC_PHYRd_New | (PHYaddr << 5) | ( PHYreg & 0x1f ) );
 				while ( Read_Reg_MAC_DD( eng, 0x60 ) & MAC_PHYBusy_New ) {

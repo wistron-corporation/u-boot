@@ -99,8 +99,8 @@ uint32_t Read_Reg_MAC_DD(MAC_ENGINE *eng, uint32_t addr)
 uint32_t Read_Reg_PHY_DD(MAC_ENGINE *eng, uint32_t addr)
 {
 #ifdef MAC_DEBUG_REGRW_PHY
-	printf("[RegRd-PHY] %08x = %08x\n", eng->phy.PHY_BASE + addr,
-	       SWAP_4B_LEDN_REG(ReadSOC_DD(eng->phy.PHY_BASE + addr)));
+	printf("[RegRd-PHY] %08x = %08x\n", eng->run.mdio_base + addr,
+	       SWAP_4B_LEDN_REG(ReadSOC_DD(eng->run.mdio_base + addr)));
 #endif
 #ifdef CONFIG_ASPEED_AST2600
 	if (addr == 0x60) {
@@ -115,7 +115,7 @@ uint32_t Read_Reg_PHY_DD(MAC_ENGINE *eng, uint32_t addr)
 			return (SWAP_4B_LEDN_REG(ReadSOC_DD(0x1e65000c)));
 	}
 #else
-	return (SWAP_4B_LEDN_REG(ReadSOC_DD(eng->phy.PHY_BASE + addr)));
+	return (SWAP_4B_LEDN_REG(ReadSOC_DD(eng->run.mdio_base + addr)));
 #endif
 }
 
@@ -216,7 +216,7 @@ void Write_Reg_MAC_DD (MAC_ENGINE *eng, uint32_t addr, uint32_t data) {
 }
 void Write_Reg_PHY_DD (MAC_ENGINE *eng, uint32_t addr, uint32_t data) {
 #ifdef MAC_DEBUG_REGRW_PHY
-	printf("[RegWr-PHY] %08x = %08x\n", eng->phy.PHY_BASE + addr, SWAP_4B_LEDN_REG( data ));
+	printf("[RegWr-PHY] %08x = %08x\n", eng->run.mdio_base + addr, SWAP_4B_LEDN_REG( data ));
 #endif
 #ifdef CONFIG_ASPEED_AST2600
 	if (addr == 0x60) {
@@ -231,7 +231,7 @@ void Write_Reg_PHY_DD (MAC_ENGINE *eng, uint32_t addr, uint32_t data) {
 			WriteSOC_DD( 0x1e65000c, SWAP_4B_LEDN_REG( data ) );
 	}
 #else
-	WriteSOC_DD( eng->phy.PHY_BASE + addr, SWAP_4B_LEDN_REG( data ) );
+	WriteSOC_DD( eng->run.mdio_base + addr, SWAP_4B_LEDN_REG( data ) );
 #endif
 }
 void Write_Reg_SCU_DD_AST2600 (uint32_t addr, uint32_t data) {
@@ -694,7 +694,7 @@ void init_scu1 (MAC_ENGINE *eng)
 void init_scu_macio (MAC_ENGINE *eng) 
 {
 	nt_log_func_name();
-	switch (eng->run.MAC_idx_PHY) {
+	switch (eng->run.mdio_idx) {
 	case 0:
 		Write_Reg_SCU_DD(0x88,
 				 (eng->reg.SCU_088 & 0x3fffffff) | 0xc0000000);
@@ -870,11 +870,11 @@ void FPri_End (MAC_ENGINE *eng, BYTE option)
 	if ((0 == eng->run.is_rgmii) && ( eng->phy.RMIICK_IOMode != 0 ) && eng->run.IO_MrgChk && eng->flg.AllFail ) {
 		if ( eng->arg.ctrl.b.rmii_phy_in == 0 ) {
 			PRINTF( option, "\n\n\n\n\n\n[Info] The PHY's RMII reference clock pin is setting to the OUTPUT mode now.\n" );
-			PRINTF( option, "       Maybe you can run the INPUT mode command \"mactest  %d %d %d %d %d %d %d\".\n\n\n\n", eng->arg.run_idx, eng->arg.run_speed, (eng->arg.ctrl.w | 0x80), eng->arg.loop_max, eng->arg.test_mode, eng->arg.GPHYADR, eng->arg.GChk_TimingBund );
+			PRINTF( option, "       Maybe you can run the INPUT mode command \"mactest  %d %d %d %d %d %d %d\".\n\n\n\n", eng->arg.mac_idx, eng->arg.run_speed, (eng->arg.ctrl.w | 0x80), eng->arg.loop_max, eng->arg.test_mode, eng->arg.GPHYADR, eng->arg.GChk_TimingBund );
 		}
 		else {
 			PRINTF( option, "\n\n\n\n\n\n[Info] The PHY's RMII reference clock pin is setting to the INPUT mode now.\n" );
-			PRINTF( option, "       Maybe you can run the OUTPUT mode command \"mactest  %d %d %d %d %d %d %d\".\n\n\n\n", eng->arg.run_idx, eng->arg.run_speed, (eng->arg.ctrl.w & 0x7f), eng->arg.loop_max, eng->arg.test_mode, eng->arg.GPHYADR, eng->arg.GChk_TimingBund );
+			PRINTF( option, "       Maybe you can run the OUTPUT mode command \"mactest  %d %d %d %d %d %d %d\".\n\n\n\n", eng->arg.mac_idx, eng->arg.run_speed, (eng->arg.ctrl.w & 0x7f), eng->arg.loop_max, eng->arg.test_mode, eng->arg.GPHYADR, eng->arg.GChk_TimingBund );
 		}
 	} // End if ( eng->env.MAC_RMII && ( eng->phy.RMIICK_IOMode != 0 ) && eng->run.IO_MrgChk && eng->flg.AllFail )
 
@@ -940,7 +940,7 @@ void FPri_End (MAC_ENGINE *eng, BYTE option)
 		}
 
 	if ( eng->arg.run_mode == MODE_NCSI ) {
-		PRINTF( option, "\n[Arg] %d %d %d %d %d %d %d {%d}\n", eng->arg.run_idx, eng->arg.GPackageTolNum, eng->arg.GChannelTolNum, eng->arg.test_mode, eng->arg.GChk_TimingBund, eng->arg.ctrl.w, eng->arg.GARPNumCnt, TIME_OUT_NCSI );
+		PRINTF( option, "\n[Arg] %d %d %d %d %d %d %d {%d}\n", eng->arg.mac_idx, eng->arg.GPackageTolNum, eng->arg.GChannelTolNum, eng->arg.test_mode, eng->arg.GChk_TimingBund, eng->arg.ctrl.w, eng->arg.GARPNumCnt, TIME_OUT_NCSI );
 
 		switch ( eng->ncsi_cap.PCI_DID_VID ) {
 			case PCI_DID_VID_Intel_82574L             : { PRINTF( option, "[NC]%08x %08x: Intel 82574L       \n", eng->ncsi_cap.manufacturer_id, eng->ncsi_cap.PCI_DID_VID ); break; }
@@ -990,14 +990,14 @@ void FPri_End (MAC_ENGINE *eng, BYTE option)
 	else {
 #if 0		
 		if (eng->arg.loop_inf) {
-			PRINTF( option, "\n[Arg] %d %d %d # %d %d %d %x (%s){%d x:%d %d %d}[%d %d %d] %d\n"  , eng->arg.run_idx, eng->arg.run_speed, eng->arg.ctrl.w,                     eng->arg.test_mode, eng->arg.GPHYADR, eng->arg.GChk_TimingBund, eng->arg.GUserDVal,  eng->run.TIME_OUT_Des_PHYRatio, TIME_OUT_Des_1G, TIME_OUT_Des_100M, TIME_OUT_Des_10M, eng->run.Loop_rl[0], eng->run.Loop_rl[1], eng->run.Loop_rl[2], eng->dat.Des_Num );
+			PRINTF( option, "\n[Arg] %d %d %d # %d %d %d %x (%s){%d x:%d %d %d}[%d %d %d] %d\n"  , eng->arg.mac_idx, eng->arg.run_speed, eng->arg.ctrl.w,                     eng->arg.test_mode, eng->arg.GPHYADR, eng->arg.GChk_TimingBund, eng->arg.GUserDVal,  eng->run.TIME_OUT_Des_PHYRatio, TIME_OUT_Des_1G, TIME_OUT_Des_100M, TIME_OUT_Des_10M, eng->run.Loop_rl[0], eng->run.Loop_rl[1], eng->run.Loop_rl[2], eng->dat.Des_Num );
 		}
 		else {
-			PRINTF( option, "\n[Arg] %d %d %d %d %d %d %d %x (%s){%d x:%d %d %d}[%d %d %d] %d\n", eng->arg.run_idx, eng->arg.run_speed, eng->arg.ctrl.w, eng->arg.loop_max, eng->arg.test_mode, eng->arg.GPHYADR, eng->arg.GChk_TimingBund, eng->arg.GUserDVal, eng->run.TIME_OUT_Des_PHYRatio, TIME_OUT_Des_1G, TIME_OUT_Des_100M, TIME_OUT_Des_10M, eng->run.Loop_rl[0], eng->run.Loop_rl[1], eng->run.Loop_rl[2], eng->dat.Des_Num );
+			PRINTF( option, "\n[Arg] %d %d %d %d %d %d %d %x (%s){%d x:%d %d %d}[%d %d %d] %d\n", eng->arg.mac_idx, eng->arg.run_speed, eng->arg.ctrl.w, eng->arg.loop_max, eng->arg.test_mode, eng->arg.GPHYADR, eng->arg.GChk_TimingBund, eng->arg.GUserDVal, eng->run.TIME_OUT_Des_PHYRatio, TIME_OUT_Des_1G, TIME_OUT_Des_100M, TIME_OUT_Des_10M, eng->run.Loop_rl[0], eng->run.Loop_rl[1], eng->run.Loop_rl[2], eng->dat.Des_Num );
 		}
 #endif		
 
-		PRINTF( option, "[PHY] Adr:%d ID2:%04x ID3:%04x (%s)\n", eng->phy.Adr, eng->phy.PHY_ID2, eng->phy.PHY_ID3, eng->phy.PHYName );
+		PRINTF( option, "[PHY] Adr:%d ID2:%04x ID3:%04x (%s)\n", eng->phy.Adr, eng->phy.PHY_ID2, eng->phy.PHY_ID3, eng->phy.phy_name );
 	} // End if ( eng->arg.run_mode == MODE_NCSI )
 
 

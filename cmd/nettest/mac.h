@@ -17,12 +17,11 @@
 #include <command.h>
 
 #include "ncsi.h"
-#include "io.h"
+#include <asm/io.h>
 
 // --------------------------------------------------------------
 // Define
 // --------------------------------------------------------------
-//#define Force_Enable_NewMDIO           //[off][SLT:off] (Force enable new MDC/MDIO)
 #define ENABLE_DASA                    //[ON]
 //#define Enable_MAC_SWRst               //[off]
 #define   Enable_No_IOBoundary         //[ON]

@@ -26,121 +26,143 @@ int     GPIO_24h_Value;
 #include <command.h>
 #include <common.h>
 
-#include "io.h"
 #include "phy.h"
 #include "typedef.h"
+
+#include "phy_tbl.h"
 
 //------------------------------------------------------------
 // PHY R/W basic
 //------------------------------------------------------------
-void phy_write (MAC_ENGINE *eng, int adr, uint32_t data) {
-        int        timeout = 0;
+void phy_write (MAC_ENGINE *eng, int index, uint32_t data) 
+{
+	int timeout = 0;
 
-        if ( eng->inf.NewMDIO ) {
+	if (eng->env.is_new_mdio_reg[eng->run.mdio_idx]) {
 #ifdef CONFIG_ASPEED_AST2600
-                Write_Reg_PHY_DD( eng, 0x60, data | MAC_PHYWr_AST2600 | ( eng->phy.Adr << 21 ) | ( ( adr & 0x1f ) << 16 ) );
-				
-				while ( Read_Reg_PHY_DD( eng, 0x60 ) & MAC_PHYBusy_AST2600 ) {
+		writel(data | MAC_PHYWr_New | (eng->phy.Adr << 21) |
+			   (index << 16),
+		       eng->run.mdio_base);
 #else
-                Write_Reg_PHY_DD( eng, 0x60, ( data << 16 ) | MAC_PHYWr_New | ( eng->phy.Adr << 5 ) | ( adr & 0x1f ) );
-
-                while ( Read_Reg_PHY_DD( eng, 0x60 ) & MAC_PHYBusy_New ) {
-#endif				
-                        if ( ++timeout > TIME_OUT_PHY_RW ) {
-                                if ( !eng->run.TM_Burst )
-                                        PRINTF( FP_LOG, "[PHY-Write] Time out: %08x\n", Read_Reg_PHY_DD( eng, 0x60 ) );
-
-                                FindErr( eng, Err_Flag_PHY_TimeOut_RW );
-                                break;
-                        }
-                }
-        }
-        else {
-                Write_Reg_PHY_DD( eng, 0x64, data );
-
-                Write_Reg_PHY_DD( eng, 0x60, MDC_Thres | MAC_PHYWr | ( eng->phy.Adr << 16 ) | ( ( adr & 0x1f ) << 21 ) );
-
-                while ( Read_Reg_PHY_DD( eng, 0x60 ) & MAC_PHYWr ) {
-                        if ( ++timeout > TIME_OUT_PHY_RW ) {
-                                if ( !eng->run.TM_Burst )
-                                        PRINTF( FP_LOG, "[PHY-Write] Time out: %08x\n", Read_Reg_PHY_DD( eng, 0x60 ) );
-
-                                FindErr( eng, Err_Flag_PHY_TimeOut_RW );
-                                break;
-                        }
-                }
-        } // End if ( eng->inf.NewMDIO )
-
-#ifdef PHY_debug
-        if ( 1 ) {
-#else
-        if ( DbgPrn_PHYRW ) {
+		writel(data | MAC_PHYWr_New | (eng->phy.Adr << 5) | index,
+		       eng->run.mdio_base);
 #endif
-                printf("[Wr ]%02d: 0x%04x (%02d:%08x)\n", adr, data, eng->phy.Adr, eng->phy.PHY_BASE );
-                if ( !eng->run.TM_Burst ) PRINTF( FP_LOG, "[Wr ]%02d: 0x%04x (%02d:%08x)\n", adr, data, eng->phy.Adr, eng->phy.PHY_BASE );
-        }
+		/* check time-out */
+		while(readl(eng->run.mdio_base) & MAC_PHYBusy_New) {
+			if (++timeout > TIME_OUT_PHY_RW) {
+				if (!eng->run.TM_Burst)
+					PRINTF(FP_LOG,
+					       "[PHY-Write] Time out: %08x\n",
+					       Read_Reg_PHY_DD(eng, 0x60));
+
+				FindErr(eng, Err_Flag_PHY_TimeOut_RW);
+				break;
+			}
+		}
+	} else {
+		writel(data, eng->run.mdio_base + 0x4);
+		writel(MDC_Thres | MAC_PHYWr | (eng->phy.Adr << 16) |
+				     ((index & 0x1f) << 21), eng->run.mdio_base);
+
+		while (readl(eng->run.mdio_base) & MAC_PHYWr) {
+			if (++timeout > TIME_OUT_PHY_RW) {
+				if (!eng->run.TM_Burst)
+					PRINTF(FP_LOG,
+					       "[PHY-Write] Time out: %08x\n",
+					       readl(eng->run.mdio_base));
+
+				FindErr(eng, Err_Flag_PHY_TimeOut_RW);
+				break;
+			}
+		}
+	} // End if (eng->env.new_mdio_reg)
+#ifdef PHY_debug
+	if (1) {
+#else
+	if (DbgPrn_PHYRW) {
+#endif
+		printf("[Wr ]%02d: 0x%04x (%02d:%08x)\n", index, data,
+		       eng->phy.Adr, eng->run.mdio_base);
+		if (!eng->run.TM_Burst)
+			PRINTF(FP_LOG, "[Wr ]%02d: 0x%04x (%02d:%08x)\n", index,
+			       data, eng->phy.Adr, eng->run.mdio_base);
+	}
 
 } // End void phy_write (int adr, uint32_t data)
 
 //------------------------------------------------------------
-uint32_t phy_read (MAC_ENGINE *eng, int adr) {
-        uint32_t      read_value;
+uint32_t phy_read (MAC_ENGINE *eng, int index) 
+{
+	uint32_t read_value;
+	int timeout = 0;
 
-        int        timeout = 0;
+	if (index > 0x1f) {
+		printf("invalid PHY register index: 0x%02x\n", index);
+		FindErr(eng, Err_Flag_PHY_TimeOut_RW);
+		return 0;
+	}
 
-        if ( eng->inf.NewMDIO ) {
+	if (eng->env.is_new_mdio_reg[eng->run.mdio_idx]) {
 #ifdef CONFIG_ASPEED_AST2600
-				Write_Reg_PHY_DD( eng, 0x60, MAC_PHYRd_AST2600 | (eng->phy.Adr << 21) | (( adr & 0x1f ) << 16) );
-
-				while ( Read_Reg_PHY_DD( eng, 0x60 ) & MAC_PHYBusy_AST2600 ) {
+		writel(MAC_PHYRd_New | (eng->phy.Adr << 21) | (index << 16),
+		       eng->run.mdio_base);
 #else
-                Write_Reg_PHY_DD( eng, 0x60, MAC_PHYRd_New | (eng->phy.Adr << 5) | ( adr & 0x1f ) );
-
-                while ( Read_Reg_PHY_DD( eng, 0x60 ) & MAC_PHYBusy_New ) {
+		writel(MAC_PHYRd_New | (eng->phy.Adr << 5) | index,
+		       eng->run.mdio_base);
 #endif
-                        if ( ++timeout > TIME_OUT_PHY_RW ) {
-                                if ( !eng->run.TM_Burst )
-                                        PRINTF( FP_LOG, "[PHY-Read] Time out: %08x\n", Read_Reg_PHY_DD( eng, 0x60 ) );
 
-                                FindErr( eng, Err_Flag_PHY_TimeOut_RW );
-                                break;
-                        }
-                }
+		while (readl(eng->run.mdio_base) & MAC_PHYBusy_New) {
+			if (++timeout > TIME_OUT_PHY_RW) {
+				if (!eng->run.TM_Burst)
+					PRINTF(FP_LOG,
+					       "[PHY-Read] Time out: %08x\n",
+					       readl(eng->run.mdio_base));
 
-  #ifdef Delay_PHYRd
-                DELAY( Delay_PHYRd );
-  #endif
-                read_value = Read_Reg_PHY_DD( eng, 0x64 ) & 0xffff;
-        }
-        else {
-                Write_Reg_PHY_DD( eng, 0x60, MDC_Thres | MAC_PHYRd | (eng->phy.Adr << 16) | ((adr & 0x1f) << 21) );
+				FindErr(eng, Err_Flag_PHY_TimeOut_RW);
+				break;
+			}
+		}
 
-                while ( Read_Reg_PHY_DD( eng, 0x60 ) & MAC_PHYRd ) {
-                        if ( ++timeout > TIME_OUT_PHY_RW ) {
-                                if ( !eng->run.TM_Burst )
-                                        PRINTF( FP_LOG, "[PHY-Read] Time out: %08x\n", Read_Reg_PHY_DD( eng, 0x60 ) );
+#ifdef Delay_PHYRd
+		DELAY(Delay_PHYRd);
+#endif
+		read_value = readl(eng->run.mdio_base + 0x4) & GENMASK(15, 0);
+	} else {
+		writel(MDC_Thres | MAC_PHYRd | (eng->phy.Adr << 16) |
+			   (index << 21),
+		       eng->run.mdio_base);
 
-                                FindErr( eng, Err_Flag_PHY_TimeOut_RW );
-                                break;
-                        }
-                }
+		while (readl(eng->run.mdio_base) & MAC_PHYRd) {
+			if (++timeout > TIME_OUT_PHY_RW) {
+				if (!eng->run.TM_Burst)
+					PRINTF(FP_LOG,
+					       "[PHY-Read] Time out: %08x\n",
+					       Read_Reg_PHY_DD(eng, 0x60));
 
-  #ifdef Delay_PHYRd
-                DELAY( Delay_PHYRd );
-  #endif
-                read_value = Read_Reg_PHY_DD( eng, 0x64 ) >> 16;
-        }
+				FindErr(eng, Err_Flag_PHY_TimeOut_RW);
+				break;
+			}
+		}
+
+#ifdef Delay_PHYRd
+		DELAY(Delay_PHYRd);
+#endif
+		read_value = readl(eng->run.mdio_base + 0x4) >> 16;
+	}
 
 #ifdef PHY_debug
-        if ( 1 ) {
+	if (1) {
 #else
-        if ( DbgPrn_PHYRW ) {
+	if (DbgPrn_PHYRW) {
 #endif
-                printf("[Rd ]%02d: 0x%04x (%02d:%08x)\n", adr, read_value, eng->phy.Adr, eng->phy.PHY_BASE );
-                if ( !eng->run.TM_Burst ) PRINTF( FP_LOG, "[Rd ]%02d: 0x%04x (%02d:%08x)\n", adr, read_value, eng->phy.Adr, eng->phy.PHY_BASE );
-        }
+		printf("[Rd ]%02d: 0x%04x (%02d:%08x)\n", index, read_value,
+		       eng->phy.Adr, eng->run.mdio_base);
+		if (!eng->run.TM_Burst)
+			PRINTF(FP_LOG, "[Rd ]%02d: 0x%04x (%02d:%08x)\n", index,
+			       read_value, eng->phy.Adr, eng->run.mdio_base);
+	}
 
-        return( read_value );
+	return (read_value);
 } // End uint32_t phy_read (MAC_ENGINE *eng, int adr)
 
 //------------------------------------------------------------
@@ -150,8 +172,8 @@ void phy_Read_Write (MAC_ENGINE *eng, int adr, uint32_t clr_mask, uint32_t set_m
 #else
         if ( DbgPrn_PHYRW ) {
 #endif
-                printf("[RW ]%02d: clr:0x%04x: set:0x%04x (%02d:%08x)\n", adr, clr_mask, set_mask, eng->phy.Adr, eng->phy.PHY_BASE);
-                if ( !eng->run.TM_Burst ) PRINTF( FP_LOG, "[RW ]%02d: clr:0x%04x: set:0x%04x (%02d:%08x)\n", adr, clr_mask, set_mask, eng->phy.Adr, eng->phy.PHY_BASE);
+                printf("[RW ]%02d: clr:0x%04x: set:0x%04x (%02d:%08x)\n", adr, clr_mask, set_mask, eng->phy.Adr, eng->run.mdio_base);
+                if ( !eng->run.TM_Burst ) PRINTF( FP_LOG, "[RW ]%02d: clr:0x%04x: set:0x%04x (%02d:%08x)\n", adr, clr_mask, set_mask, eng->phy.Adr, eng->run.mdio_base);
         }
         phy_write( eng, adr, ((phy_read( eng, adr ) & (~clr_mask)) | set_mask) );
 }
@@ -189,7 +211,8 @@ void phy_dump (MAC_ENGINE *eng) {
 }
 
 //------------------------------------------------------------
-void phy_id (MAC_ENGINE *eng, BYTE option) {
+void phy_id (MAC_ENGINE *eng, BYTE option)
+{
 
         uint32_t      reg_adr;
         CHAR       PHY_ADR_org;
@@ -236,8 +259,8 @@ void phy_basic_setting (MAC_ENGINE *eng) {
 #else
         if ( DbgPrn_PHYRW ) {
 #endif
-                printf("[Set]00: 0x%04x (%02d:%08x)\n", phy_read( eng, PHY_REG_BMCR ), eng->phy.Adr, eng->phy.PHY_BASE );
-                if ( !eng->run.TM_Burst ) PRINTF( FP_LOG, "[Set]00: 0x%04x (%02d:%08x)\n", phy_read( eng, PHY_REG_BMCR ), eng->phy.Adr, eng->phy.PHY_BASE );
+                printf("[Set]00: 0x%04x (%02d:%08x)\n", phy_read( eng, PHY_REG_BMCR ), eng->phy.Adr, eng->run.mdio_base );
+                if ( !eng->run.TM_Burst ) PRINTF( FP_LOG, "[Set]00: 0x%04x (%02d:%08x)\n", phy_read( eng, PHY_REG_BMCR ), eng->phy.Adr, eng->run.mdio_base );
         }
 }
 
@@ -260,8 +283,8 @@ void phy_Wait_Reset_Done (MAC_ENGINE *eng) {
 #else
         if ( DbgPrn_PHYRW ) {
 #endif
-                printf("[Clr]00: 0x%04x (%02d:%08x)\n", phy_read( eng, PHY_REG_BMCR ), eng->phy.Adr, eng->phy.PHY_BASE );
-                if ( !eng->run.TM_Burst ) PRINTF( FP_LOG, "[Clr]00: 0x%04x (%02d:%08x)\n", phy_read( eng, PHY_REG_BMCR ), eng->phy.Adr, eng->phy.PHY_BASE );
+                printf("[Clr]00: 0x%04x (%02d:%08x)\n", phy_read( eng, PHY_REG_BMCR ), eng->phy.Adr, eng->run.mdio_base );
+                if ( !eng->run.TM_Burst ) PRINTF( FP_LOG, "[Clr]00: 0x%04x (%02d:%08x)\n", phy_read( eng, PHY_REG_BMCR ), eng->phy.Adr, eng->run.mdio_base );
         }
 #ifdef Delay_PHYRst
         DELAY( Delay_PHYRst );
@@ -338,7 +361,7 @@ void phy_marvell (MAC_ENGINE *eng) {//88E1111
 //      int        Retry;
 
         if ( DbgPrn_PHYName )
-                printf("--->(%04x %04x)[Marvell] %s\n", eng->phy.PHY_ID2, eng->phy.PHY_ID3, eng->phy.PHYName);
+                printf("--->(%04x %04x)[Marvell] %s\n", eng->phy.PHY_ID2, eng->phy.PHY_ID3, eng->phy.phy_name);
 
         if ( eng->run.TM_Burst ) {
                 phy_Reset( eng );
@@ -394,7 +417,7 @@ void phy_marvell0 (MAC_ENGINE *eng) {//88E1310
 //      int        Retry;
 
         if ( DbgPrn_PHYName )
-                printf("--->(%04x %04x)[Marvell] %s\n", eng->phy.PHY_ID2, eng->phy.PHY_ID3, eng->phy.PHYName);
+                printf("--->(%04x %04x)[Marvell] %s\n", eng->phy.PHY_ID2, eng->phy.PHY_ID3, eng->phy.phy_name);
 
         phy_write( eng, 22, 0x0002 );
 
@@ -471,7 +494,7 @@ void phy_marvell1 (MAC_ENGINE *eng) {//88E6176
         CHAR       PHY_ADR_org;
 
         if ( DbgPrn_PHYName )
-                printf("--->(%04x %04x)[Marvell] %s\n", eng->phy.PHY_ID2, eng->phy.PHY_ID3, eng->phy.PHYName);
+                printf("--->(%04x %04x)[Marvell] %s\n", eng->phy.PHY_ID2, eng->phy.PHY_ID3, eng->phy.phy_name);
 
         if ( eng->run.TM_Burst ) {
                 printf("This mode doesn't support in 88E6176.\n");
@@ -524,7 +547,7 @@ void phy_marvell2 (MAC_ENGINE *eng) {//88E1512//88E15 10/12/14/18
 //      uint32_t      temp_reg;
 
         if ( DbgPrn_PHYName )
-                printf("--->(%04x %04x)[Marvell] %s\n", eng->phy.PHY_ID2, eng->phy.PHY_ID3, eng->phy.PHYName);
+                printf("--->(%04x %04x)[Marvell] %s\n", eng->phy.PHY_ID2, eng->phy.PHY_ID3, eng->phy.phy_name);
 
 //      eng->run.TIME_OUT_Des_PHYRatio = 10;
 
@@ -617,8 +640,8 @@ void phy_marvell3 (MAC_ENGINE *eng) {//88E3019
 #else
         if ( DbgPrn_PHYName ) {
 #endif
-                printf("--->(%04x %04x)[Marvell] %s\n", eng->phy.PHY_ID2, eng->phy.PHY_ID3, eng->phy.PHYName);
-                if ( !eng->run.TM_Burst ) PRINTF( FP_LOG, "--->(%04x %04x)[Marvell] %s\n", eng->phy.PHY_ID2, eng->phy.PHY_ID3, eng->phy.PHYName);
+                printf("--->(%04x %04x)[Marvell] %s\n", eng->phy.PHY_ID2, eng->phy.PHY_ID3, eng->phy.phy_name);
+                if ( !eng->run.TM_Burst ) PRINTF( FP_LOG, "--->(%04x %04x)[Marvell] %s\n", eng->phy.PHY_ID2, eng->phy.PHY_ID3, eng->phy.phy_name);
         }
 
         //Reg1ch[11:10]: MAC Interface Mode
@@ -659,7 +682,7 @@ void phy_broadcom (MAC_ENGINE *eng) {//BCM5221
     uint32_t      reg;
 
         if ( DbgPrn_PHYName )
-                printf("--->(%04x %04x)[Broadcom] %s\n", eng->phy.PHY_ID2, eng->phy.PHY_ID3, eng->phy.PHYName);
+                printf("--->(%04x %04x)[Broadcom] %s\n", eng->phy.PHY_ID2, eng->phy.PHY_ID3, eng->phy.phy_name);
 
         phy_Reset( eng );
 
@@ -713,7 +736,7 @@ void phy_broadcom0 (MAC_ENGINE *eng) {//BCM54612
         uint32_t      PHY_new;
 
         if ( DbgPrn_PHYName )
-                printf("--->(%04x %04x)[Broadcom] %s\n", eng->phy.PHY_ID2, eng->phy.PHY_ID3, eng->phy.PHYName);
+                printf("--->(%04x %04x)[Broadcom] %s\n", eng->phy.PHY_ID2, eng->phy.PHY_ID3, eng->phy.phy_name);
 
         eng->phy.PHY_00h = phy_read( eng, PHY_REG_BMCR );
         eng->phy.PHY_09h = phy_read( eng, PHY_GBCR );
@@ -810,7 +833,7 @@ void phy_broadcom0 (MAC_ENGINE *eng) {//BCM54612
 //------------------------------------------------------------
 void phy_realtek (MAC_ENGINE *eng) {//RTL8201N
         if ( DbgPrn_PHYName )
-                printf("--->(%04x %04x)[Realtek] %s\n", eng->phy.PHY_ID2, eng->phy.PHY_ID3, eng->phy.PHYName);
+                printf("--->(%04x %04x)[Realtek] %s\n", eng->phy.PHY_ID2, eng->phy.PHY_ID3, eng->phy.phy_name);
 
         phy_Reset( eng );
 }
@@ -820,7 +843,7 @@ void phy_realtek (MAC_ENGINE *eng) {//RTL8201N
 //internal loop 10M : no  loopback stub
 void phy_realtek0 (MAC_ENGINE *eng) {//RTL8201E
         if ( DbgPrn_PHYName )
-                printf("--->(%04x %04x)[Realtek] %s\n", eng->phy.PHY_ID2, eng->phy.PHY_ID3, eng->phy.PHYName);
+                printf("--->(%04x %04x)[Realtek] %s\n", eng->phy.PHY_ID2, eng->phy.PHY_ID3, eng->phy.phy_name);
 
         eng->phy.RMIICK_IOMode = eng->phy.RMIICK_IOMode | PHY_Flag_RMIICK_IOMode_RTL8201E;
 
@@ -943,7 +966,7 @@ void recov_phy_realtek1 (MAC_ENGINE *eng) {//RTL8211D
 //internal loop 10M : no  loopback stub
 void phy_realtek1 (MAC_ENGINE *eng) {//RTL8211D
         if ( DbgPrn_PHYName )
-                printf("--->(%04x %04x)[Realtek] %s\n", eng->phy.PHY_ID2, eng->phy.PHY_ID3, eng->phy.PHYName);
+                printf("--->(%04x %04x)[Realtek] %s\n", eng->phy.PHY_ID2, eng->phy.PHY_ID3, eng->phy.phy_name);
 
         if ( eng->run.TM_Burst ) {
                 if ( eng->run.TM_IEEE ) {
@@ -1187,7 +1210,7 @@ GPIO_24h_Value = Read_Reg_GPIO_DD( 0x24 ) | 0x00400000;
 Write_Reg_GPIO_DD( 0x24, GPIO_24h_Value );
 #endif
         if ( DbgPrn_PHYName )
-                printf("--->(%04x %04x)[Realtek] %s\n", eng->phy.PHY_ID2, eng->phy.PHY_ID3, eng->phy.PHYName);
+                printf("--->(%04x %04x)[Realtek] %s\n", eng->phy.PHY_ID2, eng->phy.PHY_ID3, eng->phy.phy_name);
 
 #ifdef Realtek_debug
 #else
@@ -1442,7 +1465,7 @@ void recov_phy_realtek3 (MAC_ENGINE *eng) {//RTL8211C
 //------------------------------------------------------------
 void phy_realtek3 (MAC_ENGINE *eng) {//RTL8211C
         if ( DbgPrn_PHYName )
-                printf("--->(%04x %04x)[Realtek] %s\n", eng->phy.PHY_ID2, eng->phy.PHY_ID3, eng->phy.PHYName);
+                printf("--->(%04x %04x)[Realtek] %s\n", eng->phy.PHY_ID2, eng->phy.PHY_ID3, eng->phy.phy_name);
 
         if ( eng->run.TM_Burst ) {
                 if ( eng->run.TM_IEEE ) {
@@ -1544,7 +1567,7 @@ void phy_realtek3 (MAC_ENGINE *eng) {//RTL8211C
 //internal loop 10M : no  loopback stub
 void phy_realtek4 (MAC_ENGINE *eng) {//RTL8201F
         if ( DbgPrn_PHYName )
-                printf("--->(%04x %04x)[Realtek] %s\n", eng->phy.PHY_ID2, eng->phy.PHY_ID3, eng->phy.PHYName);
+                printf("--->(%04x %04x)[Realtek] %s\n", eng->phy.PHY_ID2, eng->phy.PHY_ID3, eng->phy.phy_name);
 
         eng->phy.RMIICK_IOMode = eng->phy.RMIICK_IOMode | PHY_Flag_RMIICK_IOMode_RTL8201F;
 
@@ -1729,7 +1752,7 @@ void phy_realtek5 (MAC_ENGINE *eng) {//RTL8211F
 printf ("\nSet RTL8211F [Start] =====>\n");
 #endif
         if ( DbgPrn_PHYName )
-                printf("--->(%04x %04x)[Realtek] %s\n", eng->phy.PHY_ID2, eng->phy.PHY_ID3, eng->phy.PHYName);
+                printf("--->(%04x %04x)[Realtek] %s\n", eng->phy.PHY_ID2, eng->phy.PHY_ID3, eng->phy.phy_name);
 
         if ( eng->run.TM_Burst ) {
                 if ( eng->run.TM_IEEE ) {
@@ -1889,7 +1912,7 @@ printf ("\nSet RTL8211F [End] =====>\n");
 //It is a LAN Switch, only support 1G internal loopback test.
 void phy_realtek6 (MAC_ENGINE *eng) {//RTL8363S
         if ( DbgPrn_PHYName )
-                printf("--->(%04x %04x)[Realtek] %s\n", eng->phy.PHY_ID2, eng->phy.PHY_ID3, eng->phy.PHYName);
+                printf("--->(%04x %04x)[Realtek] %s\n", eng->phy.PHY_ID2, eng->phy.PHY_ID3, eng->phy.phy_name);
 
         if ( eng->run.TM_Burst ) {
                 printf("This mode doesn't support in RTL8363S.\n");
@@ -1914,7 +1937,7 @@ void phy_realtek6 (MAC_ENGINE *eng) {//RTL8363S
 //------------------------------------------------------------
 void phy_smsc (MAC_ENGINE *eng) {//LAN8700
         if ( DbgPrn_PHYName )
-                printf("--->(%04x %04x)[SMSC] %s\n", eng->phy.PHY_ID2, eng->phy.PHY_ID3, eng->phy.PHYName);
+                printf("--->(%04x %04x)[SMSC] %s\n", eng->phy.PHY_ID2, eng->phy.PHY_ID3, eng->phy.phy_name);
 
         phy_Reset( eng );
 }
@@ -1922,7 +1945,7 @@ void phy_smsc (MAC_ENGINE *eng) {//LAN8700
 //------------------------------------------------------------
 void phy_micrel (MAC_ENGINE *eng) {//KSZ8041
         if ( DbgPrn_PHYName )
-                printf("--->(%04x %04x)[Micrel] %s\n", eng->phy.PHY_ID2, eng->phy.PHY_ID3, eng->phy.PHYName);
+                printf("--->(%04x %04x)[Micrel] %s\n", eng->phy.PHY_ID2, eng->phy.PHY_ID3, eng->phy.phy_name);
 
         phy_Reset( eng );
 
@@ -1932,14 +1955,14 @@ void phy_micrel (MAC_ENGINE *eng) {//KSZ8041
 //------------------------------------------------------------
 void phy_micrel0 (MAC_ENGINE *eng) {//KSZ8031/KSZ8051
         if ( DbgPrn_PHYName )
-                printf("--->(%04x %04x)[Micrel] %s\n", eng->phy.PHY_ID2, eng->phy.PHY_ID3, eng->phy.PHYName);
+                printf("--->(%04x %04x)[Micrel] %s\n", eng->phy.PHY_ID2, eng->phy.PHY_ID3, eng->phy.phy_name);
 
         //For KSZ8051RNL only
         //Reg1Fh[7] = 0(default): 25MHz Mode, XI, XO(pin 9, 8) is 25MHz(crystal/oscilator).
         //Reg1Fh[7] = 1         : 50MHz Mode, XI(pin 9) is 50MHz(oscilator).
         eng->phy.PHY_1fh = phy_read( eng, 31 );
-        if ( eng->phy.PHY_1fh & 0x0080 ) sprintf(eng->phy.PHYName, "%s-50MHz Mode", eng->phy.PHYName);
-        else                             sprintf(eng->phy.PHYName, "%s-25MHz Mode", eng->phy.PHYName);
+        if ( eng->phy.PHY_1fh & 0x0080 ) sprintf(eng->phy.phy_name, "%s-50MHz Mode", eng->phy.phy_name);
+        else                             sprintf(eng->phy.phy_name, "%s-25MHz Mode", eng->phy.phy_name);
 
         if ( eng->run.TM_IEEE ) {
                 phy_Read_Write( eng,  0, 0x0000, 0x8000 | eng->phy.PHY_00h );//clr set//Rst PHY
@@ -1974,7 +1997,7 @@ void phy_micrel1 (MAC_ENGINE *eng) {//KSZ9031
 //      int        temp;
 
         if ( DbgPrn_PHYName )
-                printf("--->(%04x %04x)[Micrel] %s\n", eng->phy.PHY_ID2, eng->phy.PHY_ID3, eng->phy.PHYName);
+                printf("--->(%04x %04x)[Micrel] %s\n", eng->phy.PHY_ID2, eng->phy.PHY_ID3, eng->phy.phy_name);
 
 /*
         phy_write( eng, 13, 0x0002 );
@@ -2037,7 +2060,7 @@ printf("Reg2.8 = %04x -> %04x\n", temp, phy_read( eng, 14 ));
 //internal loop 10M : no  loopback stub
 void phy_micrel2 (MAC_ENGINE *eng) {//KSZ8081
         if ( DbgPrn_PHYName )
-                printf("--->(%04x %04x)[Micrel] %s\n", eng->phy.PHY_ID2, eng->phy.PHY_ID3, eng->phy.PHYName);
+                printf("--->(%04x %04x)[Micrel] %s\n", eng->phy.PHY_ID2, eng->phy.PHY_ID3, eng->phy.phy_name);
 
         if ( eng->run.TM_Burst ) {
                 if ( eng->run.TM_IEEE ) {
@@ -2079,7 +2102,7 @@ void recov_phy_vitesse (MAC_ENGINE *eng) {//VSC8601
 //------------------------------------------------------------
 void phy_vitesse (MAC_ENGINE *eng) {//VSC8601
         if ( DbgPrn_PHYName )
-                printf("--->(%04x %04x)[VITESSE] %s\n", eng->phy.PHY_ID2, eng->phy.PHY_ID3, eng->phy.PHYName);
+                printf("--->(%04x %04x)[VITESSE] %s\n", eng->phy.PHY_ID2, eng->phy.PHY_ID3, eng->phy.phy_name);
 
         if ( eng->run.TM_Burst ) {
                 if ( eng->run.TM_IEEE ) {
@@ -2131,8 +2154,8 @@ void phy_atheros (MAC_ENGINE *eng) {//AR8035
 #else
         if ( DbgPrn_PHYName ) {
 #endif
-                printf("--->(%04x %04x)[ATHEROS] %s\n", eng->phy.PHY_ID2, eng->phy.PHY_ID3, eng->phy.PHYName);
-                if ( !eng->run.TM_Burst ) PRINTF( FP_LOG, "--->(%04x %04x)[ATHEROS] %s\n", eng->phy.PHY_ID2, eng->phy.PHY_ID3, eng->phy.PHYName);
+                printf("--->(%04x %04x)[ATHEROS] %s\n", eng->phy.PHY_ID2, eng->phy.PHY_ID3, eng->phy.phy_name);
+                if ( !eng->run.TM_Burst ) PRINTF( FP_LOG, "--->(%04x %04x)[ATHEROS] %s\n", eng->phy.PHY_ID2, eng->phy.PHY_ID3, eng->phy.phy_name);
         }
 
         //Reg0b[15]: Power saving
@@ -2219,7 +2242,7 @@ void phy_default (MAC_ENGINE *eng)
 	nt_log_func_name();
 
         if ( DbgPrn_PHYName )
-                printf("--->(%04x %04x)%s\n", eng->phy.PHY_ID2, eng->phy.PHY_ID3, eng->phy.PHYName);
+                printf("--->(%04x %04x)%s\n", eng->phy.PHY_ID2, eng->phy.PHY_ID3, eng->phy.phy_name);
 
         phy_Reset( eng );
 }
@@ -2233,48 +2256,39 @@ BOOLEAN find_phyadr (MAC_ENGINE *eng)
         BOOLEAN    ret = FALSE;
         CHAR       PHY_ADR_org;
 
-	nt_log_func_name();
-        
-#ifdef Force_Enable_NewMDIO
-        Write_Reg_PHY_DD( eng, 0x40, Read_Reg_PHY_DD( eng, 0x40 ) | 0x80000000 );
-#endif
-        eng->inf.NewMDIO = ( Read_Reg_PHY_DD( eng, 0x40 ) & 0x80000000 ) ? 1 : 0;
+	nt_log_func_name();        
+	eng->env.is_new_mdio_reg[eng->run.mdio_idx] = ( Read_Reg_PHY_DD( eng, 0x40 ) & 0x80000000 ) ? 1 : 0;
         
 #ifdef CONFIG_ASPEED_AST2600
-		eng->inf.NewMDIO = 1;
+	eng->env.is_new_mdio_reg[eng->run.mdio_idx] = 1;
 #endif
         PHY_ADR_org = eng->phy.Adr;
-        // Check current PHY address by user setting
-        PHY_val = phy_read( eng, PHY_REG_ID_1 );
-        if ( PHY_IS_VALID( PHY_val ) ) {
-                ret = TRUE;
-        }
-        else if ( eng->arg.ctrl.b.phy_skip_check ) {
-                PHY_val = phy_read( eng, PHY_REG_BMCR );
+        PHY_val = phy_read(eng, PHY_REG_ID_1);
+	if (PHY_IS_VALID(PHY_val)) {
+		ret = TRUE;
+	} else if (eng->arg.ctrl.b.phy_skip_check) {
+		PHY_val = phy_read(eng, PHY_REG_BMCR);
 
-                if ( ( PHY_val & 0x8000 ) & eng->arg.ctrl.b.phy_init ) {
-                }
-                else {
-                        ret = TRUE;
-                }
-        }
+		if ((PHY_val & 0x8000) & eng->arg.ctrl.b.phy_init) {
+		} else {
+			ret = TRUE;
+		}
+	}
 
-#ifdef Enable_SearchPHYID
-        if ( ret == FALSE ) {
-                // Scan PHY address from 0 to 31
-                if ( eng->arg.ctrl.b.phy_init )
-                        printf("Search PHY address\n");
-                for ( eng->phy.Adr = 0; eng->phy.Adr < 32; eng->phy.Adr++ ) {
-                        PHY_val = phy_read( eng, PHY_REG_ID_1 );
-                        if ( PHY_IS_VALID( PHY_val ) ) {
-                                ret = TRUE;
-                                break;
-                        }
-                }
-                // Don't find PHY address
-        }
-        if ( ret == FALSE )
-                eng->phy.Adr = eng->arg.GPHYADR;
+#ifdef ENABLE_SCAN_PHY_ID
+	if (ret == FALSE) {
+		if (eng->arg.ctrl.b.phy_init)
+			printf("Scan PHY address\n");
+		for (eng->phy.Adr = 0; eng->phy.Adr < 32; eng->phy.Adr++) {
+			PHY_val = phy_read(eng, PHY_REG_ID_1);
+			if (PHY_IS_VALID(PHY_val)) {
+				ret = TRUE;
+				break;
+			}
+		}
+	}
+	if (ret == FALSE)
+		eng->phy.Adr = eng->arg.GPHYADR;
 #endif
 
         if ( eng->arg.ctrl.b.phy_init ) {
@@ -2284,8 +2298,7 @@ BOOLEAN find_phyadr (MAC_ENGINE *eng)
                                 if ( !eng->run.TM_Burst )
                                         phy_id( eng, FP_LOG );
                         }
-                }
-                else {
+                } else {
                         phy_id( eng, STD_OUT );
                         if ( !eng->run.TM_Burst )
                                 phy_id( eng, FP_LOG );
@@ -2294,17 +2307,19 @@ BOOLEAN find_phyadr (MAC_ENGINE *eng)
                 }
         }
 
-        eng->phy.PHY_ID2 = phy_read( eng, PHY_REG_ID_1 );
-        eng->phy.PHY_ID3 = phy_read( eng, PHY_REG_ID_2 );
+	eng->phy.PHY_ID2 = phy_read(eng, PHY_REG_ID_1);
+	eng->phy.PHY_ID3 = phy_read(eng, PHY_REG_ID_2);
 
-        if      ( (eng->phy.PHY_ID2 == 0xffff) && ( eng->phy.PHY_ID3 == 0xffff ) && !eng->arg.ctrl.b.phy_skip_check ) {
-                sprintf( eng->phy.PHYName, "--" );
-                if ( eng->arg.ctrl.b.phy_init )
-                        FindErr( eng, Err_Flag_PHY_Type );
-        }
-#ifdef Enable_CheckZeroPHYID
-        else if ( (eng->phy.PHY_ID2 == 0x0000) && ( eng->phy.PHY_ID3 == 0x0000 ) && !eng->arg.ctrl.b.phy_skip_check ) {
-                sprintf( eng->phy.PHYName, "--" );
+	if ((eng->phy.PHY_ID2 == 0xffff) && (eng->phy.PHY_ID3 == 0xffff) &&
+	    !eng->arg.ctrl.b.phy_skip_check) {
+		sprintf(eng->phy.phy_name, "--");
+		if (eng->arg.ctrl.b.phy_init)
+			FindErr(eng, Err_Flag_PHY_Type);
+	}
+#ifdef ENABLE_CHK_ZERO_PHY_ID
+	else if ((eng->phy.PHY_ID2 == 0x0000) && (eng->phy.PHY_ID3 == 0x0000) &&
+		 !eng->arg.ctrl.b.phy_skip_check) {
+                sprintf( eng->phy.phy_name, "--" );
                 if ( eng->arg.ctrl.b.phy_init )
                         FindErr( eng, Err_Flag_PHY_Type );
         }
@@ -2312,14 +2327,6 @@ BOOLEAN find_phyadr (MAC_ENGINE *eng)
 
         return ret;
 } // End BOOLEAN find_phyadr (MAC_ENGINE *eng)
-
-//------------------------------------------------------------
-char phy_chk (MAC_ENGINE *eng, uint32_t id2, uint32_t id3, uint32_t id3_mask) {
-        if ( ( eng->phy.PHY_ID2 == id2 ) && ( ( eng->phy.PHY_ID3 & id3_mask ) == ( id3 & id3_mask ) ) )
-                return(1);
-        else
-                return(0);
-}
 
 //------------------------------------------------------------
 void phy_set00h (MAC_ENGINE *eng) 
@@ -2354,50 +2361,37 @@ void phy_set00h (MAC_ENGINE *eng)
         }
 }
 
-//------------------------------------------------------------
+static uint32_t phy_chk(MAC_ENGINE *p_eng, const struct phy_desc *p_phy) 
+{
+	if ((p_eng->phy.PHY_ID2 == p_phy->id2) &&
+	    ((p_eng->phy.PHY_ID3 & p_phy->id3_mask) ==
+	     (p_phy->id3 & p_phy->id3_mask)))
+		return (1);
+	else
+		return (0);
+}
+
 void phy_sel (MAC_ENGINE *eng, PHY_ENGINE *phyeng) 
 {
+	int i;
+	const struct phy_desc *p_phy;
 	nt_log_func_name();
 
-        if ( eng->phy.default_phy ) {
-                sprintf( eng->phy.PHYName, "default"); phyeng->fp_set = phy_default;
+	/* set default before lookup */
+	sprintf((char *)eng->phy.phy_name, "default"); 
+	phyeng->fp_set = phy_default;
+
+        if (eng->phy.default_phy) {
         } else {
-                if      ( phy_chk( eng, 0x001c, 0xc916, 0xffff      ) ) { sprintf( eng->phy.PHYName, "RTL8211F"          ); phyeng->fp_set = phy_realtek5 ; phyeng->fp_clr = recov_phy_realtek5 ;}//RTL8211F         1G/100/10M  RGMII
-                else if ( phy_chk( eng, 0x001c, 0xc915, 0xffff      ) ) { sprintf( eng->phy.PHYName, "RTL8211E"          ); phyeng->fp_set = phy_realtek2 ; phyeng->fp_clr = recov_phy_realtek2 ;}//RTL8211E         1G/100/10M  GMII(RTL8211EG only), RGMII
-                else if ( phy_chk( eng, 0x001c, 0xc914, 0xffff      ) ) { sprintf( eng->phy.PHYName, "RTL8211D"          ); phyeng->fp_set = phy_realtek1 ; phyeng->fp_clr = recov_phy_realtek1 ;}//RTL8211D         1G/100/10M  GMII(RTL8211DN/RTL8211DG only), MII(RTL8211DN/RTL8211DG only), RGMII
-                else if ( phy_chk( eng, 0x001c, 0xc912, 0xffff      ) ) { sprintf( eng->phy.PHYName, "RTL8211C"          ); phyeng->fp_set = phy_realtek3 ; phyeng->fp_clr = recov_phy_realtek3 ;}//RTL8211C         1G/100/10M  RGMII
-                else if ( phy_chk( eng, 0x001c, 0xc930, 0xffff      ) ) { sprintf( eng->phy.PHYName, "RTL8363S"          ); phyeng->fp_set = phy_realtek6 ;                                      }//RTL8363S         1G/100/10M  RGMII Switch
-                else if ( phy_chk( eng, 0x001c, 0xc816, 0xffff      ) ) { sprintf( eng->phy.PHYName, "RTL8201F"          ); phyeng->fp_set = phy_realtek4 ;                                      }//RTL8201F            100/10M  MII, RMII(RMIICK I/O mode)
-                else if ( phy_chk( eng, 0x001c, 0xc815, 0xfff0      ) ) { sprintf( eng->phy.PHYName, "RTL8201E"          ); phyeng->fp_set = phy_realtek0 ;                                      }//RTL8201E            100/10M  MII, RMII(RMIICK I/O mode)(RTL8201E(L)-VC only)
-                else if ( phy_chk( eng, 0x0000, 0x8201, PHYID3_Mask ) ) { sprintf( eng->phy.PHYName, "RTL8201N"          ); phyeng->fp_set = phy_realtek  ;                                      }//RTL8201N            100/10M  MII, RMII(RMIICK input mode)
-                else if ( phy_chk( eng, 0x0143, 0xbcb2, 0xfff0      ) ) { sprintf( eng->phy.PHYName, "BCM5482"           ); phyeng->fp_set = phy_broadcom0; phyeng->fp_clr = recov_phy_broadcom0;}//BCM5482          1G/100/10M  RGMII
-                else if ( phy_chk( eng, 0x0143, 0xbca0, 0xfff0      ) ) { sprintf( eng->phy.PHYName, "BCM5481"           ); phyeng->fp_set = phy_broadcom0; phyeng->fp_clr = recov_phy_broadcom0;}//BCM5481          1G/100/10M  RGMII
-                else if ( phy_chk( eng, 0x0362, 0x5e6a, 0xfff0      ) ) { sprintf( eng->phy.PHYName, "BCM54612"          ); phyeng->fp_set = phy_broadcom0; phyeng->fp_clr = recov_phy_broadcom0;}//BCM54612         1G/100/10M  RGMII
-                else if ( phy_chk( eng, 0x0362, 0x5d10, 0xfff0      ) ) { sprintf( eng->phy.PHYName, "BCM54616S"         ); phyeng->fp_set = phy_broadcom0; phyeng->fp_clr = recov_phy_broadcom0;}//BCM54616S        1G/100/10M  RGMII
-                else if ( phy_chk( eng, 0x0020, 0x60b0, 0xfff0      ) ) { sprintf( eng->phy.PHYName, "BCM5464SR"         ); phyeng->fp_set = phy_broadcom0; phyeng->fp_clr = recov_phy_broadcom0;}//BCM5464SR        1G/100/10M  RGMII
-                else if ( phy_chk( eng, 0x0020, 0x60c1, 0xfff0      ) ) { sprintf( eng->phy.PHYName, "BCM5461S"          ); phyeng->fp_set = phy_broadcom0; phyeng->fp_clr = recov_phy_broadcom0;}//BCM5461S
-                else if ( phy_chk( eng, 0x600d, 0x84a2, 0xfff0      ) ) { sprintf( eng->phy.PHYName, "BCM54210E"         ); phyeng->fp_set = phy_broadcom0; phyeng->fp_clr = recov_phy_broadcom0;}//BCM54210E
-                else if ( phy_chk( eng, 0x0143, 0xbd63, 0xfff0      ) ) { sprintf( eng->phy.PHYName, "BCM54610C"         ); phyeng->fp_set = phy_broadcom0; phyeng->fp_clr = recov_phy_broadcom0;}//BCM54610C
-                else if ( phy_chk( eng, 0x0040, 0x61e0, PHYID3_Mask ) ) { sprintf( eng->phy.PHYName, "BCM5221"           ); phyeng->fp_set = phy_broadcom ;                                      }//BCM5221             100/10M  MII, RMII(RMIICK input mode)
-                else if ( phy_chk( eng, 0x0141, 0x0e22, 0xfff0      ) ) { sprintf( eng->phy.PHYName, "88E3019"           ); phyeng->fp_set = phy_marvell3 ;                                      }//88E3019             100/10M  RGMII, MII, RMII(RMIICK input mode)
-                else if ( phy_chk( eng, 0x0141, 0x0dd0, 0xfff0      ) ) { sprintf( eng->phy.PHYName, "88E15 10/12/14/18" ); phyeng->fp_set = phy_marvell2 ; phyeng->fp_clr = recov_phy_marvell2 ;}//88E1512          1G/100/10M  RGMII
-                else if ( phy_chk( eng, 0xff00, 0x1761, 0xffff      ) ) { sprintf( eng->phy.PHYName, "88E6176(IntLoop)"  ); phyeng->fp_set = phy_marvell1 ; phyeng->fp_clr = recov_phy_marvell1 ;}//88E6176          1G/100/10M  2 RGMII Switch
-                else if ( phy_chk( eng, 0xff00, 0x1152, 0xffff      ) ) { sprintf( eng->phy.PHYName, "88E6320(IntLoop)"  ); phyeng->fp_set = phy_marvell1 ; phyeng->fp_clr = recov_phy_marvell1 ;}//88E6320          1G/100/10M  2 RGMII Switch
-                else if ( phy_chk( eng, 0x0141, 0x0e90, 0xfff0      ) ) { sprintf( eng->phy.PHYName, "88E1310"           ); phyeng->fp_set = phy_marvell0 ; phyeng->fp_clr = recov_phy_marvell0 ;}//88E1310          1G/100/10M  RGMII
-                else if ( phy_chk( eng, 0x0141, 0x0cc0, PHYID3_Mask ) ) { sprintf( eng->phy.PHYName, "88E1111"           ); phyeng->fp_set = phy_marvell  ; phyeng->fp_clr = recov_phy_marvell  ;}//88E1111          1G/100/10M  GMII, MII, RGMII
-                else if ( phy_chk( eng, 0x0022, 0x1555, 0xfff0      ) ) { sprintf( eng->phy.PHYName, "KSZ8031/KSZ8051"   ); phyeng->fp_set = phy_micrel0  ;                                      }//KSZ8051/KSZ8031     100/10M  RMII(RMIICK input mode)
-                else if ( phy_chk( eng, 0x0022, 0x1622, 0xfff0      ) ) { sprintf( eng->phy.PHYName, "KSZ9031"           ); phyeng->fp_set = phy_micrel1  ;                                      }//KSZ9031          1G/100/10M  RGMII
-                else if ( phy_chk( eng, 0x0022, 0x1562, 0xfff0      ) ) { sprintf( eng->phy.PHYName, "KSZ8081"           ); phyeng->fp_set = phy_micrel2  ;                                      }//KSZ8081             100/10M  MII, RMII(RMIICK input mode)
-                else if ( phy_chk( eng, 0x0022, 0x1512, 0xfff0      ) ) { sprintf( eng->phy.PHYName, "KSZ8041"           ); phyeng->fp_set = phy_micrel   ;                                      }//KSZ8041             100/10M  RMII(RMIICK input mode)
-                else if ( phy_chk( eng, 0x004d, 0xd072, 0xfff0      ) ) { sprintf( eng->phy.PHYName, "AR8035"            ); phyeng->fp_set = phy_atheros  ; phyeng->fp_clr = recov_phy_atheros  ;}//AR8035           1G/100/10M  RGMII
-                else if ( phy_chk( eng, 0x0007, 0xc0c4, PHYID3_Mask ) ) { sprintf( eng->phy.PHYName, "LAN8700"           ); phyeng->fp_set = phy_smsc     ;                                      }//LAN8700             100/10M  MII, RMII
-                else if ( phy_chk( eng, 0x000f, 0xc4b1, 0xfff0      ) ) { sprintf( eng->phy.PHYName, "VSC8211"           ); phyeng->fp_set = phy_vitesse  ; phyeng->fp_clr = recov_phy_vitesse  ;}//VSC8211          1G/100/10M  RGMII
-                else if ( phy_chk( eng, 0x0007, 0x0421, 0xfff0      ) ) { sprintf( eng->phy.PHYName, "VSC8601"           ); phyeng->fp_set = phy_vitesse  ; phyeng->fp_clr = recov_phy_vitesse  ;}//VSC8601          1G/100/10M  RGMII
-                else if ( phy_chk( eng, 0x0007, 0x0431, 0xfff0      ) ) { sprintf( eng->phy.PHYName, "VSC8641"           ); phyeng->fp_set = phy_vitesse  ; phyeng->fp_clr = recov_phy_vitesse  ;}//VSC8641          1G/100/10M  RGMII
-
-                else                                                    { sprintf( eng->phy.PHYName, "default"           ); phyeng->fp_set = phy_default  ;                                      }//
-
-
+		for (i = 0; i < PHY_LOOKUP_N; i++) {
+			p_phy = &phy_lookup_tbl[i];
+			if (phy_chk(eng, p_phy)) {
+				printf("%s\n", p_phy->name);
+				sprintf((char *)eng->phy.phy_name, (char *)p_phy->name);
+				phyeng->fp_set = p_phy->cfg.fp_set;
+				phyeng->fp_clr = p_phy->cfg.fp_clr;
+			}
+		}
         }
 
         if ( eng->arg.ctrl.b.phy_init ) {

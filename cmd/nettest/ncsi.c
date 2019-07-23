@@ -14,7 +14,7 @@
 #include "swfunc.h"
 
 #include "comminf.h"
-#include "io.h"
+//#include "io.h"
 #include "ncsi.h"
 #include <command.h>
 #include <common.h>

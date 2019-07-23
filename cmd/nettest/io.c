@@ -20,7 +20,7 @@
 #include <net.h>
 #include <post.h>
 
-#include "io.h"
+//#include "io.h"
 #include "typedef.h"
 
 //------------------------------------------------------------

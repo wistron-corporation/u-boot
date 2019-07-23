@@ -109,14 +109,16 @@
 #define MAC_PHYWr                                0x08000000
 #define MAC_PHYRd                                0x04000000
 
+#ifdef CONFIG_ASPEED_AST2600
+#define MAC_PHYWr_New 	(BIT(31) | BIT(28) | (0x1 << 26)) /* 0x94000000 */
+#define MAC_PHYRd_New 	(BIT(31) | BIT(28) | (0x2 << 26)) /* 0x98000000 */
+#define MAC_PHYBusy_New	BIT(31)
+#else
 #define MAC_PHYWr_New                            0x00009400
 #define MAC_PHYRd_New                            0x00009800
 #define MAC_PHYBusy_New                          0x00008000
+#endif
 
-#define MAC_PHYWr_AST2600                         0x94000000
-#define MAC_PHYRd_AST2600                         0x98000000
-#define MAC_PHYBusy_AST2600                       0x80000000
-#define MAC_PHYIDLE_AST2600                       0x00010000
 
 #ifdef Enable_BufMerge
     #define MAC_048_def                          0x007702F1 //default 0xf1
@@ -479,6 +481,7 @@ typedef struct {
 	uint8_t ast2600;
 	uint8_t ast2500;
 	uint8_t mac_num;
+	uint8_t is_new_mdio_reg[4];
 
 	uint8_t is_1g_valid[4];
 	uint8_t at_least_1g_valid;
@@ -506,7 +509,8 @@ typedef union {
 } mac_arg_ctrl_t;
 typedef struct {
 	uint32_t run_mode;		/* select dedicated or NCSI */
-	uint32_t run_idx;		/* argv[1] */
+	uint32_t mac_idx;		/* argv[1] */
+	uint32_t mdio_idx;
 	uint32_t run_speed;		/* argv[2] for dedicated */
 	mac_arg_ctrl_t ctrl;		/* argv[3] for dedicated 
 					   argv[6] for ncsi */
@@ -530,8 +534,9 @@ typedef struct {
 } mac_arg_t;
 typedef struct {
 	uint32_t mac_idx;
-	uint32_t MAC_idx_PHY;
 	uint32_t mac_base;
+	uint32_t mdio_idx;
+	uint32_t mdio_base;
 	uint8_t is_rgmii;
 
 
@@ -571,16 +576,15 @@ typedef struct {
 	int                  Loop_rl[3]                    ;
 } MAC_Running;
 typedef struct {
-	CHAR                 SA[6]                         ;
-	CHAR                 NewMDIO                       ; //start from AST2300
+	CHAR                 SA[6]                         ;	
 } MAC_Information;
 typedef struct {
-	uint32_t PHY_BASE                      ;
+	uint32_t mdio_base;
+	uint8_t phy_name[64];
 	int                  loop_phy                      ;
 	CHAR                 default_phy                   ;
 	CHAR                 Adr                           ;
 
-	CHAR                 PHYName[64]                   ;
 	uint32_t PHY_ID3                       ;
 	uint32_t PHY_ID2                       ;
 
@@ -823,8 +827,8 @@ GLOBAL char TestingLoop (MAC_ENGINE *eng, uint32_t loop_checknum);
 GLOBAL void    PrintIO_Line_LOG (MAC_ENGINE *eng);
 GLOBAL void    init_phy (MAC_ENGINE *eng, PHY_ENGINE *phyeng);
 GLOBAL BOOLEAN find_phyadr (MAC_ENGINE *eng);
-GLOBAL void phy_write (MAC_ENGINE *eng, int adr, uint32_t data);
-GLOBAL uint32_t phy_read (MAC_ENGINE *eng, int adr);
+
+
 GLOBAL void    phy_sel (MAC_ENGINE *eng, PHY_ENGINE *phyeng);
 GLOBAL void    recov_phy (MAC_ENGINE *eng, PHY_ENGINE *phyeng);
 GLOBAL int     FindErr (MAC_ENGINE *eng, int value);
