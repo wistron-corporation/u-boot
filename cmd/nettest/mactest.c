@@ -835,8 +835,8 @@ int mac_test(int argc, char * const argv[], uint32_t mode)
 	setup_running(&mac_eng);
 
 	/* init PHY engine */
-	phy_eng.fp_set = 0;
-	phy_eng.fp_clr = 0;
+	phy_eng.fp_set = NULL;
+	phy_eng.fp_clr = NULL;
 
 	scu_disable_mac(&mac_eng);
 	scu_enable_mac(&mac_eng);

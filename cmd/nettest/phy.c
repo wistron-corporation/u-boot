@@ -2380,6 +2380,7 @@ void phy_sel (MAC_ENGINE *eng, PHY_ENGINE *phyeng)
 	/* set default before lookup */
 	sprintf((char *)eng->phy.phy_name, "default"); 
 	phyeng->fp_set = phy_default;
+	phyeng->fp_clr = NULL;
 
         if (eng->phy.default_phy) {
         } else {
@@ -2394,13 +2395,13 @@ void phy_sel (MAC_ENGINE *eng, PHY_ENGINE *phyeng)
 		}
         }
 
-        if ( eng->arg.ctrl.b.phy_init ) {
-                if ( eng->arg.ctrl.b.phy_recov_dis )
-                        phyeng->fp_clr = 0;
-        } else {
-                phyeng->fp_set = 0;
-                phyeng->fp_clr = 0;
-        }
+	if (eng->arg.ctrl.b.phy_init) {
+		if (eng->arg.ctrl.b.phy_recov_dis)
+			phyeng->fp_clr = NULL;
+	} else {
+		phyeng->fp_set = NULL;
+		phyeng->fp_clr = NULL;
+	}
 }
 
 //------------------------------------------------------------
@@ -2408,8 +2409,8 @@ void recov_phy (MAC_ENGINE *eng, PHY_ENGINE *phyeng)
 {
 	nt_log_func_name();
 
-
-        (*phyeng->fp_clr)( eng );
+	if (phyeng->fp_clr != NULL)
+        	(*phyeng->fp_clr)( eng );
 }
 
 //------------------------------------------------------------
@@ -2421,7 +2422,8 @@ void init_phy (MAC_ENGINE *eng, PHY_ENGINE *phyeng)
                 phy_dump( eng );
 
         phy_set00h( eng );
-        (*phyeng->fp_set)( eng );
+	if (phyeng->fp_set != NULL)
+        	(*phyeng->fp_set)( eng );
 
         if ( DbgPrn_PHYInit )
                 phy_dump( eng );
