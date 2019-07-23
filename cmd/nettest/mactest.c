@@ -22,11 +22,63 @@
 #include <post.h>
 #include "mem_io.h"
 
+struct mac_ctrl_desc {
+	uint32_t base_reset_assert;
+	uint32_t bit_reset_assert;
+	uint32_t base_reset_deassert;
+	uint32_t bit_reset_deassert;
+
+	uint32_t base_clk_stop;
+	uint32_t bit_clk_stop;
+	uint32_t base_clk_start;
+	uint32_t bit_clk_start;
+};
+
 #if defined(CONFIG_ASPEED_AST2600)
 const uint32_t mac_base_lookup_tbl[4] = {MAC1_BASE, MAC2_BASE, MAC3_BASE,
 					 MAC4_BASE};
+const struct mac_ctrl_desc mac_ctrl_lookup_tbl[4] = {
+	{
+		.base_reset_assert = 0x40, .bit_reset_assert = BIT(11),
+		.base_reset_deassert = 0x44,.bit_reset_deassert = BIT(11),
+		.base_clk_stop = 0x80, .bit_clk_stop = BIT(20),
+		.base_clk_start = 0x84, .bit_clk_start = BIT(20),
+	},
+	{
+		.base_reset_assert = 0x40, .bit_reset_assert = BIT(12),
+		.base_reset_deassert = 0x44,.bit_reset_deassert = BIT(12),
+		.base_clk_stop = 0x80, .bit_clk_stop = BIT(21),
+		.base_clk_start = 0x84,.bit_clk_start = BIT(21),
+	},
+	{
+		.base_reset_assert = 0x50, .bit_reset_assert = BIT(20),
+		.base_reset_deassert = 0x54,.bit_reset_deassert = BIT(20),
+		.base_clk_stop = 0x90, .bit_clk_stop = BIT(20),
+		.base_clk_start = 0x94, .bit_clk_start = BIT(20),
+	},
+	{
+		.base_reset_assert = 0x50, .bit_reset_assert = BIT(21),
+		.base_reset_deassert = 0x54,.bit_reset_deassert = BIT(21),
+		.base_clk_stop = 0x90, .bit_clk_stop = BIT(21),
+		.base_clk_start = 0x94,.bit_clk_start = BIT(21),
+	}
+};
 #else
 const uint32_t mac_base_lookup_tbl[2] = {MAC1_BASE, MAC2_BASE};
+const struct mac_ctrl_desc mac_ctrl_lookup_tbl[2] = {
+	{
+		.base_reset_assert = 0x04, .bit_reset_assert = 11,
+		.base_reset_deassert = 0x04,.bit_reset_deassert = 11,
+		.base_clk_stop = 0x0c, .bit_clk_stop = 20,
+		.base_clk_start = 0x0c, .bit_clk_start = 20,
+	},
+	{
+		.base_reset_assert = 0x04, .bit_reset_assert = 12,
+		.base_reset_deassert = 0x04,.bit_reset_deassert = 12,
+		.base_clk_stop = 0x0c, .bit_clk_stop = 21,
+		.base_clk_start = 0x0c,.bit_clk_start = 21,
+	}
+};
 #endif
 
 #if 0
@@ -142,11 +194,11 @@ static void print_arg_speed(MAC_ENGINE *p_eng)
 
 static void print_arg_run_idx(MAC_ENGINE *p_eng) 
 {
-	uint8_t item[32] = "run_idx[dec]";
+	uint8_t item[32] = "mac_idx[dec]";
 
 	printf("%20s| 0->MAC1 1->MAC2", item);
 	
-	if (p_eng->env.MAC34_vld) {
+	if (p_eng->env.mac_num > 2) {
 		printf(" 2->MAC3 3->MAC4");
 	}
 	printf("\n");
@@ -223,7 +275,7 @@ char finish_check(MAC_ENGINE *p_eng, int value)
 
 	if (!p_eng->run.TM_Burst)
 		FPri_RegValue(p_eng, FP_LOG);
-	if (eng->run.TM_IOTiming)
+	if (p_eng->run.TM_IOTiming)
 		FPri_RegValue(p_eng, FP_IO);
 
 	finish_close(p_eng);
@@ -251,38 +303,6 @@ char finish_check(MAC_ENGINE *p_eng, int value)
 #endif
 		return (0);
 	}
-}
-
-/**
- * @brief setup MAC_ENGINE according to HW strap registers
-*/
-static uint32_t setup_interface(MAC_ENGINE *p_eng)
-{
-#ifdef CONFIG_ASPEED_AST2600
-	hw_strap1_t strap1;
-	hw_strap2_t strap2;
-	
-	strap1.w = SCU_RD(0x500);
-	strap2.w = SCU_RD(0x510);
-
-	p_eng->env.is_1g_valid[0] = strap1.b.mac1_interface;
-	p_eng->env.is_1g_valid[1] = strap1.b.mac2_interface;
-	p_eng->env.is_1g_valid[2] = strap2.b.mac3_interface;
-	p_eng->env.is_1g_valid[3] = strap2.b.mac4_interface;	
-	
-	p_eng->env.at_least_1g_valid =
-	    p_eng->env.is_1g_valid[0] | p_eng->env.is_1g_valid[1] |
-	    p_eng->env.is_1g_valid[2] | p_eng->env.is_1g_valid[3];
-#else
-	hw_strap1_t strap1;
-	strap1.w = SCU_RD(0x70);
-	p_eng->env.is_1g_valid[0] = strap1.b.mac1_interface;
-	p_eng->env.is_1g_valid[1] = strap1.b.mac2_interface;
-
-	p_eng->env.at_least_1g_valid =
-	    p_eng->env.is_1g_valid[0] | p_eng->env.is_1g_valid[1];
-#endif
-	return 0;
 }
 
 static uint32_t check_test_mode(MAC_ENGINE *p_eng)
@@ -352,66 +372,104 @@ static uint32_t check_test_mode(MAC_ENGINE *p_eng)
 	return 0;
 }
 
-static uint32_t check_chip_id(MAC_ENGINE *p_eng)
+/**
+ * @brief enable/disable MAC
+ * @param[in] p_eng - MAC_ENGINE
+ * 
+ * AST2600 uses synchronous reset scheme, so the bits for reset assert and 
+ * deassert are the same
+ * e.g. MAC#1: SCU04[11] = 1 --> MAC#1 reset assert
+ *                       = 0 --> MAC#1 reset de-assert
+ * 
+ * AST2600 uses asynchronous reset scheme, so the bits for reset assert and 
+ * deassert are different
+ * e.g. MAC#1: SCU40[11] = 1 --> MAC#1 reset assert
+ *             SCU44[11] = 1 --> MAC#1 reset de-assert
+ * 
+ * The same design concept is also adopted on clock stop/start.
+ */
+void scu_disable_mac(MAC_ENGINE *p_eng) 
 {
-	uint32_t reg_addr;
-	uint32_t id, version;
-	uint32_t is_valid;
+	uint32_t mac_idx = p_eng->run.mac_idx;
+	struct mac_ctrl_desc *p_mac = &mac_ctrl_lookup_tbl[mac_idx];
+	uint32_t reg;
 
-	p_eng->env.ast2600 = 0;
-	p_eng->env.ast2500 = 0;
+	debug("MAC%d:reset assert=0x%02x[%08x] deassert=0x%02x[%08x]\n",
+	      mac_idx, p_mac->base_reset_assert, p_mac->bit_reset_assert,
+	      p_mac->base_reset_deassert, p_mac->bit_reset_deassert);
+	debug("MAC%d:clock stop=0x%02x[%08x] start=0x%02x[%08x]\n", mac_idx,
+	      p_mac->base_clk_stop, p_mac->bit_clk_stop, p_mac->base_clk_start,
+	      p_mac->bit_clk_start);
 
-#if defined(CONFIG_ASPEED_AST2600)
-	reg_addr = 0x04;
-#else
-	reg_addr = 0x7c;
-#endif
-	is_valid = 0;
-	id = (SCU_RD(reg_addr) & GENMASK(31, 24)) >> 24;
-	version = (SCU_RD(reg_addr) & GENMASK(23, 16)) >> 16;
-
-	if (id == 0x5) {
-		printf("chip: AST2600 A%d\n", version);
-		p_eng->env.ast2600 = 1;
-		p_eng->env.ast2500 = 1;
-		is_valid = 1;
-	} else if (id == 0x4) {
-		printf("chip: AST2500 A%d\n", version);
-		p_eng->env.ast2500 = 1;
-		is_valid = 1;
-	}
-
-	if (0 == is_valid) {
-		printf("unknown chip\n");
-		return 1;
-	}
-
-	return 0;
+	reg = SCU_RD(p_mac->base_reset_assert);
+	debug("reset reg: 0x%08x\n", reg);
+	reg |= p_mac->bit_reset_assert;
+	debug("reset reg: 0x%08x\n", reg);
+	SCU_WR(reg, p_mac->base_reset_assert);
+	/* issue a dummy read to ensure command is in order */
+	reg = SCU_RD(p_mac->base_reset_assert);
+	
+	reg = SCU_RD(p_mac->base_clk_stop);
+	debug("clock reg: 0x%08x\n", reg);
+	reg |= p_mac->bit_clk_stop;
+	debug("clock reg: 0x%08x\n", reg);
+	SCU_WR(reg, p_mac->base_clk_stop);
+	/* issue a dummy read to ensure command is in order */
+	reg = SCU_RD(p_mac->base_clk_stop);
 }
 
-static uint32_t setup_env(MAC_ENGINE *p_eng)
+void scu_enable_mac(MAC_ENGINE *p_eng) 
 {
-	uint32_t is_valid;
+	uint32_t mac_idx = p_eng->run.mac_idx;
+	struct mac_ctrl_desc *p_mac = &mac_ctrl_lookup_tbl[mac_idx];
+	uint32_t reg;
 
-	if (0 != check_chip_id(p_eng)) {
-		return 1;
-	}
+	debug("MAC%d:reset assert=0x%02x[%08x] deassert=0x%02x[%08x]\n",
+	      mac_idx, p_mac->base_reset_assert, p_mac->bit_reset_assert,
+	      p_mac->base_reset_deassert, p_mac->bit_reset_deassert);
+	debug("MAC%d:clock stop=0x%02x[%08x] start=0x%02x[%08x]\n", mac_idx,
+	      p_mac->base_clk_stop, p_mac->bit_clk_stop, p_mac->base_clk_start,
+	      p_mac->bit_clk_start);
 
+#ifdef CONFIG_ASPEED_AST2600
+	reg = SCU_RD(p_mac->base_reset_deassert);
+	debug("reset reg: 0x%08x\n", reg);
+	reg |= p_mac->bit_reset_deassert;
+	debug("reset reg: 0x%08x\n", reg);
+	SCU_WR(reg, p_mac->base_reset_deassert);
+	/* issue a dummy read to ensure command is in order */
+	reg = SCU_RD(p_mac->base_reset_deassert);
+	
+	reg = SCU_RD(p_mac->base_clk_start);
+	debug("clock reg: 0x%08x\n", reg);
+	reg |= p_mac->bit_clk_start;
+	debug("clock reg: 0x%08x\n", reg);
+	SCU_WR(reg, p_mac->base_clk_start);
+	/* issue a dummy read to ensure command is in order */
+	reg = SCU_RD(p_mac->base_clk_start);
+#else
+	reg = SCU_RD(p_mac->base_reset_deassert);
+	reg &= ~p_mac->bit_reset_deassert;
+	SCU_WR(reg, p_mac->base_reset_deassert);
+	/* issue a dummy read to ensure command is in order */
+	reg = SCU_RD(p_mac->base_reset_deassert);
+	
+	reg = SCU_RD(p_mac->base_clk_start);
+	reg &= ~p_mac->bit_clk_start;
+	SCU_WR(reg, p_mac->base_clk_start);
+	/* issue a dummy read to ensure command is in order */
+	reg = SCU_RD(p_mac->base_clk_start);
+#endif
+}
+
+static uint32_t setup_running(MAC_ENGINE *p_eng)
+{
 	/* check if legal run_idx */
-	is_valid = 0;
-	if (p_eng->env.MAC34_vld) {
-		if (p_eng->arg.run_idx <= 3) {
-			is_valid = 1;
-		}
-	} else {
-		if (p_eng->arg.run_idx <= 1) {
-			is_valid = 1;
-		}
-	}
-	if (0 == is_valid) {
+	if (p_eng->arg.run_idx > p_eng->env.mac_num) {
 		printf("invalid run_idx = %d\n", p_eng->arg.run_idx);	
 		return 1;
 	}
+
 	p_eng->run.mac_idx = p_eng->arg.run_idx;
 	p_eng->run.mac_base = mac_base_lookup_tbl[p_eng->run.mac_idx];
 	p_eng->run.is_rgmii = p_eng->env.is_1g_valid[p_eng->run.mac_idx];
@@ -532,33 +590,137 @@ static uint32_t setup_env(MAC_ENGINE *p_eng)
 		return 1;
 	}
 
-	if (eng->run.TM_Burst) {
-		eng->arg.GIEEE_sel = eng->arg.GChk_TimingBund;
-		eng->run.IO_Bund = 0;
+	if (p_eng->run.TM_Burst) {
+		p_eng->arg.GIEEE_sel = p_eng->arg.GChk_TimingBund;
+		p_eng->run.IO_Bund = 0;
 	} else {
-		eng->arg.GIEEE_sel = 0;			
-		eng->run.IO_Bund = eng->arg.GChk_TimingBund;
+		p_eng->arg.GIEEE_sel = 0;			
+		p_eng->run.IO_Bund = p_eng->arg.GChk_TimingBund;
 
-		if (!((eng->run.IO_Bund & 0x1) ||(eng->run.IO_Bund == 0))) {
+		if (!((p_eng->run.IO_Bund & 0x1) ||(p_eng->run.IO_Bund == 0))) {
 			printf("Error IO margin!!!\n");
-			print_arg_timing_boundary ( eng );
+			print_arg_timing_boundary (p_eng);
 			return(1);
 		}						
 	}
 
-	if (!eng->env.is_1g_valid[eng->run.mac_idx])
-		eng->run.Speed_org[ 0 ] = 0;
+	if (!p_eng->env.is_1g_valid[p_eng->run.mac_idx])
+		p_eng->run.Speed_org[ 0 ] = 0;
 
-	if ((eng->arg.run_mode == MODE_NCSI) && (eng->run.is_rgmii)) {
-		printf("\nNCSI must be RMII interface !!!\n");
-		return( finish_check( eng, Err_Flag_MACMode ) );
+
+	if (p_eng->arg.run_mode == MODE_NCSI) {
+		if (p_eng->run.is_rgmii) {
+			printf("\nNCSI must be RMII interface !!!\n");
+			return (finish_check(p_eng, Err_Flag_MACMode));	
+		}
+
+#ifdef CONFIG_ASPEED_AST2600
+		/**
+		 * NCSI needs for 3.3V IO voltage but MAC#1 & MAC#2 only
+		 * support 1.8V. So NCSI can only runs on MAC#3 or MAC#4
+		 */
+		if (p_eng->run.mac_idx < 2) {
+			printf("\nNCSI must runs on MAC#3 or MAC#4\n");
+			return (finish_check(p_eng, Err_Flag_MACMode));	
+		}
+#endif		
+	}
+}
+
+/**
+ * @brief setup environment according to HW strap registers
+*/
+static uint32_t setup_interface(MAC_ENGINE *p_eng)
+{
+#ifdef CONFIG_ASPEED_AST2600
+	hw_strap1_t strap1;
+	hw_strap2_t strap2;
+	
+	strap1.w = SCU_RD(0x500);
+	strap2.w = SCU_RD(0x510);
+
+	p_eng->env.is_1g_valid[0] = strap1.b.mac1_interface;
+	p_eng->env.is_1g_valid[1] = strap1.b.mac2_interface;
+	p_eng->env.is_1g_valid[2] = strap2.b.mac3_interface;
+	p_eng->env.is_1g_valid[3] = strap2.b.mac4_interface;	
+	
+	p_eng->env.at_least_1g_valid =
+	    p_eng->env.is_1g_valid[0] | p_eng->env.is_1g_valid[1] |
+	    p_eng->env.is_1g_valid[2] | p_eng->env.is_1g_valid[3];
+#else
+	hw_strap1_t strap1;
+	strap1.w = SCU_RD(0x70);
+	p_eng->env.is_1g_valid[0] = strap1.b.mac1_interface;
+	p_eng->env.is_1g_valid[1] = strap1.b.mac2_interface;
+
+	p_eng->env.at_least_1g_valid =
+	    p_eng->env.is_1g_valid[0] | p_eng->env.is_1g_valid[1];
+#endif
+	return 0;
+}
+
+/**
+ * @brief setup chip compatibility accoriding to the chip ID register
+*/
+static uint32_t setup_chip_compatibility(MAC_ENGINE *p_eng)
+{
+	uint32_t reg_addr;
+	uint32_t id, version;
+	uint32_t is_valid;
+
+	p_eng->env.ast2600 = 0;
+	p_eng->env.ast2500 = 0;
+
+#if defined(CONFIG_ASPEED_AST2600)
+	reg_addr = 0x04;
+#else
+	reg_addr = 0x7c;
+#endif
+	is_valid = 0;
+	id = (SCU_RD(reg_addr) & GENMASK(31, 24)) >> 24;
+	version = (SCU_RD(reg_addr) & GENMASK(23, 16)) >> 16;
+
+	if (id == 0x5) {
+		printf("chip: AST2600 A%d\n", version);
+		p_eng->env.ast2600 = 1;
+		p_eng->env.ast2500 = 1;
+		p_eng->env.mac_num = 4;
+		is_valid = 1;
+	} else if (id == 0x4) {
+		printf("chip: AST2500 A%d\n", version);
+		p_eng->env.ast2500 = 1;
+		p_eng->env.mac_num = 2;
+		is_valid = 1;
+	}
+
+	if (0 == is_valid) {
+		printf("unknown chip\n");
+		return 1;
 	}
 
 	return 0;
 }
-static void load_default_cfg(MAC_ENGINE *p_eng, uint32_t mode)
+
+/**
+ * @brief setup environment accoriding to the HW strap and chip ID
+*/
+static uint32_t setup_env(MAC_ENGINE *p_eng)
+{
+	if (0 != setup_chip_compatibility(p_eng)) {
+		return 1;
+	}
+	
+	setup_interface(&p_eng);
+
+	return 0;
+}
+static uint32_t init_mac_engine(MAC_ENGINE *p_eng, uint32_t mode)
 {
 	memset(p_eng, 0, sizeof(MAC_ENGINE));
+
+	if (0 != setup_env(p_eng)) {
+		return 1;
+	}
 	
 	p_eng->arg.run_mode = mode;
 	p_eng->arg.GChk_TimingBund = DEF_GIOTIMINGBUND;
@@ -579,15 +741,14 @@ static void load_default_cfg(MAC_ENGINE *p_eng, uint32_t mode)
 		p_eng->arg.run_speed = DEF_GSPEED;
 	}
 
-#ifdef CONFIG_ASPEED_AST2600	
-	p_eng->env.MAC34_vld = 1;
-#endif
 	p_eng->flg.Flag_PrintEn  = 1;
 	p_eng->run.TIME_OUT_Des_PHYRatio = 1;
 	
 	p_eng->run.TM_TxDataEn = 1;
 	p_eng->run.TM_RxDataEn = 1;
 	p_eng->run.TM_NCSI_DiSChannel = 1;
+
+	return 0;
 }
 
 static uint32_t parse_arg_dedicated(int argc, char *const argv[],
@@ -654,7 +815,10 @@ int mac_test(int argc, char * const argv[], uint32_t mode)
 	uint32_t des_flag_allspeed = 0;
 	uint32_t ncsi_flag_allspeed = 0;
 
-	load_default_cfg(&mac_eng, mode);
+	if (0 != init_mac_engine(&mac_eng, mode)) {
+		printf("init MAC engine fail\n");
+		return 1;
+	}
 	
 	if (argc <= 1) {
 		print_usage(&mac_eng);
@@ -667,15 +831,19 @@ int mac_test(int argc, char * const argv[], uint32_t mode)
 	else		
 		parse_arg_ncsi(argc, argv, &mac_eng);
 
-
-	setup_interface(&mac_eng);
-	if (0 != setup_env(&mac_eng)) {
-		return 1;
-	}
+	
 
 	/* init PHY engine */
 	phy_eng.fp_set = 0;
-	phy_eng.fp_clr = 0;	
+	phy_eng.fp_clr = 0;
+
+	scu_disable_mac(&mac_eng);
+	scu_enable_mac(&mac_eng);
+	if (mac_eng.arg.run_mode == MODE_DEDICATED) {
+		mac_eng.phy.PHYAdrValid = find_phyadr(&mac_eng);
+		if (mac_eng.phy.PHYAdrValid == TRUE)
+			phy_sel(&mac_eng, &phy_eng);
+	}
 
 #if 0
 	int                  DES_LowNumber;		
@@ -692,40 +860,7 @@ int mac_test(int argc, char * const argv[], uint32_t mode)
 //------------------------------------------------------------
 // Parameter Initial
 //------------------------------------------------------------
-		//------------------------------
-		// [Reg]setup SCU_004_rstbit
-		// [Reg]setup SCU_004_mix
-		// [Reg]setup SCU_004_dis
-		// [Reg]setup SCU_004_en
-		//------------------------------
-		if ( eng->arg.ctrl.b.phy_addr_inv ) {
-			eng->reg.SCU_004_rstbit = 0x00001800; //Reset Engine
-		}
-		else {
-			if ( eng->run.mac_idx == 1 )
-				eng->reg.SCU_004_rstbit = 0x00001000; //Reset Engine
-			else
-				eng->reg.SCU_004_rstbit = 0x00000800; //Reset Engine
-		}
-		eng->reg.SCU_004_mix = eng->reg.SCU_004;
-		eng->reg.SCU_004_en  = eng->reg.SCU_004_mix & (~eng->reg.SCU_004_rstbit);
-		eng->reg.SCU_004_dis = eng->reg.SCU_004_mix |   eng->reg.SCU_004_rstbit;
-
-		//------------------------------
-		// [Reg]setup SCU_00c_clkbit
-		// [Reg]setup SCU_00c_mix
-		// [Reg]setup SCU_00c_dis
-		// [Reg]setup SCU_00c_en
-		//------------------------------		
-		if ( eng->env.MAC34_vld )
-			eng->reg.SCU_00c_clkbit = 0x00f00000; //Clock Stop Control
-		else
-			eng->reg.SCU_00c_clkbit = 0x00300000; //Clock Stop Control
-				
-		eng->reg.SCU_00c_mix = eng->reg.SCU_00c;
-		eng->reg.SCU_00c_en  = eng->reg.SCU_00c_mix & (~eng->reg.SCU_00c_clkbit);
-		eng->reg.SCU_00c_dis = eng->reg.SCU_00c_mix |   eng->reg.SCU_00c_clkbit;
-
+		
 		//------------------------------
 		// [Reg]setup SCU_048_mix
 		// [Reg]setup SCU_048_check
@@ -760,6 +895,8 @@ int mac_test(int argc, char * const argv[], uint32_t mode)
 
 		} // End if ( eng->arg.run_mode == MODE_NCSI )
 #endif
+
+#if 0
 //------------------------------------------------------------
 // Descriptor Number
 //------------------------------------------------------------
@@ -828,13 +965,13 @@ int mac_test(int argc, char * const argv[], uint32_t mode)
 	init_scu1( eng );
 	
 
-	init_scu_macdis( eng );
-	init_scu_macen( eng );
+	scu_disable_mac( eng );
+	scu_enable_mac( eng );
 	if ( eng->arg.run_mode ==  MODE_DEDICATED ) {
 		eng->phy.PHYAdrValid = find_phyadr( eng );
 		if ( eng->phy.PHYAdrValid == TRUE )
 			phy_sel( eng, phyeng );
-	}	
+	}
 
 //------------------------------------------------------------
 // Data Initial
@@ -971,9 +1108,9 @@ int mac_test(int argc, char * const argv[], uint32_t mode)
 							                | ( eng->io.Dly_out_selval << eng->io.Dly_out_shf );
 
 
-							init_scu_macdis( eng );
+							scu_disable_mac( eng );
 							Write_Reg_SCU_DD( eng->io.Dly_reg_idx, eng->reg.SCU_048_mix | eng->io.Dly_val );
-							init_scu_macen( eng );
+							scu_enable_mac( eng );
 
 						} // End if ( eng->run.IO_MrgChk )
 
@@ -1083,5 +1220,8 @@ Find_Err_Flag_IOMargin:
 	eng->flg.NCSI_Flag = ncsi_flag_allspeed;
 
 
-	return( finish_check( eng, 0 ) );
+	return(finish_check(eng, 0));
+#else
+	return 0;
+#endif	
 }

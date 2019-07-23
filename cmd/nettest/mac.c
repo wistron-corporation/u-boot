@@ -579,9 +579,7 @@ void recov_scu (MAC_ENGINE *eng) {
 //	Write_Reg_MAC_DD( eng, 0x40, eng->reg.MAC_040 );
 
 	//SCU
-//	Write_Reg_SCU_DD( 0x004, eng->reg.SCU_004 );
-	Write_Reg_SCU_DD( 0x008, eng->reg.SCU_008 );
-//	Write_Reg_SCU_DD( 0x00c, eng->reg.SCU_00c );
+	//Write_Reg_SCU_DD( 0x008, eng->reg.SCU_008 );
 	Write_Reg_SCU_DD( 0x048, eng->reg.SCU_048 );
 
 	Write_Reg_SCU_DD( 0x074, eng->reg.SCU_074 );
@@ -599,8 +597,8 @@ void read_scu (MAC_ENGINE *eng)
 
 	if ( !eng->reg.SCU_oldvld ) {
 		//SCU
-		eng->reg.SCU_004 = Read_Reg_SCU_DD( 0x004 );
-		eng->reg.SCU_008 = Read_Reg_SCU_DD( 0x008 );
+		//eng->reg.SCU_004 = Read_Reg_SCU_DD( 0x004 );
+		//eng->reg.SCU_008 = Read_Reg_SCU_DD( 0x008 );
 		eng->reg.SCU_00c = Read_Reg_SCU_DD( 0x00c );
 		eng->reg.SCU_048 = Read_Reg_SCU_DD( 0x048 );
 		eng->reg.SCU_070 = Read_Reg_SCU_DD( 0x070 );
@@ -712,43 +710,8 @@ void init_scu_macio (MAC_ENGINE *eng)
 } // End void init_scu_macio (MAC_ENGINE *eng)
 
 //------------------------------------------------------------
-void init_scu_macrst (MAC_ENGINE *eng) 
-{
-	nt_log_func_name();
-
-	Write_Reg_SCU_DD( 0x04, eng->reg.SCU_004_dis );//Rst
-#ifdef Delay_SCU
-	DELAY( Delay_SCU );
-#endif
-	Write_Reg_SCU_DD( 0x04, eng->reg.SCU_004_en );//Enable Engine
-} // End void init_scu_macrst (MAC_ENGINE *eng)
 
 //------------------------------------------------------------
-void init_scu_macdis (MAC_ENGINE *eng) 
-{
-	nt_log_func_name();
-
-	Write_Reg_SCU_DD( 0x04, eng->reg.SCU_004_dis );//Rst
-	Read_Reg_SCU_DD( 0x04 );//delay
-
-	Write_Reg_SCU_DD( 0x0c, eng->reg.SCU_00c_dis );//Clock
-	Read_Reg_SCU_DD( 0x0c );//delay
-} // End void init_scu_macdis (MAC_ENGINE *eng)
-
-//------------------------------------------------------------
-void init_scu_macen (MAC_ENGINE *eng) 
-{
-
-	nt_log_func_name();
-
-	Read_Reg_SCU_DD( 0x0c );//delay
-	Write_Reg_SCU_DD( 0x0c, eng->reg.SCU_00c_en );//Clock
-	Read_Reg_SCU_DD( 0x0c );//delay
-
-	Read_Reg_SCU_DD( 0x04 );//delay
-	Write_Reg_SCU_DD( 0x04, eng->reg.SCU_004_en );//Enable Engine
-	Read_Reg_SCU_DD( 0x04 );//delay
-} // End void init_scu_macen (MAC_ENGINE *eng)
 
 //------------------------------------------------------------
 void init_scu2 (MAC_ENGINE *eng) 
@@ -885,7 +848,7 @@ void FPri_RegValue (MAC_ENGINE *eng, BYTE option)
 	PRINTF( option, "[SDR] Date:%08x\n", Read_Reg_SDR_DD( 0x88 ) );
 	PRINTF( option, "[SDR]  80:%08x %08x %08x %08x\n", Read_Reg_SDR_DD( 0x80 ), Read_Reg_SDR_DD( 0x84 ), Read_Reg_SDR_DD( 0x88 ), Read_Reg_SDR_DD( 0x8c ) );
 
-	PRINTF( option, "[SCU]  04:%08x  08:%08x  0c:%08x\n",           eng->reg.SCU_004, eng->reg.SCU_008, eng->reg.SCU_00c );
+	//PRINTF( option, "[SCU]  04:%08x  08:%08x  0c:%08x\n",           eng->reg.SCU_004, eng->reg.SCU_008, eng->reg.SCU_00c );
 	PRINTF( option, "[SCU]  1c:%08x  2c:%08x  48:%08x  4c:%08x\n", Read_Reg_SCU_DD( 0x01c ), Read_Reg_SCU_DD( 0x02c ), eng->reg.SCU_048, Read_Reg_SCU_DD( 0x04c ) );
 	PRINTF( option, "[SCU]  70:%08x  74:%08x  7c:%08x  f0:%08x\n", eng->reg.SCU_070, eng->reg.SCU_074, eng->reg.SCU_07c, eng->reg.SCU_0f0 );
 	PRINTF( option, "[SCU]  80:%08x  88:%08x  90:%08x  9c:%08x\n", eng->reg.SCU_080, eng->reg.SCU_088, eng->reg.SCU_090, eng->reg.SCU_09c );

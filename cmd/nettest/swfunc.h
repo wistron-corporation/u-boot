@@ -30,7 +30,6 @@
 // 0: read_scu
 // 1: parameter setup
 // 2: init_scu1,
-// 3: init_scu_macrst
 // 4: Data Initial
 // 5: ALL
 

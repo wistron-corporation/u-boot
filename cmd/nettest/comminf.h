@@ -434,6 +434,7 @@ typedef struct {
 	uint32_t PCI_DID_VID                              ;
 	uint32_t manufacturer_id                           ;
 } NCSI_Capability;
+
 typedef struct {
 #ifdef CONFIG_ASPEED_AST2600
 	uint32_t SCU_FPGASel                   ;
@@ -446,11 +447,7 @@ typedef struct {
 	uint32_t MAC_040_new                   ;
 	uint32_t MAC_050                       ;
 	uint32_t MAC_050_Speed                 ;
-	uint32_t SCU_004                       ;
-	uint32_t SCU_004_mix                   ;
-	uint32_t SCU_004_rstbit                ;
-	uint32_t SCU_004_dis                   ;
-	uint32_t SCU_004_en                    ;
+	uint32_t SCU_004                       ;			
 	uint32_t SCU_008                       ;
 	uint32_t SCU_00c                       ;
 	uint32_t SCU_00c_mix                   ;
@@ -479,14 +476,12 @@ typedef struct {
 	CHAR                 SCU_oldvld                    ;
 } mac_reg_t;
 typedef struct {
-	uint8_t ASTChipType;
 	uint8_t ast2600;
 	uint8_t ast2500;
+	uint8_t mac_num;
 
 	uint8_t is_1g_valid[4];
-	uint8_t at_least_1g_valid;	
-	
-	uint8_t MAC34_vld;	
+	uint8_t at_least_1g_valid;
 	uint8_t MHCLK_Ratio;	
 } mac_env_t;
 
@@ -817,9 +812,7 @@ GLOBAL void    PrintPHYAdr (MAC_ENGINE *eng);
 GLOBAL void    Calculate_LOOP_CheckNum (MAC_ENGINE *eng);
 GLOBAL void    init_scu1 (MAC_ENGINE *eng);
 GLOBAL void    init_scu_macio (MAC_ENGINE *eng);
-GLOBAL void    init_scu_macrst (MAC_ENGINE *eng);
-GLOBAL void    init_scu_macdis (MAC_ENGINE *eng);
-GLOBAL void    init_scu_macen (MAC_ENGINE *eng);
+
 GLOBAL void    setup_arp (MAC_ENGINE *eng);
 GLOBAL void    TestingSetup (MAC_ENGINE *eng);
 GLOBAL void    init_scu2 (MAC_ENGINE *eng);
