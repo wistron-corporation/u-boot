@@ -171,29 +171,29 @@ void NCSI_Struct_Initialize_SLT (MAC_ENGINE *eng) {
 	eng->dat.NCSI_TxByteBUF = (unsigned char *) &eng->dat.NCSI_TxDWBUF[0];
 	eng->dat.NCSI_RxByteBUF = (unsigned char *) &eng->dat.NCSI_RxDWBUF[0];
 
-	eng->run.NCSI_TxDesBase = eng->run.TDES_BASE;//base for read/write
-	Write_Mem_Des_NCSI_DD( eng->run.NCSI_TxDesBase + 0x04, 0                        );
-	Write_Mem_Des_NCSI_DD( eng->run.NCSI_TxDesBase + 0x08, 0                        );
-	Write_Mem_Des_NCSI_DD( eng->run.NCSI_TxDesBase + 0x0C, AT_MEMRW_BUF( DMA_BASE ) );
+	eng->run.ncsi_tdes_base = eng->run.tdes_base;//base for read/write
+	Write_Mem_Des_NCSI_DD( eng->run.ncsi_tdes_base + 0x04, 0                        );
+	Write_Mem_Des_NCSI_DD( eng->run.ncsi_tdes_base + 0x08, 0                        );
+	Write_Mem_Des_NCSI_DD( eng->run.ncsi_tdes_base + 0x0C, AT_MEMRW_BUF( DMA_BASE ) );
 
-	eng->run.NCSI_RxDesBase = eng->run.RDES_BASE;//base for read/write
+	eng->run.ncsi_rdes_base = eng->run.rdes_base;//base for read/write
 	NCSI_RxDatBase = AT_MEMRW_BUF( NCSI_RxDMA_BASE );//base of the descriptor
 
 	for (i = 0; i < NCSI_RxDESNum - 1; i++) {
-		Write_Mem_Des_NCSI_DD( ( eng->run.NCSI_RxDesBase        ), 0x00000000     );
-		Write_Mem_Des_NCSI_DD( ( eng->run.NCSI_RxDesBase + 0x04 ), 0x00000000     );
-		Write_Mem_Des_NCSI_DD( ( eng->run.NCSI_RxDesBase + 0x08 ), 0x00000000     );
-		Write_Mem_Des_NCSI_DD( ( eng->run.NCSI_RxDesBase + 0x0C ), NCSI_RxDatBase );
-		eng->run.NCSI_RxDesBase += 16;
+		Write_Mem_Des_NCSI_DD( ( eng->run.ncsi_rdes_base        ), 0x00000000     );
+		Write_Mem_Des_NCSI_DD( ( eng->run.ncsi_rdes_base + 0x04 ), 0x00000000     );
+		Write_Mem_Des_NCSI_DD( ( eng->run.ncsi_rdes_base + 0x08 ), 0x00000000     );
+		Write_Mem_Des_NCSI_DD( ( eng->run.ncsi_rdes_base + 0x0C ), NCSI_RxDatBase );
+		eng->run.ncsi_rdes_base += 16;
 		NCSI_RxDatBase += NCSI_RxDMA_PakSize;
 	}
-	Write_Mem_Des_NCSI_DD( ( eng->run.NCSI_RxDesBase        ), EOR_IniVal     );
-	Write_Mem_Des_NCSI_DD( ( eng->run.NCSI_RxDesBase + 0x04 ), 0x00000000     );
-	Write_Mem_Des_NCSI_DD( ( eng->run.NCSI_RxDesBase + 0x08 ), 0x00000000     );
-//	Write_Mem_Des_NCSI_DD( ( eng->run.NCSI_RxDesBase + 0x0C ), (NCSI_RxDatBase + CPU_BUS_ADDR_SDRAM_OFFSET) ); // 20130730
-	Write_Mem_Des_NCSI_DD( ( eng->run.NCSI_RxDesBase + 0x0C ), NCSI_RxDatBase ); // 20130730
+	Write_Mem_Des_NCSI_DD( ( eng->run.ncsi_rdes_base        ), EOR_IniVal     );
+	Write_Mem_Des_NCSI_DD( ( eng->run.ncsi_rdes_base + 0x04 ), 0x00000000     );
+	Write_Mem_Des_NCSI_DD( ( eng->run.ncsi_rdes_base + 0x08 ), 0x00000000     );
+//	Write_Mem_Des_NCSI_DD( ( eng->run.ncsi_rdes_base + 0x0C ), (NCSI_RxDatBase + CPU_BUS_ADDR_SDRAM_OFFSET) ); // 20130730
+	Write_Mem_Des_NCSI_DD( ( eng->run.ncsi_rdes_base + 0x0C ), NCSI_RxDatBase ); // 20130730
 
-	eng->run.NCSI_RxDesBase = eng->run.RDES_BASE;//base for read/write
+	eng->run.ncsi_rdes_base = eng->run.rdes_base;//base for read/write
 }
 
 //------------------------------------------------------------
@@ -235,7 +235,7 @@ char NCSI_Rx_SLT (MAC_ENGINE *eng) {
 
 		timeout = 0;
 		do {
-			NCSI_RxDesDat = Read_Mem_Des_NCSI_DD( eng->run.NCSI_RxDesBase );
+			NCSI_RxDesDat = Read_Mem_Des_NCSI_DD( eng->run.ncsi_rdes_base );
 			if ( ++timeout > TIME_OUT_NCSI * eng->run.NCSI_RxTimeOutScale ) {
 				PRINTF( FP_LOG, "[RxDes] DesOwn timeout     %08x\n", NCSI_RxDesDat );
 				return( FindErr( eng, Err_Flag_NCSI_Check_RxOwnTimeOut ) );
@@ -288,7 +288,7 @@ char NCSI_Rx_SLT (MAC_ENGINE *eng) {
 		}
 
 		// Get point of RX DMA buffer
-		NCSI_RxDatBase = AT_BUF_MEMRW( Read_Mem_Des_NCSI_DD( eng->run.NCSI_RxDesBase + 0x0C ) );//base for read/write
+		NCSI_RxDatBase = AT_BUF_MEMRW( Read_Mem_Des_NCSI_DD( eng->run.ncsi_rdes_base + 0x0C ) );//base for read/write
 		NCSI_RxData    = SWAP_4B_LEDN_NCSI( SWAP_4B_LEDN( Read_Mem_Dat_NCSI_DD( NCSI_RxDatBase + 0x0C ) ) );
 
 		// Get RX valid data in offset 00h of RXDS#0
@@ -351,12 +351,12 @@ char NCSI_Rx_SLT (MAC_ENGINE *eng) {
 
 		if ( HWEOR( NCSI_RxDesDat ) ) {
 			// it is last the descriptor in the receive Ring
-			Write_Mem_Des_NCSI_DD( eng->run.NCSI_RxDesBase     , EOR_IniVal    );
-			eng->run.NCSI_RxDesBase = eng->run.RDES_BASE;//base for read/write
+			Write_Mem_Des_NCSI_DD( eng->run.ncsi_rdes_base     , EOR_IniVal    );
+			eng->run.ncsi_rdes_base = eng->run.rdes_base;//base for read/write
 		}
 		else {
-			Write_Mem_Des_NCSI_DD( eng->run.NCSI_RxDesBase     , 0x00000000    );
-			eng->run.NCSI_RxDesBase += 16;
+			Write_Mem_Des_NCSI_DD( eng->run.ncsi_rdes_base     , 0x00000000    );
+			eng->run.ncsi_rdes_base += 16;
 		}
 
 		if ( ret == 0 )
@@ -443,10 +443,10 @@ char NCSI_Tx (MAC_ENGINE *eng, unsigned char command, unsigned char allid, uint1
 		Write_Mem_Dat_NCSI_DD( DMA_BASE + ( i << 2 ), SWAP_4B_LEDN_NCSI( eng->dat.NCSI_TxDWBUF[i] ) );
 
 	// Setting one TX descriptor
-//	Write_Mem_Des_NCSI_DD( eng->run.NCSI_TxDesBase + 0x04, 0                        );
-//	Write_Mem_Des_NCSI_DD( eng->run.NCSI_TxDesBase + 0x08, 0                        );
-//	Write_Mem_Des_NCSI_DD( eng->run.NCSI_TxDesBase + 0x0C, AT_MEMRW_BUF( DMA_BASE ) );
-	Write_Mem_Des_NCSI_DD( eng->run.NCSI_TxDesBase       , 0xf0008000 + bytesize );
+//	Write_Mem_Des_NCSI_DD( eng->run.ncsi_tdes_base + 0x04, 0                        );
+//	Write_Mem_Des_NCSI_DD( eng->run.ncsi_tdes_base + 0x08, 0                        );
+//	Write_Mem_Des_NCSI_DD( eng->run.ncsi_tdes_base + 0x0C, AT_MEMRW_BUF( DMA_BASE ) );
+	Write_Mem_Des_NCSI_DD( eng->run.ncsi_tdes_base       , 0xf0008000 + bytesize );
 
 //	mac_reg_write( eng, 0x40, eng->reg.MAC_040 ); // 20170505
 
@@ -454,7 +454,7 @@ char NCSI_Tx (MAC_ENGINE *eng, unsigned char command, unsigned char allid, uint1
 	mac_reg_write( eng, 0x18, 0x00000000 );//Tx Poll
 
 	do {
-		NCSI_TxDesDat = Read_Mem_Des_NCSI_DD( eng->run.NCSI_TxDesBase );
+		NCSI_TxDesDat = Read_Mem_Des_NCSI_DD( eng->run.ncsi_tdes_base );
 		if ( ++timeout > TIME_OUT_NCSI ) {
 			PRINTF( FP_LOG, "[TxDes] DesOwn timeout     %08X\n", NCSI_TxDesDat );
 			return( FindErr( eng, Err_Flag_NCSI_Check_TxOwnTimeOut  ));
@@ -500,15 +500,15 @@ char NCSI_ARP (MAC_ENGINE *eng) {
 		Write_Mem_Dat_NCSI_DD( DMA_BASE + ( i << 2 ), eng->dat.ARP_data[i] );
 	}
 
-//	Write_Mem_Des_NCSI_DD( eng->run.NCSI_TxDesBase + 0x04, 0                        );
-//	Write_Mem_Des_NCSI_DD( eng->run.NCSI_TxDesBase + 0x08, 0                        );
-//	Write_Mem_Des_NCSI_DD( eng->run.NCSI_TxDesBase + 0x0C, AT_MEMRW_BUF( DMA_BASE ) );
+//	Write_Mem_Des_NCSI_DD( eng->run.ncsi_tdes_base + 0x04, 0                        );
+//	Write_Mem_Des_NCSI_DD( eng->run.ncsi_tdes_base + 0x08, 0                        );
+//	Write_Mem_Des_NCSI_DD( eng->run.ncsi_tdes_base + 0x0C, AT_MEMRW_BUF( DMA_BASE ) );
 	for (i = 0; i < eng->arg.GARPNumCnt; i++) {
-		Write_Mem_Des_NCSI_DD( eng->run.NCSI_TxDesBase      , 0xf0008000 + 60);
+		Write_Mem_Des_NCSI_DD( eng->run.ncsi_tdes_base      , 0xf0008000 + 60);
 		mac_reg_write( eng, 0x18, 0x00000000 );//Tx Poll
 
 		do {
-			NCSI_TxDesDat = Read_Mem_Des_NCSI_DD( eng->run.NCSI_TxDesBase );
+			NCSI_TxDesDat = Read_Mem_Des_NCSI_DD( eng->run.ncsi_tdes_base );
 			if ( ++timeout > TIME_OUT_NCSI ) {
 				PRINTF( FP_LOG, "[TxDes-ARP] DesOwn timeout %08x\n", NCSI_TxDesDat );
 				return( FindErr( eng, Err_Flag_NCSI_Check_ARPOwnTimeOut ) );

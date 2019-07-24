@@ -129,8 +129,8 @@ static void print_arg_test_mode(MAC_ENGINE *p_eng)
 		printf("%20s| 1: NCSI configuration without "
 		       "Disable_Channel request\n", "");
 	} else {
-		printf("%20s| 0: Tx/Rx frame checking\n", item);
 		printf("%20s| (default:%3d)\n", "", DEF_GTESTMODE);
+		printf("%20s| 0: delay-scanning by frame-loopback\n", item);
 		printf("%20s| 1: Tx output 0xff frame\n","");
 		printf("%20s| 2: Tx output 0x55 frame\n", "");
 		printf("%20s| 3: Tx output random frame\n", "");
@@ -141,7 +141,7 @@ static void print_arg_test_mode(MAC_ENGINE *p_eng)
 	}
 
 	printf("%20s| 6: IO timing testing\n", "");
-	printf("%20s| 7: IO timing/strength testing\n", "");
+	printf("%20s| 7: IO timing + strength testing\n", "");
 }
 
 static void print_arg_phy_addr(MAC_ENGINE *p_eng)
@@ -151,11 +151,19 @@ static void print_arg_phy_addr(MAC_ENGINE *p_eng)
 	printf("%20s| 0~31: PHY Address (default:%d)\n", item, DEF_GPHY_ADR);
 }
 
-static void print_arg_timing_boundary(MAC_ENGINE *p_eng) 
+static void print_arg_ieee_select(MAC_ENGINE *p_eng) 
 {
-	uint8_t item[32] = "IO margin[dec]";
+	uint8_t item[32] = "IEEE packet select (if test_mode == 1,2,3,4,5)";
+
+	printf("%20s| 0/1/2... (default:0)\n", item);
+}
+
+static void print_arg_delay_scan_boundary(MAC_ENGINE *p_eng) 
+{
+	uint8_t item[32] = "delay-scan boundary (if test_mode == 0)";
 
 	printf("%20s| 0/1/3/5/7/... (default:%d)\n", item, DEF_GIOTIMINGBUND);
+	print_arg_ieee_select(p_eng);
 }
 
 static void print_arg_channel_num(MAC_ENGINE *p_eng) 
@@ -230,7 +238,7 @@ static void print_usage(MAC_ENGINE *p_eng)
 		print_arg_loop(p_eng);
 		print_arg_test_mode(p_eng);
 		print_arg_phy_addr(p_eng);
-		print_arg_timing_boundary(p_eng);
+		print_arg_delay_scan_boundary(p_eng);
 	} else if (MODE_NCSI == p_eng->arg.run_mode) {
 		printf("ncsitest <idx> <packet num> <channel num> <test mode>"
 		       "<timing boundary> <ctrl> <ARP num>\n");
@@ -238,7 +246,7 @@ static void print_usage(MAC_ENGINE *p_eng)
 		print_arg_package_num(p_eng);
 		print_arg_channel_num(p_eng);
 		print_arg_test_mode(p_eng);
-		print_arg_timing_boundary(p_eng);
+		print_arg_delay_scan_boundary(p_eng);
 		print_arg_ctrl(p_eng);
 	} else {
 		printf("unknown run mode\n");
@@ -484,6 +492,35 @@ static uint32_t check_mac_idx(MAC_ENGINE *p_eng)
 		return 1;
 	}
 }
+
+static void calc_loop_check_num(MAC_ENGINE *p_eng)
+{
+	nt_log_func_name();
+
+#define ONE_MBYTE 1048576
+
+	if (p_eng->run.IO_MrgChk ||
+	    (p_eng->arg.run_speed == SET_1G_100M_10MBPS) ||
+	    (p_eng->arg.run_speed == SET_100M_10MBPS)) {
+		p_eng->run.LOOP_CheckNum = p_eng->run.LOOP_MAX;
+	} else {
+		switch (p_eng->arg.run_speed) {
+		case SET_1GBPS:
+			p_eng->run.CheckBuf_MBSize = MOVE_DATA_MB_SEC;
+			break;
+		case SET_100MBPS:
+			p_eng->run.CheckBuf_MBSize = (MOVE_DATA_MB_SEC >> 3);
+			break;
+		case SET_10MBPS:
+			p_eng->run.CheckBuf_MBSize = (MOVE_DATA_MB_SEC >> 6);
+			break;
+		}
+		p_eng->run.LOOP_CheckNum =
+		    (p_eng->run.CheckBuf_MBSize /
+		     (((p_eng->dat.Des_Num * DMA_PakSize) / ONE_MBYTE) + 1));
+	}
+}
+
 static uint32_t setup_running(MAC_ENGINE *p_eng)
 {
 	if (0 != check_mac_idx(p_eng)) {
@@ -503,31 +540,31 @@ static uint32_t setup_running(MAC_ENGINE *p_eng)
 	 * */
 	switch (p_eng->arg.run_speed) {
 	case SET_1GBPS:
-		p_eng->run.Speed_1G = 1;
 		p_eng->run.Speed_org[0] = 1;
 		p_eng->run.Speed_org[1] = 0;
 		p_eng->run.Speed_org[2] = 0;
+		if (0 == p_eng->env.is_1g_valid[p_eng->run.mac_idx]) {
+			printf("MAC%d doesn't support 1G\n",
+			       p_eng->arg.mac_idx);
+			return 1;
+		}
 		break;
 	case SET_100MBPS:
-		p_eng->run.Speed_1G = 0;
 		p_eng->run.Speed_org[0] = 0;
 		p_eng->run.Speed_org[1] = 1;
 		p_eng->run.Speed_org[2] = 0;
 		break;
 	case SET_10MBPS:
-		p_eng->run.Speed_1G = 0;
 		p_eng->run.Speed_org[0] = 0;
 		p_eng->run.Speed_org[1] = 0;
 		p_eng->run.Speed_org[2] = 1;
 		break;
 	case SET_1G_100M_10MBPS:
-		p_eng->run.Speed_1G = 0;
 		p_eng->run.Speed_org[0] = 1;
 		p_eng->run.Speed_org[1] = 1;
 		p_eng->run.Speed_org[2] = 1;
 		break;
 	case SET_100M_10MBPS:
-		p_eng->run.Speed_1G = 0;
 		p_eng->run.Speed_org[0] = 0;
 		p_eng->run.Speed_org[1] = 1;
 		p_eng->run.Speed_org[2] = 1;
@@ -536,15 +573,7 @@ static uint32_t setup_running(MAC_ENGINE *p_eng)
 		printf("Error speed!!!\n");
 		print_arg_speed(p_eng);
 		return (1);
-	}
-
-	if (1 == p_eng->run.Speed_1G) {
-		if (0 == p_eng->env.is_1g_valid[p_eng->run.mac_idx]) {
-			printf("MAC%d doesn't support 1G\n",
-			       p_eng->arg.mac_idx);
-			return 1;
-		}
-	}
+	}	
 
 	if (p_eng->arg.run_mode == MODE_NCSI) {
 		/*
@@ -600,15 +629,16 @@ static uint32_t setup_running(MAC_ENGINE *p_eng)
 	}
 
 	if (p_eng->run.TM_Burst) {
-		p_eng->arg.GIEEE_sel = p_eng->arg.GChk_TimingBund;
+		/* FIXME: do not re-use the input argument */
+		p_eng->run.ieee_sel = p_eng->arg.delay_scan_boundary;
 		p_eng->run.IO_Bund = 0;
 	} else {
-		p_eng->arg.GIEEE_sel = 0;			
-		p_eng->run.IO_Bund = p_eng->arg.GChk_TimingBund;
+		p_eng->run.ieee_sel = 0;			
+		p_eng->run.IO_Bund = p_eng->arg.delay_scan_boundary;
 
 		if (!((p_eng->run.IO_Bund & 0x1) ||(p_eng->run.IO_Bund == 0))) {
 			printf("Error IO margin!!!\n");
-			print_arg_timing_boundary (p_eng);
+			print_arg_delay_scan_boundary(p_eng);
 			return(1);
 		}						
 	}
@@ -634,6 +664,21 @@ static uint32_t setup_running(MAC_ENGINE *p_eng)
 		}
 #endif		
 	}
+
+	p_eng->run.tdes_base = TDES_BASE1;
+	p_eng->run.rdes_base = RDES_BASE1;
+
+	if (p_eng->run.TM_IOTiming || p_eng->run.IO_Bund )
+		p_eng->run.IO_MrgChk = 1;
+	else
+		p_eng->run.IO_MrgChk = 0;
+
+	p_eng->phy.Adr         = p_eng->arg.GPHYADR;
+	p_eng->phy.loop_phy    = p_eng->arg.ctrl.b.phy_int_loopback;
+	p_eng->phy.default_phy = p_eng->run.TM_DefaultPHY;
+
+	p_eng->run.LOOP_MAX = p_eng->arg.loop_max;
+	calc_loop_check_num( p_eng );	
 }
 
 /**
@@ -738,7 +783,7 @@ static uint32_t init_mac_engine(MAC_ENGINE *p_eng, uint32_t mode)
 	}
 	
 	p_eng->arg.run_mode = mode;
-	p_eng->arg.GChk_TimingBund = DEF_GIOTIMINGBUND;
+	p_eng->arg.delay_scan_boundary = DEF_GIOTIMINGBUND;
 	p_eng->arg.test_mode = DEF_GTESTMODE;
 
 	if (p_eng->arg.run_mode == MODE_NCSI ) {
@@ -763,6 +808,42 @@ static uint32_t init_mac_engine(MAC_ENGINE *p_eng, uint32_t mode)
 	p_eng->run.TM_RxDataEn = 1;
 	p_eng->run.TM_NCSI_DiSChannel = 1;
 
+	/* setup 
+	 * 1. delay control register
+	 * 2. driving strength control register and upper/lower bond
+	 */
+#ifdef CONFIG_ASPEED_AST2600
+	p_eng->io.mac12_1g_delay.addr = SCU_BASE + 0x340;
+	p_eng->io.mac12_100m_delay.addr = SCU_BASE + 0x348;
+	p_eng->io.mac12_10m_delay.addr = SCU_BASE + 0x34c;
+
+	p_eng->io.mac34_1g_delay.addr = SCU_BASE + 0x350;
+	p_eng->io.mac34_100m_delay.addr = SCU_BASE + 0x358;
+	p_eng->io.mac34_10m_delay.addr = SCU_BASE + 0x35c;
+
+	p_eng->io.mac34_drv_reg.addr = SCU_BASE + 0x458;
+	p_eng->io.mac34_drv_reg.drv_max = 0x3;
+	p_eng->io.drv_upper_bond = 0x3;
+	p_eng->io.drv_lower_bond = 0;
+#else
+	p_eng->io.mac12_1g_delay.addr = SCU_BASE + 0x48;
+	p_eng->io.mac12_100m_delay.addr = SCU_BASE + 0xb8;
+	p_eng->io.mac12_10m_delay.addr = SCU_BASE + 0xbc;
+
+	p_eng->io.mac34_1g_delay.addr = 0;
+	p_eng->io.mac34_100m_delay.addr = 0;
+	p_eng->io.mac34_10m_delay.addr = 0;
+
+	p_eng->io.mac12_drv_reg.addr = SCU_BASE + 0x90;
+	p_eng->io.mac12_drv_reg.drv_max = 0x1;
+	p_eng->io.drv_upper_bond = 0x1;
+	p_eng->io.drv_lower_bond = 0;
+#endif
+
+	if (0 == p_eng->run.TM_IOStrength) {
+		p_eng->io.drv_upper_bond = 0;
+	}
+
 	return 0;
 }
 
@@ -773,7 +854,7 @@ static uint32_t parse_arg_dedicated(int argc, char *const argv[],
 	case 9:
 		p_eng->arg.GUserDVal = simple_strtol(argv[8], NULL, 16);
 	case 8:
-		p_eng->arg.GChk_TimingBund = simple_strtol(argv[7], NULL, 10);
+		p_eng->arg.delay_scan_boundary = simple_strtol(argv[7], NULL, 10);
 	case 7:
 		p_eng->arg.GPHYADR = simple_strtol(argv[6], NULL, 10);
 	case 6:
@@ -807,7 +888,7 @@ static uint32_t parse_arg_ncsi(int argc, char *const argv[], MAC_ENGINE *p_eng)
 		p_eng->arg.ctrl.w = simple_strtol(argv[6], NULL, 16);
 		printf("ctrl=0x%02x\n", p_eng->arg.ctrl.w);
 	case 6:
-		p_eng->arg.GChk_TimingBund = simple_strtol(argv[5], NULL, 10);		
+		p_eng->arg.delay_scan_boundary = simple_strtol(argv[5], NULL, 10);		
 	case 5:
 		p_eng->arg.test_mode = simple_strtol(argv[4], NULL, 16);
 	case 4:
@@ -818,6 +899,233 @@ static uint32_t parse_arg_ncsi(int argc, char *const argv[], MAC_ENGINE *p_eng)
 	return 0;
 }
 
+
+static void set_driving_strength(MAC_ENGINE *p_eng, uint32_t strength)
+{
+#ifdef CONFIG_ASPEED_AST2600
+	if (strength > p_eng->io.mac34_drv_reg.drv_max) {
+		printf("invalid driving strength value\n");
+		return;
+	}
+
+	/**
+	 * read->modify->write for driving strength control register 
+	 * ast2600 : only MAC#3 & MAC#4 have driving strength setting
+	 */
+	p_eng->io.mac34_drv_reg.value.w = readl(p_eng->io.mac34_drv_reg.addr);
+
+	/* ast2600 : only MAC#3 & MAC#4 have driving strength setting */
+	if (p_eng->run.mac_idx == 2) {
+		p_eng->io.mac34_drv_reg.value.b.mac3_tx_drv = strength;
+	} else if (p_eng->run.mac_idx == 3) {
+		p_eng->io.mac34_drv_reg.value.b.mac4_tx_drv = strength;
+	}
+
+	writel(p_eng->io.mac34_drv_reg.value.w, p_eng->io.mac34_drv_reg.addr);
+#else
+	if (strength > p_eng->io.mac12_drv_reg.drv_max) {
+		printf("invalid driving strength value\n");
+		return;
+	}
+
+	/* read->modify->write for driving strength control register */
+	p_eng->io.mac12_drv_reg.value.w = readl(eng->io.mac12_drv_reg.addr);
+	if (p_eng->run.is_rgmii) {
+		if (p_eng->run.mac_idx == 0) {
+			p_eng->io.mac34_drv_reg.value.b.mac1_rgmii_tx_drv =
+			    strength;
+		} else if (p_eng->run.mac_idx == 2) {
+			p_eng->io.mac34_drv_reg.value.b.mac2_rgmii_tx_drv =
+			    strength;
+		}
+	} else {
+		if (p_eng->run.mac_idx == 0) {
+			p_eng->io.mac34_drv_reg.value.b.mac1_rmii_tx_drv =
+			    strength;
+		} else if (p_eng->run.mac_idx == 2) {
+			p_eng->io.mac34_drv_reg.value.b.mac2_rmii_tx_drv =
+			    strength;
+		}
+	}
+	writel(p_eng->io.mac12_drv_reg.value.w, eng->io.mac12_drv_reg.addr);
+#endif
+}
+
+
+void set_mac1_1g_delay(MAC_ENGINE *p_eng, uint32_t rx_d, uint32_t tx_d)
+{
+	printf("%s: %d, %d\n", __func__, rx_d, tx_d);
+	p_eng->io.mac12_1g_delay.value.w = readl(p_eng->io.mac12_1g_delay.addr);
+	p_eng->io.mac12_1g_delay.value.b.tx_delay_1 = tx_d;
+	p_eng->io.mac12_1g_delay.value.b.rx_delay_1 = rx_d;
+	writel(p_eng->io.mac12_1g_delay.value.w, p_eng->io.mac12_1g_delay.addr);
+}
+void set_mac1_100m_delay(MAC_ENGINE *p_eng, uint32_t rx_d, uint32_t tx_d)
+{
+	printf("%s: %d, %d\n", __func__, rx_d, tx_d);
+	p_eng->io.mac12_100m_delay.value.w = readl(p_eng->io.mac12_100m_delay.addr);
+	p_eng->io.mac12_100m_delay.value.b.tx_delay_1 = tx_d;
+	p_eng->io.mac12_100m_delay.value.b.rx_delay_1 = rx_d;
+	writel(p_eng->io.mac12_100m_delay.value.w, p_eng->io.mac12_100m_delay.addr);
+}
+void set_mac1_10m_delay(MAC_ENGINE *p_eng, uint32_t rx_d, uint32_t tx_d)
+{
+	printf("%s: %d, %d\n", __func__, rx_d, tx_d);
+	p_eng->io.mac12_10m_delay.value.w = readl(p_eng->io.mac12_10m_delay.addr);
+	p_eng->io.mac12_10m_delay.value.b.tx_delay_1 = tx_d;
+	p_eng->io.mac12_10m_delay.value.b.rx_delay_1 = rx_d;
+	writel(p_eng->io.mac12_10m_delay.value.w, p_eng->io.mac12_10m_delay.addr);
+}
+
+void set_mac2_1g_delay(MAC_ENGINE *p_eng, uint32_t rx_d, uint32_t tx_d)
+{
+	printf("%s: %d, %d\n", __func__, rx_d, tx_d);
+	p_eng->io.mac12_1g_delay.value.w = readl(p_eng->io.mac12_1g_delay.addr);
+	p_eng->io.mac12_1g_delay.value.b.tx_delay_2 = tx_d;
+	p_eng->io.mac12_1g_delay.value.b.rx_delay_2 = rx_d;
+	writel(p_eng->io.mac12_1g_delay.value.w, p_eng->io.mac12_1g_delay.addr);
+}
+void set_mac2_100m_delay(MAC_ENGINE *p_eng, uint32_t rx_d, uint32_t tx_d)
+{
+	printf("%s: %d, %d\n", __func__, rx_d, tx_d);
+	p_eng->io.mac12_100m_delay.value.w = readl(p_eng->io.mac12_100m_delay.addr);
+	p_eng->io.mac12_100m_delay.value.b.tx_delay_2 = tx_d;
+	p_eng->io.mac12_100m_delay.value.b.rx_delay_2 = rx_d;
+	writel(p_eng->io.mac12_100m_delay.value.w, p_eng->io.mac12_100m_delay.addr);
+}
+void set_mac2_10m_delay(MAC_ENGINE *p_eng, uint32_t rx_d, uint32_t tx_d)
+{
+	printf("%s: %d, %d\n", __func__, rx_d, tx_d);
+	p_eng->io.mac12_10m_delay.value.w = readl(p_eng->io.mac12_10m_delay.addr);
+	p_eng->io.mac12_10m_delay.value.b.tx_delay_2 = tx_d;
+	p_eng->io.mac12_10m_delay.value.b.rx_delay_2 = rx_d;
+	writel(p_eng->io.mac12_10m_delay.value.w, p_eng->io.mac12_10m_delay.addr);
+}
+void set_mac3_1g_delay(MAC_ENGINE *p_eng, uint32_t rx_d, uint32_t tx_d)
+{
+	printf("%s: %d, %d\n", __func__, rx_d, tx_d);
+	p_eng->io.mac34_1g_delay.value.w = readl(p_eng->io.mac34_1g_delay.addr);
+	p_eng->io.mac34_1g_delay.value.b.tx_delay_1 = tx_d;
+	p_eng->io.mac34_1g_delay.value.b.rx_delay_1 = rx_d;
+	writel(p_eng->io.mac34_1g_delay.value.w, p_eng->io.mac34_1g_delay.addr);
+}
+void set_mac3_100m_delay(MAC_ENGINE *p_eng, uint32_t rx_d, uint32_t tx_d)
+{
+	printf("%s: %d, %d\n", __func__, rx_d, tx_d);
+	p_eng->io.mac34_100m_delay.value.w = readl(p_eng->io.mac34_100m_delay.addr);
+	p_eng->io.mac34_100m_delay.value.b.tx_delay_1 = tx_d;
+	p_eng->io.mac34_100m_delay.value.b.rx_delay_1 = rx_d;
+	writel(p_eng->io.mac34_100m_delay.value.w, p_eng->io.mac34_100m_delay.addr);
+}
+void set_mac3_10m_delay(MAC_ENGINE *p_eng, uint32_t rx_d, uint32_t tx_d)
+{
+	printf("%s: %d, %d\n", __func__, rx_d, tx_d);
+	p_eng->io.mac34_10m_delay.value.w = readl(p_eng->io.mac34_10m_delay.addr);
+	p_eng->io.mac34_10m_delay.value.b.tx_delay_1 = tx_d;
+	p_eng->io.mac34_10m_delay.value.b.rx_delay_1 = rx_d;
+	writel(p_eng->io.mac34_10m_delay.value.w, p_eng->io.mac34_10m_delay.addr);
+}
+
+void set_mac4_1g_delay(MAC_ENGINE *p_eng, uint32_t rx_d, uint32_t tx_d)
+{
+	printf("%s: %d, %d\n", __func__, rx_d, tx_d);
+	p_eng->io.mac34_1g_delay.value.w = readl(p_eng->io.mac34_1g_delay.addr);
+	p_eng->io.mac34_1g_delay.value.b.tx_delay_2 = tx_d;
+	p_eng->io.mac34_1g_delay.value.b.rx_delay_2 = rx_d;
+	writel(p_eng->io.mac34_1g_delay.value.w, p_eng->io.mac34_1g_delay.addr);
+}
+void set_mac4_100m_delay(MAC_ENGINE *p_eng, uint32_t rx_d, uint32_t tx_d)
+{
+	printf("%s: %d, %d\n", __func__, rx_d, tx_d);
+	p_eng->io.mac34_100m_delay.value.w = readl(p_eng->io.mac34_100m_delay.addr);
+	p_eng->io.mac34_100m_delay.value.b.tx_delay_2 = tx_d;
+	p_eng->io.mac34_100m_delay.value.b.rx_delay_2 = rx_d;
+	writel(p_eng->io.mac34_100m_delay.value.w, p_eng->io.mac34_100m_delay.addr);
+}
+void set_mac4_10m_delay(MAC_ENGINE *p_eng, uint32_t rx_d, uint32_t tx_d)
+{
+	printf("%s: %d, %d\n", __func__, rx_d, tx_d);
+	p_eng->io.mac34_10m_delay.value.w = readl(p_eng->io.mac34_10m_delay.addr);
+	p_eng->io.mac34_10m_delay.value.b.tx_delay_2 = tx_d;
+	p_eng->io.mac34_10m_delay.value.b.rx_delay_2 = rx_d;
+	writel(p_eng->io.mac34_10m_delay.value.w, p_eng->io.mac34_10m_delay.addr);
+}
+
+void set_mac1_rmii_delay(MAC_ENGINE *p_eng, uint32_t rx_d, uint32_t tx_d)
+{
+	printf("%s: %d, %d\n", __func__, rx_d, tx_d);
+	p_eng->io.mac12_1g_delay.value.w = readl(p_eng->io.mac12_1g_delay.addr);
+	p_eng->io.mac12_1g_delay.value.b.rmii_tx_data_at_falling_1 = tx_d;
+	p_eng->io.mac12_1g_delay.value.b.rx_delay_1 = rx_d;
+	writel(p_eng->io.mac12_1g_delay.value.w, p_eng->io.mac12_1g_delay.addr);
+}
+
+void set_mac2_rmii_delay(MAC_ENGINE *p_eng, uint32_t rx_d, uint32_t tx_d)
+{
+	printf("%s: %d, %d\n", __func__, rx_d, tx_d);
+	p_eng->io.mac12_1g_delay.value.w = readl(p_eng->io.mac12_1g_delay.addr);
+	p_eng->io.mac12_1g_delay.value.b.rmii_tx_data_at_falling_2 = tx_d;
+	p_eng->io.mac12_1g_delay.value.b.rx_delay_2 = rx_d;
+	writel(p_eng->io.mac12_1g_delay.value.w, p_eng->io.mac12_1g_delay.addr);
+}
+
+void set_mac3_rmii_delay(MAC_ENGINE *p_eng, uint32_t rx_d, uint32_t tx_d)
+{
+	printf("%s: %d, %d\n", __func__, rx_d, tx_d);
+	p_eng->io.mac34_1g_delay.value.w = readl(p_eng->io.mac34_1g_delay.addr);
+	p_eng->io.mac34_1g_delay.value.b.rmii_tx_data_at_falling_1 = tx_d;
+	p_eng->io.mac34_1g_delay.value.b.rx_delay_1 = rx_d;
+	writel(p_eng->io.mac34_1g_delay.value.w, p_eng->io.mac34_1g_delay.addr);
+}
+
+void set_mac4_rmii_delay(MAC_ENGINE *p_eng, uint32_t rx_d, uint32_t tx_d)
+{
+	printf("%s: %d, %d\n", __func__, rx_d, tx_d);
+	p_eng->io.mac34_1g_delay.value.w = readl(p_eng->io.mac34_1g_delay.addr);
+	p_eng->io.mac34_1g_delay.value.b.rmii_tx_data_at_falling_2 = tx_d;
+	p_eng->io.mac34_1g_delay.value.b.rx_delay_2 = rx_d;
+	writel(p_eng->io.mac34_1g_delay.value.w, p_eng->io.mac34_1g_delay.addr);
+}
+
+void set_dummy_delay(MAC_ENGINE *p_eng, uint32_t rx_d, uint32_t tx_d)
+{
+	printf("%s: %d, %d\n", __func__, rx_d, tx_d);
+}
+
+typedef void (*pfn_set_delay) (MAC_ENGINE *, uint32_t, uint32_t);
+pfn_set_delay delay_func_tbl[2][4][3] = {
+	{
+		{set_mac1_rmii_delay, set_dummy_delay, set_dummy_delay},
+		{set_mac2_rmii_delay, set_dummy_delay, set_dummy_delay},
+		{set_mac3_rmii_delay, set_dummy_delay, set_dummy_delay},
+		{set_mac4_rmii_delay, set_dummy_delay, set_dummy_delay},
+	},
+	{
+		{set_mac1_1g_delay, set_mac1_100m_delay, set_mac1_10m_delay},
+		{set_mac2_1g_delay, set_mac2_100m_delay, set_mac2_10m_delay},
+		{set_mac3_1g_delay, set_mac3_100m_delay, set_mac3_10m_delay},
+		{set_mac4_1g_delay, set_mac4_100m_delay, set_mac4_10m_delay},
+	}
+};
+static void set_delay(MAC_ENGINE *p_eng, uint32_t rx_d, uint32_t tx_d)
+{
+#if 1
+	uint32_t rgmii = (uint32_t)p_eng->run.is_rgmii;
+	uint32_t mac_idx = p_eng->run.mac_idx;
+	uint32_t speed_idx = p_eng->run.speed_idx;	
+
+	delay_func_tbl[rgmii][mac_idx][speed_idx] (p_eng, rx_d, tx_d);
+#else
+	/* for test */
+	uint32_t rgmii;
+	uint32_t mac_idx;
+	uint32_t speed_idx;
+	for (rgmii = 0; rgmii < 2; rgmii++)
+		for (mac_idx = 0; mac_idx < 4; mac_idx++)
+			for (speed_idx = 0; speed_idx < 3; speed_idx++)
+				delay_func_tbl[rgmii][mac_idx][speed_idx] (p_eng, rx_d, tx_d);
+#endif	
+}
 /**
  * @brief nettest main function
 */
@@ -861,6 +1169,8 @@ int mac_test(int argc, char * const argv[], uint32_t mode)
 		if (TRUE == phy_find_addr(&mac_eng))
 			phy_sel(&mac_eng, &phy_eng);
 	}
+
+	//set_delay(&mac_eng, 1, 3);
 
 #if 0
 	int                  DES_LowNumber;		
@@ -959,8 +1269,9 @@ int mac_test(int argc, char * const argv[], uint32_t mode)
 // Setup Running Parameter
 //------------------------------------------------------------
 
-	eng->run.TDES_BASE = TDES_BASE1;
-	eng->run.RDES_BASE = RDES_BASE1;
+#if 0
+	eng->run.tdes_base = TDES_BASE1;
+	eng->run.rdes_base = RDES_BASE1;
 
 	if ( eng->run.TM_IOTiming || eng->run.IO_Bund )
 		eng->run.IO_MrgChk = 1;
@@ -972,8 +1283,8 @@ int mac_test(int argc, char * const argv[], uint32_t mode)
 	eng->phy.default_phy = eng->run.TM_DefaultPHY;
 
 	eng->run.LOOP_MAX = eng->arg.loop_max;
-	Calculate_LOOP_CheckNum( eng );	
-
+	calc_loop_check_num( eng );	
+#endif
 //------------------------------------------------------------
 // SCU Initial
 //------------------------------------------------------------
@@ -1015,7 +1326,7 @@ int mac_test(int argc, char * const argv[], uint32_t mode)
 	}// End if ( eng->arg.run_mode ==  MODE_DEDICATED )
 
 	init_iodelay( eng );
-	eng->run.Speed_idx = 0;
+	eng->run.speed_idx = 0;
 	if ( !eng->io.Dly_3Regiser )
 		if ( get_iodelay( eng ) )
 			return( finish_check( eng, 0 ) );	
@@ -1026,15 +1337,15 @@ int mac_test(int argc, char * const argv[], uint32_t mode)
 	nt_log_func_name();
 
 	eng->flg.AllFail = 1;
-	for ( eng->run.Speed_idx = 0; eng->run.Speed_idx < 3; eng->run.Speed_idx++ )
-		eng->run.Speed_sel[ (int)eng->run.Speed_idx ] = eng->run.Speed_org[ (int)eng->run.Speed_idx ];
+	for ( eng->run.speed_idx = 0; eng->run.speed_idx < 3; eng->run.speed_idx++ )
+		eng->run.Speed_sel[ (int)eng->run.speed_idx ] = eng->run.Speed_org[ (int)eng->run.speed_idx ];
 
 	//------------------------------
 	// [Start] The loop of different speed
 	//------------------------------
-	for ( eng->run.Speed_idx = 0; eng->run.Speed_idx < 3; eng->run.Speed_idx++ ) {
+	for ( eng->run.speed_idx = 0; eng->run.speed_idx < 3; eng->run.speed_idx++ ) {
 		eng->flg.Flag_PrintEn = 1;
-		if ( eng->run.Speed_sel[ (int)eng->run.Speed_idx ] ) {
+		if ( eng->run.Speed_sel[ (int)eng->run.speed_idx ] ) {
 			// Setting speed of LAN
 			if      ( eng->run.Speed_sel[ 0 ] ) eng->reg.MAC_050_Speed = eng->reg.MAC_050 | 0x0000020f;
 			else if ( eng->run.Speed_sel[ 1 ] ) eng->reg.MAC_050_Speed = eng->reg.MAC_050 | 0x0008000f;
@@ -1059,7 +1370,7 @@ int mac_test(int argc, char * const argv[], uint32_t mode)
 					if ( !eng->run.LOOP_MAX )
 						eng->run.LOOP_MAX = 1;
 
-					Calculate_LOOP_CheckNum( eng );
+					calc_loop_check_num( eng );
 				}
 
 				//------------------------------
@@ -1076,7 +1387,7 @@ int mac_test(int argc, char * const argv[], uint32_t mode)
 			//------------------------------
 			// [Start] The loop of different IO strength
 			//------------------------------
-			for ( eng->io.Str_i = 0; eng->io.Str_i <= eng->io.Str_max; eng->io.Str_i++ ) {
+			for (eng->io.drv_curr = eng->io.drv_lower_bond; eng->io.drv_curr <= eng->io.drv_upper_bond; eng->io.drv_curr++ ) {
 				//------------------------------
 				// Print Header of report to monitor and log file
 				//------------------------------
@@ -1086,8 +1397,7 @@ int mac_test(int argc, char * const argv[], uint32_t mode)
 
 				if ( eng->run.IO_MrgChk ) {
 					if ( eng->run.TM_IOStrength ) {
-						eng->io.Str_val = eng->io.Str_reg_mask | ( eng->io.Str_i << eng->io.Str_shf );
-							Write_Reg_SCU_DD( eng->io.Str_reg_idx, eng->io.Str_val );
+						set_driving_strength(eng, eng->io.drv_curr);
 					}
 
 					if ( eng->run.IO_Bund )
@@ -1220,18 +1530,18 @@ Find_Err_Flag_IOMargin:
 				eng->flg.Err_Flag  = 0;
 				eng->flg.Des_Flag  = 0;
 				eng->flg.NCSI_Flag = 0;
-			} // End for ( eng->io.Str_i = 0; eng->io.Str_i <= eng->io.Str_max; eng->io.Str_i++ ) {
+			}
 
 			if ( eng->arg.run_mode == MODE_DEDICATED ) {
 				if ( phyeng->fp_clr != 0 )
 					recov_phy( eng, phyeng );
 			}
 
-			eng->run.Speed_sel[ (int)eng->run.Speed_idx ] = 0;
-		} // End if ( eng->run.Speed_sel[ eng->run.Speed_idx ] )
+			eng->run.Speed_sel[ (int)eng->run.speed_idx ] = 0;
+		} // End if ( eng->run.Speed_sel[ eng->run.speed_idx ] )
 
 		eng->flg.Flag_PrintEn = 0;
-	} // End for ( eng->run.Speed_idx = 0; eng->run.Speed_idx < 3; eng->run.Speed_idx++ )
+	} // End for ( eng->run.speed_idx = 0; eng->run.speed_idx < 3; eng->run.speed_idx++ )
 
 	eng->flg.Wrn_Flag  = wrn_flag_allspeed;
 	eng->flg.Err_Flag  = err_flag_allspeed;

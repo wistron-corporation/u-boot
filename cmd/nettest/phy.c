@@ -687,7 +687,7 @@ void phy_broadcom (MAC_ENGINE *eng) {//BCM5221
         phy_Reset( eng );
 
         if ( eng->run.TM_IEEE ) {
-                if ( eng->arg.GIEEE_sel == 0 ) {
+                if ( eng->run.ieee_sel == 0 ) {
                         phy_write( eng, 25, 0x1f01 );//Force MDI  //Measuring from channel A
                 }
                 else {
@@ -876,7 +876,7 @@ void phy_realtek0 (MAC_ENGINE *eng) {//RTL8201E
 
         if ( eng->run.TM_IEEE ) {
                 phy_write( eng, 31, 0x0001 );
-                if ( eng->arg.GIEEE_sel == 0 ) {
+                if ( eng->run.ieee_sel == 0 ) {
                         phy_write( eng, 25, 0x1f01 );//Force MDI  //Measuring from channel A
                 }
                 else {
@@ -891,7 +891,7 @@ void recov_phy_realtek1 (MAC_ENGINE *eng) {//RTL8211D
         if ( eng->run.TM_Burst ) {
                 if ( eng->run.TM_IEEE ) {
                         if ( eng->run.Speed_sel[ 0 ] ) {
-                                if ( eng->arg.GIEEE_sel == 0 ) {//Test Mode 1
+                                if ( eng->run.ieee_sel == 0 ) {//Test Mode 1
                                         //Rev 1.2
                                         phy_write( eng, 31, 0x0002 );
                                         phy_write( eng,  2, 0xc203 );
@@ -971,7 +971,7 @@ void phy_realtek1 (MAC_ENGINE *eng) {//RTL8211D
         if ( eng->run.TM_Burst ) {
                 if ( eng->run.TM_IEEE ) {
                         if ( eng->run.Speed_sel[ 0 ] ) {
-                                if ( eng->arg.GIEEE_sel == 0 ) {//Test Mode 1
+                                if ( eng->run.ieee_sel == 0 ) {//Test Mode 1
                                         //Rev 1.2
                                         phy_write( eng, 31, 0x0002 );
                                         phy_write( eng,  2, 0xc22b );
@@ -985,7 +985,7 @@ void phy_realtek1 (MAC_ENGINE *eng) {//RTL8211D
                                 }
                         }
                         else if ( eng->run.Speed_sel[ 1 ] ) {
-                                if ( eng->arg.GIEEE_sel == 0 ) {//From Channel A
+                                if ( eng->run.ieee_sel == 0 ) {//From Channel A
                                         //Rev 1.2
                                         phy_write( eng, 23, 0xa102 );
                                         phy_write( eng, 16, 0x01ae );//MDI
@@ -998,12 +998,12 @@ void phy_realtek1 (MAC_ENGINE *eng) {//RTL8211D
                                 }
                         }
                         else {
-                                if ( eng->arg.GIEEE_sel == 0 ) {//Diff. Voltage/TP-IDL/Jitter: Pseudo-random pattern
+                                if ( eng->run.ieee_sel == 0 ) {//Diff. Voltage/TP-IDL/Jitter: Pseudo-random pattern
                                         phy_write( eng, 31, 0x0006 );
                                         phy_write( eng,  0, 0x5a21 );
                                         phy_write( eng, 31, 0x0000 );
                                 }
-                                else if ( eng->arg.GIEEE_sel == 1 ) {//Harmonic: pattern
+                                else if ( eng->run.ieee_sel == 1 ) {//Harmonic: pattern
                                         phy_write( eng, 31, 0x0006 );
                                         phy_write( eng,  2, 0x05ee );
                                         phy_write( eng,  0, 0xff21 );
@@ -1235,7 +1235,7 @@ Write_Reg_GPIO_DD( 0x24, GPIO_24h_Value );
                                 //Rev 1.2
                                 phy_write( eng, 31, 0x0000 );
 
-                                if ( eng->arg.GIEEE_sel == 0 ) {
+                                if ( eng->run.ieee_sel == 0 ) {
                                         phy_write( eng,  9, 0x2000 );//Test Mode 1
                                 }
                                 else {
@@ -1251,7 +1251,7 @@ Write_Reg_GPIO_DD( 0x24, GPIO_24h_Value );
                                 phy_write( eng, 24, 0xf060 );
                                 phy_write( eng, 31, 0x0000 );
 
-                                if ( eng->arg.GIEEE_sel == 0 ) {
+                                if ( eng->run.ieee_sel == 0 ) {
                                         phy_write( eng, 16, 0x00ae );//From Channel A
                                 }
                                 else {
@@ -1261,10 +1261,10 @@ Write_Reg_GPIO_DD( 0x24, GPIO_24h_Value );
                         else {
                                 //Rev 1.2
                                 phy_write( eng, 31, 0x0006 );
-                                if ( eng->arg.GIEEE_sel == 0 ) {//Diff. Voltage/TP-IDL/Jitter
+                                if ( eng->run.ieee_sel == 0 ) {//Diff. Voltage/TP-IDL/Jitter
                                         phy_write( eng,  0, 0x5a21 );
                                 }
-                                else if ( eng->arg.GIEEE_sel == 1 ) {//Harmonic: �FF� pattern
+                                else if ( eng->run.ieee_sel == 1 ) {//Harmonic: �FF� pattern
                                         phy_write( eng,  2, 0x05ee );
                                         phy_write( eng,  0, 0xff21 );
                                 }
@@ -1470,13 +1470,13 @@ void phy_realtek3 (MAC_ENGINE *eng) {//RTL8211C
         if ( eng->run.TM_Burst ) {
                 if ( eng->run.TM_IEEE ) {
                         if ( eng->run.Speed_sel[ 0 ] ) {
-                                if ( eng->arg.GIEEE_sel == 0 ) {   //Test Mode 1
+                                if ( eng->run.ieee_sel == 0 ) {   //Test Mode 1
                                         phy_write( eng,  9, 0x2000 );
                                 }
-                                else if ( eng->arg.GIEEE_sel == 1 ) {//Test Mode 2
+                                else if ( eng->run.ieee_sel == 1 ) {//Test Mode 2
                                         phy_write( eng,  9, 0x4000 );
                                 }
-                                else if ( eng->arg.GIEEE_sel == 2 ) {//Test Mode 3
+                                else if ( eng->run.ieee_sel == 2 ) {//Test Mode 3
                                         phy_write( eng,  9, 0x6000 );
                                 }
                                 else {                           //Test Mode 4
@@ -1488,7 +1488,7 @@ void phy_realtek3 (MAC_ENGINE *eng) {//RTL8211C
                                 phy_write( eng, 17, eng->phy.PHY_11h & 0xfff7 );
                                 phy_write( eng, 14, 0x0660 );
 
-                                if ( eng->arg.GIEEE_sel == 0 ) {
+                                if ( eng->run.ieee_sel == 0 ) {
                                         phy_write( eng, 16, 0x00a0 );//MDI  //From Channel A
                                 }
                                 else {
@@ -1496,12 +1496,12 @@ void phy_realtek3 (MAC_ENGINE *eng) {//RTL8211C
                                 }
                         }
                         else {
-//                              if ( eng->arg.GIEEE_sel == 0 ) {//Pseudo-random pattern
+//                              if ( eng->run.ieee_sel == 0 ) {//Pseudo-random pattern
 //                                      phy_write( eng, 31, 0x0006 );
 //                                      phy_write( eng,  0, 0x5a21 );
 //                                      phy_write( eng, 31, 0x0000 );
 //                              }
-//                              else if ( eng->arg.GIEEE_sel == 1 ) {//�FF� pattern
+//                              else if ( eng->run.ieee_sel == 1 ) {//�FF� pattern
 //                                      phy_write( eng, 31, 0x0006 );
 //                                      phy_write( eng,  2, 0x05ee );
 //                                      phy_write( eng,  0, 0xff21 );
@@ -1611,7 +1611,7 @@ void phy_realtek4 (MAC_ENGINE *eng) {//RTL8201F
                                 phy_Wait_Reset_Done( eng );
                                 phy_write( eng, 24, 0x0310 ); // Disable ALDPS
 
-                                if ( eng->arg.GIEEE_sel == 0 ) {//From Channel A (RJ45 pair 1, 2)
+                                if ( eng->run.ieee_sel == 0 ) {//From Channel A (RJ45 pair 1, 2)
                                         phy_write( eng, 28, 0x40c2 ); //Force MDI
                                 }
                                 else {//From Channel B (RJ45 pair 3, 6)
@@ -1759,10 +1759,10 @@ printf ("\nSet RTL8211F [Start] =====>\n");
                         if ( eng->run.Speed_sel[ 0 ] ) {
                                 //Rev 1.0
                                 phy_write( eng, 31, 0x0000 );
-                                if ( eng->arg.GIEEE_sel == 0 ) {//Test Mode 1
+                                if ( eng->run.ieee_sel == 0 ) {//Test Mode 1
                                         phy_write( eng,  9, 0x0200 );
                                 }
-                                else if ( eng->arg.GIEEE_sel == 1 ) {//Test Mode 2
+                                else if ( eng->run.ieee_sel == 1 ) {//Test Mode 2
                                         phy_write( eng,  9, 0x0400 );
                                 }
                                 else {//Test Mode 4
@@ -1772,7 +1772,7 @@ printf ("\nSet RTL8211F [Start] =====>\n");
                         else if ( eng->run.Speed_sel[ 1 ] ) {//option
                                 //Rev 1.0
                                 phy_write( eng, 31, 0x0000 );
-                                if ( eng->arg.GIEEE_sel == 0 ) {//Output MLT-3 from Channel A
+                                if ( eng->run.ieee_sel == 0 ) {//Output MLT-3 from Channel A
                                         phy_write( eng, 24, 0x2318 );
                                 }
                                 else {//Output MLT-3 from Channel B
@@ -1792,7 +1792,7 @@ printf ("\nSet RTL8211F [Start] =====>\n");
                                 phy_write( eng, 31, 0x0000 );
                                 phy_write( eng,  9, 0x0000 );
                                 phy_write( eng,  4, 0x0061 );
-                                if ( (eng->arg.GIEEE_sel & 0x1) == 0 ) {//with EEE
+                                if ( (eng->run.ieee_sel & 0x1) == 0 ) {//with EEE
                                         phy_write( eng, 25, 0x0853 );
                                 }
                                 else {//without EEE
@@ -1801,12 +1801,12 @@ printf ("\nSet RTL8211F [Start] =====>\n");
                                 phy_write( eng,  0, 0x9200 );
                                 phy_Wait_Reset_Done( eng );
 
-                                if ( (eng->arg.GIEEE_sel & 0x6) == 0 ) {//For Diff. Voltage/TP-IDL/Jitter
+                                if ( (eng->run.ieee_sel & 0x6) == 0 ) {//For Diff. Voltage/TP-IDL/Jitter
                                         phy_write( eng, 31, 0x0c80 );
                                         phy_write( eng, 18, 0x0115 );
                                         phy_write( eng, 16, 0x5a21 );
                                 }
-                                else if ( (eng->arg.GIEEE_sel & 0x6) == 0x2 ) {//For Harmonic (all "1" patten)
+                                else if ( (eng->run.ieee_sel & 0x6) == 0x2 ) {//For Harmonic (all "1" patten)
                                         phy_write( eng, 31, 0x0c80 );
                                         phy_write( eng, 18, 0x0015 );
                                         phy_write( eng, 16, 0xff21 );

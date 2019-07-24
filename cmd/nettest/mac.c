@@ -252,51 +252,8 @@ void init_iodelay(MAC_ENGINE *eng)
 	if (eng->run.is_rgmii)
 		eng->io.Dly_3Regiser = 1;
 	else
-		eng->io.Dly_3Regiser = 0;
-	//------------------------------
-	// IO Strength Max.
-	//------------------------------
-	//------------------------------
-	// [IO]setup Str_reg_idx
-	// [IO]setup Str_reg_value
-	// [IO]setup Str_reg_mask
-	// [IO]setup Str_max
-	// [IO]setup Str_shf
-	//------------------------------
-	// Get bit (shift) of IO driving strength register
-#ifdef CONFIG_ASPEED_AST2600
-	eng->io.mac34_drv_reg.addr = SCU_BASE + 0x458;
-	eng->io.mac34_drv_reg.drv_max = 0x3;
-#else
-	eng->io.mac12_drv_reg.addr = SCU_BASE + 0x90;
-	eng->io.mac12_drv_reg.drv_max = 0x3;
-#endif	
+		eng->io.Dly_3Regiser = 0;	
 
-#if 0
-	eng->io.Str_reg_idx   = 0x90;
-	eng->io.Str_reg_Lbit  =  8;
-	eng->io.Str_reg_Hbit  = 11;
-	eng->io.Str_reg_value = ( eng->reg.SCU_090 >> eng->io.Str_reg_Lbit ) & 0xf;
-	eng->io.Str_reg_mask  = ( eng->reg.SCU_090 & 0xfffff0ff );
-	eng->io.Str_max       = 1;//0~1
-	if (0 == eng->run.is_rgmii) {
-		switch ( eng->run.mac_idx ) {
-			case 0  : eng->io.Str_shf =  9; break;
-			case 1  : eng->io.Str_shf = 11; break;
-		}
-	}
-	else {//AST2500 RGMII only support high drive RGMIITXCK
-		if ( eng->run.TM_IOStrength )
-			printf("The RGMII driving strength testing v1.0\n");
-		switch ( eng->run.mac_idx ) {
-			case 0  : eng->io.Str_shf =  8; break;
-			case 1  : eng->io.Str_shf = 10; break;
-		}
-	}
-
-	if ( !eng->run.TM_IOStrength )
-		eng->io.Str_max = 0;
-#endif
 	//------------------------------
 	// IO Delay Stage/Step
 	//------------------------------
@@ -323,9 +280,6 @@ void init_iodelay(MAC_ENGINE *eng)
 	else
 		eng->io.Dly_mask_bit_out = eng->io.Dly_mask_bit_in;
 
-	//------------------------------
-	// IO-Delay Register Bit Position
-	//------------------------------
 	//------------------------------
 	// [IO]setup Dly_out_shf
 	// [IO]setup Dly_in_shf
@@ -378,28 +332,6 @@ int get_iodelay (MAC_ENGINE *eng) {
 	int        index_max;
 
 	nt_log_func_name();
-
-	//------------------------------
-	// IO Delay Register Setting
-	//------------------------------
-	//------------------------------
-	// [IO]setup Dly_reg_idx
-	// [IO]setup Dly_reg_value
-	//------------------------------
-	switch (eng->run.Speed_idx) {
-	case 0:
-		eng->io.Dly_reg_idx = 0x48;
-		eng->io.Dly_reg_value = eng->reg.SCU_048;
-		break;
-	case 1:
-		eng->io.Dly_reg_idx = 0xb8;
-		eng->io.Dly_reg_value = eng->reg.SCU_0b8;
-		break;
-	case 2:
-		eng->io.Dly_reg_idx = 0xbc;
-		eng->io.Dly_reg_value = eng->reg.SCU_0bc;
-		break;
-	}
 
 	//------------------------------
 	// [IO]setup Dly_reg_name_tx
@@ -764,10 +696,10 @@ void init_mac (MAC_ENGINE *eng)
   #endif
 #endif
 
-//	mac_reg_write( eng, 0x20, ( eng->run.TDES_BASE + CPU_BUS_ADDR_SDRAM_OFFSET ) ); // 20130730
-//	mac_reg_write( eng, 0x24, ( eng->run.RDES_BASE + CPU_BUS_ADDR_SDRAM_OFFSET ) ); // 20130730
-	mac_reg_write( eng, 0x20, AT_MEMRW_BUF( eng->run.TDES_BASE ) ); // 20130730
-	mac_reg_write( eng, 0x24, AT_MEMRW_BUF( eng->run.RDES_BASE ) ); // 20130730
+//	mac_reg_write( eng, 0x20, ( eng->run.tdes_base + CPU_BUS_ADDR_SDRAM_OFFSET ) ); // 20130730
+//	mac_reg_write( eng, 0x24, ( eng->run.rdes_base + CPU_BUS_ADDR_SDRAM_OFFSET ) ); // 20130730
+	mac_reg_write( eng, 0x20, AT_MEMRW_BUF( eng->run.tdes_base ) ); // 20130730
+	mac_reg_write( eng, 0x24, AT_MEMRW_BUF( eng->run.rdes_base ) ); // 20130730
 
 	mac_reg_write( eng, 0x08, eng->reg.MAC_008 );
 	mac_reg_write( eng, 0x0c, eng->reg.MAC_00c );
@@ -831,11 +763,11 @@ void FPri_End (MAC_ENGINE *eng, BYTE option)
 	if ((0 == eng->run.is_rgmii) && ( eng->phy.RMIICK_IOMode != 0 ) && eng->run.IO_MrgChk && eng->flg.AllFail ) {
 		if ( eng->arg.ctrl.b.rmii_phy_in == 0 ) {
 			PRINTF( option, "\n\n\n\n\n\n[Info] The PHY's RMII reference clock pin is setting to the OUTPUT mode now.\n" );
-			PRINTF( option, "       Maybe you can run the INPUT mode command \"mactest  %d %d %d %d %d %d %d\".\n\n\n\n", eng->arg.mac_idx, eng->arg.run_speed, (eng->arg.ctrl.w | 0x80), eng->arg.loop_max, eng->arg.test_mode, eng->arg.GPHYADR, eng->arg.GChk_TimingBund );
+			PRINTF( option, "       Maybe you can run the INPUT mode command \"mactest  %d %d %d %d %d %d %d\".\n\n\n\n", eng->arg.mac_idx, eng->arg.run_speed, (eng->arg.ctrl.w | 0x80), eng->arg.loop_max, eng->arg.test_mode, eng->arg.GPHYADR, eng->arg.delay_scan_boundary );
 		}
 		else {
 			PRINTF( option, "\n\n\n\n\n\n[Info] The PHY's RMII reference clock pin is setting to the INPUT mode now.\n" );
-			PRINTF( option, "       Maybe you can run the OUTPUT mode command \"mactest  %d %d %d %d %d %d %d\".\n\n\n\n", eng->arg.mac_idx, eng->arg.run_speed, (eng->arg.ctrl.w & 0x7f), eng->arg.loop_max, eng->arg.test_mode, eng->arg.GPHYADR, eng->arg.GChk_TimingBund );
+			PRINTF( option, "       Maybe you can run the OUTPUT mode command \"mactest  %d %d %d %d %d %d %d\".\n\n\n\n", eng->arg.mac_idx, eng->arg.run_speed, (eng->arg.ctrl.w & 0x7f), eng->arg.loop_max, eng->arg.test_mode, eng->arg.GPHYADR, eng->arg.delay_scan_boundary );
 		}
 	} // End if ( eng->env.MAC_RMII && ( eng->phy.RMIICK_IOMode != 0 ) && eng->run.IO_MrgChk && eng->flg.AllFail )
 
@@ -859,12 +791,21 @@ void FPri_End (MAC_ENGINE *eng, BYTE option)
 	//------------------------------
 	//[Warning] IO Strength
 	//------------------------------
-	if (eng->io.init_done && eng->io.Str_reg_value) {
+#ifdef CONFIG_ASPEED_AST2600
+	if (eng->io.init_done && eng->io.mac34_drv_reg.value.w) {
 		PRINTF(option,
-		       "\n[Warning] SCU%02X[%2d:%2d] == 0x%02x is not the "
-		       "suggestion value 0.\n",
-		       eng->io.Str_reg_idx, eng->io.Str_reg_Hbit,
-		       eng->io.Str_reg_Lbit, eng->io.Str_reg_value);
+		       "\n[Warning] [%08X] 0x%08x is not the suggestion value "
+		       "0.\n",
+		       eng->io.mac34_drv_reg.addr,
+		       eng->io.mac34_drv_reg.value.w);
+#else
+	if (eng->io.init_done && eng->io.mac12_drv_reg.value.w) {
+		PRINTF(option,
+		       "\n[Warning] [%08X] 0x%08x is not the suggestion value "
+		       "0.\n",
+		       eng->io.mac12_drv_reg.addr,
+		       eng->io.mac12_drv_reg.value.w);
+#endif	
 		PRINTF(option, "          This change at this platform must "
 			       "been proven again by the ASPEED.\n");
 	}
@@ -901,7 +842,7 @@ void FPri_End (MAC_ENGINE *eng, BYTE option)
 		}
 
 	if ( eng->arg.run_mode == MODE_NCSI ) {
-		PRINTF( option, "\n[Arg] %d %d %d %d %d %d %d {%d}\n", eng->arg.mac_idx, eng->arg.GPackageTolNum, eng->arg.GChannelTolNum, eng->arg.test_mode, eng->arg.GChk_TimingBund, eng->arg.ctrl.w, eng->arg.GARPNumCnt, TIME_OUT_NCSI );
+		PRINTF( option, "\n[Arg] %d %d %d %d %d %d %d {%d}\n", eng->arg.mac_idx, eng->arg.GPackageTolNum, eng->arg.GChannelTolNum, eng->arg.test_mode, eng->arg.delay_scan_boundary, eng->arg.ctrl.w, eng->arg.GARPNumCnt, TIME_OUT_NCSI );
 
 		switch ( eng->ncsi_cap.PCI_DID_VID ) {
 			case PCI_DID_VID_Intel_82574L             : { PRINTF( option, "[NC]%08x %08x: Intel 82574L       \n", eng->ncsi_cap.manufacturer_id, eng->ncsi_cap.PCI_DID_VID ); break; }
@@ -951,10 +892,10 @@ void FPri_End (MAC_ENGINE *eng, BYTE option)
 	else {
 #if 0		
 		if (eng->arg.loop_inf) {
-			PRINTF( option, "\n[Arg] %d %d %d # %d %d %d %x (%s){%d x:%d %d %d}[%d %d %d] %d\n"  , eng->arg.mac_idx, eng->arg.run_speed, eng->arg.ctrl.w,                     eng->arg.test_mode, eng->arg.GPHYADR, eng->arg.GChk_TimingBund, eng->arg.GUserDVal,  eng->run.TIME_OUT_Des_PHYRatio, TIME_OUT_Des_1G, TIME_OUT_Des_100M, TIME_OUT_Des_10M, eng->run.Loop_rl[0], eng->run.Loop_rl[1], eng->run.Loop_rl[2], eng->dat.Des_Num );
+			PRINTF( option, "\n[Arg] %d %d %d # %d %d %d %x (%s){%d x:%d %d %d}[%d %d %d] %d\n"  , eng->arg.mac_idx, eng->arg.run_speed, eng->arg.ctrl.w,                     eng->arg.test_mode, eng->arg.GPHYADR, eng->arg.delay_scan_boundary, eng->arg.GUserDVal,  eng->run.TIME_OUT_Des_PHYRatio, TIME_OUT_Des_1G, TIME_OUT_Des_100M, TIME_OUT_Des_10M, eng->run.Loop_rl[0], eng->run.Loop_rl[1], eng->run.Loop_rl[2], eng->dat.Des_Num );
 		}
 		else {
-			PRINTF( option, "\n[Arg] %d %d %d %d %d %d %d %x (%s){%d x:%d %d %d}[%d %d %d] %d\n", eng->arg.mac_idx, eng->arg.run_speed, eng->arg.ctrl.w, eng->arg.loop_max, eng->arg.test_mode, eng->arg.GPHYADR, eng->arg.GChk_TimingBund, eng->arg.GUserDVal, eng->run.TIME_OUT_Des_PHYRatio, TIME_OUT_Des_1G, TIME_OUT_Des_100M, TIME_OUT_Des_10M, eng->run.Loop_rl[0], eng->run.Loop_rl[1], eng->run.Loop_rl[2], eng->dat.Des_Num );
+			PRINTF( option, "\n[Arg] %d %d %d %d %d %d %d %x (%s){%d x:%d %d %d}[%d %d %d] %d\n", eng->arg.mac_idx, eng->arg.run_speed, eng->arg.ctrl.w, eng->arg.loop_max, eng->arg.test_mode, eng->arg.GPHYADR, eng->arg.delay_scan_boundary, eng->arg.GUserDVal, eng->run.TIME_OUT_Des_PHYRatio, TIME_OUT_Des_1G, TIME_OUT_Des_100M, TIME_OUT_Des_10M, eng->run.Loop_rl[0], eng->run.Loop_rl[1], eng->run.Loop_rl[2], eng->dat.Des_Num );
 		}
 #endif		
 
@@ -1531,7 +1472,7 @@ char check_buf (MAC_ENGINE *eng, int loopcnt) {
 
 	nt_log_func_name();
 
-	desadr = eng->run.RDES_BASE + ( 16 * eng->dat.Des_Num ) - 4;//base for read/write
+	desadr = eng->run.rdes_base + ( 16 * eng->dat.Des_Num ) - 4;//base for read/write
 	for ( des_num = eng->dat.Des_Num - 1; des_num >= 0; des_num-- ) {
 		datbase = AT_BUF_MEMRW( Read_Mem_Des_DD( desadr ) & 0xfffffffc);//base for read/write
 		if ( check_Data( eng, datbase, des_num ) ) {
@@ -1637,8 +1578,8 @@ void setup_des (MAC_ENGINE *eng, uint32_t bufnum)
 //	eng->dat.DMA_Base_Rx = CPU_BUS_ADDR_SDRAM_OFFSET + ZeroCopy_OFFSET + GET_DMA_BASE(0); // 20130730
 	eng->dat.DMA_Base_Tx = ZeroCopy_OFFSET + eng->dat.DMA_Base_Setup; // 20130730
 	eng->dat.DMA_Base_Rx = ZeroCopy_OFFSET + GET_DMA_BASE(0); // 20130730
-	setup_txdes( eng, eng->run.TDES_BASE, AT_MEMRW_BUF( eng->dat.DMA_Base_Tx ) );//base for read/write //base of the descriptor
-	setup_rxdes( eng, eng->run.RDES_BASE, AT_MEMRW_BUF( eng->dat.DMA_Base_Rx ) );//base for read/write //base of the descriptor
+	setup_txdes( eng, eng->run.tdes_base, AT_MEMRW_BUF( eng->dat.DMA_Base_Tx ) );//base for read/write //base of the descriptor
+	setup_rxdes( eng, eng->run.rdes_base, AT_MEMRW_BUF( eng->dat.DMA_Base_Rx ) );//base for read/write //base of the descriptor
 } // End void setup_des (uint32_t bufnum)
 
 //------------------------------------------------------------
@@ -1656,7 +1597,7 @@ void setup_des_loop (MAC_ENGINE *eng, uint32_t bufnum)
 
 	if ( eng->run.TM_RxDataEn ) {
 		H_rx_bufadr = AT_MEMRW_BUF( eng->dat.DMA_Base_Rx );//base of the descriptor
-		H_rx_desadr = eng->run.RDES_BASE;//base for read/write
+		H_rx_desadr = eng->run.rdes_base;//base for read/write
 		for ( des_num = 0; des_num < eng->dat.Des_Num - 1; des_num++ ) {
 			Write_Mem_Des_DD( H_rx_desadr + 0x0C, H_rx_bufadr );
 			Write_Mem_Des_DD( H_rx_desadr       , RDES_IniVal );
@@ -1675,7 +1616,7 @@ void setup_des_loop (MAC_ENGINE *eng, uint32_t bufnum)
 
 	if ( eng->run.TM_TxDataEn ) {
 		H_tx_bufadr = AT_MEMRW_BUF( eng->dat.DMA_Base_Tx );//base of the descriptor
-		H_tx_desadr = eng->run.TDES_BASE;//base for read/write
+		H_tx_desadr = eng->run.tdes_base;//base for read/write
 		for ( des_num = 0; des_num < eng->dat.Des_Num - 1; des_num++ ) {
 			eng->dat.FRAME_LEN_Cur = eng->dat.FRAME_LEN[ des_num ];
 			Write_Mem_Des_DD( H_tx_desadr + 0x0C, H_tx_bufadr );
@@ -1829,8 +1770,8 @@ char check_des (MAC_ENGINE *eng, uint32_t bufnum, int checkpoint) {
 	H_tx_bufadr = AT_MEMRW_BUF( eng->dat.DMA_Base_Tx );//base of the descriptor
 	H_rx_bufadr = AT_MEMRW_BUF( eng->dat.DMA_Base_Rx );//base of the descriptor
 #endif
-	H_rx_desadr = eng->run.RDES_BASE;//base for read/write
-	H_tx_desadr = eng->run.TDES_BASE;//base for read/write
+	H_rx_desadr = eng->run.rdes_base;//base for read/write
+	H_tx_desadr = eng->run.tdes_base;//base for read/write
 
 #ifdef Delay_DES
 	DELAY( Delay_DES );
@@ -1926,11 +1867,18 @@ char check_des (MAC_ENGINE *eng, uint32_t bufnum, int checkpoint) {
 //-----------------------------------------------------------
 void PrintIO_Header (MAC_ENGINE *eng, BYTE option) {
 
-	if ( eng->run.TM_IOStrength ) {
-		if ( eng->io.Str_max > 1 )
-			{ PRINTF( option, "<IO Strength: SCU%02x[%2d:%2d]=%2d>", eng->io.Str_reg_idx, eng->io.Str_shf + 1, eng->io.Str_shf, eng->io.Str_i ); }
-		else
-			{ PRINTF( option, "<IO Strength: SCU%02x[%2d]=%2d>", eng->io.Str_reg_idx, eng->io.Str_shf, eng->io.Str_i ); }
+	if (eng->run.TM_IOStrength) {
+		if (eng->io.drv_upper_bond > 1) {
+#ifdef CONFIG_ASPEED_AST2600			
+			PRINTF(option, "<IO Strength register: [%08x] 0x%08x>",
+			       eng->io.mac34_drv_reg.addr,
+			       eng->io.mac34_drv_reg.value.w);
+#else
+			PRINTF(option, "<IO Strength register: [%08x] 0x%08x>",
+			       eng->io.mac12_drv_reg.addr,
+			       eng->io.mac12_drv_reg.value.w);
+#endif			       
+		}
 	}
 
 	if      ( eng->run.Speed_sel[ 0 ] ) { PRINTF( option, "[1G  ]========================================>\n" ); }
@@ -1983,8 +1931,8 @@ void PrintIO_Line (MAC_ENGINE *eng, BYTE option) {
 } // End void PrintIO_Line (MAC_ENGINE *eng, BYTE option)
 
 //------------------------------------------------------------
-void PrintIO_Line_LOG (MAC_ENGINE *eng) {
-
+void PrintIO_Line_LOG (MAC_ENGINE *eng) 
+{
 	if ( eng->io.Dly_result ) {
 		PRINTF( FP_LOG, "\n=====>[Check]%s%2x, %s%2x:  X\n", eng->io.Dly_reg_name_rx, eng->io.Dly_in_selval, eng->io.Dly_reg_name_tx, eng->io.Dly_out_selval );
 	}
@@ -1996,28 +1944,6 @@ void PrintIO_Line_LOG (MAC_ENGINE *eng) {
 //------------------------------------------------------------
 // main
 //------------------------------------------------------------
-void Calculate_LOOP_CheckNum (MAC_ENGINE *eng) 
-{
-	nt_log_func_name();
-
-#define ONE_MBYTE    1048576
-
-#ifdef CheckDataEveryTime
-	eng->run.LOOP_CheckNum = 1;
-#else
-	if ( eng->run.IO_MrgChk || ( eng->arg.run_speed == SET_1G_100M_10MBPS ) || ( eng->arg.run_speed == SET_100M_10MBPS ) ) {
-		eng->run.LOOP_CheckNum = eng->run.LOOP_MAX;
-	}
-	else {
-		switch ( eng->arg.run_speed ) {
-			case SET_1GBPS    : eng->run.CheckBuf_MBSize =  MOVE_DATA_MB_SEC      ; break; // 1G
-			case SET_100MBPS  : eng->run.CheckBuf_MBSize = (MOVE_DATA_MB_SEC >> 3); break; // 100M ~ 1G / 8
-			case SET_10MBPS   : eng->run.CheckBuf_MBSize = (MOVE_DATA_MB_SEC >> 6); break; // 10M  ~ 1G / 64
-		}
-		eng->run.LOOP_CheckNum = ( eng->run.CheckBuf_MBSize / ( ((eng->dat.Des_Num * DMA_PakSize) / ONE_MBYTE ) + 1) );
-	}
-#endif
-}
 
 //------------------------------------------------------------
 void TestingSetup (MAC_ENGINE *eng) 
@@ -2166,7 +2092,7 @@ char TestingLoop (MAC_ENGINE *eng, uint32_t loop_checknum)
 		else
 			eng->run.Loop++;
 	} // End while ( ( eng->run.Loop < eng->run.LOOP_MAX ) || eng->arg.loop_inf )
-	eng->run.Loop_rl[ (int)eng->run.Speed_idx ] = eng->run.Loop;
+	eng->run.Loop_rl[ (int)eng->run.speed_idx ] = eng->run.Loop;
 
 	eng->flg.AllFail = 0;
 	return(0);

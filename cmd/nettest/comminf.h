@@ -132,9 +132,9 @@
 //---------------------------------------------------------
 #define ZeroCopy_OFFSET                    (( eng->run.TM_Burst ) ? 0 : 2)
 
-//      --------------------------------- DRAM_MapAdr            = TDES_BASE
+//      --------------------------------- DRAM_MapAdr            = tdes_base
 //              | TX descriptor ring    |
-//              ------------------------- DRAM_MapAdr + 0x040000 = RDES_BASE
+//              ------------------------- DRAM_MapAdr + 0x040000 = rdes_base
 //              | RX descriptor ring    |
 //              -------------------------
 //              | Reserved              |
@@ -524,10 +524,8 @@ typedef struct {
 					   argv[4] for ncsi */
 
 	uint32_t GPHYADR;		/* argv[6] for dedicated */
-	uint32_t GChk_TimingBund;	/* argv[7] for dedicated
-					   argv[5] for ncsi */
-	
-	uint32_t GIEEE_sel;		/* derived from GChk_TimingBund */
+	uint32_t delay_scan_boundary;	/* argv[7] for dedicated
+					   argv[5] for ncsi */	
 
 	uint32_t GARPNumCnt;		/* argv[7] for ncsi */
 	uint32_t GUserDVal;		/* argv[8] for dedicated */
@@ -538,12 +536,17 @@ typedef struct {
 	uint32_t mdio_idx;
 	uint32_t mdio_base;
 	uint8_t is_rgmii;
+	uint32_t ieee_sel;		/* derived from delay_scan_boundary */
 
+	uint32_t tdes_base;
+	uint32_t rdes_base;
 
-	CHAR                 Speed_1G                      ;//run_speed
+	uint32_t ncsi_tdes_base;
+	uint32_t ncsi_rdes_base;
+
 	CHAR                 Speed_org[3]                  ;//run_speed
 	CHAR                 Speed_sel[3]                  ;
-	CHAR                 Speed_idx                     ;
+	uint32_t speed_idx;
 
 	CHAR                 TM_Burst                      ;//test_mode
 	CHAR                 TM_IEEE                       ;//test_mode
@@ -558,11 +561,7 @@ typedef struct {
 	BYTE                 IO_Bund                       ;
 	CHAR                 IO_MrgChk                     ;
 
-	uint32_t TDES_BASE                     ;
-	uint32_t RDES_BASE                     ;
 
-	uint32_t NCSI_TxDesBase                ;
-	uint32_t NCSI_RxDesBase                ;
 	int                  NCSI_RxTimeOutScale           ;
 
 	int                  LOOP_MAX                      ;
@@ -610,18 +609,40 @@ typedef struct {
 typedef union {
 	uint32_t w;
 	struct {
-		uint32_t mac1_1g_tx_out_delay	: 6;	/* bit[5:0] */
-		uint32_t mac2_1g_tx_out_delay	: 6;	/* bit[11:6] */
-		uint32_t mac1_rx_out_delay	: 6;	/* bit[17:12] */
-		uint32_t mac2_rx_out_delay	: 6;	/* bit[23:18] */
-		uint32_t mac1_rmii_tx_data_at_falling : 1; /* bit[24] */
-		uint32_t mac2_rmii_tx_data_at_falling : 1; /* bit[25] */
+		uint32_t tx_delay_1		: 6;	/* bit[5:0] */
+		uint32_t tx_delay_2		: 6;	/* bit[11:6] */
+		uint32_t rx_delay_1		: 6;	/* bit[17:12] */
+		uint32_t rx_delay_2		: 6;	/* bit[23:18] */
+		uint32_t rmii_tx_data_at_falling_1 : 1; /* bit[24] */
+		uint32_t rmii_tx_data_at_falling_2 : 1; /* bit[25] */
 		uint32_t reserved_0 		: 3;	/* bit[28:26] */
-		uint32_t rmii1_50m_oe 		: 1;	/* bit[29] */
-		uint32_t rmii2_50m_oe 		: 1;	/* bit[30] */
+		uint32_t rmii_50m_oe_1 		: 1;	/* bit[29] */
+		uint32_t rmii_50m_oe_2		: 1;	/* bit[30] */
 		uint32_t rgmii_125m_o_sel 	: 1;	/* bit[31] */
 	}b;
-} mac12_delay_t;
+} mac_delay_1g_t;
+
+typedef union {
+	uint32_t w;
+	struct {
+		uint32_t tx_delay_1		: 6;	/* bit[5:0] */
+		uint32_t tx_delay_2		: 6;	/* bit[11:6] */
+		uint32_t rx_delay_1		: 6;	/* bit[17:12] */
+		uint32_t rx_delay_2		: 6;	/* bit[23:18] */
+		uint32_t enable 		: 1;	/* bit[24] */
+		uint32_t reserved_0 		: 7;	/* bit[31:25] */
+	}b;
+} mac_delay_100_10_t;
+
+typedef struct mac_delay_1g_reg_s {
+	uint32_t addr;
+	mac_delay_1g_t value;
+} mac_delay_1g_reg_t;
+
+typedef struct mac_delay_100_10_reg_s {
+	uint32_t addr;
+	mac_delay_100_10_t value;
+} mac_delay_100_10_reg_t;
 
 #ifdef CONFIG_ASPEED_AST2600
 typedef union {
@@ -637,13 +658,16 @@ typedef struct mac34_drv_reg_s {
 	uint32_t drv_max;
 	mac34_drv_t value;
 } mac34_drv_reg_t;
+
 #else
 typedef union {
 	uint32_t w;
 	struct {
 		uint32_t reserved_0		: 8;	/* bit[7:0] */
-		uint32_t mac1_tx_drv		: 2;	/* bit[9:8] */
-		uint32_t mac2_tx_drv		: 2;	/* bit[11:10] */
+		uint32_t mac1_rmii_tx_drv	: 1;	/* bit[8] */
+		uint32_t mac1_rgmii_tx_drv	: 1;	/* bit[9] */
+		uint32_t mac2_rmii_tx_drv	: 1;	/* bit[10] */
+		uint32_t mac2_rgmii_tx_drv	: 1;	/* bit[11] */
 		uint32_t reserved_1		: 20;	/* bit[31:12] */
 	}b;
 } mac12_drv_t;
@@ -666,15 +690,18 @@ typedef struct {
 	mac34_drv_reg_t mac34_drv_reg;
 #else	
 	mac12_drv_reg_t mac12_drv_reg;
-#endif	
+#endif
+	uint32_t drv_upper_bond;
+	uint32_t drv_lower_bond;
+	uint32_t drv_curr;
 
-	uint32_t Str_reg_idx                   ;
-	BYTE                 Str_reg_Lbit                  ;
-	BYTE                 Str_reg_Hbit                  ;
-	uint32_t Str_reg_value                 ;
-	uint32_t Str_reg_mask                  ;
-	BYTE                 Str_max                       ;
-	BYTE                 Str_shf                       ;
+	mac_delay_1g_reg_t mac12_1g_delay;
+	mac_delay_1g_reg_t mac34_1g_delay;
+	mac_delay_100_10_reg_t mac12_100m_delay;
+	mac_delay_100_10_reg_t mac34_100m_delay;
+	mac_delay_100_10_reg_t mac12_10m_delay;
+	mac_delay_100_10_reg_t mac34_10m_delay;
+
 	BYTE                 Dly_stagebit                  ;
 	BYTE                 Dly_stage                     ;
 	BYTE                 Dly_stage_in                  ;
@@ -711,9 +738,7 @@ typedef struct {
 	uint32_t Dly_out_cval                  ;
 	SCHAR                Dly_out_str                   ;
 	BYTE                 Dly_out_end                   ;
-
-	BYTE                 Str_i                         ;
-	uint32_t Str_val                       ;
+	
 	BYTE                 Dly_in                        ;
 	BYTE                 Dly_in_selval                 ;
 	BYTE                 Dly_out                       ;
@@ -868,7 +893,7 @@ GLOBAL void    PrintIOTimingBund (MAC_ENGINE *eng);
 
 GLOBAL void    PrintPHYAdr (MAC_ENGINE *eng);
 
-GLOBAL void    Calculate_LOOP_CheckNum (MAC_ENGINE *eng);
+//GLOBAL void    calc_loop_check_num (MAC_ENGINE *eng);
 GLOBAL void    init_scu1 (MAC_ENGINE *eng);
 GLOBAL void    init_scu_macio (MAC_ENGINE *eng);
 
