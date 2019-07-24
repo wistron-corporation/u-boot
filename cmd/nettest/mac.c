@@ -313,15 +313,8 @@ void init_iodelay(MAC_ENGINE *eng)
 	//------------------------------
 	// [IO]setup value_ary
 	//------------------------------
-	if (eng->reg.SCU_07c == 0x01000003) {
-		for (index = 0; index < 16; index++) {
-			eng->io.value_ary[ index ] = IOValue_Array_A0[ index ];
-		}
-	}
-	else {
-		for (index = 0; index < eng->io.Dly_stage; index++)
-			eng->io.value_ary[ index ] = index;
-	}
+	for (index = 0; index < eng->io.Dly_stage; index++)
+		eng->io.value_ary[ index ] = index;
 
 	eng->io.init_done = 1;
 }
@@ -333,12 +326,6 @@ int get_iodelay (MAC_ENGINE *eng) {
 
 	nt_log_func_name();
 
-	//------------------------------
-	// [IO]setup Dly_reg_name_tx
-	// [IO]setup Dly_reg_name_rx
-	// [IO]setup Dly_reg_name_tx_new
-	// [IO]setup Dly_reg_name_rx_new
-	//------------------------------
 	if (0 == eng->run.is_rgmii)
 		sprintf( eng->io.Dly_reg_name_tx, "Tx:SCU%2X[   %2d]=",  eng->io.Dly_reg_idx,                           eng->io.Dly_out_shf );
 	else
@@ -423,38 +410,38 @@ int get_iodelay (MAC_ENGINE *eng) {
 	//------------------------------
 	// [IO]setup Dly_in_cval
 	// [IO]setup Dly_out_cval
-	// [IO]setup Dly_in_str
-	// [IO]setup Dly_in_end
-	// [IO]setup Dly_out_str
-	// [IO]setup Dly_out_end
+	// [IO]setup rx_delay_scan_begin
+	// [IO]setup rx_delay_scan_end
+	// [IO]setup tx_delay_scan_begin
+	// [IO]setup tx_delay_scan_end
 	//------------------------------
 	// Get the range for testmargin block
 	if ( eng->run.TM_IOTiming ) {
 		eng->io.Dly_in_cval  = eng->io.Dly_step;
 		eng->io.Dly_out_cval = eng->io.Dly_step;
-		eng->io.Dly_in_str   = 0;
-		eng->io.Dly_in_end   = eng->io.Dly_stage_in-1;
-		eng->io.Dly_out_str  = 0;
+		eng->io.rx_delay_scan_begin   = 0;
+		eng->io.rx_delay_scan_end   = eng->io.Dly_stage_in-1;
+		eng->io.tx_delay_scan_begin  = 0;
 		if (0 == eng->run.is_rgmii)
-			eng->io.Dly_out_end  = 1;
+			eng->io.tx_delay_scan_end  = 1;
 		else
-			eng->io.Dly_out_end  = eng->io.Dly_stage_out-1;
+			eng->io.tx_delay_scan_end  = eng->io.Dly_stage_out-1;
 	}
 	else if ( eng->run.IO_Bund ) {
 		eng->io.Dly_in_cval  = eng->io.Dly_step;
 		eng->io.Dly_out_cval = eng->io.Dly_step;
-		eng->io.Dly_in_str   = eng->io.Dly_in_min;
-		eng->io.Dly_in_end   = eng->io.Dly_in_max;
-		eng->io.Dly_out_str  = eng->io.Dly_out_min;
-		eng->io.Dly_out_end  = eng->io.Dly_out_max;
+		eng->io.rx_delay_scan_begin   = eng->io.Dly_in_min;
+		eng->io.rx_delay_scan_end   = eng->io.Dly_in_max;
+		eng->io.tx_delay_scan_begin  = eng->io.Dly_out_min;
+		eng->io.tx_delay_scan_end  = eng->io.Dly_out_max;
 	}
 	else {
 		eng->io.Dly_in_cval  = 1;
 		eng->io.Dly_out_cval = 1;
-		eng->io.Dly_in_str   = 0;
-		eng->io.Dly_in_end   = 0;
-		eng->io.Dly_out_str  = 0;
-		eng->io.Dly_out_end  = 0;
+		eng->io.rx_delay_scan_begin   = 0;
+		eng->io.rx_delay_scan_end   = 0;
+		eng->io.tx_delay_scan_begin  = 0;
+		eng->io.tx_delay_scan_end  = 0;
 	} // End if ( eng->run.TM_IOTiming )
 
 	return(0);
@@ -1888,19 +1875,19 @@ void PrintIO_Header (MAC_ENGINE *eng, BYTE option) {
 	if ( !(option == FP_LOG) ) {
 		PRINTF( option, "   SCU%2X      ", eng->io.Dly_reg_idx );
 
-		for ( eng->io.Dly_in = eng->io.Dly_in_str; eng->io.Dly_in <= eng->io.Dly_in_end; eng->io.Dly_in+=eng->io.Dly_in_cval ) {
+		for ( eng->io.Dly_in = eng->io.rx_delay_scan_begin; eng->io.Dly_in <= eng->io.rx_delay_scan_end; eng->io.Dly_in+=eng->io.Dly_in_cval ) {
 			eng->io.Dly_in_selval = eng->io.value_ary[ eng->io.Dly_in ];
 			PRINTF( option, "%1x", ( eng->io.Dly_in_selval >> 4 ) );
 		}
 
 		PRINTF( option, "\n%s    ", eng->io.Dly_reg_name_rx_new );
-		for ( eng->io.Dly_in = eng->io.Dly_in_str; eng->io.Dly_in <= eng->io.Dly_in_end; eng->io.Dly_in+=eng->io.Dly_in_cval ) {
+		for ( eng->io.Dly_in = eng->io.rx_delay_scan_begin; eng->io.Dly_in <= eng->io.rx_delay_scan_end; eng->io.Dly_in+=eng->io.Dly_in_cval ) {
 			eng->io.Dly_in_selval = eng->io.value_ary[ eng->io.Dly_in ];
 			PRINTF( option, "%1x", eng->io.Dly_in_selval & 0xf );
 		}
 
 		PRINTF( option, "\n              " );
-		for ( eng->io.Dly_in = eng->io.Dly_in_str; eng->io.Dly_in <= eng->io.Dly_in_end; eng->io.Dly_in+=eng->io.Dly_in_cval ) {
+		for ( eng->io.Dly_in = eng->io.rx_delay_scan_begin; eng->io.Dly_in <= eng->io.rx_delay_scan_end; eng->io.Dly_in+=eng->io.Dly_in_cval ) {
 			if ( eng->io.Dly_in_reg_idx == eng->io.Dly_in ) { PRINTF( option, "|" ); }
 			else                                            { PRINTF( option, " " ); }
 		}
@@ -1933,11 +1920,14 @@ void PrintIO_Line (MAC_ENGINE *eng, BYTE option) {
 //------------------------------------------------------------
 void PrintIO_Line_LOG (MAC_ENGINE *eng) 
 {
-	if ( eng->io.Dly_result ) {
-		PRINTF( FP_LOG, "\n=====>[Check]%s%2x, %s%2x:  X\n", eng->io.Dly_reg_name_rx, eng->io.Dly_in_selval, eng->io.Dly_reg_name_tx, eng->io.Dly_out_selval );
-	}
-	else {
-		PRINTF( FP_LOG, "\n=====>[Check]%s%2x, %s%2x:  O\n", eng->io.Dly_reg_name_rx, eng->io.Dly_in_selval, eng->io.Dly_reg_name_tx, eng->io.Dly_out_selval );
+	if (eng->io.Dly_result) {
+		PRINTF(FP_LOG, "\n=====>[Check]%s%2x, %s%2x:  X\n",
+		       eng->io.Dly_reg_name_rx, eng->io.Dly_in_selval,
+		       eng->io.Dly_reg_name_tx, eng->io.Dly_out_selval);
+	} else {
+		PRINTF(FP_LOG, "\n=====>[Check]%s%2x, %s%2x:  O\n",
+		       eng->io.Dly_reg_name_rx, eng->io.Dly_in_selval,
+		       eng->io.Dly_reg_name_tx, eng->io.Dly_out_selval);
 	}
 }
 

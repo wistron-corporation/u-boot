@@ -1416,7 +1416,7 @@ int mac_test(int argc, char * const argv[], uint32_t mode)
 				//------------------------------
 				// [Start] The loop of different IO out delay
 				//------------------------------
-				for ( eng->io.Dly_out = eng->io.Dly_out_str; eng->io.Dly_out <= eng->io.Dly_out_end; eng->io.Dly_out+=eng->io.Dly_out_cval ) {
+				for ( eng->io.Dly_out = eng->io.tx_delay_scan_begin; eng->io.Dly_out <= eng->io.tx_delay_scan_end; eng->io.Dly_out+=eng->io.Dly_out_cval ) {
 					if ( eng->run.IO_MrgChk ) {
 						eng->io.Dly_out_selval  = eng->io.value_ary[ eng->io.Dly_out ];
 						eng->io.Dly_out_reg_hit = ( eng->io.Dly_out_reg == eng->io.Dly_out_selval ) ? 1 : 0;
@@ -1430,16 +1430,12 @@ int mac_test(int argc, char * const argv[], uint32_t mode)
 					//------------------------------
 					// [Start] The loop of different IO in delay
 					//------------------------------
-					for ( eng->io.Dly_in = eng->io.Dly_in_str; eng->io.Dly_in <= eng->io.Dly_in_end; eng->io.Dly_in+=eng->io.Dly_in_cval ) {
+					for ( eng->io.Dly_in = eng->io.rx_delay_scan_begin; eng->io.Dly_in <= eng->io.rx_delay_scan_end; eng->io.Dly_in+=eng->io.Dly_in_cval ) {
 						if ( eng->run.IO_MrgChk ) {
 							eng->io.Dly_in_selval  = eng->io.value_ary[ eng->io.Dly_in ];
-							eng->io.Dly_val = ( eng->io.Dly_in_selval  << eng->io.Dly_in_shf  )
-							                | ( eng->io.Dly_out_selval << eng->io.Dly_out_shf );
-
-
-							scu_disable_mac( eng );
-							Write_Reg_SCU_DD( eng->io.Dly_reg_idx, eng->reg.SCU_048_mix | eng->io.Dly_val );
-							scu_enable_mac( eng );
+							scu_disable_mac(eng);
+							set_delay(eng, eng->io.Dly_in_selval, eng->io.Dly_out_selval);							
+							scu_enable_mac(eng);
 
 						} // End if ( eng->run.IO_MrgChk )
 
@@ -1455,10 +1451,10 @@ int mac_test(int argc, char * const argv[], uint32_t mode)
 						else
 						{
 							if ((eng->arg.test_mode == 11) && !(
-							((eng->io.Dly_out == eng->io.Dly_out_str) && (eng->io.Dly_in == eng->io.Dly_in_str)) ||
-							((eng->io.Dly_out == eng->io.Dly_out_str) && (eng->io.Dly_in == eng->io.Dly_in_end)) ||
-							((eng->io.Dly_out == eng->io.Dly_out_end) && (eng->io.Dly_in == eng->io.Dly_in_str)) ||
-							((eng->io.Dly_out == eng->io.Dly_out_end) && (eng->io.Dly_in == eng->io.Dly_in_end)) ||
+							((eng->io.Dly_out == eng->io.tx_delay_scan_begin) && (eng->io.Dly_in == eng->io.rx_delay_scan_begin)) ||
+							((eng->io.Dly_out == eng->io.tx_delay_scan_begin) && (eng->io.Dly_in == eng->io.rx_delay_scan_end)) ||
+							((eng->io.Dly_out == eng->io.tx_delay_scan_end) && (eng->io.Dly_in == eng->io.rx_delay_scan_begin)) ||
+							((eng->io.Dly_out == eng->io.tx_delay_scan_end) && (eng->io.Dly_in == eng->io.rx_delay_scan_end)) ||
 							((eng->io.Dly_out == eng->io.Dly_out_reg) && (eng->io.Dly_in == eng->io.Dly_in_reg))))
 								eng->io.Dly_result = 0;
 							else
@@ -1480,7 +1476,7 @@ int mac_test(int argc, char * const argv[], uint32_t mode)
 							eng->flg.Des_Flag  = 0;
 							eng->flg.NCSI_Flag = 0;
 						} //End if ( eng->run.IO_MrgChk )
-					} // End for ( eng->io.Dly_in = eng->io.Dly_in_str; eng->io.Dly_in <= eng->io.Dly_in_end; eng->io.Dly_in+=eng->io.Dly_in_cval )
+					} // End for ( eng->io.Dly_in = eng->io.rx_delay_scan_begin; eng->io.Dly_in <= eng->io.rx_delay_scan_end; eng->io.Dly_in+=eng->io.Dly_in_cval )
 
 
 					if ( eng->run.IO_MrgChk ) {
@@ -1489,7 +1485,7 @@ int mac_test(int argc, char * const argv[], uint32_t mode)
 						}
 						printf("\n");
 					}
-				} // End for ( eng->io.Dly_out = eng->io.Dly_out_str; eng->io.Dly_out <= eng->io.Dly_out_end; eng->io.Dly_out+=eng->io.Dly_out_cval )
+				} // End for ( eng->io.Dly_out = eng->io.tx_delay_scan_begin; eng->io.Dly_out <= eng->io.tx_delay_scan_end; eng->io.Dly_out+=eng->io.Dly_out_cval )
 
 
 				//------------------------------

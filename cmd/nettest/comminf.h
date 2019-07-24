@@ -606,6 +606,7 @@ typedef struct {
 	uint32_t RMIICK_IOMode                 ;
 } MAC_PHY;
 
+#ifdef CONFIG_ASPEED_AST2600
 typedef union {
 	uint32_t w;
 	struct {
@@ -613,14 +614,33 @@ typedef union {
 		uint32_t tx_delay_2		: 6;	/* bit[11:6] */
 		uint32_t rx_delay_1		: 6;	/* bit[17:12] */
 		uint32_t rx_delay_2		: 6;	/* bit[23:18] */
-		uint32_t rmii_tx_data_at_falling_1 : 1; /* bit[24] */
-		uint32_t rmii_tx_data_at_falling_2 : 1; /* bit[25] */
-		uint32_t reserved_0 		: 3;	/* bit[28:26] */
+		uint32_t rx_clk_inv_1 		: 1;	/* bit[24] */
+		uint32_t rx_clk_inv_2 		: 1;	/* bit[25] */
+		uint32_t rmii_tx_data_at_falling_1 : 1; /* bit[26] */
+		uint32_t rmii_tx_data_at_falling_2 : 1; /* bit[27] */
+		uint32_t rgmiick_pad_dir	: 1;	/* bit[28] */
 		uint32_t rmii_50m_oe_1 		: 1;	/* bit[29] */
 		uint32_t rmii_50m_oe_2		: 1;	/* bit[30] */
 		uint32_t rgmii_125m_o_sel 	: 1;	/* bit[31] */
 	}b;
 } mac_delay_1g_t;
+#else
+typedef union {
+	uint32_t w;
+	struct {
+		uint32_t tx_delay_1		: 6;	/* bit[5:0] */
+		uint32_t tx_delay_2		: 6;	/* bit[11:6] */
+		uint32_t rx_delay_1		: 6;	/* bit[17:12] */
+		uint32_t rx_delay_2		: 6;	/* bit[23:18] */		
+		uint32_t rmii_tx_data_at_falling_1 : 1; /* bit[24] */
+		uint32_t rmii_tx_data_at_falling_2 : 1; /* bit[25] */
+		uint32_t reserved		: 3;	/* bit[28:26] */
+		uint32_t rmii_50m_oe_1 		: 1;	/* bit[29] */
+		uint32_t rmii_50m_oe_2		: 1;	/* bit[30] */
+		uint32_t rgmii_125m_o_sel 	: 1;	/* bit[31] */
+	}b;
+} mac_delay_1g_t;
+#endif
 
 typedef union {
 	uint32_t w;
@@ -702,6 +722,11 @@ typedef struct {
 	mac_delay_100_10_reg_t mac12_10m_delay;
 	mac_delay_100_10_reg_t mac34_10m_delay;
 
+	int8_t tx_delay_scan_begin;
+	int8_t tx_delay_scan_end;
+	int8_t rx_delay_scan_begin;
+	int8_t rx_delay_scan_end;
+
 	BYTE                 Dly_stagebit                  ;
 	BYTE                 Dly_stage                     ;
 	BYTE                 Dly_stage_in                  ;
@@ -733,11 +758,8 @@ typedef struct {
 	SCHAR                Dly_out_min                   ;
 	BYTE                 Dly_out_max                   ;
 	uint32_t Dly_in_cval                   ;
-	SCHAR                Dly_in_str                    ;
-	BYTE                 Dly_in_end                    ;
+
 	uint32_t Dly_out_cval                  ;
-	SCHAR                Dly_out_str                   ;
-	BYTE                 Dly_out_end                   ;
 	
 	BYTE                 Dly_in                        ;
 	BYTE                 Dly_in_selval                 ;
