@@ -53,7 +53,7 @@ void phy_write (MAC_ENGINE *eng, int index, uint32_t data)
 				if (!eng->run.TM_Burst)
 					PRINTF(FP_LOG,
 					       "[PHY-Write] Time out: %08x\n",
-					       Read_Reg_PHY_DD(eng, 0x60));
+					       readl(eng->run.mdio_base));
 
 				FindErr(eng, Err_Flag_PHY_TimeOut_RW);
 				break;
@@ -137,7 +137,7 @@ uint32_t phy_read (MAC_ENGINE *eng, int index)
 				if (!eng->run.TM_Burst)
 					PRINTF(FP_LOG,
 					       "[PHY-Read] Time out: %08x\n",
-					       Read_Reg_PHY_DD(eng, 0x60));
+					       readl(eng->run.mdio_base));
 
 				FindErr(eng, Err_Flag_PHY_TimeOut_RW);
 				break;
@@ -271,7 +271,7 @@ void phy_Wait_Reset_Done (MAC_ENGINE *eng) {
         while (  phy_read( eng, PHY_REG_BMCR ) & 0x8000 ) {
                 if (++timeout > TIME_OUT_PHY_Rst) {
                         if ( !eng->run.TM_Burst )
-                                PRINTF( FP_LOG, "[PHY-Reset] Time out: %08x\n", Read_Reg_PHY_DD( eng, 0x60 ) );
+                                PRINTF( FP_LOG, "[PHY-Reset] Time out: %08x\n", readl(eng->run.mdio_base));
 
                         FindErr( eng, Err_Flag_PHY_TimeOut_Rst );
                         break;
@@ -1961,8 +1961,8 @@ void phy_micrel0 (MAC_ENGINE *eng) {//KSZ8031/KSZ8051
         //Reg1Fh[7] = 0(default): 25MHz Mode, XI, XO(pin 9, 8) is 25MHz(crystal/oscilator).
         //Reg1Fh[7] = 1         : 50MHz Mode, XI(pin 9) is 50MHz(oscilator).
         eng->phy.PHY_1fh = phy_read( eng, 31 );
-        if ( eng->phy.PHY_1fh & 0x0080 ) sprintf(eng->phy.phy_name, "%s-50MHz Mode", eng->phy.phy_name);
-        else                             sprintf(eng->phy.phy_name, "%s-25MHz Mode", eng->phy.phy_name);
+        if ( eng->phy.PHY_1fh & 0x0080 ) sprintf((char *)eng->phy.phy_name, "%s-50MHz Mode", eng->phy.phy_name);
+        else                             sprintf((char *)eng->phy.phy_name, "%s-25MHz Mode", eng->phy.phy_name);
 
         if ( eng->run.TM_IEEE ) {
                 phy_Read_Write( eng,  0, 0x0000, 0x8000 | eng->phy.PHY_00h );//clr set//Rst PHY
@@ -2250,14 +2250,13 @@ void phy_default (MAC_ENGINE *eng)
 //------------------------------------------------------------
 // PHY Init
 //------------------------------------------------------------
-BOOLEAN find_phyadr (MAC_ENGINE *eng) 
+uint32_t phy_find_addr (MAC_ENGINE *eng)
 {
         uint32_t      PHY_val;
-        BOOLEAN    ret = FALSE;
+        uint32_t    ret = FALSE;
         CHAR       PHY_ADR_org;
 
-	nt_log_func_name();        
-	eng->env.is_new_mdio_reg[eng->run.mdio_idx] = ( Read_Reg_PHY_DD( eng, 0x40 ) & 0x80000000 ) ? 1 : 0;
+	nt_log_func_name();
         
 #ifdef CONFIG_ASPEED_AST2600
 	eng->env.is_new_mdio_reg[eng->run.mdio_idx] = 1;
@@ -2312,21 +2311,21 @@ BOOLEAN find_phyadr (MAC_ENGINE *eng)
 
 	if ((eng->phy.PHY_ID2 == 0xffff) && (eng->phy.PHY_ID3 == 0xffff) &&
 	    !eng->arg.ctrl.b.phy_skip_check) {
-		sprintf(eng->phy.phy_name, "--");
+		sprintf((char *)eng->phy.phy_name, "--");
 		if (eng->arg.ctrl.b.phy_init)
 			FindErr(eng, Err_Flag_PHY_Type);
 	}
 #ifdef ENABLE_CHK_ZERO_PHY_ID
 	else if ((eng->phy.PHY_ID2 == 0x0000) && (eng->phy.PHY_ID3 == 0x0000) &&
 		 !eng->arg.ctrl.b.phy_skip_check) {
-                sprintf( eng->phy.phy_name, "--" );
+                sprintf((char *)eng->phy.phy_name, "--");
                 if ( eng->arg.ctrl.b.phy_init )
                         FindErr( eng, Err_Flag_PHY_Type );
         }
 #endif
 
         return ret;
-} // End BOOLEAN find_phyadr (MAC_ENGINE *eng)
+} // End BOOLEAN phy_find_addr (MAC_ENGINE *eng)
 
 //------------------------------------------------------------
 void phy_set00h (MAC_ENGINE *eng) 
@@ -2382,8 +2381,7 @@ void phy_sel (MAC_ENGINE *eng, PHY_ENGINE *phyeng)
 	phyeng->fp_set = phy_default;
 	phyeng->fp_clr = NULL;
 
-        if (eng->phy.default_phy) {
-        } else {
+        if (0 != eng->phy.default_phy) {
 		for (i = 0; i < PHY_LOOKUP_N; i++) {
 			p_phy = &phy_lookup_tbl[i];
 			if (phy_chk(eng, p_phy)) {
@@ -2391,6 +2389,7 @@ void phy_sel (MAC_ENGINE *eng, PHY_ENGINE *phyeng)
 				sprintf((char *)eng->phy.phy_name, (char *)p_phy->name);
 				phyeng->fp_set = p_phy->cfg.fp_set;
 				phyeng->fp_clr = p_phy->cfg.fp_clr;
+				break;
 			}
 		}
         }

@@ -485,7 +485,7 @@ typedef struct {
 
 	uint8_t is_1g_valid[4];
 	uint8_t at_least_1g_valid;
-	uint8_t MHCLK_Ratio;	
+	uint8_t MHCLK_Ratio;
 } mac_env_t;
 
 typedef union {
@@ -603,15 +603,70 @@ typedef struct {
 	uint32_t PHY_1eh                       ;
 	uint32_t PHY_1fh                       ;
 	uint32_t PHY_06hA[7]                   ;
-	BOOLEAN              PHYAdrValid                   ;
 
 	uint32_t RMIICK_IOMode                 ;
 } MAC_PHY;
+
+typedef union {
+	uint32_t w;
+	struct {
+		uint32_t mac1_1g_tx_out_delay	: 6;	/* bit[5:0] */
+		uint32_t mac2_1g_tx_out_delay	: 6;	/* bit[11:6] */
+		uint32_t mac1_rx_out_delay	: 6;	/* bit[17:12] */
+		uint32_t mac2_rx_out_delay	: 6;	/* bit[23:18] */
+		uint32_t mac1_rmii_tx_data_at_falling : 1; /* bit[24] */
+		uint32_t mac2_rmii_tx_data_at_falling : 1; /* bit[25] */
+		uint32_t reserved_0 		: 3;	/* bit[28:26] */
+		uint32_t rmii1_50m_oe 		: 1;	/* bit[29] */
+		uint32_t rmii2_50m_oe 		: 1;	/* bit[30] */
+		uint32_t rgmii_125m_o_sel 	: 1;	/* bit[31] */
+	}b;
+} mac12_delay_t;
+
+#ifdef CONFIG_ASPEED_AST2600
+typedef union {
+	uint32_t w;
+	struct {
+		uint32_t mac3_tx_drv		: 2;	/* bit[1:0] */
+		uint32_t mac4_tx_drv		: 2;	/* bit[3:2] */
+		uint32_t reserved_0		: 28;	/* bit[31:4] */
+	}b;
+} mac34_drv_t;
+typedef struct mac34_drv_reg_s {
+	uint32_t addr;
+	uint32_t drv_max;
+	mac34_drv_t value;
+} mac34_drv_reg_t;
+#else
+typedef union {
+	uint32_t w;
+	struct {
+		uint32_t reserved_0		: 8;	/* bit[7:0] */
+		uint32_t mac1_tx_drv		: 2;	/* bit[9:8] */
+		uint32_t mac2_tx_drv		: 2;	/* bit[11:10] */
+		uint32_t reserved_1		: 20;	/* bit[31:12] */
+	}b;
+} mac12_drv_t;
+
+typedef struct mac12_drv_reg_s {
+	uint32_t addr;
+	uint32_t drv_max;
+	mac12_drv_t value;
+} mac12_drv_reg_t;
+#endif
+
 typedef struct {
 	CHAR                 init_done                     ;
 
 	BYTE                 Dly_MrgEn                     ;
 	CHAR                 Dly_3Regiser                  ;
+
+	/* driving strength */
+#ifdef CONFIG_ASPEED_AST2600
+	mac34_drv_reg_t mac34_drv_reg;
+#else	
+	mac12_drv_reg_t mac12_drv_reg;
+#endif	
 
 	uint32_t Str_reg_idx                   ;
 	BYTE                 Str_reg_Lbit                  ;
@@ -780,8 +835,8 @@ GLOBAL uint32_t Read_Mem_Dat_NCSI_DD (uint32_t addr);
 GLOBAL uint32_t Read_Mem_Des_NCSI_DD (uint32_t addr);
 GLOBAL uint32_t Read_Mem_Dat_DD (uint32_t addr);
 GLOBAL uint32_t Read_Mem_Des_DD (uint32_t addr);
-GLOBAL uint32_t Read_Reg_MAC_DD (MAC_ENGINE *eng, uint32_t addr);
-GLOBAL uint32_t Read_Reg_PHY_DD (MAC_ENGINE *eng, uint32_t addr);
+//GLOBAL uint32_t mac_reg_read (MAC_ENGINE *eng, uint32_t addr);
+//GLOBAL uint32_t Read_Reg_PHY_DD (MAC_ENGINE *eng, uint32_t addr);
 GLOBAL uint32_t Read_Reg_SCU_DD_AST2600 (uint32_t addr);
 GLOBAL uint32_t Read_Reg_SCU_DD (uint32_t addr);
 GLOBAL uint32_t Read_Reg_WDT_DD (uint32_t addr);
@@ -792,8 +847,8 @@ GLOBAL void Write_Mem_Dat_NCSI_DD (uint32_t addr, uint32_t data);
 GLOBAL void Write_Mem_Des_NCSI_DD (uint32_t addr, uint32_t data);
 GLOBAL void Write_Mem_Dat_DD (uint32_t addr, uint32_t data);
 GLOBAL void Write_Mem_Des_DD (uint32_t addr, uint32_t data);
-GLOBAL void Write_Reg_MAC_DD (MAC_ENGINE *eng, uint32_t addr, uint32_t data);
-GLOBAL void Write_Reg_PHY_DD (MAC_ENGINE *eng, uint32_t addr, uint32_t data);
+//GLOBAL void mac_reg_write (MAC_ENGINE *eng, uint32_t addr, uint32_t data);
+//GLOBAL void Write_Reg_PHY_DD (MAC_ENGINE *eng, uint32_t addr, uint32_t data);
 GLOBAL void Write_Reg_SCU_DD_AST2600 (uint32_t addr, uint32_t data);
 GLOBAL void Write_Reg_SCU_DD (uint32_t addr, uint32_t data);
 GLOBAL void Write_Reg_WDT_DD (uint32_t addr, uint32_t data);
@@ -826,7 +881,6 @@ GLOBAL void    init_mac (MAC_ENGINE *eng);
 GLOBAL char TestingLoop (MAC_ENGINE *eng, uint32_t loop_checknum);
 GLOBAL void    PrintIO_Line_LOG (MAC_ENGINE *eng);
 GLOBAL void    init_phy (MAC_ENGINE *eng, PHY_ENGINE *phyeng);
-GLOBAL BOOLEAN find_phyadr (MAC_ENGINE *eng);
 
 
 GLOBAL void    phy_sel (MAC_ENGINE *eng, PHY_ENGINE *phyeng);

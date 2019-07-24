@@ -22,6 +22,18 @@
 #include <post.h>
 #include "mem_io.h"
 
+#include "phy_api.h"
+
+#define ARGV_MAC_IDX		1
+#define ARGV_MDIO_IDX		2
+#define ARGV_SPEED		3
+#define ARGV_CTRL		4
+#define ARGV_LOOP		5
+#define ARGV_TEST_MODE		6
+#define ARGV_PHY_ADDR		7
+#define ARGV_TIMING_MARGIN	8
+
+
 struct mac_ctrl_desc {
 	uint32_t base_reset_assert;
 	uint32_t bit_reset_assert;
@@ -464,21 +476,26 @@ void scu_enable_mac(MAC_ENGINE *p_eng)
 	reg = SCU_RD(p_mac->base_clk_start);
 #endif
 }
-
-static uint32_t setup_running(MAC_ENGINE *p_eng)
+static uint32_t check_mac_idx(MAC_ENGINE *p_eng)
 {
 	/* check if legal run_idx */
 	if (p_eng->arg.mac_idx > p_eng->env.mac_num) {
 		printf("invalid run_idx = %d\n", p_eng->arg.mac_idx);	
 		return 1;
 	}
-
+}
+static uint32_t setup_running(MAC_ENGINE *p_eng)
+{
+	if (0 != check_mac_idx(p_eng)) {
+		return 1;
+	}
 	p_eng->run.mac_idx = p_eng->arg.mac_idx;
-	p_eng->run.mac_base = mac_base_lookup_tbl[p_eng->run.mac_idx];
-	p_eng->run.is_rgmii = p_eng->env.is_1g_valid[p_eng->run.mac_idx];
+	p_eng->run.mac_base = mac_base_lookup_tbl[p_eng->run.mac_idx];	
 	
 	p_eng->run.mdio_idx = p_eng->arg.mdio_idx;
 	p_eng->run.mdio_base = mdio_base_lookup_tbl[p_eng->run.mdio_idx];
+
+	p_eng->run.is_rgmii = p_eng->env.is_1g_valid[p_eng->run.mac_idx];
 
 	/* 
 	 * FIXME: too ugly...
@@ -687,7 +704,7 @@ static uint32_t setup_chip_compatibility(MAC_ENGINE *p_eng)
 		p_eng->env.ast2500 = 1;
 		p_eng->env.mac_num = 2;
 		p_eng->env.is_new_mdio_reg[0] = MAC1_RD(0x40) >> 31;
-		p_eng->env.is_new_mdio_reg[1] = MAC2_RD(0x40) >> 31;;
+		p_eng->env.is_new_mdio_reg[1] = MAC2_RD(0x40) >> 31;
 		is_valid = 1;
 	}
 
@@ -841,8 +858,7 @@ int mac_test(int argc, char * const argv[], uint32_t mode)
 	scu_disable_mac(&mac_eng);
 	scu_enable_mac(&mac_eng);
 	if (mac_eng.arg.run_mode == MODE_DEDICATED) {
-		mac_eng.phy.PHYAdrValid = find_phyadr(&mac_eng);
-		if (mac_eng.phy.PHYAdrValid == TRUE)
+		if (TRUE == phy_find_addr(&mac_eng))
 			phy_sel(&mac_eng, &phy_eng);
 	}
 
@@ -966,13 +982,15 @@ int mac_test(int argc, char * const argv[], uint32_t mode)
 	init_scu1( eng );
 	
 
+#if 0
 	scu_disable_mac( eng );
 	scu_enable_mac( eng );
 	if ( eng->arg.run_mode ==  MODE_DEDICATED ) {
-		eng->phy.PHYAdrValid = find_phyadr( eng );
-		if ( eng->phy.PHYAdrValid == TRUE )
+		eng->phy.phy_addr_valid = phy_find_addr( eng );
+		if ( eng->phy.phy_addr_valid == TRUE )
 			phy_sel( eng, phyeng );
 	}
+#endif	
 
 //------------------------------------------------------------
 // Data Initial

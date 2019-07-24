@@ -16,6 +16,7 @@
 #include "swfunc.h"
 #include "comminf.h"
 #include "mem_io.h"
+#include "mac_api.h"
 
 extern int mac_test(int argc, char * const argv[], uint32_t mode);
 
@@ -121,7 +122,7 @@ int do_phyread (cmd_tbl_t * cmdtp, int flag, int argc, char * const argv[])
 		}
 
 		multi_pin_2_mdcmdio_init(eng);
-		MAC_040 = Read_Reg_MAC_DD(eng, 0x40);
+		MAC_040 = mac_reg_read(eng, 0x40);
 #ifdef CONFIG_ASPEED_AST2600
 		eng->env.is_new_mdio_reg[MACnum] = 1;
 #else
@@ -130,16 +131,16 @@ int do_phyread (cmd_tbl_t * cmdtp, int flag, int argc, char * const argv[])
 
 		if (eng->env.is_new_mdio_reg[MACnum]) {
 #ifdef CONFIG_ASPEED_AST2600
-			Write_Reg_MAC_DD(eng, 0x60,
+			mac_reg_write(eng, 0x60,
 					 MAC_PHYRd_New | (PHYaddr << 21) |
 					     ((PHYreg & 0x1f) << 16));
-			while (Read_Reg_MAC_DD(eng, 0x60) &
+			while (mac_reg_read(eng, 0x60) &
 			       MAC_PHYBusy_New) {
 #else
-			Write_Reg_MAC_DD(eng, 0x60,
+			mac_reg_write(eng, 0x60,
 					 MAC_PHYRd_New | (PHYaddr << 5) |
 					     (PHYreg & 0x1f));
-			while (Read_Reg_MAC_DD(eng, 0x60) & MAC_PHYBusy_New) {
+			while (mac_reg_read(eng, 0x60) & MAC_PHYBusy_New) {
 #endif
 				if (++timeout > TIME_OUT_PHY_RW) {
 					ret = -1;
@@ -149,13 +150,13 @@ int do_phyread (cmd_tbl_t * cmdtp, int flag, int argc, char * const argv[])
 #ifdef Delay_PHYRd
 			DELAY(Delay_PHYRd);
 #endif
-			result_data = Read_Reg_MAC_DD(eng, 0x64) & 0xffff;
+			result_data = mac_reg_read(eng, 0x64) & 0xffff;
 		} else {
-			Write_Reg_MAC_DD(eng, 0x60,
+			mac_reg_write(eng, 0x60,
 					 MDC_Thres | MAC_PHYRd |
 					     (PHYaddr << 16) |
 					     ((PHYreg & 0x1f) << 21));
-			while (Read_Reg_MAC_DD(eng, 0x60) & MAC_PHYRd) {
+			while (mac_reg_read(eng, 0x60) & MAC_PHYRd) {
 				if (++timeout > TIME_OUT_PHY_RW) {
 					ret = -1;
 					break;
@@ -164,7 +165,7 @@ int do_phyread (cmd_tbl_t * cmdtp, int flag, int argc, char * const argv[])
 #ifdef Delay_PHYRd
 			DELAY(Delay_PHYRd);
 #endif
-			result_data = Read_Reg_MAC_DD(eng, 0x64) >> 16;
+			result_data = mac_reg_read(eng, 0x64) >> 16;
 		}
 		printf(" PHY[%d] reg[0x%02X] = %04x\n", PHYaddr, PHYreg,
 		       result_data);
@@ -229,7 +230,7 @@ int do_phywrite (cmd_tbl_t * cmdtp, int flag, int argc, char * const argv[])
 		}
 
 		multi_pin_2_mdcmdio_init( eng );
-		MAC_040 = Read_Reg_MAC_DD( eng, 0x40 );
+		MAC_040 = mac_reg_read( eng, 0x40 );
 #ifdef CONFIG_ASPEED_AST2600
 		eng->env.is_new_mdio_reg[MACnum] = 1;
 #else
@@ -238,13 +239,13 @@ int do_phywrite (cmd_tbl_t * cmdtp, int flag, int argc, char * const argv[])
 
 		if (eng->env.is_new_mdio_reg[MACnum]) {
 #ifdef CONFIG_ASPEED_AST2600
-			Write_Reg_MAC_DD( eng, 0x60, reg_data | MAC_PHYWr_New | (PHYaddr<<21) | ((PHYreg & 0x1f)<<16) );
+			mac_reg_write( eng, 0x60, reg_data | MAC_PHYWr_New | (PHYaddr<<21) | ((PHYreg & 0x1f)<<16) );
 			
-			while ( Read_Reg_MAC_DD( eng, 0x60 ) & MAC_PHYBusy_New ) {
+			while ( mac_reg_read( eng, 0x60 ) & MAC_PHYBusy_New ) {
 #else
-			Write_Reg_MAC_DD( eng, 0x60, ( reg_data << 16 ) | MAC_PHYWr_New | (PHYaddr<<5) | (PHYreg & 0x1f) );
+			mac_reg_write( eng, 0x60, ( reg_data << 16 ) | MAC_PHYWr_New | (PHYaddr<<5) | (PHYreg & 0x1f) );
 
-			while ( Read_Reg_MAC_DD( eng, 0x60 ) & MAC_PHYBusy_New ) {
+			while ( mac_reg_read( eng, 0x60 ) & MAC_PHYBusy_New ) {
 #endif			
 				if ( ++timeout > TIME_OUT_PHY_RW ) {
 					ret = -1;
@@ -253,10 +254,10 @@ int do_phywrite (cmd_tbl_t * cmdtp, int flag, int argc, char * const argv[])
 			}
 		}
 		else {
-			Write_Reg_MAC_DD( eng, 0x64, reg_data );
-			Write_Reg_MAC_DD( eng, 0x60, MDC_Thres | MAC_PHYWr | (PHYaddr<<16) | ((PHYreg & 0x1f) << 21) );
+			mac_reg_write( eng, 0x64, reg_data );
+			mac_reg_write( eng, 0x60, MDC_Thres | MAC_PHYWr | (PHYaddr<<16) | ((PHYreg & 0x1f) << 21) );
 
-			while ( Read_Reg_MAC_DD( eng, 0x60 ) & MAC_PHYWr ) {
+			while ( mac_reg_read( eng, 0x60 ) & MAC_PHYWr ) {
 				if ( ++timeout > TIME_OUT_PHY_RW ) {
 					ret = -1;
 					break;
@@ -320,7 +321,7 @@ int do_phydump (cmd_tbl_t * cmdtp, int flag, int argc, char *argv[])
 		}
 
 		multi_pin_2_mdcmdio_init( eng );
-		MAC_040 = Read_Reg_MAC_DD( eng, 0x40 );
+		MAC_040 = mac_reg_read( eng, 0x40 );
 #ifdef CONFIG_ASPEED_AST2600
 		eng->env.is_new_mdio_reg[MACnum] = 1;
 #else
@@ -330,12 +331,12 @@ int do_phydump (cmd_tbl_t * cmdtp, int flag, int argc, char *argv[])
 		if (eng->env.is_new_mdio_reg[MACnum]) {
 			for ( PHYreg = 0; PHYreg < 32; PHYreg++ ) {
 #ifdef CONFIG_ASPEED_AST2600
-				Write_Reg_MAC_DD( eng, 0x60, MAC_PHYRd_New | (PHYaddr << 21) | (( PHYreg & 0x1f ) << 16) );
+				mac_reg_write( eng, 0x60, MAC_PHYRd_New | (PHYaddr << 21) | (( PHYreg & 0x1f ) << 16) );
 				
-				while ( Read_Reg_MAC_DD( eng, 0x60 ) & MAC_PHYBusy_New ) {
+				while ( mac_reg_read( eng, 0x60 ) & MAC_PHYBusy_New ) {
 #else				
-				Write_Reg_MAC_DD( eng, 0x60, MAC_PHYRd_New | (PHYaddr << 5) | ( PHYreg & 0x1f ) );
-				while ( Read_Reg_MAC_DD( eng, 0x60 ) & MAC_PHYBusy_New ) {
+				mac_reg_write( eng, 0x60, MAC_PHYRd_New | (PHYaddr << 5) | ( PHYreg & 0x1f ) );
+				while ( mac_reg_read( eng, 0x60 ) & MAC_PHYBusy_New ) {
 #endif				
 					if ( ++timeout > TIME_OUT_PHY_RW ) {
 						ret = -1;
@@ -345,7 +346,7 @@ int do_phydump (cmd_tbl_t * cmdtp, int flag, int argc, char *argv[])
 #ifdef Delay_PHYRd
 				DELAY( Delay_PHYRd );
 #endif
-				result_data = Read_Reg_MAC_DD( eng, 0x64 ) & 0xffff;
+				result_data = mac_reg_read( eng, 0x64 ) & 0xffff;
 				switch ( PHYreg % 4 ) {
 					case 0	: printf("%02d| %04x ", PHYreg, result_data ); break;
 					case 3	: printf("%04x\n", result_data ); break;
@@ -355,8 +356,8 @@ int do_phydump (cmd_tbl_t * cmdtp, int flag, int argc, char *argv[])
 		}
 		else {
 			for ( PHYreg = 0; PHYreg < 32; PHYreg++ ) {
-				Write_Reg_MAC_DD( eng, 0x60, MDC_Thres | MAC_PHYRd | (PHYaddr << 16) | ((PHYreg & 0x1f) << 21) );
-				while ( Read_Reg_MAC_DD( eng, 0x60 ) & MAC_PHYRd ) {
+				mac_reg_write( eng, 0x60, MDC_Thres | MAC_PHYRd | (PHYaddr << 16) | ((PHYreg & 0x1f) << 21) );
+				while ( mac_reg_read( eng, 0x60 ) & MAC_PHYRd ) {
 					if ( ++timeout > TIME_OUT_PHY_RW ) {
 						ret = -1;
 						break;
@@ -365,7 +366,7 @@ int do_phydump (cmd_tbl_t * cmdtp, int flag, int argc, char *argv[])
 #ifdef Delay_PHYRd
 				DELAY( Delay_PHYRd );
 #endif
-				result_data = Read_Reg_MAC_DD( eng, 0x64 ) >> 16;
+				result_data = mac_reg_read( eng, 0x64 ) >> 16;
 				switch ( PHYreg % 4 ) {
 					case 0	: printf("%02d| %04x ", PHYreg, result_data ); break;
 					case 3	: printf("%04x\n", result_data ); break;

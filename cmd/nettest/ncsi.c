@@ -18,6 +18,7 @@
 #include "ncsi.h"
 #include <command.h>
 #include <common.h>
+#include "mac_api.h"
 
 //------------------------------------------------------------
 int FindErr_NCSI (MAC_ENGINE *eng, int value) {
@@ -230,7 +231,7 @@ char NCSI_Rx_SLT (MAC_ENGINE *eng) {
 	uint32_t      NCSI_BufData;
 
 	do {
-		Write_Reg_MAC_DD( eng, 0x1C, 0x00000000 );//Rx Poll
+		mac_reg_write( eng, 0x1C, 0x00000000 );//Rx Poll
 
 		timeout = 0;
 		do {
@@ -447,10 +448,10 @@ char NCSI_Tx (MAC_ENGINE *eng, unsigned char command, unsigned char allid, uint1
 //	Write_Mem_Des_NCSI_DD( eng->run.NCSI_TxDesBase + 0x0C, AT_MEMRW_BUF( DMA_BASE ) );
 	Write_Mem_Des_NCSI_DD( eng->run.NCSI_TxDesBase       , 0xf0008000 + bytesize );
 
-//	Write_Reg_MAC_DD( eng, 0x40, eng->reg.MAC_040 ); // 20170505
+//	mac_reg_write( eng, 0x40, eng->reg.MAC_040 ); // 20170505
 
 	// Fire
-	Write_Reg_MAC_DD( eng, 0x18, 0x00000000 );//Tx Poll
+	mac_reg_write( eng, 0x18, 0x00000000 );//Tx Poll
 
 	do {
 		NCSI_TxDesDat = Read_Mem_Des_NCSI_DD( eng->run.NCSI_TxDesBase );
@@ -504,7 +505,7 @@ char NCSI_ARP (MAC_ENGINE *eng) {
 //	Write_Mem_Des_NCSI_DD( eng->run.NCSI_TxDesBase + 0x0C, AT_MEMRW_BUF( DMA_BASE ) );
 	for (i = 0; i < eng->arg.GARPNumCnt; i++) {
 		Write_Mem_Des_NCSI_DD( eng->run.NCSI_TxDesBase      , 0xf0008000 + 60);
-		Write_Reg_MAC_DD( eng, 0x18, 0x00000000 );//Tx Poll
+		mac_reg_write( eng, 0x18, 0x00000000 );//Tx Poll
 
 		do {
 			NCSI_TxDesDat = Read_Mem_Des_NCSI_DD( eng->run.NCSI_TxDesBase );
