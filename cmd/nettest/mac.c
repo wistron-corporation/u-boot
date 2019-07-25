@@ -243,16 +243,523 @@ void dump_mac_ROreg (MAC_ENGINE *eng) {
 //------------------------------------------------------------
 // IO delay
 //------------------------------------------------------------
+static void get_mac_1g_delay_1(uint32_t addr, int32_t *p_rx_d, int32_t *p_tx_d)
+{
+	int tx_d, rx_d;
+	mac_delay_1g_t reg;
+
+	reg.w = readl(addr);
+	tx_d = reg.b.tx_delay_1;
+	rx_d = reg.b.rx_delay_1;	
+#ifdef CONFIG_ASPEED_AST2600
+	if (reg.b.rx_clk_inv_1 == 1) {
+		rx_d = (-1) * rx_d;
+	}
+#endif
+	*p_tx_d = tx_d;
+	*p_rx_d = rx_d;
+	printf("%s:[%08x] %08x, rx_d=%d, tx_d=%d\n", __func__, addr, reg.w,
+	       rx_d, tx_d);
+}
+
+static void get_mac_1g_delay_2(uint32_t addr, int32_t *p_rx_d, int32_t *p_tx_d)
+{
+	int tx_d, rx_d;
+	mac_delay_1g_t reg;
+
+	reg.w = readl(addr);
+	tx_d = reg.b.tx_delay_2;
+	rx_d = reg.b.rx_delay_2;	
+#ifdef CONFIG_ASPEED_AST2600
+	if (reg.b.rx_clk_inv_2 == 1) {
+		rx_d = (-1) * rx_d;
+	}
+#endif
+	*p_tx_d = tx_d;
+	*p_rx_d = rx_d;
+	printf("%s:[%08x] %08x, rx_d=%d, tx_d=%d\n", __func__, addr, reg.w,
+	       rx_d, tx_d);
+}
+
+static void get_mac_100_10_delay_1(uint32_t addr, int32_t *p_rx_d, int32_t *p_tx_d)
+{
+	int tx_d, rx_d;
+	mac_delay_100_10_t reg;
+
+	reg.w = readl(addr);
+	tx_d = reg.b.tx_delay_1;
+	rx_d = reg.b.rx_delay_1;	
+#ifdef CONFIG_ASPEED_AST2600
+	if (reg.b.rx_clk_inv_1 == 1) {
+		rx_d = (-1) * rx_d;
+	}
+#endif
+	*p_tx_d = tx_d;
+	*p_rx_d = rx_d;
+	printf("%s:[%08x] %08x, rx_d=%d, tx_d=%d\n", __func__, addr, reg.w,
+	       rx_d, tx_d);
+}
+
+static void get_mac_100_10_delay_2(uint32_t addr, int32_t *p_rx_d, int32_t *p_tx_d)
+{
+	int tx_d, rx_d;
+	mac_delay_100_10_t reg;
+
+	reg.w = readl(addr);
+	tx_d = reg.b.tx_delay_2;
+	rx_d = reg.b.rx_delay_2;	
+#ifdef CONFIG_ASPEED_AST2600
+	if (reg.b.rx_clk_inv_2 == 1) {
+		rx_d = (-1) * rx_d;
+	}
+#endif
+	*p_tx_d = tx_d;
+	*p_rx_d = rx_d;
+	printf("%s:[%08x] %08x, rx_d=%d, tx_d=%d\n", __func__, addr, reg.w,
+	       rx_d, tx_d);
+}
+
+static void get_mac_rmii_delay_1(uint32_t addr, int32_t *p_rx_d, int32_t *p_tx_d)
+{
+	mac_delay_1g_t reg;
+	
+	reg.w = readl(addr);
+	*p_rx_d = reg.b.rx_delay_1;
+	*p_tx_d = reg.b.rmii_tx_data_at_falling_1;
+
+	printf("%s:[%08x] %08x, rx_d=%d, tx_d=%d\n", __func__, addr, reg.w,
+	       *p_rx_d, *p_tx_d);
+}
+static void get_mac_rmii_delay_2(uint32_t addr, int32_t *p_rx_d, int32_t *p_tx_d)
+{
+	mac_delay_1g_t reg;
+	
+	reg.w = readl(addr);
+	*p_rx_d = reg.b.rx_delay_2;
+	*p_tx_d = reg.b.rmii_tx_data_at_falling_2;
+
+	printf("%s:[%08x] %08x, rx_d=%d, tx_d=%d\n", __func__, addr, reg.w,
+	       *p_rx_d, *p_tx_d);
+}
+
+static 
+void get_mac1_1g_delay(MAC_ENGINE *p_eng, int32_t *p_rx_d, int32_t *p_tx_d)
+{
+	get_mac_1g_delay_1(p_eng->io.mac12_1g_delay.addr, p_rx_d, p_tx_d);
+}
+static
+void get_mac1_100m_delay(MAC_ENGINE *p_eng, int32_t *p_rx_d, int32_t *p_tx_d)
+{
+	get_mac_100_10_delay_1(p_eng->io.mac12_100m_delay.addr, p_rx_d, p_tx_d);
+}
+static
+void get_mac1_10m_delay(MAC_ENGINE *p_eng, int32_t *p_rx_d, int32_t *p_tx_d)
+{
+	get_mac_100_10_delay_1(p_eng->io.mac12_10m_delay.addr, p_rx_d, p_tx_d);
+}
+static
+void get_mac2_1g_delay(MAC_ENGINE *p_eng, int32_t *p_rx_d, int32_t *p_tx_d)
+{
+	get_mac_1g_delay_2(p_eng->io.mac12_1g_delay.addr, p_rx_d, p_tx_d);
+}
+static
+void get_mac2_100m_delay(MAC_ENGINE *p_eng, int32_t *p_rx_d, int32_t *p_tx_d)
+{
+	get_mac_100_10_delay_2(p_eng->io.mac12_100m_delay.addr, p_rx_d, p_tx_d);
+}
+static
+void get_mac2_10m_delay(MAC_ENGINE *p_eng, int32_t *p_rx_d, int32_t *p_tx_d)
+{
+	get_mac_100_10_delay_2(p_eng->io.mac12_10m_delay.addr, p_rx_d, p_tx_d);
+}
+static
+void get_mac3_1g_delay(MAC_ENGINE *p_eng, int32_t *p_rx_d, int32_t *p_tx_d)
+{
+	get_mac_1g_delay_1(p_eng->io.mac34_1g_delay.addr, p_rx_d, p_tx_d);
+}
+static
+void get_mac3_100m_delay(MAC_ENGINE *p_eng, int32_t *p_rx_d, int32_t *p_tx_d)
+{
+	get_mac_100_10_delay_1(p_eng->io.mac34_100m_delay.addr, p_rx_d, p_tx_d);
+}
+static
+void get_mac3_10m_delay(MAC_ENGINE *p_eng, int32_t *p_rx_d, int32_t *p_tx_d)
+{
+	get_mac_100_10_delay_1(p_eng->io.mac34_10m_delay.addr, p_rx_d, p_tx_d);
+}
+static
+void get_mac4_1g_delay(MAC_ENGINE *p_eng, int32_t *p_rx_d, int32_t *p_tx_d)
+{
+	get_mac_1g_delay_2(p_eng->io.mac34_1g_delay.addr, p_rx_d, p_tx_d);
+}
+static
+void get_mac4_100m_delay(MAC_ENGINE *p_eng, int32_t *p_rx_d, int32_t *p_tx_d)
+{
+	get_mac_100_10_delay_2(p_eng->io.mac34_100m_delay.addr, p_rx_d, p_tx_d);
+}
+static
+void get_mac4_10m_delay(MAC_ENGINE *p_eng, int32_t *p_rx_d, int32_t *p_tx_d)
+{
+	get_mac_100_10_delay_2(p_eng->io.mac34_10m_delay.addr, p_rx_d, p_tx_d);
+}
+static
+void get_mac1_rmii_delay(MAC_ENGINE *p_eng, int32_t *p_rx_d, int32_t *p_tx_d)
+{
+	get_mac_rmii_delay_1(p_eng->io.mac12_1g_delay.addr, p_rx_d, p_tx_d);	
+}
+static
+void get_mac2_rmii_delay(MAC_ENGINE *p_eng, int32_t *p_rx_d, int32_t *p_tx_d)
+{
+	get_mac_rmii_delay_2(p_eng->io.mac12_1g_delay.addr, p_rx_d, p_tx_d);
+}
+static
+void get_mac3_rmii_delay(MAC_ENGINE *p_eng, int32_t *p_rx_d, int32_t *p_tx_d)
+{
+	get_mac_rmii_delay_1(p_eng->io.mac34_1g_delay.addr, p_rx_d, p_tx_d);
+}
+static
+void get_mac4_rmii_delay(MAC_ENGINE *p_eng, int32_t *p_rx_d, int32_t *p_tx_d)
+{
+	get_mac_rmii_delay_2(p_eng->io.mac34_1g_delay.addr, p_rx_d, p_tx_d);
+}
+static
+void get_dummy_delay(MAC_ENGINE *p_eng, int32_t *p_rx_d, int32_t *p_tx_d)
+{
+	printf("%s\n", __func__);
+}
+
+/**
+ * @brief function pointer table to get current delay setting
+ * 
+ * get_delay_func_tbl[rmii/rgmii][mac_idx][speed_idx 1g/100m/10m]
+*/
+typedef void (*pfn_get_delay) (MAC_ENGINE *, int32_t *, int32_t *);
+pfn_get_delay get_delay_func_tbl[2][4][3] = {
+	{
+		{get_mac1_rmii_delay, get_dummy_delay, get_dummy_delay},
+		{get_mac2_rmii_delay, get_dummy_delay, get_dummy_delay},
+#if defined(CONFIG_ASPEED_AST2600)
+		{get_mac3_rmii_delay, get_dummy_delay, get_dummy_delay},
+		{get_mac4_rmii_delay, get_dummy_delay, get_dummy_delay},
+#else
+		{get_dummy_delay, get_dummy_delay, get_dummy_delay},
+		{get_dummy_delay, get_dummy_delay, get_dummy_delay},
+#endif		
+	},
+	{
+		{get_mac1_1g_delay, get_mac1_100m_delay, get_mac1_10m_delay},
+		{get_mac2_1g_delay, get_mac2_100m_delay, get_mac2_10m_delay},
+#if defined(CONFIG_ASPEED_AST2600)		
+		{get_mac3_1g_delay, get_mac3_100m_delay, get_mac3_10m_delay},
+		{get_mac4_1g_delay, get_mac4_100m_delay, get_mac4_10m_delay},
+#else
+		{get_dummy_delay, get_dummy_delay, get_dummy_delay},
+		{get_dummy_delay, get_dummy_delay, get_dummy_delay},
+#endif		
+	}
+};
+void mac_get_delay(MAC_ENGINE *p_eng, int32_t *p_rx_d, int32_t *p_tx_d)
+{
+#if 1
+	uint32_t rgmii = (uint32_t)p_eng->run.is_rgmii;
+	uint32_t mac_idx = p_eng->run.mac_idx;
+	uint32_t speed_idx = p_eng->run.speed_idx;	
+
+	get_delay_func_tbl[rgmii][mac_idx][speed_idx] (p_eng, p_rx_d, p_tx_d);
+#else
+	/* for test */
+	uint32_t rgmii;
+	uint32_t mac_idx;
+	uint32_t speed_idx;
+	for (rgmii = 0; rgmii < 2; rgmii++)
+		for (mac_idx = 0; mac_idx < 4; mac_idx++)
+			for (speed_idx = 0; speed_idx < 3; speed_idx++)
+				get_delay_func_tbl[rgmii][mac_idx][speed_idx](
+				    p_eng, p_rx_d, p_tx_d);
+#endif	
+}
+
+static void set_mac_1g_delay_1(uint32_t addr, int32_t rx_d, int32_t tx_d)
+{
+	mac_delay_1g_t reg;
+
+	reg.w = readl(addr);
+#ifdef CONFIG_ASPEED_AST2600
+	if (rx_d < 0) {
+		reg.b.rx_clk_inv_1 = 1;
+		rx_d = abs(rx_d);
+	}
+#endif
+	reg.b.rx_delay_1 = rx_d;
+	reg.b.tx_delay_1 = tx_d;
+	writel(reg.w, addr);
+
+	printf("%s:[%08x] %08x, rx_d=%d, tx_d=%d\n", __func__, addr, reg.w,
+	       rx_d, tx_d);
+}
+
+static void set_mac_1g_delay_2(uint32_t addr, int32_t rx_d, int32_t tx_d)
+{
+	mac_delay_1g_t reg;
+
+	reg.w = readl(addr);
+#ifdef CONFIG_ASPEED_AST2600
+	if (rx_d < 0) {
+		reg.b.rx_clk_inv_2 = 1;
+		rx_d = abs(rx_d);
+	}
+#endif
+	reg.b.rx_delay_2 = rx_d;
+	reg.b.tx_delay_2 = tx_d;
+	writel(reg.w, addr);
+
+	printf("%s:[%08x] %08x, rx_d=%d, tx_d=%d\n", __func__, addr, reg.w,
+	       rx_d, tx_d);
+}
+
+static void set_mac_100_10_delay_1(uint32_t addr, int32_t rx_d, int32_t tx_d)
+{
+	mac_delay_100_10_t reg;
+
+	reg.w = readl(addr);
+#ifdef CONFIG_ASPEED_AST2600
+	if (rx_d < 0) {
+		reg.b.rx_clk_inv_1 = 1;
+		rx_d = abs(rx_d);
+	}
+#endif
+	reg.b.rx_delay_1 = rx_d;
+	reg.b.tx_delay_1 = tx_d;
+	writel(reg.w, addr);
+
+	printf("%s:[%08x] %08x, rx_d=%d, tx_d=%d\n", __func__, addr, reg.w,
+	       rx_d, tx_d);
+}
+
+static void set_mac_100_10_delay_2(uint32_t addr, int32_t rx_d, int32_t tx_d)
+{
+	mac_delay_100_10_t reg;
+
+	reg.w = readl(addr);
+#ifdef CONFIG_ASPEED_AST2600
+	if (rx_d < 0) {
+		reg.b.rx_clk_inv_2 = 1;
+		rx_d = abs(rx_d);
+	}
+#endif
+	reg.b.rx_delay_2 = rx_d;
+	reg.b.tx_delay_2 = tx_d;
+	writel(reg.w, addr);
+
+	printf("%s:[%08x] %08x, rx_d=%d, tx_d=%d\n", __func__, addr, reg.w,
+	       rx_d, tx_d);
+}
+
+static void set_mac_rmii_delay_1(uint32_t addr, int32_t rx_d, int32_t tx_d)
+{
+	mac_delay_1g_t reg;
+
+	reg.w = readl(addr);
+	reg.b.rmii_tx_data_at_falling_1 = tx_d;
+	reg.b.rx_delay_1 = rx_d;
+	writel(reg.w, addr);
+
+	printf("%s:[%08x] %08x, rx_d=%d, tx_d=%d\n", __func__, addr, reg.w,
+	       rx_d, tx_d);
+}
+
+static void set_mac_rmii_delay_2(uint32_t addr, int32_t rx_d, int32_t tx_d)
+{
+	mac_delay_1g_t reg;
+
+	reg.w = readl(addr);
+	reg.b.rmii_tx_data_at_falling_2 = tx_d;
+	reg.b.rx_delay_2 = rx_d;
+	writel(reg.w, addr);
+
+	printf("%s:[%08x] %08x, rx_d=%d, tx_d=%d\n", __func__, addr, reg.w,
+	       rx_d, tx_d);
+}
+
+
+static void set_mac1_1g_delay(MAC_ENGINE *p_eng, int32_t rx_d, int32_t tx_d)
+{
+	set_mac_1g_delay_1(p_eng->io.mac12_1g_delay.addr, rx_d, tx_d);
+}
+static void set_mac1_100m_delay(MAC_ENGINE *p_eng, int32_t rx_d, int32_t tx_d)
+{
+	set_mac_100_10_delay_1(p_eng->io.mac12_100m_delay.addr, rx_d, tx_d);
+}
+static void set_mac1_10m_delay(MAC_ENGINE *p_eng, int32_t rx_d, int32_t tx_d)
+{
+	set_mac_100_10_delay_1(p_eng->io.mac12_10m_delay.addr, rx_d, tx_d);
+}
+static void set_mac2_1g_delay(MAC_ENGINE *p_eng, int32_t rx_d, int32_t tx_d)
+{
+	set_mac_1g_delay_2(p_eng->io.mac12_1g_delay.addr, rx_d, tx_d);
+}
+static void set_mac2_100m_delay(MAC_ENGINE *p_eng, int32_t rx_d, int32_t tx_d)
+{
+	set_mac_100_10_delay_2(p_eng->io.mac12_100m_delay.addr, rx_d, tx_d);
+}
+static void set_mac2_10m_delay(MAC_ENGINE *p_eng, int32_t rx_d, int32_t tx_d)
+{
+	set_mac_100_10_delay_2(p_eng->io.mac12_10m_delay.addr, rx_d, tx_d);
+}
+static void set_mac3_1g_delay(MAC_ENGINE *p_eng, int32_t rx_d, int32_t tx_d)
+{
+	set_mac_1g_delay_1(p_eng->io.mac34_1g_delay.addr, rx_d, tx_d);
+}
+static void set_mac3_100m_delay(MAC_ENGINE *p_eng, int32_t rx_d, int32_t tx_d)
+{
+	set_mac_100_10_delay_1(p_eng->io.mac34_100m_delay.addr, rx_d, tx_d);
+}
+static void set_mac3_10m_delay(MAC_ENGINE *p_eng, int32_t rx_d, int32_t tx_d)
+{
+	set_mac_100_10_delay_1(p_eng->io.mac34_10m_delay.addr, rx_d, tx_d);
+}
+static void set_mac4_1g_delay(MAC_ENGINE *p_eng, int32_t rx_d, int32_t tx_d)
+{
+	set_mac_1g_delay_2(p_eng->io.mac34_1g_delay.addr, rx_d, tx_d);
+}
+static void set_mac4_100m_delay(MAC_ENGINE *p_eng, int32_t rx_d, int32_t tx_d)
+{
+	set_mac_100_10_delay_2(p_eng->io.mac34_100m_delay.addr, rx_d, tx_d);
+}
+static void set_mac4_10m_delay(MAC_ENGINE *p_eng, int32_t rx_d, int32_t tx_d)
+{
+	set_mac_100_10_delay_2(p_eng->io.mac34_10m_delay.addr, rx_d, tx_d);
+}
+static void set_mac1_rmii_delay(MAC_ENGINE *p_eng, int32_t rx_d, int32_t tx_d)
+{
+	set_mac_rmii_delay_1(p_eng->io.mac12_1g_delay.addr, rx_d, tx_d);
+}
+static void set_mac2_rmii_delay(MAC_ENGINE *p_eng, int32_t rx_d, int32_t tx_d)
+{
+	set_mac_rmii_delay_2(p_eng->io.mac12_1g_delay.addr, rx_d, tx_d);
+}
+
+static void set_mac3_rmii_delay(MAC_ENGINE *p_eng, int32_t rx_d, int32_t tx_d)
+{
+	set_mac_rmii_delay_1(p_eng->io.mac34_1g_delay.addr, rx_d, tx_d);
+}
+
+static void set_mac4_rmii_delay(MAC_ENGINE *p_eng, int32_t rx_d, int32_t tx_d)
+{
+	set_mac_rmii_delay_2(p_eng->io.mac34_1g_delay.addr, rx_d, tx_d);
+}
+
+void set_dummy_delay(MAC_ENGINE *p_eng, int32_t rx_d, int32_t tx_d)
+{
+	printf("%s: %d, %d\n", __func__, rx_d, tx_d);
+}
+
+/**
+ * @brief function pointer table for delay setting
+ * 
+ * set_delay_func_tbl[rmii/rgmii][mac_idx][speed_idx 1g/100m/10m]
+*/
+typedef void (*pfn_set_delay) (MAC_ENGINE *, int32_t, int32_t);
+pfn_set_delay set_delay_func_tbl[2][4][3] = {
+	{
+		{set_mac1_rmii_delay, set_dummy_delay, set_dummy_delay},
+		{set_mac2_rmii_delay, set_dummy_delay, set_dummy_delay},
+#if defined(CONFIG_ASPEED_AST2600)
+		{set_mac3_rmii_delay, set_dummy_delay, set_dummy_delay},
+		{set_mac4_rmii_delay, set_dummy_delay, set_dummy_delay},
+#else
+		{set_dummy_delay, set_dummy_delay, set_dummy_delay},
+		{set_dummy_delay, set_dummy_delay, set_dummy_delay},
+#endif		
+	},
+	{
+		{set_mac1_1g_delay, set_mac1_100m_delay, set_mac1_10m_delay},
+		{set_mac2_1g_delay, set_mac2_100m_delay, set_mac2_10m_delay},
+#if defined(CONFIG_ASPEED_AST2600)		
+		{set_mac3_1g_delay, set_mac3_100m_delay, set_mac3_10m_delay},
+		{set_mac4_1g_delay, set_mac4_100m_delay, set_mac4_10m_delay},
+#else
+		{set_dummy_delay, set_dummy_delay, set_dummy_delay},
+		{set_dummy_delay, set_dummy_delay, set_dummy_delay},
+#endif		
+	}
+};
+
+void mac_set_delay(MAC_ENGINE *p_eng, int32_t rx_d, int32_t tx_d)
+{
+#if 1
+	uint32_t rgmii = (uint32_t)p_eng->run.is_rgmii;
+	uint32_t mac_idx = p_eng->run.mac_idx;
+	uint32_t speed_idx = p_eng->run.speed_idx;	
+
+	set_delay_func_tbl[rgmii][mac_idx][speed_idx] (p_eng, rx_d, tx_d);
+#else
+	/* for test */
+	uint32_t rgmii;
+	uint32_t mac_idx;
+	uint32_t speed_idx;
+	for (rgmii = 0; rgmii < 2; rgmii++)
+		for (mac_idx = 0; mac_idx < 4; mac_idx++)
+			for (speed_idx = 0; speed_idx < 3; speed_idx++)
+				set_delay_func_tbl[rgmii][mac_idx][speed_idx] (p_eng, rx_d, tx_d);
+#endif	
+}
+
+void mac_set_driving_strength(MAC_ENGINE *p_eng, uint32_t strength)
+{
+#ifdef CONFIG_ASPEED_AST2600
+	if (strength > p_eng->io.mac34_drv_reg.drv_max) {
+		printf("invalid driving strength value\n");
+		return;
+	}
+
+	/**
+	 * read->modify->write for driving strength control register 
+	 * ast2600 : only MAC#3 & MAC#4 have driving strength setting
+	 */
+	p_eng->io.mac34_drv_reg.value.w = readl(p_eng->io.mac34_drv_reg.addr);
+
+	/* ast2600 : only MAC#3 & MAC#4 have driving strength setting */
+	if (p_eng->run.mac_idx == 2) {
+		p_eng->io.mac34_drv_reg.value.b.mac3_tx_drv = strength;
+	} else if (p_eng->run.mac_idx == 3) {
+		p_eng->io.mac34_drv_reg.value.b.mac4_tx_drv = strength;
+	}
+
+	writel(p_eng->io.mac34_drv_reg.value.w, p_eng->io.mac34_drv_reg.addr);
+#else
+	if (strength > p_eng->io.mac12_drv_reg.drv_max) {
+		printf("invalid driving strength value\n");
+		return;
+	}
+
+	/* read->modify->write for driving strength control register */
+	p_eng->io.mac12_drv_reg.value.w = readl(eng->io.mac12_drv_reg.addr);
+	if (p_eng->run.is_rgmii) {
+		if (p_eng->run.mac_idx == 0) {
+			p_eng->io.mac34_drv_reg.value.b.mac1_rgmii_tx_drv =
+			    strength;
+		} else if (p_eng->run.mac_idx == 2) {
+			p_eng->io.mac34_drv_reg.value.b.mac2_rgmii_tx_drv =
+			    strength;
+		}
+	} else {
+		if (p_eng->run.mac_idx == 0) {
+			p_eng->io.mac34_drv_reg.value.b.mac1_rmii_tx_drv =
+			    strength;
+		} else if (p_eng->run.mac_idx == 2) {
+			p_eng->io.mac34_drv_reg.value.b.mac2_rmii_tx_drv =
+			    strength;
+		}
+	}
+	writel(p_eng->io.mac12_drv_reg.value.w, eng->io.mac12_drv_reg.addr);
+#endif
+}
 void init_iodelay(MAC_ENGINE *eng)
 {
 	int        index;
 
 	nt_log_func_name();
-
-	if (eng->run.is_rgmii)
-		eng->io.Dly_3Regiser = 1;
-	else
-		eng->io.Dly_3Regiser = 0;	
 
 	//------------------------------
 	// IO Delay Stage/Step
@@ -261,7 +768,6 @@ void init_iodelay(MAC_ENGINE *eng)
 	// [IO]setup Dly_stagebit
 	// [IO]setup Dly_stage_in
 	// [IO]setup Dly_stage_out
-	// [IO]setup Dly_step
 	// [IO]setup Dly_mask_bit_in
 	// [IO]setup Dly_mask_bit_out
 	//------------------------------
@@ -272,7 +778,6 @@ void init_iodelay(MAC_ENGINE *eng)
 	eng->io.Dly_stage     =   ( 1 << eng->io.Dly_stagebit );
 	eng->io.Dly_stage_in  = ( eng->io.Dly_stage >> eng->io.Dly_stage_shf_i );
 	eng->io.Dly_stage_out = ( eng->io.Dly_stage >> eng->io.Dly_stage_shf_o );
-	eng->io.Dly_step      = AST2500_IOStageStep;
 
 	eng->io.Dly_mask_bit_in = eng->io.Dly_stage - 1;
 	if (0 == eng->run.is_rgmii)
@@ -320,9 +825,12 @@ void init_iodelay(MAC_ENGINE *eng)
 }
 
 //------------------------------------------------------------
-int get_iodelay (MAC_ENGINE *eng) {
+int get_iodelay (MAC_ENGINE *eng) 
+{
 	int        index;
 	int        index_max;
+
+	int rx_d, tx_d;
 
 	nt_log_func_name();
 
@@ -342,14 +850,10 @@ int get_iodelay (MAC_ENGINE *eng) {
 	sprintf(eng->io.Dly_reg_name_rx_new,
 		"Rx[%2d:%2d]=", eng->io.Dly_in_shf_regH, eng->io.Dly_in_shf);
 
-	//------------------------------
-	// [IO]setup Dly_in_reg
-	// [IO]setup Dly_out_reg
-	//------------------------------
-	// Get current clock delay value of TX(out) and RX(in) in the SCU48 register
-	// and setting test range
-	eng->io.Dly_in_reg  = ( eng->io.Dly_reg_value >> eng->io.Dly_in_shf  ) & eng->io.Dly_mask_bit_in;
-	eng->io.Dly_out_reg = ( eng->io.Dly_reg_value >> eng->io.Dly_out_shf ) & eng->io.Dly_mask_bit_out;
+	/* 
+	 * Get current clock delay value of TX(out) and RX(in) to set test range
+	 */
+	mac_get_delay(eng, &rx_d, &tx_d);
 
 	//------------------------------
 	// [IO]setup Dly_in_reg_idx
@@ -362,7 +866,7 @@ int get_iodelay (MAC_ENGINE *eng) {
 	// Find the coordinate in X-Y axis
 	index_max = ( eng->io.Dly_stage_in << eng->io.Dly_stage_shf_i );
 	for ( index = 0; index < index_max; index++ )
-		if ( eng->io.Dly_in_reg == eng->io.value_ary[ index ] ) {
+		if (rx_d == eng->io.value_ary[ index ] ) {
 			eng->io.Dly_in_reg_idx = index;
 			eng->io.Dly_in_min     = index - ( eng->run.IO_Bund >> 1 );
 			eng->io.Dly_in_max     = index + ( eng->run.IO_Bund >> 1 );
@@ -371,7 +875,7 @@ int get_iodelay (MAC_ENGINE *eng) {
 
 	index_max = ( eng->io.Dly_stage_out << eng->io.Dly_stage_shf_o );
 	for ( index = 0; index < index_max; index++ )
-		if ( eng->io.Dly_out_reg == eng->io.value_ary[ index ] ) {
+		if (tx_d == eng->io.value_ary[ index ] ) {
 			eng->io.Dly_out_reg_idx = index;
 			if (0 == eng->run.is_rgmii) {
 				eng->io.Dly_out_min = index;
@@ -417,8 +921,8 @@ int get_iodelay (MAC_ENGINE *eng) {
 	//------------------------------
 	// Get the range for testmargin block
 	if ( eng->run.TM_IOTiming ) {
-		eng->io.Dly_in_cval  = eng->io.Dly_step;
-		eng->io.Dly_out_cval = eng->io.Dly_step;
+		eng->io.Dly_in_cval  = 1;
+		eng->io.Dly_out_cval = 1;
 		eng->io.rx_delay_scan_begin   = 0;
 		eng->io.rx_delay_scan_end   = eng->io.Dly_stage_in-1;
 		eng->io.tx_delay_scan_begin  = 0;
@@ -428,8 +932,8 @@ int get_iodelay (MAC_ENGINE *eng) {
 			eng->io.tx_delay_scan_end  = eng->io.Dly_stage_out-1;
 	}
 	else if ( eng->run.IO_Bund ) {
-		eng->io.Dly_in_cval  = eng->io.Dly_step;
-		eng->io.Dly_out_cval = eng->io.Dly_step;
+		eng->io.Dly_in_cval  = 1;
+		eng->io.Dly_out_cval = 1;
 		eng->io.rx_delay_scan_begin   = eng->io.Dly_in_min;
 		eng->io.rx_delay_scan_end   = eng->io.Dly_in_max;
 		eng->io.tx_delay_scan_begin  = eng->io.Dly_out_min;
@@ -1905,17 +2409,26 @@ void PrintIO_LineS (MAC_ENGINE *eng, BYTE option) {
 } // End void PrintIO_LineS (MAC_ENGINE *eng, BYTE option)
 
 //------------------------------------------------------------
-void PrintIO_Line (MAC_ENGINE *eng, BYTE option) {
+void PrintIO_Line(MAC_ENGINE *eng, BYTE option) 
+{
+	int rx_d, tx_d;
+	mac_get_delay(eng, &rx_d, &tx_d);
 
-	if ( ( eng->io.Dly_in_reg == eng->io.Dly_in_selval ) && eng->io.Dly_out_reg_hit ) {
-		if ( eng->io.Dly_result ) { PRINTF( option, "X" ); }
-		else                      { PRINTF( option, "O" ); }
+	if ((rx_d == eng->io.Dly_in_selval) &&
+	    eng->io.Dly_out_reg_hit) {
+		if (eng->io.Dly_result) {
+			PRINTF(option, "X");
+		} else {
+			PRINTF(option, "O");
+		}
+	} else {
+		if (eng->io.Dly_result) {
+			PRINTF(option, "x");
+		} else {
+			PRINTF(option, "o");
+		}
 	}
-	else {
-		if ( eng->io.Dly_result ) { PRINTF( option, "x" ); }
-		else                      { PRINTF( option, "o" ); }
-	}
-} // End void PrintIO_Line (MAC_ENGINE *eng, BYTE option)
+}
 
 //------------------------------------------------------------
 void PrintIO_Line_LOG (MAC_ENGINE *eng) 

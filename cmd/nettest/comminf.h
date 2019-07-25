@@ -27,17 +27,17 @@
 #define FP_IO                                    1
 #define STD_OUT                                  2
 
-#define PRINTF(i, ...)                                          \
-   do {                                                         \
-       if (i == STD_OUT) {                                      \
-           fprintf(stdout, __VA_ARGS__);                        \
-           break;                                               \
-       }                                                        \
-       if ( (display_lantest_log_msg != 0) && (i == FP_LOG) ) { \
-           fprintf(stdout, "[Log]:   ");                        \
-           fprintf(stdout, __VA_ARGS__);                        \
-       }                                                        \
-   } while ( 0 );
+#define PRINTF(i, ...)                                                         \
+	do {                                                                   \
+		if (i == STD_OUT) {                                            \
+			fprintf(stdout, __VA_ARGS__);                          \
+			break;                                                 \
+		}                                                              \
+		if ((display_lantest_log_msg != 0) && (i == FP_LOG)) {         \
+			fprintf(stdout, "[Log]:   ");                          \
+			fprintf(stdout, __VA_ARGS__);                          \
+		}                                                              \
+	} while (0);
 
 //---------------------------------------------------------
 // Function
@@ -170,19 +170,21 @@
 #define DRAM_OFS_WINDOW                      0x80000000
 #define DRAM_OFS_REMAP                       0x00000000
 
-  #define TDES_BASE1                             ( 0x00000000 + DRAM_OFS_BUF - DRAM_OFS_REMAP + DRAM_OFS_WINDOW )
-  #define RDES_BASE1                             ( 0x00040000 + DRAM_OFS_BUF - DRAM_OFS_REMAP + DRAM_OFS_WINDOW )
-  #define DMA_BASE                               ( 0x00100000 + DRAM_OFS_BUF - DRAM_OFS_REMAP + DRAM_OFS_WINDOW )
+#define TDES_BASE1                                                             \
+	(0x00000000 + DRAM_OFS_BUF - DRAM_OFS_REMAP + DRAM_OFS_WINDOW)
+#define RDES_BASE1                                                             \
+	(0x00040000 + DRAM_OFS_BUF - DRAM_OFS_REMAP + DRAM_OFS_WINDOW)
+#define DMA_BASE (0x00100000 + DRAM_OFS_BUF - DRAM_OFS_REMAP + DRAM_OFS_WINDOW)
 
-  #define TDES_IniVal                            ( 0xb0000000 + eng->dat.FRAME_LEN_Cur )
-  #define RDES_IniVal                            ( 0x00000fff )
-  #define EOR_IniVal                             ( 0x40008000 )
-  #define HWOwnTx(dat)                           ( dat & 0x80000000      )
-  #define HWOwnRx(dat)                           ((dat & 0x80000000) == 0)
-  #define HWEOR(dat)                             ( dat & 0x40000000      )
+#define TDES_IniVal (0xb0000000 + eng->dat.FRAME_LEN_Cur)
+#define RDES_IniVal (0x00000fff)
+#define EOR_IniVal (0x40008000)
+#define HWOwnTx(dat) (dat & 0x80000000)
+#define HWOwnRx(dat) ((dat & 0x80000000) == 0)
+#define HWEOR(dat) (dat & 0x40000000)
 
-  #define AT_MEMRW_BUF( x )                      ( ( x ) + DRAM_OFS_REMAP - DRAM_OFS_WINDOW )
-  #define AT_BUF_MEMRW( x )                      ( ( x ) - DRAM_OFS_REMAP + DRAM_OFS_WINDOW )
+#define AT_MEMRW_BUF(x) ((x) + DRAM_OFS_REMAP - DRAM_OFS_WINDOW)
+#define AT_BUF_MEMRW(x) ((x)-DRAM_OFS_REMAP + DRAM_OFS_WINDOW)
 
 //---------------------------------------------------------
 // Error Flag Bits
@@ -526,6 +528,7 @@ typedef struct {
 	uint32_t GPHYADR;		/* argv[6] for dedicated */
 	uint32_t delay_scan_boundary;	/* argv[7] for dedicated
 					   argv[5] for ncsi */	
+	uint32_t ieee_sel;		/* argv[7] for dedicated */
 
 	uint32_t GARPNumCnt;		/* argv[7] for ncsi */
 	uint32_t GUserDVal;		/* argv[8] for dedicated */
@@ -669,11 +672,19 @@ typedef union {
 
 typedef struct mac_delay_1g_reg_s {
 	uint32_t addr;
-	mac_delay_1g_t value;
+	int32_t tx_min_delay;
+	int32_t tx_max_delay;
+	int32_t rx_min_delay;
+	int32_t rx_max_delay;
+	mac_delay_1g_t value;	/* backup register value */
 } mac_delay_1g_reg_t;
 
 typedef struct mac_delay_100_10_reg_s {
 	uint32_t addr;
+	int32_t tx_min_delay;
+	int32_t tx_max_delay;
+	int32_t rx_min_delay;
+	int32_t rx_max_delay;
 	mac_delay_100_10_t value;
 } mac_delay_100_10_reg_t;
 
@@ -715,8 +726,7 @@ typedef struct mac12_drv_reg_s {
 typedef struct {
 	CHAR                 init_done                     ;
 
-	BYTE                 Dly_MrgEn                     ;
-	CHAR                 Dly_3Regiser                  ;
+	BYTE                 Dly_MrgEn                     ;	
 
 	/* driving strength */
 #ifdef CONFIG_ASPEED_AST2600
@@ -744,7 +754,6 @@ typedef struct {
 	BYTE                 Dly_stage                     ;
 	BYTE                 Dly_stage_in                  ;
 	BYTE                 Dly_stage_out                 ;
-	BYTE                 Dly_step                      ;
 	uint32_t Dly_mask_bit_in               ;
 	uint32_t Dly_mask_bit_out              ;
 	uint32_t Dly_mask_pos                  ;

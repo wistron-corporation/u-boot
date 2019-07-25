@@ -31,7 +31,6 @@
 //#define Enable_BufMerge
 //#define Enable_ShowBW
 
-#define AST2500_IOStageStep                    1
 #define AST2500_IOStageShiftBit_In             2 //0~2
 #define AST2500_IOStageShiftBit_Out            2 //0~2
 
