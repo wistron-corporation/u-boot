@@ -624,6 +624,19 @@ typedef union {
 		uint32_t rgmii_125m_o_sel 	: 1;	/* bit[31] */
 	}b;
 } mac_delay_1g_t;
+
+typedef union {
+	uint32_t w;
+	struct {
+		uint32_t tx_delay_1		: 6;	/* bit[5:0] */
+		uint32_t tx_delay_2		: 6;	/* bit[11:6] */
+		uint32_t rx_delay_1		: 6;	/* bit[17:12] */
+		uint32_t rx_delay_2		: 6;	/* bit[23:18] */
+		uint32_t rx_clk_inv_1 		: 1;	/* bit[24] */
+		uint32_t rx_clk_inv_2 		: 1;	/* bit[25] */
+		uint32_t reserved_0 		: 6;	/* bit[31:26] */
+	}b;
+} mac_delay_100_10_t;
 #else
 typedef union {
 	uint32_t w;
@@ -640,7 +653,6 @@ typedef union {
 		uint32_t rgmii_125m_o_sel 	: 1;	/* bit[31] */
 	}b;
 } mac_delay_1g_t;
-#endif
 
 typedef union {
 	uint32_t w;
@@ -653,6 +665,7 @@ typedef union {
 		uint32_t reserved_0 		: 7;	/* bit[31:25] */
 	}b;
 } mac_delay_100_10_t;
+#endif
 
 typedef struct mac_delay_1g_reg_s {
 	uint32_t addr;
