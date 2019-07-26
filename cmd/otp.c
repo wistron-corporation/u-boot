@@ -30,6 +30,48 @@ DECLARE_GLOBAL_DATA_PTR;
 #define MODE_DATA	3
 #define MODE_ALL	4
 
+#define DISABLE_SECREG_PROG		BIT(0)
+#define ENABLE_SEC_BOOT			BIT(1)
+#define INIT_PROG_DONE			BIT(2)
+#define ENABLE_USERREG_ECC		BIT(3)
+#define ENABLE_SECREG_ECC		BIT(4)
+#define DISABLE_LOW_SEC_KEY		BIT(5)
+#define IGNORE_SEC_BOOT_HWSTRAP		BIT(6)
+#define SEC_BOOT_MDOES(x)		(x >> 7)
+#define   SEC_MODE1			0x0
+#define   SEC_MODE2			0x1
+#define OTP_BIT_CELL_MODES(x)		((x >> 8) & 0x3)
+#define   SINGLE_CELL_MODE		0x0
+#define   DIFFERENTIAL_MODE		0x1
+#define   DIFFERENTIAL_REDUDANT_MODE	0x2
+#define CRYPTO_MODES(x)			((x >> 10) & 0x3)
+#define   CRYPTO_RSA1024		0x0
+#define   CRYPTO_RSA2048		0x1
+#define   CRYPTO_RSA3072		0x2
+#define   CRYPTO_RSA4096		0x3
+#define HASH_MODES(x)			((x >> 12) & 0x3)
+#define   HASH_SAH224			0x0
+#define   HASH_SAH256			0x1
+#define   HASH_SAH384			0x2
+#define   HASH_SAH512			0x3
+#define SECREG_SIZE(x)			((x >> 16) & 0x3f)
+#define WRITE_PROTECT_SECREG		BIT(22)
+#define WRITE_PROTECT_USERREG		BIT(23)
+#define WRITE_PROTECT_CONFREG		BIT(24)
+#define WRITE_PROTECT_STRAPREG		BIT(25)
+#define ENABLE_COPY_TO_SRAM		BIT(26)
+#define ENABLE_IMAGE_ENC		BIT(27)
+#define WRITE_PROTECT_KEY_RETIRE	BIT(29)
+#define ENABLE_SIPROM_RED		BIT(30)
+#define ENABLE_SIPROM_MLOCK		BIT(31)
+
+#define VENDER_ID(x) 			(x & 0xFFFF)
+#define KEY_REVISION(x)			((x >> 16) & 0xFFFF)
+
+#define SEC_BOOT_HEADER_OFFSET(x)	(x & 0xFFFF)
+
+#define KEYS_VALID_BITS(x)		(x & 0xff)
+#define KEYS_RETIRE_BITS(x)		((x >> 16) & 0xff)
 struct otpstrap {
 	int value;
 	int option_array[7];
@@ -158,45 +200,48 @@ static int otp_conf_parse(uint32_t *OTPCFG)
 	int tmp, i, pass;
 
 	printf("OTPCFG0-D[0]\n");
-	if (OTPCFG[0] & (1))
+	if (OTPCFG[0] & DISABLE_SECREG_PROG)
 		printf("  Disable Secure Region programming\n");
 	else
 		printf("  Enable Secure Region programming\n");
 	printf("OTPCFG0-D[1]\n");
-	if (OTPCFG[0] & (1 << 1))
+	if (OTPCFG[0] & ENABLE_SEC_BOOT)
 		printf("  Enable Secure Boot\n");
 	else
 		printf("  Disable Secure Boot\n");
 	printf("OTPCFG0-D[3]\n");
-	if (OTPCFG[0] & (1 << 3))
+	if (OTPCFG[0] & ENABLE_USERREG_ECC)
 		printf("  User region ECC enable\n");
 	else
 		printf("  User region ECC disable\n");
 	printf("OTPCFG0-D[4]\n");
-	if (OTPCFG[0] & (1 << 4))
+	if (OTPCFG[0] & ENABLE_SECREG_ECC)
 		printf("  Secure Region ECC enable\n");
 	else
 		printf("  Secure Region ECC disable\n");
 	printf("OTPCFG0-D[5]\n");
-	if (OTPCFG[0] & (1 << 5))
+	if (OTPCFG[0] & DISABLE_LOW_SEC_KEY)
 		printf("  Disable low security key\n");
 	else
 		printf("  Enable low security key\n");
 	printf("OTPCFG0-D[6]\n");
-	if (OTPCFG[0] & (1 << 6))
+	if (OTPCFG[0] & IGNORE_SEC_BOOT_HWSTRAP)
 		printf("  Ignore Secure Boot hardware strap\n");
 	else
 		printf("  Do not ignore Secure Boot hardware strap\n");
 	printf("OTPCFG0-D[7]\n");
-	printf("  Secure Boot Mode: %d\n", (OTPCFG[0] >> 7) & 1);
+	if (SEC_BOOT_MDOES(OTPCFG[0]) == SEC_MODE1)
+		printf("  Secure Boot Mode: 1\n");
+	else
+		printf("  Secure Boot Mode: 2\n");
 	printf("OTPCFG0-D[9:8]\n");
 	printf("  OTP bit cell mode : ");
-	tmp = ((OTPCFG[0] >> 8) & 3);
-	if (tmp == 0) {
+	tmp = OTP_BIT_CELL_MODES(OTPCFG[0]);
+	if (tmp == SINGLE_CELL_MODE) {
 		printf("Single cell mode (recommended)\n");
-	} else if (tmp == 1) {
+	} else if (tmp == DIFFERENTIAL_MODE) {
 		printf("Differnetial mode\n");
-	} else if (tmp == 2) {
+	} else if (tmp == DIFFERENTIAL_REDUDANT_MODE) {
 		printf("Differential-redundant mode\n");
 	} else {
 		printf("Value error\n");
@@ -204,116 +249,111 @@ static int otp_conf_parse(uint32_t *OTPCFG)
 	}
 	printf("OTPCFG0-D[11:10]\n");
 	printf("  RSA mode : ");
-	tmp = ((OTPCFG[0] >> 10) & 3);
-	if (tmp == 0) {
+	tmp = CRYPTO_MODES(OTPCFG[0]);
+	if (tmp == CRYPTO_RSA1024) {
 		printf("RSA1024\n");
-	} else if (tmp == 1) {
+	} else if (tmp == CRYPTO_RSA2048) {
 		printf("RSA2048\n");
-	} else if (tmp == 2) {
+	} else if (tmp == CRYPTO_RSA3072) {
 		printf("RSA3072\n");
 	} else {
 		printf("RSA4096\n");
 	}
 	printf("OTPCFG0-D[13:12]\n");
 	printf("  SHA mode : ");
-	tmp = ((OTPCFG[0] >> 12) & 3);
-	if (tmp == 0) {
+	tmp = HASH_MODES(OTPCFG[0]);
+	if (tmp == HASH_SAH224) {
 		printf("SHA224\n");
-	} else if (tmp == 1) {
+	} else if (tmp == HASH_SAH256) {
 		printf("SHA256\n");
-	} else if (tmp == 2) {
+	} else if (tmp == HASH_SAH384) {
 		printf("SHA384\n");
 	} else {
 		printf("SHA512\n");
 	}
 
 	printf("OTPCFG0-D[21:16]\n");
-	tmp = ((OTPCFG[0] >> 16) & 0x3F);
-	printf("  Secure Region size (DW): %x\n", tmp);
+	printf("  Secure Region size (DW): %x\n", SECREG_SIZE(OTPCFG[0]));
 
 	printf("OTPCFG0-D[22]\n");
-	if (OTPCFG[0] & (1 << 22))
+	if (OTPCFG[0] & WRITE_PROTECT_SECREG)
 		printf("  Secure Region : Write Protect\n");
 	else
 		printf("  Secure Region : Writable\n");
 	printf("OTPCFG0-D[23]\n");
-	if (OTPCFG[0] & (1 << 23))
+	if (OTPCFG[0] & WRITE_PROTECT_USERREG)
 		printf("  User Region : Write Protect\n");
 	else
 		printf("  User Region : Writable\n");
 	printf("OTPCFG0-D[24]\n");
-	if (OTPCFG[0] & (1 << 24))
+	if (OTPCFG[0] & WRITE_PROTECT_CONFREG)
 		printf("  Configure Region : Write Protect\n");
 	else
 		printf("  Configure Region : Writable\n");
 	printf("OTPCFG0-D[25]\n");
-	if (OTPCFG[0] & (1 << 7))
+	if (OTPCFG[0] & WRITE_PROTECT_STRAPREG)
 		printf("  OTP strap Region : Write Protect\n");
 	else
 		printf("  OTP strap Region : Writable\n");
 	printf("OTPCFG0-D[26]\n");
-	if (OTPCFG[0] & (1 << 26))
+	if (OTPCFG[0] & ENABLE_COPY_TO_SRAM)
 		printf("  Copy Boot Image to Internal SRAM\n");
 	else
 		printf("  Disable Copy Boot Image to Internal SRAM\n");
 	printf("OTPCFG0-D[27]\n");
-	if (OTPCFG[0] & (1 << 27))
+	if (OTPCFG[0] & ENABLE_IMAGE_ENC)
 		printf("  Enable image encryption\n");
 	else
 		printf("  Disable image encryption\n");
 	printf("OTPCFG0-D[29]\n");
-	if (OTPCFG[0] & (1 << 29))
+	if (OTPCFG[0] & WRITE_PROTECT_KEY_RETIRE)
 		printf("  OTP key retire Region : Write Protect\n");
 	else
 		printf("  OTP key retire Region : Writable\n");
 	printf("OTPCFG0-D[30]\n");
-	if (OTPCFG[0] & (1 << 30))
+	if (OTPCFG[0] & ENABLE_SIPROM_RED)
 		printf("  SIPROM RED_EN redundancy repair enable\n");
 	else
 		printf("  SIPROM RED_EN redundancy repair disable\n");
 	printf("OTPCFG0-D[31]\n");
-	if (OTPCFG[0] & (1 << 31))
+	if (OTPCFG[0] & ENABLE_SIPROM_MLOCK)
 		printf("  SIPROM Mlock memory lock enable\n");
 	else
 		printf("  SIPROM Mlock memory lock disable\n");
 
 	printf("OTPCFG2-D[15:0]\n");
-	tmp = (OTPCFG[2] & 0xFFFF);
-	printf("  Vender ID : %x\n", tmp);
+	printf("  Vender ID : %x\n", VENDER_ID(OTPCFG[2]));
 
 	printf("OTPCFG2-D[31:16]\n");
-	tmp = ((OTPCFG[2] >> 16) & 0xFFFF);
-	printf("  Key Revision : %x\n", tmp);
+	printf("  Key Revision : %x\n", KEY_REVISION(OTPCFG[2]));
 
 	printf("OTPCFG3-D[15:0]\n");
-	tmp = (OTPCFG[3] & 0xFFFF);
-	printf("  Secure boot header offset : %x\n", tmp);
+	printf("  Secure boot header offset : %x\n",
+	       SEC_BOOT_HEADER_OFFSET(OTPCFG[3]));
 
 	printf("OTPCFG4-D[7:0]\n");
-	tmp = (OTPCFG[4] & 0xff);
-	pass = -1;
-	for (i = 0; i < 7; i++) {
-		if (tmp == (1 << i)) {
-			if (pass != -1) {
-				printf("  Keys valid ID value error : %x\n", tmp);
-				return -1;
+	tmp = KEYS_VALID_BITS(OTPCFG[4]);
+	if (tmp != 0) {
+		for (i = 0; i < 7; i++) {
+			if (tmp == (1 << i)) {
+				pass = i + 1;
 			}
-			pass = i;
 		}
+	} else {
+		pass = 0;
 	}
-	printf("  Keys valid ID : %d\n", pass);
+	printf("  Keys valid  : %d\n", pass);
 
 	printf("OTPCFG4-D[23:16]\n");
-	tmp = ((OTPCFG[4] >> 16) & 0xff);
-	pass = -1;
-	for (i = 0; i < 7; i++) {
-		if (tmp == (1 << i)) {
-			if (pass != -1) {
-				printf("  Keys Retire ID value error : %x\n", tmp);
-				return -1;
+	tmp = KEYS_RETIRE_BITS(OTPCFG[4]);
+	if (tmp != 0) {
+		for (i = 0; i < 7; i++) {
+			if (tmp == (1 << i)) {
+				pass = i + 1;
 			}
-			pass = i;
 		}
+	} else {
+		pass = 0;
 	}
 	printf("  Keys Retire ID : %d\n", pass);
 
