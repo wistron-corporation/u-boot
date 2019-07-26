@@ -8,14 +8,14 @@
  *  along with this program; if not, write to the Free Software
  *  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  */
-
+#include <stdlib.h>
 #include <common.h>
 #include <console.h>
 #include <bootretry.h>
 #include <cli.h>
 #include <command.h>
 #include <console.h>
-
+#include <malloc.h>
 #include <inttypes.h>
 #include <mapmem.h>
 #include <asm/io.h>
@@ -72,6 +72,27 @@ DECLARE_GLOBAL_DATA_PTR;
 
 #define KEYS_VALID_BITS(x)		(x & 0xff)
 #define KEYS_RETIRE_BITS(x)		((x >> 16) & 0xff)
+
+#define PBSTR "||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||"
+#define PBWIDTH 60
+
+void printProgress(int numerator, int denominator, char *format, ...)
+{
+	int val = numerator * 100 / denominator;
+	int lpad = numerator * PBWIDTH / denominator;
+	int rpad = PBWIDTH - lpad;
+	char buffer[256];
+	va_list aptr;
+
+	va_start(aptr, format);
+	vsprintf(buffer, format, aptr);
+	va_end(aptr);
+
+	printf("\r%3d%% [%.*s%*s] %s", val, lpad, PBSTR, rpad, "", buffer);
+	if (numerator == denominator)
+		printf("\n");
+}
+
 struct otpstrap {
 	int value;
 	int option_array[7];
@@ -180,7 +201,7 @@ static void otp_prog(uint32_t otp_addr, uint32_t prog_bit)
 	udelay(85);
 }
 
-static int prog_verify(uint32_t otp_addr, int bit_offset, int value)
+static int prog_conf_verify(uint32_t otp_addr, int bit_offset, int value)
 {
 	int ret;
 
@@ -188,16 +209,72 @@ static int prog_verify(uint32_t otp_addr, int bit_offset, int value)
 	writel(0x23b1e361, 0x1e6f2004); //trigger read
 	udelay(2);
 	ret = readl(0x1e6f2020);
-	// printf("prog_verify = %x\n", ret);
+	// printf("prog_conf_verify = %x\n", ret);
 	if (((ret >> bit_offset) & 1) == value)
 		return 0;
 	else
 		return -1;
 }
 
+static uint32_t prog_data_dw_verify(uint32_t otp_addr, uint32_t *value, uint32_t *compare, int size)
+{
+	uint32_t ret[2];
+
+	otp_addr &= ~(1 << 15);
+
+	if (otp_addr % 2 == 0)
+		writel(otp_addr, 0x1e6f2010); //Read address
+	else
+		writel(otp_addr - 1, 0x1e6f2010); //Read address
+	writel(0x23b1e361, 0x1e6f2004); //trigger read
+	udelay(2);
+	ret[0] = readl(0x1e6f2020);
+	ret[1] = readl(0x1e6f2024);
+	if (size == 1) {
+		if (otp_addr % 2 == 0) {
+			// printf("check %x : %x = %x\n", otp_addr, ret[0], value[0]);
+			if (value[0] == ret[0]) {
+				compare[0] = 0;
+				return 0;
+			} else {
+				compare[0] = value[0] ^ ret[0];
+				return -1;
+			}
+
+		} else {
+			// printf("check %x : %x = %x\n", otp_addr, ret[1], value[0]);
+			if (value[0] == ret[1]) {
+				compare[0] = ~0;
+				return 0;
+			} else {
+				compare[0] = ~(value[0] ^ ret[0]);
+				return -1;
+			}
+		}
+	} else if (size == 2) {
+		// otp_addr should be even
+		if ((value[0] == ret[0]) && (value[1] == ret[1])) {
+			// printf("check[0] %x : %x = %x\n", otp_addr, ret[0], value[0]);
+			// printf("check[1] %x : %x = %x\n", otp_addr, ret[1], value[1]);
+			compare[0] = 0;
+			compare[1] = ~0;
+			return 0;
+		} else {
+			// printf("check[0] %x : %x = %x\n", otp_addr, ret[0], value[0]);
+			// printf("check[1] %x : %x = %x\n", otp_addr, ret[1], value[1]);
+			compare[0] = value[0] ^ ret[0];
+			compare[1] = ~(value[1] ^ ret[1]);
+			return -1;
+		}
+	} else {
+		return -1;
+	}
+}
+
 static int otp_conf_parse(uint32_t *OTPCFG)
 {
-	int tmp, i, pass;
+	int tmp, i;
+	int pass = 0;
 
 	printf("OTPCFG0-D[0]\n");
 	if (OTPCFG[0] & DISABLE_SECREG_PROG)
@@ -503,6 +580,7 @@ static int otp_prog_conf(uint32_t *buf, int otp_addr, int dw_count)
 	uint32_t prog_bit, prog_address;
 
 	for (i = 0; i < dw_count; i++) {
+		printProgress(i + 1, dw_count, "");
 		prog_address = 0x800;
 		prog_address |= ((i + otp_addr) / 8) * 0x200;
 		prog_address |= ((i + otp_addr) % 8) * 0x2;
@@ -521,7 +599,7 @@ static int otp_prog_conf(uint32_t *buf, int otp_addr, int dw_count)
 			for (k = 0; k < RETRY; k++) {
 				if (!soak) {
 					otp_prog(prog_address, prog_bit);
-					if (prog_verify(prog_address, j, bit_value) == 0) {
+					if (prog_conf_verify(prog_address, j, bit_value) == 0) {
 						pass = 1;
 						break;
 					}
@@ -532,7 +610,7 @@ static int otp_prog_conf(uint32_t *buf, int otp_addr, int dw_count)
 					writel(0x041930d4, 0x1e602008); //soak program
 				}
 				otp_prog(prog_address, prog_bit);
-				if (prog_verify(prog_address, j, bit_value) == 0) {
+				if (prog_conf_verify(prog_address, j, bit_value) == 0) {
 					pass = 1;
 					break;
 				}
@@ -689,6 +767,7 @@ static int otp_prog_strap(uint32_t *buf)
 	otp_write(0x5000, 0x302f); // Write MRB
 	otp_write(0x1000, 0x4020); // Write MR
 	for (i = 0; i < 64; i++) {
+		printProgress(i + 1, 64, "");
 		prog_address = 0x800;
 		if (i < 32) {
 			offset = i;
@@ -731,7 +810,7 @@ static int otp_prog_strap(uint32_t *buf)
 		for (j = 0; j < RETRY; j++) {
 			if (!soak) {
 				otp_prog(prog_address, prog_bit);
-				if (prog_verify(prog_address, offset, 1) == 0) {
+				if (prog_conf_verify(prog_address, offset, 1) == 0) {
 					pass = 1;
 					break;
 				}
@@ -742,7 +821,7 @@ static int otp_prog_strap(uint32_t *buf)
 				writel(0x041930d4, 0x1e602008); //soak program
 			}
 			otp_prog(prog_address, prog_bit);
-			if (prog_verify(prog_address, offset, 1) == 0) {
+			if (prog_conf_verify(prog_address, offset, 1) == 0) {
 				pass = 1;
 				break;
 			}
@@ -762,7 +841,7 @@ static int otp_prog_strap(uint32_t *buf)
 			if (!soak) {
 				writel(0x04190760, 0x1e602008); //normal program
 				otp_prog(prog_address, prog_bit);
-				if (prog_verify(prog_address, offset, 1) == 0) {
+				if (prog_conf_verify(prog_address, offset, 1) == 0) {
 					pass = 1;
 					break;
 				}
@@ -770,7 +849,7 @@ static int otp_prog_strap(uint32_t *buf)
 			}
 			writel(0x041930d4, 0x1e602008); //soak program
 			otp_prog(prog_address, prog_bit);
-			if (prog_verify(prog_address, offset, 1) == 0) {
+			if (prog_conf_verify(prog_address, offset, 1) == 0) {
 				pass = 1;
 				break;
 			}
@@ -786,62 +865,187 @@ static int otp_prog_strap(uint32_t *buf)
 
 }
 
+static void otp_prog_dw(uint32_t value, uint32_t prog_address, int soak)
+{
+	int j, bit_value, prog_bit;
+
+	if (soak) {
+		otp_write(0x3000, 0x4021); // Write MRA
+		otp_write(0x5000, 0x1027); // Write MRB
+		otp_write(0x1000, 0x4820); // Write MR
+		writel(0x041930d4, 0x1e602008); //soak program
+	} else {
+		otp_write(0x3000, 0x4061); // Write MRA
+		otp_write(0x5000, 0x302f); // Write MRB
+		otp_write(0x1000, 0x4020); // Write MR
+		writel(0x04190760, 0x1e602008); //normal program
+	}
+
+	for (j = 0; j < 32; j++) {
+		bit_value = (value >> j) & 0x1;
+		if (prog_address % 2 == 0) {
+			if (bit_value)
+				prog_bit = ~(0x1 << j);
+			else
+				continue;
+		} else {
+			prog_address |= 1 << 15;
+			if (bit_value)
+				continue;
+			else
+				prog_bit = 0x1 << j;
+		}
+		otp_prog(prog_address, prog_bit);
+	}
+}
+
 static int otp_prog_data(uint32_t *buf, int otp_addr, int dw_count)
 {
-	int i, j, k, bit_value;
-	int pass, soak;
-	uint32_t prog_bit, prog_address;
+	int i, k;
+	int pass;
+	int addr_odd, count_odd;
+	int d_size;
+	uint32_t prog_address;
+	uint32_t *data;
+	uint32_t compare[2];
 
+	count_odd = dw_count % 2;
+	addr_odd = otp_addr % 2;
+	d_size = dw_count + (count_odd ^ addr_odd);
+	data = malloc(d_size * 4);
+
+	printf("Read OTP Data:\n");
+
+	printProgress(0, d_size, "");
+	if (!addr_odd) {
+		for (i = 0; i < d_size ; i += 2) {
+			printProgress(i + 2, d_size, "");
+			otp_read_data(i + otp_addr, &data[i]);
+		}
+	} else {
+		otp_read_data(otp_addr - 1, &data[0]);
+		data[0] = data[1];
+		for (i = 1; i < d_size ; i += 2) {
+			printProgress(i + 2, d_size, "");
+			otp_read_data(i + otp_addr, &data[i]);
+		}
+	}
+
+	printf("Check writable...\n");
 	for (i = 0; i < dw_count; i++) {
-		prog_address = i + otp_addr;
-		for (j = 0; j < 32; j++) {
-			bit_value = (buf[i] >> j) & 0x1;
-			if (prog_address % 2 == 0) {
-				prog_address |= 1 << 15;
-				if (bit_value)
-					prog_bit = ~(0x1 << j);
-				else
-					continue;
+		if (data[i] == buf[i])
+			continue;
+		if ((i + otp_addr) % 2 == 0) {
+			if ((data[i] | buf[i]) == buf[i]) {
+				continue;
 			} else {
-				prog_address |= 1 << 15;
-				// printf("bit_value = %x\n", bit_value);
-				if (bit_value)
-					continue;
-				else
-					prog_bit = 0x1 << j;
+				printf("Input image can't program into OTP, please check.\n");
+				printf("OTP_ADDR[%x] = %x\n", i + otp_addr, data[i]);
+				printf("Input   [%x] = %x\n", i, buf[i]);
+				goto fail;
 			}
+		} else {
+			if ((data[i] & buf[i]) == buf[i]) {
+				continue;
+			} else {
+				printf("Input image can't program into OTP, please check.\n");
+				printf("OTP_ADDR[%x] = %x\n", i + otp_addr, data[i]);
+				printf("Input   [%x] = %x\n", i, buf[i]);
+				goto fail;
+			}
+		}
+	}
+
+	printf("Start Programing...\n");
+
+	printProgress(0, dw_count, "");
+	if (addr_odd) {
+		if (data[0] != buf[0]) {
 			pass = 0;
-			soak = 0;
-			otp_write(0x3000, 0x4061); // Write MRA
-			otp_write(0x5000, 0x302f); // Write MRB
-			otp_write(0x1000, 0x4020); // Write MR
-			writel(0x04190760, 0x1e602008); //normal program
+			printProgress(1, dw_count, "[%08X] = %08X                   ", otp_addr, buf[0]);
+			otp_prog_dw(buf[0], otp_addr, 0);
 			for (k = 0; k < RETRY; k++) {
-				if (!soak) {
-					// printf("prog_address = %x\n", prog_address);
-					// printf("prog_bit = %x\n", prog_bit);
-					otp_prog(prog_address, prog_bit);
-					if (prog_verify(prog_address, j, bit_value) == 0) {
-						pass = 1;
-						break;
-					}
-					soak = 1;
-					otp_write(0x3000, 0x4021); // Write MRA
-					otp_write(0x5000, 0x1027); // Write MRB
-					otp_write(0x1000, 0x4820); // Write MR
-					writel(0x041930d4, 0x1e602008); //soak program
-				}
-				otp_prog(prog_address, prog_bit);
-				if (prog_verify(prog_address, j, bit_value) == 0) {
+				if (prog_data_dw_verify(otp_addr, &buf[0], compare, 1) != 0) {
+					otp_prog_dw(compare[0], otp_addr, 1);
+				} else {
 					pass = 1;
 					break;
 				}
 			}
 			if (!pass)
-				return -1;
+				goto fail;
+		} else {
+			printProgress(1, dw_count, "[%08X] = %08X HIT               ", otp_addr, buf[0]);
 		}
 	}
+	/* if otp_addr is odd, then begin from 1. */
+	/* if dw_count is odd, then program the last dw seperately. */
+	for (i = 0 + addr_odd; i < dw_count - (addr_odd ^ count_odd); i += 2) {
+		prog_address = i + otp_addr;
+
+		if ((data[i] == buf[i]) && (data[i + 1] == buf[i + 1])) {
+			printProgress(i + 2, dw_count, "[%03X]=%08X HIT;[%03X]=%08X HIT", prog_address, buf[i], prog_address + 1, buf[i + 1]);
+			continue;
+		}
+		if (data[i + 1] == buf[i + 1]) {
+			printProgress(i + 2, dw_count, "[%03X]=%08X    ;[%03X]=%08X HIT", prog_address, buf[i], prog_address + 1, buf[i + 1]);
+			otp_prog_dw(buf[i], prog_address, 0);
+		} else if (data[i] == buf[i]) {
+			printProgress(i + 2, dw_count, "[%03X]=%08X HIT;[%03X]=%08X    ", prog_address, buf[i], prog_address + 1, buf[i + 1]);
+			otp_prog_dw(buf[i + 1], prog_address + 1, 0);
+		} else {
+			printProgress(i + 2, dw_count, "[%03X]=%08X    ;[%03X]=%08X    ", prog_address, buf[i], prog_address + 1, buf[i + 1]);
+			otp_prog_dw(buf[i], prog_address, 0);
+			otp_prog_dw(buf[i + 1], prog_address + 1, 0);
+		}
+
+		pass = 0;
+		for (k = 0; k < RETRY; k++) {
+			if (prog_data_dw_verify(prog_address, &buf[i], compare, 2) != 0) {
+				if (compare[0] != 0) {
+					otp_prog_dw(compare[0], prog_address, 1);
+				}
+				if (compare[1] != ~0) {
+					otp_prog_dw(compare[1], prog_address + 1, 1);
+				}
+			} else {
+				pass = 1;
+				break;
+			}
+		}
+
+		if (!pass)
+			goto fail;
+	}
+
+	if (!(addr_odd ^ count_odd))
+		goto pass;
+
+	prog_address = otp_addr + dw_count - 1;
+	if (data[dw_count - 1] != buf[dw_count - 1]) {
+		printProgress(dw_count, dw_count, "[%08X] = %08X                   ", prog_address, buf[dw_count - 1]);
+		otp_prog_dw(buf[dw_count - 1], prog_address, 0);
+		for (k = 0; k < RETRY; k++) {
+			if (prog_data_dw_verify(prog_address, &buf[dw_count - 1], compare, 1) != 0) {
+				otp_prog_dw(compare[0], prog_address, 1);
+			} else {
+				pass = 1;
+				break;
+			}
+		}
+		if (!pass)
+			goto fail;
+	} else {
+		printProgress(dw_count, dw_count, "[%08X] = %08X HIT               ", prog_address, buf[dw_count - 1]);
+	}
+
+pass:
+	free(data);
 	return 0;
+
+fail:
+	free(data);
+	return -1;
 }
 
 static int do_otp_prog(int mode, int addr, int otp_addr, int dw_count, int nconfirm)
