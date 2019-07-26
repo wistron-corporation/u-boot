@@ -111,6 +111,11 @@ lowlevel_init:
     /* setup timer frequency for ARM generic timer */
     timer_init
 
+    /* set ACTLR.SMP to enable cache use */
+    mrc   p15, 0, r0, c1, c0, 1
+    orr   r0, r0, #0x40
+    mcr   p15, 0, r0, c1, c0, 1
+
     /*
      * we treat cpu0 as the primary core and
      * put secondary core (cpuN) to sleep
