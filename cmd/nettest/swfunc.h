@@ -27,7 +27,6 @@
 
 /* ======================== Program flow control ======================== */
 #define RUN_STEP                                 5
-// 0: read_scu
 // 1: parameter setup
 // 2: init_scu1,
 // 4: Data Initial

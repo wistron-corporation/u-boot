@@ -2290,21 +2290,21 @@ uint32_t phy_find_addr (MAC_ENGINE *eng)
 		eng->phy.Adr = eng->arg.GPHYADR;
 #endif
 
-        if ( eng->arg.ctrl.b.phy_init ) {
-                if ( ret == TRUE ) {
-                        if ( PHY_ADR_org != eng->phy.Adr ) {
-                                phy_id( eng, STD_OUT );
-                                if ( !eng->run.TM_Burst )
-                                        phy_id( eng, FP_LOG );
-                        }
-                } else {
-                        phy_id( eng, STD_OUT );
-                        if ( !eng->run.TM_Burst )
-                                phy_id( eng, FP_LOG );
+	if (eng->arg.ctrl.b.phy_init) {
+		if (ret == TRUE) {
+			if (PHY_ADR_org != eng->phy.Adr) {
+				phy_id(eng, STD_OUT);
+				if (!eng->run.TM_Burst)
+					phy_id(eng, FP_LOG);
+			}
+		} else {
+			phy_id(eng, STD_OUT);
+			if (!eng->run.TM_Burst)
+				phy_id(eng, FP_LOG);
 
-                        FindErr( eng, Err_Flag_PHY_Type );
-                }
-        }
+			FindErr(eng, Err_Flag_PHY_Type);
+		}
+	}
 
 	eng->phy.PHY_ID2 = phy_read(eng, PHY_REG_ID_1);
 	eng->phy.PHY_ID3 = phy_read(eng, PHY_REG_ID_2);
@@ -2343,9 +2343,6 @@ void phy_set00h (MAC_ENGINE *eng)
                         if      ( eng->run.Speed_sel[ 0 ] ) eng->phy.PHY_00h = 0x0140;
                         else if ( eng->run.Speed_sel[ 1 ] ) eng->phy.PHY_00h = 0x2100;
                         else                                eng->phy.PHY_00h = 0x0100;
-//                      if      ( eng->run.Speed_sel[ 0 ] ) eng->phy.PHY_00h = 0x1140;
-//                      else if ( eng->run.Speed_sel[ 1 ] ) eng->phy.PHY_00h = 0x3100;
-//                      else                                eng->phy.PHY_00h = 0x1100;
                 }
         }
         else if ( eng->phy.loop_phy ) {

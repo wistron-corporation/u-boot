@@ -773,6 +773,42 @@ static uint32_t setup_env(MAC_ENGINE *p_eng)
 
 	return 0;
 }
+
+static push_reg(MAC_ENGINE *p_eng)
+{
+	/* SCU delay settings */
+	p_eng->io.mac12_1g_delay.value.w = readl(p_eng->io.mac12_1g_delay.addr);
+	p_eng->io.mac12_100m_delay.value.w = readl(p_eng->io.mac12_100m_delay.addr);
+	p_eng->io.mac12_10m_delay.value.w = readl(p_eng->io.mac12_10m_delay.addr);
+#ifdef CONFIG_ASPEED_AST2600
+	p_eng->io.mac34_1g_delay.value.w = readl(p_eng->io.mac34_1g_delay.addr);
+	p_eng->io.mac34_100m_delay.value.w = readl(p_eng->io.mac34_100m_delay.addr);
+	p_eng->io.mac34_10m_delay.value.w = readl(p_eng->io.mac34_10m_delay.addr);
+	
+	p_eng->io.mac34_drv_reg.value.w = readl(p_eng->io.mac34_drv_reg.addr);
+#else
+	p_eng->io.mac12_drv_reg.value.w = readl(p_eng->io.mac12_drv_reg.addr);
+#endif
+
+}
+
+static void pop_reg(MAC_ENGINE *p_eng)
+{
+	/* SCU delay settings */
+	writel(p_eng->io.mac12_1g_delay.value.w, p_eng->io.mac12_1g_delay.addr);
+	writel(p_eng->io.mac12_100m_delay.value.w, p_eng->io.mac12_100m_delay.addr);
+	writel(p_eng->io.mac12_10m_delay.value.w, p_eng->io.mac12_10m_delay.addr);
+#ifdef CONFIG_ASPEED_AST2600	
+	writel(p_eng->io.mac34_1g_delay.value.w, p_eng->io.mac34_1g_delay.addr);
+	writel(p_eng->io.mac34_100m_delay.value.w, p_eng->io.mac34_100m_delay.addr);
+	writel(p_eng->io.mac34_10m_delay.value.w, p_eng->io.mac34_10m_delay.addr);
+	
+	writel(p_eng->io.mac34_drv_reg.value.w, p_eng->io.mac34_drv_reg.addr);
+#else
+	writel(p_eng->io.mac12_drv_reg.value.w, p_eng->io.mac12_drv_reg.addr);
+#endif	
+	
+}
 static uint32_t init_mac_engine(MAC_ENGINE *p_eng, uint32_t mode)
 {
 	memset(p_eng, 0, sizeof(MAC_ENGINE));
@@ -813,63 +849,53 @@ static uint32_t init_mac_engine(MAC_ENGINE *p_eng, uint32_t mode)
 	 */
 #ifdef CONFIG_ASPEED_AST2600
 	p_eng->io.mac12_1g_delay.addr = SCU_BASE + 0x340;
-	p_eng->io.mac12_1g_delay.value.w = readl(p_eng->io.mac12_1g_delay.addr);
 	p_eng->io.mac12_1g_delay.tx_min_delay = 0;
 	p_eng->io.mac12_1g_delay.tx_max_delay = 63;
 	p_eng->io.mac12_1g_delay.rx_min_delay = -63;
 	p_eng->io.mac12_1g_delay.rx_max_delay = 63;
 	p_eng->io.mac12_100m_delay.addr = SCU_BASE + 0x348;
-	p_eng->io.mac12_100m_delay.value.w = readl(p_eng->io.mac12_100m_delay.addr);
 	p_eng->io.mac12_100m_delay.tx_min_delay = 0;
 	p_eng->io.mac12_100m_delay.tx_max_delay = 63;
 	p_eng->io.mac12_100m_delay.rx_min_delay = -63;
 	p_eng->io.mac12_100m_delay.rx_max_delay = 63;
 	p_eng->io.mac12_10m_delay.addr = SCU_BASE + 0x34c;
-	p_eng->io.mac12_10m_delay.value.w = readl(p_eng->io.mac12_10m_delay.addr);
 	p_eng->io.mac12_10m_delay.tx_min_delay = 0;
 	p_eng->io.mac12_10m_delay.tx_max_delay = 63;
 	p_eng->io.mac12_10m_delay.rx_min_delay = -63;
 	p_eng->io.mac12_10m_delay.rx_max_delay = 63;
 
 	p_eng->io.mac34_1g_delay.addr = SCU_BASE + 0x350;
-	p_eng->io.mac34_1g_delay.value.w = readl(p_eng->io.mac34_1g_delay.addr);
 	p_eng->io.mac34_1g_delay.tx_min_delay = 0;
 	p_eng->io.mac34_1g_delay.tx_max_delay = 63;
 	p_eng->io.mac34_1g_delay.rx_min_delay = -63;
 	p_eng->io.mac34_1g_delay.rx_max_delay = 63;
 	p_eng->io.mac34_100m_delay.addr = SCU_BASE + 0x358;
-	p_eng->io.mac34_100m_delay.value.w = readl(p_eng->io.mac34_100m_delay.addr);
 	p_eng->io.mac34_100m_delay.tx_min_delay = 0;
 	p_eng->io.mac34_100m_delay.tx_max_delay = 63;
 	p_eng->io.mac34_100m_delay.rx_min_delay = -63;
 	p_eng->io.mac34_100m_delay.rx_max_delay = 63;
 	p_eng->io.mac34_10m_delay.addr = SCU_BASE + 0x35c;
-	p_eng->io.mac34_10m_delay.value.w = readl(p_eng->io.mac34_10m_delay.addr);
 	p_eng->io.mac34_10m_delay.tx_min_delay = 0;
 	p_eng->io.mac34_10m_delay.tx_max_delay = 63;
 	p_eng->io.mac34_10m_delay.rx_min_delay = -63;
 	p_eng->io.mac34_10m_delay.rx_max_delay = 63;
 
 	p_eng->io.mac34_drv_reg.addr = SCU_BASE + 0x458;
-	p_eng->io.mac34_drv_reg.value.w = readl(p_eng->io.mac34_drv_reg.addr);
 	p_eng->io.mac34_drv_reg.drv_max = 0x3;
 	p_eng->io.drv_upper_bond = 0x3;
 	p_eng->io.drv_lower_bond = 0;
 #else
 	p_eng->io.mac12_1g_delay.addr = SCU_BASE + 0x48;
-	p_eng->io.mac12_1g_delay.value.w = readl(p_eng->io.mac12_1g_delay.addr);
 	p_eng->io.mac12_1g_delay.tx_min_delay = 0;
 	p_eng->io.mac12_1g_delay.tx_max_delay = 63;
 	p_eng->io.mac12_1g_delay.rx_min_delay = 0;
 	p_eng->io.mac12_1g_delay.rx_max_delay = 63;
 	p_eng->io.mac12_100m_delay.addr = SCU_BASE + 0xb8;
-	p_eng->io.mac12_100m_delay.value.w = readl(p_eng->io.mac12_100m_delay.addr);
 	p_eng->io.mac12_100m_delay.tx_min_delay = 0;
 	p_eng->io.mac12_100m_delay.tx_max_delay = 63;
 	p_eng->io.mac12_100m_delay.rx_min_delay = 0;
 	p_eng->io.mac12_100m_delay.rx_max_delay = 63;
 	p_eng->io.mac12_10m_delay.addr = SCU_BASE + 0xbc;
-	p_eng->io.mac12_10m_delay.value.w = readl(p_eng->io.mac12_10m_delay.addr);
 	p_eng->io.mac12_10m_delay.tx_min_delay = 0;
 	p_eng->io.mac12_10m_delay.tx_max_delay = 63;
 	p_eng->io.mac12_10m_delay.rx_min_delay = 0;
@@ -880,7 +906,6 @@ static uint32_t init_mac_engine(MAC_ENGINE *p_eng, uint32_t mode)
 	p_eng->io.mac34_10m_delay.addr = 0;
 
 	p_eng->io.mac12_drv_reg.addr = SCU_BASE + 0x90;
-	p_eng->io.mac12_drv_reg.value.w = readl(p_eng->io.mac12_drv_reg.addr);
 	p_eng->io.mac12_drv_reg.drv_max = 0x1;
 	p_eng->io.drv_upper_bond = 0x1;
 	p_eng->io.drv_lower_bond = 0;
@@ -985,6 +1010,8 @@ int mac_test(int argc, char * const argv[], uint32_t mode)
 	phy_eng.fp_set = NULL;
 	phy_eng.fp_clr = NULL;
 
+	push_reg(&mac_eng);
+
 	scu_disable_mac(&mac_eng);
 	scu_enable_mac(&mac_eng);
 	if (mac_eng.arg.run_mode == MODE_DEDICATED) {
@@ -992,7 +1019,7 @@ int mac_test(int argc, char * const argv[], uint32_t mode)
 			phy_sel(&mac_eng, &phy_eng);
 	}
 
-	//mac_set_delay(&mac_eng, 1, 3);
+	pop_reg(&mac_eng);
 
 #if 0
 	int                  DES_LowNumber;		

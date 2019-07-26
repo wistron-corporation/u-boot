@@ -708,6 +708,8 @@ void mac_set_delay(MAC_ENGINE *p_eng, int32_t rx_d, int32_t tx_d)
 void mac_set_driving_strength(MAC_ENGINE *p_eng, uint32_t strength)
 {
 #ifdef CONFIG_ASPEED_AST2600
+	mac34_drv_t reg;
+
 	if (strength > p_eng->io.mac34_drv_reg.drv_max) {
 		printf("invalid driving strength value\n");
 		return;
@@ -717,42 +719,44 @@ void mac_set_driving_strength(MAC_ENGINE *p_eng, uint32_t strength)
 	 * read->modify->write for driving strength control register 
 	 * ast2600 : only MAC#3 & MAC#4 have driving strength setting
 	 */
-	p_eng->io.mac34_drv_reg.value.w = readl(p_eng->io.mac34_drv_reg.addr);
+	reg.w = readl(p_eng->io.mac34_drv_reg.addr);
 
 	/* ast2600 : only MAC#3 & MAC#4 have driving strength setting */
 	if (p_eng->run.mac_idx == 2) {
-		p_eng->io.mac34_drv_reg.value.b.mac3_tx_drv = strength;
+		reg.b.mac3_tx_drv = strength;
 	} else if (p_eng->run.mac_idx == 3) {
-		p_eng->io.mac34_drv_reg.value.b.mac4_tx_drv = strength;
+		reg.b.mac4_tx_drv = strength;
 	}
 
-	writel(p_eng->io.mac34_drv_reg.value.w, p_eng->io.mac34_drv_reg.addr);
+	writel(reg.w, p_eng->io.mac34_drv_reg.addr);
 #else
+	mac12_drv_t reg;
+
 	if (strength > p_eng->io.mac12_drv_reg.drv_max) {
 		printf("invalid driving strength value\n");
 		return;
 	}
 
 	/* read->modify->write for driving strength control register */
-	p_eng->io.mac12_drv_reg.value.w = readl(eng->io.mac12_drv_reg.addr);
+	reg.w = readl(p_eng->io.mac12_drv_reg.addr);
 	if (p_eng->run.is_rgmii) {
 		if (p_eng->run.mac_idx == 0) {
-			p_eng->io.mac34_drv_reg.value.b.mac1_rgmii_tx_drv =
+			reg.b.mac1_rgmii_tx_drv =
 			    strength;
 		} else if (p_eng->run.mac_idx == 2) {
-			p_eng->io.mac34_drv_reg.value.b.mac2_rgmii_tx_drv =
+			reg.b.mac2_rgmii_tx_drv =
 			    strength;
 		}
 	} else {
 		if (p_eng->run.mac_idx == 0) {
-			p_eng->io.mac34_drv_reg.value.b.mac1_rmii_tx_drv =
+			reg.b.mac1_rmii_tx_drv =
 			    strength;
 		} else if (p_eng->run.mac_idx == 2) {
-			p_eng->io.mac34_drv_reg.value.b.mac2_rmii_tx_drv =
+			reg.b.mac2_rmii_tx_drv =
 			    strength;
 		}
 	}
-	writel(p_eng->io.mac12_drv_reg.value.w, eng->io.mac12_drv_reg.addr);
+	writel(reg.w, p_eng->io.mac12_drv_reg.addr);
 #endif
 }
 void init_iodelay(MAC_ENGINE *eng)
