@@ -667,7 +667,7 @@ static uint32_t setup_running(MAC_ENGINE *p_eng)
 	p_eng->run.tdes_base = TDES_BASE1;
 	p_eng->run.rdes_base = RDES_BASE1;
 
-	if (p_eng->run.TM_IOTiming || p_eng->run.IO_Bund )
+	if (p_eng->run.TM_IOTiming || p_eng->run.IO_Bund)
 		p_eng->run.IO_MrgChk = 1;
 	else
 		p_eng->run.IO_MrgChk = 0;
@@ -780,6 +780,7 @@ static push_reg(MAC_ENGINE *p_eng)
 	p_eng->io.mac12_1g_delay.value.w = readl(p_eng->io.mac12_1g_delay.addr);
 	p_eng->io.mac12_100m_delay.value.w = readl(p_eng->io.mac12_100m_delay.addr);
 	p_eng->io.mac12_10m_delay.value.w = readl(p_eng->io.mac12_10m_delay.addr);
+		
 #ifdef CONFIG_ASPEED_AST2600
 	p_eng->io.mac34_1g_delay.value.w = readl(p_eng->io.mac34_1g_delay.addr);
 	p_eng->io.mac34_100m_delay.value.w = readl(p_eng->io.mac34_100m_delay.addr);
@@ -790,6 +791,8 @@ static push_reg(MAC_ENGINE *p_eng)
 	p_eng->io.mac12_drv_reg.value.w = readl(p_eng->io.mac12_drv_reg.addr);
 #endif
 
+	/* MAC registers */
+	p_eng->reg.maccr.w = mac_reg_read(p_eng, 0x50);
 }
 
 static void pop_reg(MAC_ENGINE *p_eng)
@@ -797,7 +800,8 @@ static void pop_reg(MAC_ENGINE *p_eng)
 	/* SCU delay settings */
 	writel(p_eng->io.mac12_1g_delay.value.w, p_eng->io.mac12_1g_delay.addr);
 	writel(p_eng->io.mac12_100m_delay.value.w, p_eng->io.mac12_100m_delay.addr);
-	writel(p_eng->io.mac12_10m_delay.value.w, p_eng->io.mac12_10m_delay.addr);
+	writel(p_eng->io.mac12_10m_delay.value.w, p_eng->io.mac12_10m_delay.addr);	
+
 #ifdef CONFIG_ASPEED_AST2600	
 	writel(p_eng->io.mac34_1g_delay.value.w, p_eng->io.mac34_1g_delay.addr);
 	writel(p_eng->io.mac34_100m_delay.value.w, p_eng->io.mac34_100m_delay.addr);
@@ -806,8 +810,10 @@ static void pop_reg(MAC_ENGINE *p_eng)
 	writel(p_eng->io.mac34_drv_reg.value.w, p_eng->io.mac34_drv_reg.addr);
 #else
 	writel(p_eng->io.mac12_drv_reg.value.w, p_eng->io.mac12_drv_reg.addr);
-#endif	
-	
+#endif
+
+	/* MAC registers */
+	mac_reg_write(p_eng, 0x50, p_eng->reg.maccr.w);
 }
 static uint32_t init_mac_engine(MAC_ENGINE *p_eng, uint32_t mode)
 {
@@ -846,39 +852,49 @@ static uint32_t init_mac_engine(MAC_ENGINE *p_eng, uint32_t mode)
 	/* setup 
 	 * 1. delay control register
 	 * 2. driving strength control register and upper/lower bond
+	 * 3. MAC control register
 	 */
 #ifdef CONFIG_ASPEED_AST2600
 	p_eng->io.mac12_1g_delay.addr = SCU_BASE + 0x340;
-	p_eng->io.mac12_1g_delay.tx_min_delay = 0;
-	p_eng->io.mac12_1g_delay.tx_max_delay = 63;
-	p_eng->io.mac12_1g_delay.rx_min_delay = -63;
-	p_eng->io.mac12_1g_delay.rx_max_delay = 63;
+	p_eng->io.mac12_1g_delay.tx_min = 0;
+	p_eng->io.mac12_1g_delay.tx_max = 63;
+	p_eng->io.mac12_1g_delay.rx_min = -63;
+	p_eng->io.mac12_1g_delay.rx_max = 63;
+	p_eng->io.mac12_1g_delay.rmii_tx_min = 0;
+	p_eng->io.mac12_1g_delay.rmii_tx_max = 1;
+	p_eng->io.mac12_1g_delay.rmii_rx_min = 0;
+	p_eng->io.mac12_1g_delay.rmii_rx_max = 63;
+
 	p_eng->io.mac12_100m_delay.addr = SCU_BASE + 0x348;
-	p_eng->io.mac12_100m_delay.tx_min_delay = 0;
-	p_eng->io.mac12_100m_delay.tx_max_delay = 63;
-	p_eng->io.mac12_100m_delay.rx_min_delay = -63;
-	p_eng->io.mac12_100m_delay.rx_max_delay = 63;
+	p_eng->io.mac12_100m_delay.tx_min = 0;
+	p_eng->io.mac12_100m_delay.tx_max = 63;
+	p_eng->io.mac12_100m_delay.rx_min = -63;
+	p_eng->io.mac12_100m_delay.rx_max = 63;
 	p_eng->io.mac12_10m_delay.addr = SCU_BASE + 0x34c;
-	p_eng->io.mac12_10m_delay.tx_min_delay = 0;
-	p_eng->io.mac12_10m_delay.tx_max_delay = 63;
-	p_eng->io.mac12_10m_delay.rx_min_delay = -63;
-	p_eng->io.mac12_10m_delay.rx_max_delay = 63;
+	p_eng->io.mac12_10m_delay.tx_min = 0;
+	p_eng->io.mac12_10m_delay.tx_max = 63;
+	p_eng->io.mac12_10m_delay.rx_min = -63;
+	p_eng->io.mac12_10m_delay.rx_max = 63;
 
 	p_eng->io.mac34_1g_delay.addr = SCU_BASE + 0x350;
-	p_eng->io.mac34_1g_delay.tx_min_delay = 0;
-	p_eng->io.mac34_1g_delay.tx_max_delay = 63;
-	p_eng->io.mac34_1g_delay.rx_min_delay = -63;
-	p_eng->io.mac34_1g_delay.rx_max_delay = 63;
+	p_eng->io.mac34_1g_delay.tx_min = 0;
+	p_eng->io.mac34_1g_delay.tx_max = 63;
+	p_eng->io.mac34_1g_delay.rx_min = -63;
+	p_eng->io.mac34_1g_delay.rx_max = 63;
+	p_eng->io.mac34_1g_delay.rmii_tx_min = 0;
+	p_eng->io.mac34_1g_delay.rmii_tx_max = 1;
+	p_eng->io.mac34_1g_delay.rmii_rx_min = 0;
+	p_eng->io.mac34_1g_delay.rmii_rx_max = 63;
 	p_eng->io.mac34_100m_delay.addr = SCU_BASE + 0x358;
-	p_eng->io.mac34_100m_delay.tx_min_delay = 0;
-	p_eng->io.mac34_100m_delay.tx_max_delay = 63;
-	p_eng->io.mac34_100m_delay.rx_min_delay = -63;
-	p_eng->io.mac34_100m_delay.rx_max_delay = 63;
+	p_eng->io.mac34_100m_delay.tx_min = 0;
+	p_eng->io.mac34_100m_delay.tx_max = 63;
+	p_eng->io.mac34_100m_delay.rx_min = -63;
+	p_eng->io.mac34_100m_delay.rx_max = 63;
 	p_eng->io.mac34_10m_delay.addr = SCU_BASE + 0x35c;
-	p_eng->io.mac34_10m_delay.tx_min_delay = 0;
-	p_eng->io.mac34_10m_delay.tx_max_delay = 63;
-	p_eng->io.mac34_10m_delay.rx_min_delay = -63;
-	p_eng->io.mac34_10m_delay.rx_max_delay = 63;
+	p_eng->io.mac34_10m_delay.tx_min = 0;
+	p_eng->io.mac34_10m_delay.tx_max = 63;
+	p_eng->io.mac34_10m_delay.rx_min = -63;
+	p_eng->io.mac34_10m_delay.rx_max = 63;
 
 	p_eng->io.mac34_drv_reg.addr = SCU_BASE + 0x458;
 	p_eng->io.mac34_drv_reg.drv_max = 0x3;
@@ -886,20 +902,24 @@ static uint32_t init_mac_engine(MAC_ENGINE *p_eng, uint32_t mode)
 	p_eng->io.drv_lower_bond = 0;
 #else
 	p_eng->io.mac12_1g_delay.addr = SCU_BASE + 0x48;
-	p_eng->io.mac12_1g_delay.tx_min_delay = 0;
-	p_eng->io.mac12_1g_delay.tx_max_delay = 63;
-	p_eng->io.mac12_1g_delay.rx_min_delay = 0;
-	p_eng->io.mac12_1g_delay.rx_max_delay = 63;
+	p_eng->io.mac12_1g_delay.tx_min = 0;
+	p_eng->io.mac12_1g_delay.tx_max = 63;
+	p_eng->io.mac12_1g_delay.rx_min = 0;
+	p_eng->io.mac12_1g_delay.rx_max = 63;
+	p_eng->io.mac12_1g_delay.rmii_tx_min = 0;
+	p_eng->io.mac12_1g_delay.rmii_tx_max = 1;
+	p_eng->io.mac12_1g_delay.rmii_rx_min = 0;
+	p_eng->io.mac12_1g_delay.rmii_rx_max = 63;
 	p_eng->io.mac12_100m_delay.addr = SCU_BASE + 0xb8;
-	p_eng->io.mac12_100m_delay.tx_min_delay = 0;
-	p_eng->io.mac12_100m_delay.tx_max_delay = 63;
-	p_eng->io.mac12_100m_delay.rx_min_delay = 0;
-	p_eng->io.mac12_100m_delay.rx_max_delay = 63;
+	p_eng->io.mac12_100m_delay.tx_min = 0;
+	p_eng->io.mac12_100m_delay.tx_max = 63;
+	p_eng->io.mac12_100m_delay.rx_min = 0;
+	p_eng->io.mac12_100m_delay.rx_max = 63;
 	p_eng->io.mac12_10m_delay.addr = SCU_BASE + 0xbc;
-	p_eng->io.mac12_10m_delay.tx_min_delay = 0;
-	p_eng->io.mac12_10m_delay.tx_max_delay = 63;
-	p_eng->io.mac12_10m_delay.rx_min_delay = 0;
-	p_eng->io.mac12_10m_delay.rx_max_delay = 63;
+	p_eng->io.mac12_10m_delay.tx_min = 0;
+	p_eng->io.mac12_10m_delay.tx_max = 63;
+	p_eng->io.mac12_10m_delay.rx_min = 0;
+	p_eng->io.mac12_10m_delay.rx_max = 63;
 
 	p_eng->io.mac34_1g_delay.addr = 0;
 	p_eng->io.mac34_100m_delay.addr = 0;
@@ -1010,6 +1030,10 @@ int mac_test(int argc, char * const argv[], uint32_t mode)
 	phy_eng.fp_set = NULL;
 	phy_eng.fp_clr = NULL;
 
+	if (mac_eng.arg.ctrl.b.rmii_50m_out && 0 == mac_eng.run.is_rgmii ) {
+		mac_set_rmii_50m_output_enable();
+	}
+
 	push_reg(&mac_eng);
 
 	scu_disable_mac(&mac_eng);
@@ -1032,44 +1056,7 @@ int mac_test(int argc, char * const argv[], uint32_t mode)
 // Get Chip Feature
 //------------------------------------------------------------
 	read_scu( eng );
-
-//------------------------------------------------------------
-// Parameter Initial
-//------------------------------------------------------------
 		
-		//------------------------------
-		// [Reg]setup SCU_048_mix
-		// [Reg]setup SCU_048_check
-		// [Reg]setup SCU_048_default
-		// [Reg]setup SCU_074_mix
-		//------------------------------
-		eng->reg.SCU_048_mix     = ( eng->reg.SCU_048 & 0xfc000000 );
-		eng->reg.SCU_048_check   = ( eng->reg.SCU_048 & 0x03ffffff );
-		eng->reg.SCU_048_default =   SCU_48h_AST2500  & 0x03ffffff;
-
-		if ( eng->arg.ctrl.b.rmii_50m_out && 0 == eng->run.is_rgmii ) {
-			switch ( eng->run.mac_idx ) {
-				case 1: eng->reg.SCU_048_mix = eng->reg.SCU_048_mix | 0x40000000; break;
-				case 0: eng->reg.SCU_048_mix = eng->reg.SCU_048_mix | 0x20000000; break;
-			}
-		}
-		eng->reg.SCU_074_mix = eng->reg.SCU_074;
-
-		//------------------------------
-		// [Reg]setup MAC_050
-		//------------------------------
-		if ( eng->arg.run_mode == MODE_NCSI )
-			// Set to 100Mbps and Enable RX broabcast packets and CRC_APD and Full duplex
-			eng->reg.MAC_050 = 0x000a0500;// [100Mbps] RX_BROADPKT_EN & CRC_APD & Full duplex
-//			eng->reg.MAC_050 = 0x000a4500;// [100Mbps] RX_BROADPKT_EN & RX_ALLADR & CRC_APD & Full duplex
-		else {
-
-			eng->reg.MAC_050 = 0x00004500;// RX_ALLADR & CRC_APD & Full duplex
-#ifdef Enable_Runt
-			eng->reg.MAC_050 = eng->reg.MAC_050 | 0x00001000;
-#endif
-
-		} // End if ( eng->arg.run_mode == MODE_NCSI )
 #endif
 
 #if 0
@@ -1118,39 +1105,15 @@ int mac_test(int argc, char * const argv[], uint32_t mode)
 // Setup Running Parameter
 //------------------------------------------------------------
 
-#if 0
-	eng->run.tdes_base = TDES_BASE1;
-	eng->run.rdes_base = RDES_BASE1;
 
-	if ( eng->run.TM_IOTiming || eng->run.IO_Bund )
-		eng->run.IO_MrgChk = 1;
-	else
-		eng->run.IO_MrgChk = 0;
-
-	eng->phy.Adr         = eng->arg.GPHYADR;
-	eng->phy.loop_phy    = eng->arg.ctrl.b.phy_int_loopback;
-	eng->phy.default_phy = eng->run.TM_DefaultPHY;
-
-	eng->run.LOOP_MAX = eng->arg.loop_max;
-	calc_loop_check_num( eng );	
-#endif
 //------------------------------------------------------------
 // SCU Initial
 //------------------------------------------------------------
 	get_mac_info( eng );
 	Setting_scu( eng );
-	init_scu1( eng );
-	
+	if (eng->arg.run_mode == MODE_DEDICATED)
+		mac_set_pinmux_mdio(eng);
 
-#if 0
-	scu_disable_mac( eng );
-	scu_enable_mac( eng );
-	if ( eng->arg.run_mode ==  MODE_DEDICATED ) {
-		eng->phy.phy_addr_valid = phy_find_addr( eng );
-		if ( eng->phy.phy_addr_valid == TRUE )
-			phy_sel( eng, phyeng );
-	}
-#endif	
 
 //------------------------------------------------------------
 // Data Initial
@@ -1177,7 +1140,7 @@ int mac_test(int argc, char * const argv[], uint32_t mode)
 	init_iodelay( eng );
 	eng->run.speed_idx = 0;
 	if (!eng->run.is_rgmii)
-		if ( get_iodelay( eng ) )
+		if ( mac_set_scan_boundary( eng ) )
 			return( finish_check( eng, 0 ) );	
 
 //------------------------------------------------------------
@@ -1195,11 +1158,6 @@ int mac_test(int argc, char * const argv[], uint32_t mode)
 	for ( eng->run.speed_idx = 0; eng->run.speed_idx < 3; eng->run.speed_idx++ ) {
 		eng->flg.Flag_PrintEn = 1;
 		if ( eng->run.Speed_sel[ (int)eng->run.speed_idx ] ) {
-			// Setting speed of LAN
-			if      ( eng->run.Speed_sel[ 0 ] ) eng->reg.MAC_050_Speed = eng->reg.MAC_050 | 0x0000020f;
-			else if ( eng->run.Speed_sel[ 1 ] ) eng->reg.MAC_050_Speed = eng->reg.MAC_050 | 0x0008000f;
-			else                                eng->reg.MAC_050_Speed = eng->reg.MAC_050 | 0x0000000f;
-
 			// Setting check owner time out
 			if      ( eng->run.Speed_sel[ 0 ] ) eng->run.TIME_OUT_Des = eng->run.TIME_OUT_Des_PHYRatio * TIME_OUT_Des_1G;
 			else if ( eng->run.Speed_sel[ 1 ] ) eng->run.TIME_OUT_Des = eng->run.TIME_OUT_Des_PHYRatio * TIME_OUT_Des_100M;
@@ -1241,7 +1199,7 @@ int mac_test(int argc, char * const argv[], uint32_t mode)
 				// Print Header of report to monitor and log file
 				//------------------------------
 				if (eng->run.is_rgmii)
-					if ( get_iodelay( eng ) )
+					if (mac_set_scan_boundary(eng))
 						return( finish_check( eng, 0 ) );
 
 				if ( eng->run.IO_MrgChk ) {
@@ -1265,9 +1223,9 @@ int mac_test(int argc, char * const argv[], uint32_t mode)
 				//------------------------------
 				// [Start] The loop of different IO out delay
 				//------------------------------
-				for ( eng->io.Dly_out = eng->io.tx_delay_scan_begin; eng->io.Dly_out <= eng->io.tx_delay_scan_end; eng->io.Dly_out+=eng->io.Dly_out_cval ) {
+				for ( eng->io.Dly_out = eng->io.tx_delay_scan.begin; eng->io.Dly_out <= eng->io.tx_delay_scan.end; eng->io.Dly_out+=eng->io.tx_delay_scan.step) {
 					if ( eng->run.IO_MrgChk ) {
-						eng->io.Dly_out_reg_hit = ( eng->io.Dly_out_reg == eng->io.value_ary[ eng->io.Dly_out ]) ? 1 : 0;
+						eng->io.Dly_out_reg_hit = ( eng->io.Dly_out_reg == eng->io.Dly_out) ? 1 : 0;
 
 						if ( eng->run.TM_IOTiming )
 							PrintIO_LineS( eng, FP_IO );
@@ -1278,9 +1236,9 @@ int mac_test(int argc, char * const argv[], uint32_t mode)
 					//------------------------------
 					// [Start] The loop of different IO in delay
 					//------------------------------
-					for ( eng->io.Dly_in = eng->io.rx_delay_scan_begin; eng->io.Dly_in <= eng->io.rx_delay_scan_end; eng->io.Dly_in+=eng->io.Dly_in_cval ) {
+					for ( eng->io.Dly_in = eng->io.rx_delay_scan.begin; eng->io.Dly_in <= eng->io.rx_delay_scan.end; eng->io.Dly_in+=eng->io.rx_delay_scan.step) {
 						if ( eng->run.IO_MrgChk ) {
-							eng->io.Dly_in_selval  = eng->io.value_ary[ eng->io.Dly_in ];
+							eng->io.Dly_in_selval  = eng->io.Dly_in;
 							scu_disable_mac(eng);
 							mac_set_delay(eng, eng->io.Dly_in_selval, eng->io.Dly_out_selval);							
 							scu_enable_mac(eng);
@@ -1316,7 +1274,7 @@ int mac_test(int argc, char * const argv[], uint32_t mode)
 							eng->flg.Des_Flag  = 0;
 							eng->flg.NCSI_Flag = 0;
 						} //End if ( eng->run.IO_MrgChk )
-					} // End for ( eng->io.Dly_in = eng->io.rx_delay_scan_begin; eng->io.Dly_in <= eng->io.rx_delay_scan_end; eng->io.Dly_in+=eng->io.Dly_in_cval )
+					} // End for ( eng->io.Dly_in = eng->io.rx_delay_scan.begin; eng->io.Dly_in <= eng->io.rx_delay_scan.end; eng->io.Dly_in+=eng->io.rx_delay_scan.step)
 
 
 					if ( eng->run.IO_MrgChk ) {
@@ -1325,7 +1283,7 @@ int mac_test(int argc, char * const argv[], uint32_t mode)
 						}
 						printf("\n");
 					}
-				} // End for ( eng->io.Dly_out = eng->io.tx_delay_scan_begin; eng->io.Dly_out <= eng->io.tx_delay_scan_end; eng->io.Dly_out+=eng->io.Dly_out_cval )
+				} // End for ( eng->io.Dly_out = eng->io.tx_delay_scan.begin; eng->io.Dly_out <= eng->io.tx_delay_scan.end; eng->io.Dly_out+=eng->io.tx_delay_scan.step)
 
 
 				//------------------------------

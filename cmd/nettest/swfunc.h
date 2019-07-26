@@ -28,7 +28,7 @@
 /* ======================== Program flow control ======================== */
 #define RUN_STEP                                 5
 // 1: parameter setup
-// 2: init_scu1,
+// 2: mdc/mdio pinmux,
 // 4: Data Initial
 // 5: ALL
 

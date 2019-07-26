@@ -463,7 +463,7 @@ void mac_get_delay(MAC_ENGINE *p_eng, int32_t *p_rx_d, int32_t *p_tx_d)
 #if 1
 	uint32_t rgmii = (uint32_t)p_eng->run.is_rgmii;
 	uint32_t mac_idx = p_eng->run.mac_idx;
-	uint32_t speed_idx = p_eng->run.speed_idx;	
+	uint32_t speed_idx = p_eng->run.speed_idx;
 
 	get_delay_func_tbl[rgmii][mac_idx][speed_idx] (p_eng, p_rx_d, p_tx_d);
 #else
@@ -477,6 +477,60 @@ void mac_get_delay(MAC_ENGINE *p_eng, int32_t *p_rx_d, int32_t *p_tx_d)
 				get_delay_func_tbl[rgmii][mac_idx][speed_idx](
 				    p_eng, p_rx_d, p_tx_d);
 #endif	
+}
+
+void mac_get_max_available_delay(MAC_ENGINE *p_eng, int32_t *p_rx_d, int32_t *p_tx_d)
+{
+	uint32_t rgmii = (uint32_t)p_eng->run.is_rgmii;
+	uint32_t mac_idx = p_eng->run.mac_idx;
+	int32_t tx_max, rx_max;
+
+	if (rgmii) {
+		if (mac_idx > 1) {
+			tx_max = p_eng->io.mac34_1g_delay.tx_max;
+			rx_max = p_eng->io.mac34_1g_delay.rx_max;
+		} else {
+			tx_max = p_eng->io.mac12_1g_delay.tx_max;
+			rx_max = p_eng->io.mac12_1g_delay.rx_max;
+		}
+	} else {
+		if (mac_idx > 1) {
+			tx_max = p_eng->io.mac34_1g_delay.rmii_tx_max;
+			rx_max = p_eng->io.mac34_1g_delay.rmii_rx_max;
+		} else {
+			tx_max = p_eng->io.mac12_1g_delay.rmii_tx_max;
+			rx_max = p_eng->io.mac12_1g_delay.rmii_rx_max;
+		}
+	}
+	*p_tx_d = tx_max;
+	*p_rx_d = rx_max;
+}
+
+void mac_get_min_available_delay(MAC_ENGINE *p_eng, int32_t *p_rx_d, int32_t *p_tx_d)
+{
+	uint32_t rgmii = (uint32_t)p_eng->run.is_rgmii;
+	uint32_t mac_idx = p_eng->run.mac_idx;
+	int32_t tx_min, rx_min;
+
+	if (rgmii) {
+		if (mac_idx > 1) {
+			tx_min = p_eng->io.mac34_1g_delay.tx_min;
+			rx_min = p_eng->io.mac34_1g_delay.rx_min;
+		} else {
+			tx_min = p_eng->io.mac12_1g_delay.tx_min;
+			rx_min = p_eng->io.mac12_1g_delay.rx_min;
+		}
+	} else {
+		if (mac_idx > 1) {
+			tx_min = p_eng->io.mac34_1g_delay.rmii_tx_min;
+			rx_min = p_eng->io.mac34_1g_delay.rmii_rx_min;
+		} else {
+			tx_min = p_eng->io.mac12_1g_delay.rmii_tx_min;
+			rx_min = p_eng->io.mac12_1g_delay.rmii_rx_min;
+		}
+	}
+	*p_tx_d = tx_min;
+	*p_rx_d = rx_min;
 }
 
 static void set_mac_1g_delay_1(uint32_t addr, int32_t rx_d, int32_t tx_d)
@@ -759,219 +813,121 @@ void mac_set_driving_strength(MAC_ENGINE *p_eng, uint32_t strength)
 	writel(reg.w, p_eng->io.mac12_drv_reg.addr);
 #endif
 }
+
+void mac_set_rmii_50m_output_enable(MAC_ENGINE *p_eng)
+{
+	uint32_t addr;
+	mac_delay_1g_t value;
+
+	if (p_eng->run.mac_idx > 1) {
+		addr = p_eng->io.mac34_1g_delay.addr;
+	} else {
+		addr = p_eng->io.mac12_1g_delay.addr;
+	}
+
+	value.w = readl(addr);
+	if (p_eng->run.mac_idx & BIT(0)) {
+		value.b.rmii_50m_oe_2 = 1;
+	} else {
+		value.b.rmii_50m_oe_1 = 1;
+	}
+	writel(value.w, addr);
+}
+
 void init_iodelay(MAC_ENGINE *eng)
 {
 	int        index;
 
 	nt_log_func_name();
 
-	//------------------------------
-	// IO Delay Stage/Step
-	//------------------------------
-	//------------------------------
-	// [IO]setup Dly_stagebit
-	// [IO]setup Dly_stage_in
-	// [IO]setup Dly_stage_out
-	// [IO]setup Dly_mask_bit_in
-	// [IO]setup Dly_mask_bit_out
-	//------------------------------
-	eng->io.Dly_stage_shf_i = (eng->arg.ctrl.b.full_range) ? 0 : AST2500_IOStageShiftBit_In ;
-	eng->io.Dly_stage_shf_o = (eng->arg.ctrl.b.full_range) ? 0 : AST2500_IOStageShiftBit_Out;
-
-	eng->io.Dly_stagebit  = 6;
-	eng->io.Dly_stage     =   ( 1 << eng->io.Dly_stagebit );
-	eng->io.Dly_stage_in  = ( eng->io.Dly_stage >> eng->io.Dly_stage_shf_i );
-	eng->io.Dly_stage_out = ( eng->io.Dly_stage >> eng->io.Dly_stage_shf_o );
-
-	eng->io.Dly_mask_bit_in = eng->io.Dly_stage - 1;
-	if (0 == eng->run.is_rgmii)
-		eng->io.Dly_mask_bit_out = 1;
-	else
-		eng->io.Dly_mask_bit_out = eng->io.Dly_mask_bit_in;
-
-	//------------------------------
-	// [IO]setup Dly_out_shf
-	// [IO]setup Dly_in_shf
-	// [IO]setup Dly_in_shf_regH
-	// [IO]setup Dly_out_shf_regH
-	//------------------------------
-	if (0 == eng->run.is_rgmii) {
-		switch ( eng->run.mac_idx ) {
-			case 0  : eng->io.Dly_out_shf = 24; eng->io.Dly_in_shf = 12; break;
-			case 1  : eng->io.Dly_out_shf = 25; eng->io.Dly_in_shf = 18; break;
-		}
-	}
-	else {
-		switch ( eng->run.mac_idx ) {
-			case 0  : eng->io.Dly_out_shf =  0; eng->io.Dly_in_shf  = 12; break;
-			case 1  : eng->io.Dly_out_shf =  6; eng->io.Dly_in_shf  = 18; break;
-		}
-	} // End if (0 == eng->run.is_rgmii)
-
-	eng->io.Dly_in_shf_regH  = eng->io.Dly_in_shf  + eng->io.Dly_stagebit - 1;
-	eng->io.Dly_out_shf_regH = eng->io.Dly_out_shf + eng->io.Dly_stagebit - 1;
-
-	//------------------------------
-	// [IO]setup Dly_mask_pos
-	// [Reg]setup SCU_048_mix
-	//------------------------------
-	eng->io.Dly_mask_pos = ( eng->io.Dly_mask_bit_in  << eng->io.Dly_in_shf  )
-	                     | ( eng->io.Dly_mask_bit_out << eng->io.Dly_out_shf );
-	eng->reg.SCU_048_mix = eng->reg.SCU_048_mix | ( eng->reg.SCU_048_check & ( ~eng->io.Dly_mask_pos ) );
-
-	//------------------------------
-	// [IO]setup value_ary
-	//------------------------------
-	for (index = 0; index < eng->io.Dly_stage; index++)
-		eng->io.value_ary[ index ] = index;
-
 	eng->io.init_done = 1;
 }
 
 //------------------------------------------------------------
-int get_iodelay (MAC_ENGINE *eng) 
+int mac_set_scan_boundary(MAC_ENGINE *p_eng)
 {
-	int        index;
-	int        index_max;
-
-	int rx_d, tx_d;
+	int32_t rx_cur, tx_cur;
+	int32_t rx_min, rx_max, tx_min, tx_max;
+	int32_t rx_scaling, tx_scaling;
 
 	nt_log_func_name();
 
-	if (0 == eng->run.is_rgmii)
-		sprintf( eng->io.Dly_reg_name_tx, "Tx:SCU%2X[   %2d]=",  eng->io.Dly_reg_idx,                           eng->io.Dly_out_shf );
+#if 0
+	if (0 == p_eng->run.is_rgmii)
+		sprintf( p_eng->io.Dly_reg_name_tx, "Tx:SCU%2X=",  p_eng->io.Dly_reg_idx);
 	else
-		sprintf( eng->io.Dly_reg_name_tx, "Tx:SCU%2X[%2d:%2d]=", eng->io.Dly_reg_idx, eng->io.Dly_out_shf_regH, eng->io.Dly_out_shf );
-	sprintf( eng->io.Dly_reg_name_rx, "Rx:SCU%2X[%2d:%2d]=", eng->io.Dly_reg_idx, eng->io.Dly_in_shf_regH,  eng->io.Dly_in_shf );
+		sprintf( p_eng->io.Dly_reg_name_tx, "Tx:SCU%2X=", p_eng->io.Dly_reg_idx);
+	sprintf( p_eng->io.Dly_reg_name_rx, "Rx:SCU%2X=", p_eng->io.Dly_reg_idx);
 
-	if (0 == eng->run.is_rgmii)
-		sprintf(eng->io.Dly_reg_name_tx_new,
-			"Tx[   %2d]=", eng->io.Dly_out_shf);
+	if (0 == p_eng->run.is_rgmii)
+		sprintf(p_eng->io.Dly_reg_name_tx_new,
+			"Tx=");
 	else
-		sprintf(eng->io.Dly_reg_name_tx_new,
-			"Tx[%2d:%2d]=", eng->io.Dly_out_shf_regH,
-			eng->io.Dly_out_shf);
-	sprintf(eng->io.Dly_reg_name_rx_new,
-		"Rx[%2d:%2d]=", eng->io.Dly_in_shf_regH, eng->io.Dly_in_shf);
-
+		sprintf(p_eng->io.Dly_reg_name_tx_new,
+			"Tx=");
+	sprintf(p_eng->io.Dly_reg_name_rx_new,
+		"Rx=");
+#endif
 	/* 
 	 * Get current clock delay value of TX(out) and RX(in) to set test range
 	 */
-	mac_get_delay(eng, &rx_d, &tx_d);
+	mac_get_delay(p_eng, &rx_cur, &tx_cur);
+	mac_get_max_available_delay(p_eng, &rx_max, &tx_max);
+	mac_get_min_available_delay(p_eng, &rx_min, &tx_min);
 
-	//------------------------------
-	// [IO]setup Dly_in_reg_idx
-	// [IO]setup Dly_in_min
-	// [IO]setup Dly_in_max
-	// [IO]setup Dly_out_reg_idx
-	// [IO]setup Dly_out_min
-	// [IO]setup Dly_out_max
-	//------------------------------
-	// Find the coordinate in X-Y axis
-	index_max = ( eng->io.Dly_stage_in << eng->io.Dly_stage_shf_i );
-	for ( index = 0; index < index_max; index++ )
-		if (rx_d == eng->io.value_ary[ index ] ) {
-			eng->io.Dly_in_reg_idx = index;
-			eng->io.Dly_in_min     = index - ( eng->run.IO_Bund >> 1 );
-			eng->io.Dly_in_max     = index + ( eng->run.IO_Bund >> 1 );
-			break;
+	if (p_eng->run.TM_IOTiming) {
+		if (p_eng->arg.ctrl.b.full_range) {
+			tx_scaling = 0;
+			rx_scaling = 0;
+		} else {
+			/* down-scaling to save test time */
+			tx_scaling = TX_DELAY_SCALING;
+			rx_scaling = RX_DELAY_SCALING;
 		}
-
-	index_max = ( eng->io.Dly_stage_out << eng->io.Dly_stage_shf_o );
-	for ( index = 0; index < index_max; index++ )
-		if (tx_d == eng->io.value_ary[ index ] ) {
-			eng->io.Dly_out_reg_idx = index;
-			if (0 == eng->run.is_rgmii) {
-				eng->io.Dly_out_min = index;
-				eng->io.Dly_out_max = index;
-			}
-			else {
-				eng->io.Dly_out_min = index - ( eng->run.IO_Bund >> 1 );
-				eng->io.Dly_out_max = index + ( eng->run.IO_Bund >> 1 );
-			}
-			break;
-		}
-
-	if ( eng->run.IO_MrgChk ) {
-		if ( eng->io.Dly_in_reg_idx >= eng->io.Dly_stage_in )
-			return( ( eng->flg.Err_Flag = eng->flg.Err_Flag | Err_Flag_IOMarginOUF ) );
-		if ( eng->io.Dly_out_reg_idx >= eng->io.Dly_stage_out )
-			return( ( eng->flg.Err_Flag = eng->flg.Err_Flag | Err_Flag_IOMarginOUF ) );
-#ifdef Enable_No_IOBoundary
-		if ( eng->io.Dly_in_min  <  0                     ) { eng->flg.Wrn_Flag = eng->flg.Wrn_Flag | Wrn_Flag_IOMarginOUF; eng->io.Dly_in_min  = 0                     ;}
-		if ( eng->io.Dly_in_max  >= eng->io.Dly_stage_in  ) { eng->flg.Wrn_Flag = eng->flg.Wrn_Flag | Wrn_Flag_IOMarginOUF; eng->io.Dly_in_max  = eng->io.Dly_stage_in-1;}
-
-		if ( eng->io.Dly_out_min <  0                     ) { eng->flg.Wrn_Flag = eng->flg.Wrn_Flag | Wrn_Flag_IOMarginOUF; eng->io.Dly_out_min = 0                      ;}
-		if ( eng->io.Dly_out_max >= eng->io.Dly_stage_out ) { eng->flg.Wrn_Flag = eng->flg.Wrn_Flag | Wrn_Flag_IOMarginOUF; eng->io.Dly_out_max = eng->io.Dly_stage_out-1;}
-#else
-		if ( ( eng->io.Dly_in_min < 0 ) || ( eng->io.Dly_in_max >= eng->io.Dly_stage_in ) )
-			return( ( eng->flg.Err_Flag = eng->flg.Err_Flag | Err_Flag_IOMarginOUF ) );
-
-		if ( ( eng->io.Dly_out_min < 0 ) || ( eng->io.Dly_out_max >= eng->io.Dly_stage_out ) )
-			return( ( eng->flg.Err_Flag = eng->flg.Err_Flag | Err_Flag_IOMarginOUF ) );
-#endif
+		p_eng->io.rx_delay_scan.step = 1;
+		p_eng->io.tx_delay_scan.step = 1;
+		p_eng->io.rx_delay_scan.begin = rx_min >> rx_scaling;
+		p_eng->io.rx_delay_scan.end = rx_max >> rx_scaling;
+		p_eng->io.tx_delay_scan.begin = tx_min >> tx_scaling;
+		p_eng->io.tx_delay_scan.end = tx_max >> tx_scaling;
+	} else if (p_eng->run.IO_Bund) {
+		p_eng->io.rx_delay_scan.step = 1;
+		p_eng->io.tx_delay_scan.step = 1;
+		p_eng->io.rx_delay_scan.begin = rx_cur - (p_eng->run.IO_Bund >> 1);
+		p_eng->io.rx_delay_scan.end = rx_cur + (p_eng->run.IO_Bund >> 1);
+		p_eng->io.tx_delay_scan.begin = tx_cur - (p_eng->run.IO_Bund >> 1);
+		p_eng->io.tx_delay_scan.end = tx_cur + (p_eng->run.IO_Bund >> 1);
+	} else {
+		p_eng->io.rx_delay_scan.step = 1;
+		p_eng->io.tx_delay_scan.step = 1;
+		p_eng->io.rx_delay_scan.begin = 0;
+		p_eng->io.rx_delay_scan.end = 0;
+		p_eng->io.tx_delay_scan.begin = 0;
+		p_eng->io.tx_delay_scan.end = 0;
 	}
 
-	//------------------------------
-	// IO Delay Testing Boundary
-	//------------------------------
-	//------------------------------
-	// [IO]setup Dly_in_cval
-	// [IO]setup Dly_out_cval
-	// [IO]setup rx_delay_scan_begin
-	// [IO]setup rx_delay_scan_end
-	// [IO]setup tx_delay_scan_begin
-	// [IO]setup tx_delay_scan_end
-	//------------------------------
-	// Get the range for testmargin block
-	if ( eng->run.TM_IOTiming ) {
-		eng->io.Dly_in_cval  = 1;
-		eng->io.Dly_out_cval = 1;
-		eng->io.rx_delay_scan_begin   = 0;
-		eng->io.rx_delay_scan_end   = eng->io.Dly_stage_in-1;
-		eng->io.tx_delay_scan_begin  = 0;
-		if (0 == eng->run.is_rgmii)
-			eng->io.tx_delay_scan_end  = 1;
-		else
-			eng->io.tx_delay_scan_end  = eng->io.Dly_stage_out-1;
-	}
-	else if ( eng->run.IO_Bund ) {
-		eng->io.Dly_in_cval  = 1;
-		eng->io.Dly_out_cval = 1;
-		eng->io.rx_delay_scan_begin   = eng->io.Dly_in_min;
-		eng->io.rx_delay_scan_end   = eng->io.Dly_in_max;
-		eng->io.tx_delay_scan_begin  = eng->io.Dly_out_min;
-		eng->io.tx_delay_scan_end  = eng->io.Dly_out_max;
-	}
-	else {
-		eng->io.Dly_in_cval  = 1;
-		eng->io.Dly_out_cval = 1;
-		eng->io.rx_delay_scan_begin   = 0;
-		eng->io.rx_delay_scan_end   = 0;
-		eng->io.tx_delay_scan_begin  = 0;
-		eng->io.tx_delay_scan_end  = 0;
-	} // End if ( eng->run.TM_IOTiming )
+	/* check if setting is legal or not */
+	if (p_eng->io.rx_delay_scan.begin < rx_min)
+		p_eng->io.rx_delay_scan.begin = rx_min;
 
-	return(0);
+	if (p_eng->io.tx_delay_scan.begin < tx_min)
+		p_eng->io.tx_delay_scan.begin = tx_min;
+
+	if (p_eng->io.rx_delay_scan.end > rx_max)
+		p_eng->io.rx_delay_scan.end = rx_max;
+
+	if (p_eng->io.tx_delay_scan.end > tx_max)
+		p_eng->io.tx_delay_scan.end = tx_max;		
+
+	return (0);
 }
 
 //------------------------------------------------------------
 // SCU
 //------------------------------------------------------------
 void recov_scu (MAC_ENGINE *eng) {
-	nt_log_func_name();
+	nt_log_func_name();		
 
-	//MAC
-//	mac_reg_write( eng, 0x08, eng->reg.MAC_008 );
-//	mac_reg_write( eng, 0x0c, eng->reg.MAC_00c );
-//	mac_reg_write( eng, 0x40, eng->reg.MAC_040 );
-
-	//SCU
-	//Write_Reg_SCU_DD( 0x008, eng->reg.SCU_008 );
-	Write_Reg_SCU_DD( 0x048, eng->reg.SCU_048 );
-
-	Write_Reg_SCU_DD( 0x074, eng->reg.SCU_074 );
-	Write_Reg_SCU_DD( 0x080, eng->reg.SCU_080 );
 	Write_Reg_SCU_DD( 0x088, eng->reg.SCU_088 );
 	Write_Reg_SCU_DD( 0x090, eng->reg.SCU_090 );
 	Write_Reg_SCU_DD( 0x0b8, eng->reg.SCU_0b8 );
@@ -984,20 +940,9 @@ void read_scu (MAC_ENGINE *eng)
 	nt_log_func_name();
 
 	if ( !eng->reg.SCU_oldvld ) {
-		//SCU
-		//eng->reg.SCU_004 = Read_Reg_SCU_DD( 0x004 );
-		//eng->reg.SCU_008 = Read_Reg_SCU_DD( 0x008 );
-		eng->reg.SCU_00c = Read_Reg_SCU_DD( 0x00c );
-		eng->reg.SCU_048 = Read_Reg_SCU_DD( 0x048 );
-		eng->reg.SCU_070 = Read_Reg_SCU_DD( 0x070 );
-		eng->reg.SCU_074 = Read_Reg_SCU_DD( 0x074 );
-		eng->reg.SCU_07c = Read_Reg_SCU_DD( 0x07c );
-		eng->reg.SCU_080 = Read_Reg_SCU_DD( 0x080 );
 		eng->reg.SCU_088 = Read_Reg_SCU_DD( 0x088 );
 		eng->reg.SCU_090 = Read_Reg_SCU_DD( 0x090 );
 		eng->reg.SCU_09c = Read_Reg_SCU_DD( 0x09c );
-		eng->reg.SCU_0b8 = Read_Reg_SCU_DD( 0x0b8 );
-		eng->reg.SCU_0bc = Read_Reg_SCU_DD( 0x0bc );
 		eng->reg.SCU_0f0 = Read_Reg_SCU_DD( 0x0f0 );
 
 		//WDT
@@ -1010,15 +955,6 @@ void read_scu (MAC_ENGINE *eng)
 
 
 #ifdef CONFIG_ASPEED_AST2600
-	eng->reg.SCU_048 = 0x00082208;
-	eng->reg.SCU_0b8 = 0x00082208;
-	eng->reg.SCU_0bc = 0x00082208;
-	eng->reg.SCU_07c = 0x04000000;
-
-	eng->reg.SCU_FPGASel = Read_Reg_SCU_DD_AST2600( 0x10c ) & 0x0fffffff;
-	eng->reg.SCU_070     = Read_Reg_SCU_DD_AST2600( 0x500 ) & 0x000000c0;
-	eng->reg.SCU_510     = Read_Reg_SCU_DD_AST2600( 0x510 ) & 0x00000003;
-
 	Write_Reg_SCU_DD_AST2600( 0x000 , 0x1688a8a8 );
 	Write_Reg_SCU_DD_AST2600( 0x010 , 0x1688a8a8 );
 //(clock enable) --------------------
@@ -1065,67 +1001,27 @@ void Setting_scu (MAC_ENGINE *eng)
 	Write_Reg_WDT_DD( 0x05c, Read_Reg_WDT_DD( 0x05c ) & 0xffffff9f );
 }
 
-//------------------------------------------------------------
-void init_scu1 (MAC_ENGINE *eng) 
-{
-	nt_log_func_name();
 
-	if ( eng->arg.run_mode == MODE_DEDICATED )
-		init_scu_macio ( eng );
-
-#ifdef Enable_BufMerge
-	Write_Reg_SCU_DD( 0xf0, 0x66559959 );//MAC buffer merge
-#endif
-} // End void init_scu1 (MAC_ENGINE *eng)
 
 //------------------------------------------------------------
-void init_scu_macio (MAC_ENGINE *eng) 
+void mac_set_pinmux_mdio(MAC_ENGINE *p_eng)
 {
+	uint32_t reg;
 	nt_log_func_name();
-	switch (eng->run.mdio_idx) {
-	case 0:
-		Write_Reg_SCU_DD(0x88,
-				 (eng->reg.SCU_088 & 0x3fffffff) | 0xc0000000);
-		break; //[31]MAC1 MDIO, [30]MAC1 MDC
-	case 1:
-		Write_Reg_SCU_DD(0x90,
-				 (eng->reg.SCU_090 & 0xfffffffb) | 0x00000004);
-		break; //[2 ]MAC2 MDC/MDIO
 
-	default:
-		break;
+#ifdef CONFIG_ASPEED_AST2600
+#else
+	/* MDC/MDIO pinmux */
+	if (p_eng->run.mdio_idx == 0) {
+		reg = SCU_RD(0x88) | GENMASK(31, 30);
+		SCU_WR(reg, 0x88);
+	} else {
+		reg = SCU_RD(0x90) & (~BIT(6));
+		reg |= BIT(2);
+		SCU_WR(reg, 0x90);
 	}
-} // End void init_scu_macio (MAC_ENGINE *eng)
-
-//------------------------------------------------------------
-
-//------------------------------------------------------------
-
-//------------------------------------------------------------
-void init_scu2 (MAC_ENGINE *eng) 
-{
-#ifdef SCU_74h
-  	nt_log_func_name();
-
-	Write_Reg_SCU_DD( 0x74, eng->reg.SCU_074 | SCU_74h );//PinMux
-  #ifdef Delay_SCU
-	DELAY( Delay_SCU );
-  #endif
-#endif
-} // End void init_scu2 (MAC_ENGINE *eng)
-
-//------------------------------------------------------------
-void init_scu3 (MAC_ENGINE *eng) 
-{
-#ifdef SCU_74h
-  	nt_log_func_name();
-
-	Write_Reg_SCU_DD( 0x74, eng->reg.SCU_074 | (SCU_74h & 0xffefffff) );//PinMux
-  #ifdef Delay_SCU
-	DELAY( Delay_SCU );
-  #endif
-#endif
-} // End void init_scu3 (MAC_ENGINE *eng)
+#endif	
+}
 
 //------------------------------------------------------------
 // MAC
@@ -1137,16 +1033,14 @@ void get_mac_info (MAC_ENGINE *eng)
 	//------------------------------
 	// [Inf]setup SA
 	//------------------------------
-	eng->reg.MAC_008 = mac_reg_read( eng, 0x08 );
-	eng->reg.MAC_00c = mac_reg_read( eng, 0x0c );
+	eng->reg.MAC_008 = mac_reg_read(eng, 0x08);
+	eng->reg.MAC_00c = mac_reg_read(eng, 0x0c);
 	if (  (( eng->reg.MAC_008 == 0x0000 ) && ( eng->reg.MAC_00c == 0x00000000 ))
 	   || (( eng->reg.MAC_008 == 0xffff ) && ( eng->reg.MAC_00c == 0xffffffff ))
 	   )
 	{
-//		eng->reg.MAC_008 = 0x00000057;//MSB(0x00)
-//		eng->reg.MAC_00c = 0x89568838;//LSB(0x38)
-		eng->reg.MAC_008 = 0x0000000a;//MSB(0x00)
-		eng->reg.MAC_00c = 0xf7837dd4;//LSB(0xd4)
+		eng->reg.MAC_008 = 0x0000000a;
+		eng->reg.MAC_00c = 0xf7837dd4;
 	}
 
 	eng->inf.SA[ 0 ] = ( eng->reg.MAC_008 >>  8 ) & 0xff;//MSB
@@ -1159,7 +1053,7 @@ void get_mac_info (MAC_ENGINE *eng)
 	//------------------------------
 	// [Reg]setup MAC_040_new
 	//------------------------------
-	eng->reg.MAC_040 = mac_reg_read( eng, 0x40 );
+	eng->reg.MAC_040 = mac_reg_read(eng, 0x40);
 	if ( eng->arg.ctrl.b.mac_int_loopback )
 		eng->reg.MAC_040_new = eng->reg.MAC_040 | 0x40000000;
 	else
@@ -1177,27 +1071,24 @@ void init_mac (MAC_ENGINE *eng)
 {
 	nt_log_func_name();
 
-#ifdef Enable_MAC_SWRst
-	mac_reg_write( eng, 0x50, 0x80000000 | eng->reg.MAC_050_Speed );
+	mac_cr_t maccr;	
 
-	while (0x80000000 & mac_reg_read( eng, 0x50 )) {
-//printf(".");
-  #ifdef Delay_MACRst
-		DELAY( Delay_MACRst );
-  #endif
-	}
-  #ifdef Delay_MACRst
-	DELAY( Delay_MACRst );
-  #endif
+#ifdef Enable_MAC_SWRst
+	maccr.w = 0;
+	maccr.b.sw_rst = 1;
+	mac_reg_write(eng, 0x50, maccr.w);
+
+	do {
+		DELAY(Delay_MACRst);
+		maccr.w = mac_reg_read(eng, 0x50);
+	} while(maccr.b.sw_rst);
 #endif
 
-//	mac_reg_write( eng, 0x20, ( eng->run.tdes_base + CPU_BUS_ADDR_SDRAM_OFFSET ) ); // 20130730
-//	mac_reg_write( eng, 0x24, ( eng->run.rdes_base + CPU_BUS_ADDR_SDRAM_OFFSET ) ); // 20130730
-	mac_reg_write( eng, 0x20, AT_MEMRW_BUF( eng->run.tdes_base ) ); // 20130730
-	mac_reg_write( eng, 0x24, AT_MEMRW_BUF( eng->run.rdes_base ) ); // 20130730
+	mac_reg_write(eng, 0x20, AT_MEMRW_BUF(eng->run.tdes_base));
+	mac_reg_write(eng, 0x24, AT_MEMRW_BUF(eng->run.rdes_base));
 
-	mac_reg_write( eng, 0x08, eng->reg.MAC_008 );
-	mac_reg_write( eng, 0x0c, eng->reg.MAC_00c );
+	mac_reg_write(eng, 0x08, eng->reg.MAC_008);
+	mac_reg_write(eng, 0x0c, eng->reg.MAC_00c);
 
 #ifdef MAC_030_def
 	mac_reg_write( eng, 0x30, MAC_030_def );//Int Thr/Cnt
@@ -1220,10 +1111,31 @@ void init_mac (MAC_ENGINE *eng)
 	else
 		mac_reg_write( eng, 0x4c, DMA_PakSize );
 
-	mac_reg_write( eng, 0x50, eng->reg.MAC_050_Speed );
-#ifdef Delay_MACRst
+	maccr.b.txdma_en = 1;
+	maccr.b.rxdma_en = 1;
+	maccr.b.txmac_en = 1;
+	maccr.b.rxmac_en = 1;
+	maccr.b.fulldup = 1;
+	maccr.b.crc_apd = 1;
+
+	if (eng->run.Speed_sel[0]) {
+		maccr.b.gmac_mode = 1;
+	} else if (eng->run.Speed_sel[1]) {
+		maccr.b.speed_100 = 1;
+	}
+
+	if (eng->arg.run_mode == MODE_NCSI) {
+		maccr.b.rx_broadpkt_en = 1;
+		maccr.b.speed_100 = 1;
+	}
+	else {
+		maccr.b.rx_alladr = 1;
+#ifdef Enable_Runt
+		maccr.b.rx_runt = 1;
 #endif
-	DELAY( Delay_MACRst );
+	}
+	mac_reg_write(eng, 0x50, maccr.w);
+	DELAY(Delay_MACRst);
 } // End void init_mac (MAC_ENGINE *eng)
 
 //------------------------------------------------------------
@@ -1235,11 +1147,7 @@ void FPri_RegValue (MAC_ENGINE *eng, BYTE option)
 
 	PRINTF( option, "[SDR] Date:%08x\n", Read_Reg_SDR_DD( 0x88 ) );
 	PRINTF( option, "[SDR]  80:%08x %08x %08x %08x\n", Read_Reg_SDR_DD( 0x80 ), Read_Reg_SDR_DD( 0x84 ), Read_Reg_SDR_DD( 0x88 ), Read_Reg_SDR_DD( 0x8c ) );
-
-	//PRINTF( option, "[SCU]  04:%08x  08:%08x  0c:%08x\n",           eng->reg.SCU_004, eng->reg.SCU_008, eng->reg.SCU_00c );
-	PRINTF( option, "[SCU]  1c:%08x  2c:%08x  48:%08x  4c:%08x\n", Read_Reg_SCU_DD( 0x01c ), Read_Reg_SCU_DD( 0x02c ), eng->reg.SCU_048, Read_Reg_SCU_DD( 0x04c ) );
-	PRINTF( option, "[SCU]  70:%08x  74:%08x  7c:%08x  f0:%08x\n", eng->reg.SCU_070, eng->reg.SCU_074, eng->reg.SCU_07c, eng->reg.SCU_0f0 );
-	PRINTF( option, "[SCU]  80:%08x  88:%08x  90:%08x  9c:%08x\n", eng->reg.SCU_080, eng->reg.SCU_088, eng->reg.SCU_090, eng->reg.SCU_09c );
+	
 	PRINTF( option, "[SCU]  a0:%08x  a4:%08x  b8:%08x  bc:%08x\n", Read_Reg_SCU_DD( 0x0a0 ), Read_Reg_SCU_DD( 0x0a4 ), eng->reg.SCU_0b8, eng->reg.SCU_0bc );
 
 	PRINTF( option, "[SCU] 13c:%08x 140:%08x 144:%08x 1dc:%08x\n", Read_Reg_SCU_DD( 0x13c ), Read_Reg_SCU_DD( 0x140 ), Read_Reg_SCU_DD( 0x144 ), Read_Reg_SCU_DD( 0x1dc ) );
@@ -1307,15 +1215,7 @@ void FPri_End (MAC_ENGINE *eng, BYTE option)
 
 	//------------------------------
 	//[Warning] IO Timing
-	//------------------------------
-	if ((eng->reg.SCU_048_check != eng->reg.SCU_048_default)) {
-		PRINTF(option,
-		       "\n[Warning] SCU48 == 0x%08x is not the suggestion "
-		       "value 0x%08x.\n",
-		       eng->reg.SCU_048, eng->reg.SCU_048_default);
-		PRINTF(option, "          This change at this platform must "
-			       "been proven again by the ASPEED.\n");
-	}
+	//------------------------------	
 	
 		if ((eng->reg.SCU_0b8 != SCU_B8h_AST2500)) {
 			PRINTF(option,
@@ -1570,31 +1470,33 @@ int check_int (MAC_ENGINE *eng, char *type )
 {
 	nt_log_func_name();
 
-	eng->reg.MAC_000 = mac_reg_read( eng, 0x00 );//Interrupt Status
+	uint32_t mac_00;
+
+	mac_00 = mac_reg_read(eng, 0x00);
 #ifdef CheckRxbufUNAVA
-	if ( eng->reg.MAC_000 & 0x00000004 ) {
-		PRINTF( FP_LOG, "[%sIntStatus] Receiving buffer unavailable               : %08x [loop[%d]:%d]\n", type, eng->reg.MAC_000, eng->run.Loop_ofcnt, eng->run.Loop );
+	if (mac_00 & BIT(2)) {
+		PRINTF( FP_LOG, "[%sIntStatus] Receiving buffer unavailable               : %08x [loop[%d]:%d]\n", type, mac_00, eng->run.Loop_ofcnt, eng->run.Loop );
 		FindErr( eng, Err_Flag_RXBUF_UNAVA );
 	}
 #endif
 
 #ifdef CheckRPktLost
-	if ( eng->reg.MAC_000 & 0x00000008 ) {
-		PRINTF( FP_LOG, "[%sIntStatus] Received packet lost due to RX FIFO full   : %08x [loop[%d]:%d]\n", type, eng->reg.MAC_000, eng->run.Loop_ofcnt, eng->run.Loop );
+	if (mac_00 & BIT(3)) {
+		PRINTF( FP_LOG, "[%sIntStatus] Received packet lost due to RX FIFO full   : %08x [loop[%d]:%d]\n", type, mac_00, eng->run.Loop_ofcnt, eng->run.Loop );
 		FindErr( eng, Err_Flag_RPKT_LOST );
 	}
 #endif
 
 #ifdef CheckNPTxbufUNAVA
-	if ( eng->reg.MAC_000 & 0x00000040 ) {
-		PRINTF( FP_LOG, "[%sIntStatus] Normal priority transmit buffer unavailable: %08x [loop[%d]:%d]\n", type, eng->reg.MAC_000, eng->run.Loop_ofcnt, eng->run.Loop );
+	if (mac_00 & BIT(6) ) {
+		PRINTF( FP_LOG, "[%sIntStatus] Normal priority transmit buffer unavailable: %08x [loop[%d]:%d]\n", type, mac_00, eng->run.Loop_ofcnt, eng->run.Loop );
 		FindErr( eng, Err_Flag_NPTXBUF_UNAVA );
 	}
 #endif
 
 #ifdef CheckTPktLost
-	if ( eng->reg.MAC_000 & 0x00000080 ) {
-		PRINTF( FP_LOG, "[%sIntStatus] Packets transmitted to Ethernet lost       : %08x [loop[%d]:%d]\n", type, eng->reg.MAC_000, eng->run.Loop_ofcnt, eng->run.Loop );
+	if (mac_00 & BIT(7)) {
+		PRINTF( FP_LOG, "[%sIntStatus] Packets transmitted to Ethernet lost       : %08x [loop[%d]:%d]\n", type, mac_00, eng->run.Loop_ofcnt, eng->run.Loop );
 		FindErr( eng, Err_Flag_TPKT_LOST );
 	}
 #endif
@@ -2383,19 +2285,19 @@ void PrintIO_Header (MAC_ENGINE *eng, BYTE option) {
 	if ( !(option == FP_LOG) ) {
 		PRINTF( option, "   SCU%2X      ", eng->io.Dly_reg_idx );
 
-		for ( eng->io.Dly_in = eng->io.rx_delay_scan_begin; eng->io.Dly_in <= eng->io.rx_delay_scan_end; eng->io.Dly_in+=eng->io.Dly_in_cval ) {
-			eng->io.Dly_in_selval = eng->io.value_ary[ eng->io.Dly_in ];
+		for (eng->io.Dly_in = eng->io.rx_delay_scan.begin; eng->io.Dly_in <= eng->io.rx_delay_scan.end; eng->io.Dly_in+=eng->io.rx_delay_scan.step) {
+			eng->io.Dly_in_selval = eng->io.Dly_in;
 			PRINTF( option, "%1x", ( eng->io.Dly_in_selval >> 4 ) );
 		}
 
 		PRINTF( option, "\n%s    ", eng->io.Dly_reg_name_rx_new );
-		for ( eng->io.Dly_in = eng->io.rx_delay_scan_begin; eng->io.Dly_in <= eng->io.rx_delay_scan_end; eng->io.Dly_in+=eng->io.Dly_in_cval ) {
-			eng->io.Dly_in_selval = eng->io.value_ary[ eng->io.Dly_in ];
+		for ( eng->io.Dly_in = eng->io.rx_delay_scan.begin; eng->io.Dly_in <= eng->io.rx_delay_scan.end; eng->io.Dly_in+=eng->io.rx_delay_scan.step ) {
+			eng->io.Dly_in_selval = eng->io.Dly_in;
 			PRINTF( option, "%1x", eng->io.Dly_in_selval & 0xf );
 		}
 
 		PRINTF( option, "\n              " );
-		for ( eng->io.Dly_in = eng->io.rx_delay_scan_begin; eng->io.Dly_in <= eng->io.rx_delay_scan_end; eng->io.Dly_in+=eng->io.Dly_in_cval ) {
+		for ( eng->io.Dly_in = eng->io.rx_delay_scan.begin; eng->io.Dly_in <= eng->io.rx_delay_scan.end; eng->io.Dly_in+=eng->io.rx_delay_scan.step ) {
 			if ( eng->io.Dly_in_reg_idx == eng->io.Dly_in ) { PRINTF( option, "|" ); }
 			else                                            { PRINTF( option, " " ); }
 		}

@@ -119,12 +119,7 @@
 #define MAC_PHYBusy_New                          0x00008000
 #endif
 
-
-#ifdef Enable_BufMerge
-    #define MAC_048_def                          0x007702F1 //default 0xf1
-#else
-    #define MAC_048_def                          0x000002F1 //default 0xf1
-#endif
+#define MAC_048_def                          0x000002F1 //default 0xf1
 //#define MAC_058_def                              0x00000040 //0x000001c0
 
 //---------------------------------------------------------
@@ -354,6 +349,37 @@ typedef struct {
 
 static const LittleEndian_Area LittleEndianArea[] = {{ 0xFFFFFFFF, 0xFFFFFFFF }};
 
+typedef union {
+	uint32_t w;
+	struct {
+		uint32_t txdma_en		: 1;	/* bit[0] */
+		uint32_t rxdma_en		: 1;	/* bit[1] */
+		uint32_t txmac_en		: 1;	/* bit[2] */
+		uint32_t rxmac_en		: 1;	/* bit[3] */
+		uint32_t rm_vlan		: 1;	/* bit[4] */
+		uint32_t hptxr_en		: 1;	/* bit[5] */
+		uint32_t phy_link_sts_dtct	: 1;	/* bit[6] */
+		uint32_t enrx_in_halftx		: 1;	/* bit[7] */
+		uint32_t fulldup		: 1;	/* bit[8] */
+		uint32_t gmac_mode		: 1;	/* bit[9] */
+		uint32_t crc_apd		: 1;	/* bit[10] */
+#ifdef CONFIG_ASPEED_AST2600
+		uint32_t reserved_1		: 1;	/* bit[11] */
+#else		
+		uint32_t phy_link_lvl_dtct	: 1;	/* bit[11] */
+#endif		
+		uint32_t rx_runt		: 1;	/* bit[12] */
+		uint32_t jumbo_lf		: 1;	/* bit[13] */
+		uint32_t rx_alladr		: 1;	/* bit[14] */
+		uint32_t rx_ht_en		: 1;	/* bit[15] */
+		uint32_t rx_multipkt_en		: 1;	/* bit[16] */
+		uint32_t rx_broadpkt_en		: 1;	/* bit[17] */
+		uint32_t discard_crcerr		: 1;	/* bit[18] */
+		uint32_t speed_100		: 1;	/* bit[19] */
+		uint32_t reserved_0		: 11;	/* bit[30:20] */
+		uint32_t sw_rst			: 1;	/* bit[31] */
+	}b;
+} mac_cr_t;
 // ========================================================
 // For ncsi.c
 
@@ -440,33 +466,11 @@ typedef struct {
 } NCSI_Capability;
 
 typedef struct {
-#ifdef CONFIG_ASPEED_AST2600
-	uint32_t SCU_FPGASel                   ;
-	uint32_t SCU_510                       ;
-#endif
-	uint32_t MAC_000                       ;
+	mac_cr_t maccr;
 	uint32_t MAC_008                       ;
 	uint32_t MAC_00c                       ;
 	uint32_t MAC_040                       ;
 	uint32_t MAC_040_new                   ;
-	uint32_t MAC_050                       ;
-	uint32_t MAC_050_Speed                 ;
-	uint32_t SCU_004                       ;			
-	uint32_t SCU_008                       ;
-	uint32_t SCU_00c                       ;
-	uint32_t SCU_00c_mix                   ;
-	uint32_t SCU_00c_clkbit                ;
-	uint32_t SCU_00c_dis                   ;
-	uint32_t SCU_00c_en                    ;
-	uint32_t SCU_048                       ;
-	uint32_t SCU_048_mix                   ;
-	uint32_t SCU_048_default               ;
-	uint32_t SCU_048_check                 ;
-	uint32_t SCU_070                       ;
-	uint32_t SCU_074                       ;
-	uint32_t SCU_074_mix                   ;
-	uint32_t SCU_07c                       ;
-	uint32_t SCU_080                       ;
 	uint32_t SCU_088                       ;
 	uint32_t SCU_090                       ;
 	uint32_t SCU_09c                       ;
@@ -477,7 +481,7 @@ typedef struct {
 	uint32_t WDT_02c                       ;
 	uint32_t WDT_04c                       ;
 
-	CHAR                 SCU_oldvld                    ;
+	CHAR                 SCU_oldvld;
 } mac_reg_t;
 typedef struct {
 	uint8_t ast2600;
@@ -672,19 +676,23 @@ typedef union {
 
 typedef struct mac_delay_1g_reg_s {
 	uint32_t addr;
-	int32_t tx_min_delay;
-	int32_t tx_max_delay;
-	int32_t rx_min_delay;
-	int32_t rx_max_delay;
+	int32_t tx_min;
+	int32_t tx_max;
+	int32_t rx_min;
+	int32_t rx_max;
+	int32_t rmii_tx_min;
+	int32_t rmii_tx_max;
+	int32_t rmii_rx_min;
+	int32_t rmii_rx_max;
 	mac_delay_1g_t value;	/* backup register value */
 } mac_delay_1g_reg_t;
 
 typedef struct mac_delay_100_10_reg_s {
 	uint32_t addr;
-	int32_t tx_min_delay;
-	int32_t tx_max_delay;
-	int32_t rx_min_delay;
-	int32_t rx_max_delay;
+	int32_t tx_min;
+	int32_t tx_max;
+	int32_t rx_min;
+	int32_t rx_max;
 	mac_delay_100_10_t value;
 } mac_delay_100_10_reg_t;
 
@@ -723,6 +731,11 @@ typedef struct mac12_drv_reg_s {
 } mac12_drv_reg_t;
 #endif
 
+typedef struct delay_scan_s {
+	int8_t begin;
+	int8_t end;
+	int8_t step;
+} delay_scan_t;
 typedef struct {
 	CHAR                 init_done                     ;
 
@@ -745,28 +758,10 @@ typedef struct {
 	mac_delay_100_10_reg_t mac12_10m_delay;
 	mac_delay_100_10_reg_t mac34_10m_delay;
 
-	int8_t tx_delay_scan_begin;
-	int8_t tx_delay_scan_end;
-	int8_t rx_delay_scan_begin;
-	int8_t rx_delay_scan_end;
-
-	BYTE                 Dly_stagebit                  ;
-	BYTE                 Dly_stage                     ;
-	BYTE                 Dly_stage_in                  ;
-	BYTE                 Dly_stage_out                 ;
-	uint32_t Dly_mask_bit_in               ;
-	uint32_t Dly_mask_bit_out              ;
-	uint32_t Dly_mask_pos                  ;
-	BYTE                 Dly_in_shf                    ;
-	BYTE                 Dly_out_shf                   ;
-	BYTE                 Dly_in_shf_regH               ;
-	BYTE                 Dly_out_shf_regH              ;
-	BYTE                 value_ary[64]                 ;
-	BYTE                 Dly_stage_shf_i               ;
-	BYTE                 Dly_stage_shf_o               ;
+	delay_scan_t tx_delay_scan;
+	delay_scan_t rx_delay_scan;	
 
 	uint32_t Dly_reg_idx                   ;
-	uint32_t Dly_reg_value                 ;
 	char                 Dly_reg_name_tx[32]           ;
 	char                 Dly_reg_name_rx[32]           ;
 	char                 Dly_reg_name_tx_new[32]       ;
@@ -778,10 +773,7 @@ typedef struct {
 	uint32_t Dly_out_reg                   ;
 	BYTE                 Dly_out_reg_idx               ;
 	SCHAR                Dly_out_min                   ;
-	BYTE                 Dly_out_max                   ;
-	uint32_t Dly_in_cval                   ;
-
-	uint32_t Dly_out_cval                  ;
+	BYTE                 Dly_out_max                   ;	
 	
 	BYTE                 Dly_in                        ;
 	BYTE                 Dly_in_selval                 ;
@@ -840,7 +832,7 @@ typedef struct {
 typedef struct {
 	mac_reg_t reg;
 	mac_env_t env;
-	mac_arg_t arg;
+	mac_arg_t arg;	
 	MAC_Running          run;
 	MAC_Information      inf;
 	MAC_PHY              phy;
@@ -924,7 +916,7 @@ GLOBAL void Write_Reg_WDT_DD (uint32_t addr, uint32_t data);
 GLOBAL void Write_Reg_TIMER_DD (uint32_t addr, uint32_t data);
 GLOBAL void Write_Reg_GPIO_DD (uint32_t addr, uint32_t data);
 GLOBAL void    init_iodelay (MAC_ENGINE *eng);
-GLOBAL int     get_iodelay (MAC_ENGINE *eng);
+GLOBAL int     mac_set_scan_boundary (MAC_ENGINE *eng);
 GLOBAL void    read_scu (MAC_ENGINE *eng);
 GLOBAL void    Setting_scu (MAC_ENGINE *eng);
 
@@ -937,14 +929,14 @@ GLOBAL void    PrintIOTimingBund (MAC_ENGINE *eng);
 
 GLOBAL void    PrintPHYAdr (MAC_ENGINE *eng);
 
-//GLOBAL void    calc_loop_check_num (MAC_ENGINE *eng);
-GLOBAL void    init_scu1 (MAC_ENGINE *eng);
-GLOBAL void    init_scu_macio (MAC_ENGINE *eng);
+
+
+GLOBAL void    mac_set_pinmux_mdio (MAC_ENGINE *eng);
 
 GLOBAL void    setup_arp (MAC_ENGINE *eng);
 GLOBAL void    TestingSetup (MAC_ENGINE *eng);
-GLOBAL void    init_scu2 (MAC_ENGINE *eng);
-GLOBAL void    init_scu3 (MAC_ENGINE *eng);
+
+
 GLOBAL void    get_mac_info (MAC_ENGINE *eng);
 GLOBAL void    init_mac (MAC_ENGINE *eng);
 GLOBAL char TestingLoop (MAC_ENGINE *eng, uint32_t loop_checknum);
