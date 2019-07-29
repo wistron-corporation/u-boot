@@ -263,13 +263,14 @@
   #define DRAM_KByteSize			(16500)         //16.11328125 K
 #endif
 
-
-#define DMA_PakSize                            ( 2 * 1024 ) // The size of one LAN packet
+/* The size of one LAN packet */
+#define DMA_PakSize 				(2 * 1024)
 
 #ifdef SelectSimpleBoundary
-  #define DMA_BufSize                            (     ( ( ( ( p_eng->dat.Des_Num + 15 ) * DMA_PakSize ) >> 2 ) << 2 ) ) //vary by Des_Num
+#define DMA_BufSize (((((p_eng->dat.Des_Num + 15) * DMA_PakSize) >> 2) << 2))
 #else
-  #define DMA_BufSize                            ( 4 + ( ( ( ( p_eng->dat.Des_Num + 15 ) * DMA_PakSize ) >> 2 ) << 2 ) ) //vary by Des_Num
+#define DMA_BufSize                                                            \
+	(4 + ((((p_eng->dat.Des_Num + 15) * DMA_PakSize) >> 2) << 2))
 #endif
 
 #define DMA_BufNum                               ( ( DRAM_KByteSize * 1024 ) / ( p_eng->dat.DMABuf_Size ) )                //vary by eng->dat.Des_Num
@@ -467,10 +468,11 @@ typedef struct {
 
 typedef struct {
 	mac_cr_t maccr;
-	uint32_t MAC_008                       ;
-	uint32_t MAC_00c                       ;
+	uint32_t mac_madr;
+	uint32_t mac_ladr;
+	uint32_t mac_fear;
+
 	uint32_t MAC_040                       ;
-	uint32_t MAC_040_new                   ;
 	uint32_t SCU_088                       ;
 	uint32_t SCU_090                       ;
 	uint32_t SCU_09c                       ;
@@ -916,9 +918,9 @@ GLOBAL void Write_Reg_WDT_DD (uint32_t addr, uint32_t data);
 GLOBAL void Write_Reg_TIMER_DD (uint32_t addr, uint32_t data);
 GLOBAL void Write_Reg_GPIO_DD (uint32_t addr, uint32_t data);
 GLOBAL void    init_iodelay (MAC_ENGINE *eng);
-GLOBAL int     mac_set_scan_boundary (MAC_ENGINE *eng);
-GLOBAL void    read_scu (MAC_ENGINE *eng);
-GLOBAL void    Setting_scu (MAC_ENGINE *eng);
+
+//GLOBAL void    read_scu (MAC_ENGINE *eng);
+
 
 
 
@@ -931,13 +933,13 @@ GLOBAL void    PrintPHYAdr (MAC_ENGINE *eng);
 
 
 
-GLOBAL void    mac_set_pinmux (MAC_ENGINE *eng);
+
 
 GLOBAL void    setup_arp (MAC_ENGINE *eng);
 GLOBAL void    TestingSetup (MAC_ENGINE *eng);
 
 
-GLOBAL void    get_mac_info (MAC_ENGINE *eng);
+
 GLOBAL void    init_mac (MAC_ENGINE *eng);
 GLOBAL char TestingLoop (MAC_ENGINE *eng, uint32_t loop_checknum);
 GLOBAL void    PrintIO_Line_LOG (MAC_ENGINE *eng);

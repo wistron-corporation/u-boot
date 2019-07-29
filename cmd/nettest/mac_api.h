@@ -5,4 +5,5 @@ void mac_get_delay(MAC_ENGINE *p_eng, int32_t *p_rx_d, int32_t *p_tx_d);
 void mac_set_driving_strength(MAC_ENGINE *p_eng, uint32_t strength);
 void mac_set_rmii_50m_output_enable(MAC_ENGINE *p_eng);
 int mac_set_scan_boundary(MAC_ENGINE *p_eng);
-void mac_set_pinmux(MAC_ENGINE *p_eng);
+void mac_set_addr(MAC_ENGINE *p_eng);
+void mac_set_interal_loopback(MAC_ENGINE *p_eng);

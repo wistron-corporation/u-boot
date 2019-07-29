@@ -984,149 +984,36 @@ void read_scu (MAC_ENGINE *eng)
 } // End read_scu(MAC_ENGINE *eng)
 
 //------------------------------------------------------------
-void Setting_scu (MAC_ENGINE *eng) 
-{
-	nt_log_func_name();
-
-	//------------------------------
-	// [WDT]Disable Timer
-	//------------------------------	
-
-	Write_Reg_WDT_DD( 0x00c, eng->reg.WDT_00c & 0xfffffffc );
-	Write_Reg_WDT_DD( 0x02c, eng->reg.WDT_02c & 0xfffffffc );
-	Write_Reg_WDT_DD( 0x04c, eng->reg.WDT_04c & 0xfffffffc );
-
-	Write_Reg_WDT_DD( 0x01c, Read_Reg_WDT_DD( 0x01c ) & 0xffffff9f );
-	Write_Reg_WDT_DD( 0x03c, Read_Reg_WDT_DD( 0x03c ) & 0xffffff9f );
-	Write_Reg_WDT_DD( 0x05c, Read_Reg_WDT_DD( 0x05c ) & 0xffffff9f );
-}
-
-
-
-/**
- * @brief setup mdc/mdio pinmix
- * @todo push/pop pinmux registers
-*/
-void mac_set_pinmux(MAC_ENGINE *p_eng)
-{
-	uint32_t reg;
-	nt_log_func_name();
-
-#ifdef CONFIG_ASPEED_AST2600
-	/* MDC/MDIO pinmux */
-	switch (p_eng->run.mdio_idx) {
-	case 0:
-		reg = SCU_RD(0x430) | GENMASK(17, 16);
-		SCU_WR(reg, 0x430);
-		break;
-	case 1:
-		reg = SCU_RD(0x470) & ~GENMASK(13, 12);
-		SCU_WR(reg, 0x470);
-		reg = SCU_RD(0x410) | GENMASK(13, 12);
-		SCU_WR(reg, 0x410);
-		break;
-	case 2:
-		reg = SCU_RD(0x470) & ~GENMASK(1, 0);
-		SCU_WR(reg, 0x470);
-		reg = SCU_RD(0x410) | GENMASK(1, 0);
-		SCU_WR(reg, 0x410);
-		break;
-	case 3:
-		reg = SCU_RD(0x470) & ~GENMASK(3, 2);
-		SCU_WR(reg, 0x470);
-		reg = SCU_RD(0x410) | GENMASK(3, 2);
-		SCU_WR(reg, 0x410);
-		break;
-	default:
-		printf("%s:undefined MDIO idx\n", __func__,
-		       p_eng->run.mdio_idx);
-	}
-
-	switch (p_eng->run.mac_idx) {
-	case 0:
-#ifdef CONFIG_FPGA_ASPEED
-		setbits_le32(SCU_BASE + 0x410, BIT(4));
-#else
-		setbits_le32(SCU_BASE + 0x400, GENMASK(11, 0));
-		setbits_le32(SCU_BASE + 0x410, BIT(4));
-		clrbits_le32(SCU_BASE + 0x470, BIT(4));
-#endif
-		break;
-	case 1:
-		setbits_le32(SCU_BASE + 0x400, GENMASK(23, 12));
-		setbits_le32(SCU_BASE + 0x410, BIT(5));
-		clrbits_le32(SCU_BASE + 0x470, BIT(5));
-		break;
-	case 2:
-		setbits_le32(SCU_BASE + 0x410, GENMASK(27, 16));
-		setbits_le32(SCU_BASE + 0x410, BIT(6));
-		clrbits_le32(SCU_BASE + 0x470, BIT(6));
-		break;
-	case 3:
-		clrbits_le32(SCU_BASE + 0x410, GENMASK(31, 28));
-		setbits_le32(SCU_BASE + 0x4b0, GENMASK(31, 28));
-		clrbits_le32(SCU_BASE + 0x474, GENMASK(7, 0));
-		clrbits_le32(SCU_BASE + 0x414, GENMASK(7, 0));
-		setbits_le32(SCU_BASE + 0x4b4, GENMASK(7, 0));
-		setbits_le32(SCU_BASE + 0x410, BIT(7));
-		clrbits_le32(SCU_BASE + 0x470, BIT(7));
-		break;
-
-	}
-#else
-	/* MDC/MDIO pinmux */
-	if (p_eng->run.mdio_idx == 0) {
-		setbits_le32(SCU_BASE + 88, GENMASK(31, 30));
-	} else {
-		clrsetbits_le32(SCU_BASE + 90, BIT(6), BIT(2));
-	}
-
-	/* enable MAC#nLINK pin */
-	setbits_le32(SCU_BASE + 80, BIT(p_eng->run.mac_idx));
-#endif
-}
 
 //------------------------------------------------------------
 // MAC
 //------------------------------------------------------------
-void get_mac_info (MAC_ENGINE *eng) 
+void mac_set_addr(MAC_ENGINE *p_eng)
 {
-	nt_log_func_name();
+	nt_log_func_name();	
+	
+	uint32_t madr = p_eng->reg.mac_madr;
+	uint32_t ladr = p_eng->reg.mac_ladr;
 
-	//------------------------------
-	// [Inf]setup SA
-	//------------------------------
-	eng->reg.MAC_008 = mac_reg_read(eng, 0x08);
-	eng->reg.MAC_00c = mac_reg_read(eng, 0x0c);
-	if (  (( eng->reg.MAC_008 == 0x0000 ) && ( eng->reg.MAC_00c == 0x00000000 ))
-	   || (( eng->reg.MAC_008 == 0xffff ) && ( eng->reg.MAC_00c == 0xffffffff ))
-	   )
-	{
-		eng->reg.MAC_008 = 0x0000000a;
-		eng->reg.MAC_00c = 0xf7837dd4;
+	if (((madr == 0x0000) && (ladr == 0x00000000)) ||
+	    ((madr == 0xffff) && (ladr == 0xffffffff))) {
+		/* FIXME: shall use random gen */    
+		madr = 0x0000000a;
+		ladr = 0xf7837dd4;
 	}
 
-	eng->inf.SA[ 0 ] = ( eng->reg.MAC_008 >>  8 ) & 0xff;//MSB
-	eng->inf.SA[ 1 ] = ( eng->reg.MAC_008       ) & 0xff;
-	eng->inf.SA[ 2 ] = ( eng->reg.MAC_00c >> 24 ) & 0xff;
-	eng->inf.SA[ 3 ] = ( eng->reg.MAC_00c >> 16 ) & 0xff;
-	eng->inf.SA[ 4 ] = ( eng->reg.MAC_00c >>  8 ) & 0xff;
-	eng->inf.SA[ 5 ] = ( eng->reg.MAC_00c       ) & 0xff;//LSB
+	p_eng->inf.SA[0] = (madr >> 8) & 0xff; // MSB
+	p_eng->inf.SA[1] = (madr >> 0) & 0xff;
+	p_eng->inf.SA[2] = (ladr >> 24) & 0xff;
+	p_eng->inf.SA[3] = (ladr >> 16) & 0xff;
+	p_eng->inf.SA[4] = (ladr >> 8) & 0xff;
+	p_eng->inf.SA[5] = (ladr >> 0) & 0xff; // LSB	
+}
 
-	//------------------------------
-	// [Reg]setup MAC_040_new
-	//------------------------------
-	eng->reg.MAC_040 = mac_reg_read(eng, 0x40);
-	if ( eng->arg.ctrl.b.mac_int_loopback )
-		eng->reg.MAC_040_new = eng->reg.MAC_040 | 0x40000000;
-	else
-		eng->reg.MAC_040_new = eng->reg.MAC_040;
-
-  #ifdef MAC_040_def
-	mac_reg_write( eng, 0x40, eng->reg.MAC_040_new | MAC_040_def );
-  #else
-	mac_reg_write( eng, 0x40, eng->reg.MAC_040_new );
-  #endif
+void mac_set_interal_loopback(MAC_ENGINE *p_eng)
+{
+	uint32_t reg = mac_reg_read(p_eng, 0x40);
+	mac_reg_write(p_eng, 0x40, reg | BIT(30)); 
 }
 
 //------------------------------------------------------------
@@ -1150,8 +1037,8 @@ void init_mac (MAC_ENGINE *eng)
 	mac_reg_write(eng, 0x20, AT_MEMRW_BUF(eng->run.tdes_base));
 	mac_reg_write(eng, 0x24, AT_MEMRW_BUF(eng->run.rdes_base));
 
-	mac_reg_write(eng, 0x08, eng->reg.MAC_008);
-	mac_reg_write(eng, 0x0c, eng->reg.MAC_00c);
+	mac_reg_write(eng, 0x08, eng->reg.mac_madr);
+	mac_reg_write(eng, 0x0c, eng->reg.mac_ladr);
 
 #ifdef MAC_030_def
 	mac_reg_write( eng, 0x30, MAC_030_def );//Int Thr/Cnt
@@ -1215,7 +1102,6 @@ void FPri_RegValue (MAC_ENGINE *eng, BYTE option)
 
 	PRINTF( option, "[SCU] 13c:%08x 140:%08x 144:%08x 1dc:%08x\n", Read_Reg_SCU_DD( 0x13c ), Read_Reg_SCU_DD( 0x140 ), Read_Reg_SCU_DD( 0x144 ), Read_Reg_SCU_DD( 0x1dc ) );
 	PRINTF( option, "[WDT]  0c:%08x  2c:%08x  4c:%08x\n", eng->reg.WDT_00c, eng->reg.WDT_02c, eng->reg.WDT_04c );
-	PRINTF( option, "[MAC]  08:%08x  0c:%08x\n", eng->reg.MAC_008, eng->reg.MAC_00c );
 	PRINTF( option, "[MAC]  A0|%08x %08x %08x %08x\n", mac_reg_read( eng, 0xa0 ), mac_reg_read( eng, 0xa4 ), mac_reg_read( eng, 0xa8 ), mac_reg_read( eng, 0xac ) );
 	PRINTF( option, "[MAC]  B0|%08x %08x %08x %08x\n", mac_reg_read( eng, 0xb0 ), mac_reg_read( eng, 0xb4 ), mac_reg_read( eng, 0xb8 ), mac_reg_read( eng, 0xbc ) );
 	PRINTF( option, "[MAC]  C0|%08x %08x %08x\n",       mac_reg_read( eng, 0xc0 ), mac_reg_read( eng, 0xc4 ), mac_reg_read( eng, 0xc8 ) );
@@ -2223,15 +2109,15 @@ char check_des (MAC_ENGINE *eng, uint32_t bufnum, int checkpoint) {
 	nt_log_func_name();
 
 	// Fire the engine to send and recvice
-	mac_reg_write( eng, 0x1c, 0x00000000 );//Rx Poll
-	mac_reg_write( eng, 0x18, 0x00000000 );//Tx Poll
+	mac_reg_write(eng, 0x1c, 0x00000000); // Rx Poll
+	mac_reg_write(eng, 0x18, 0x00000000); // Tx Poll
 
 #ifndef SelectSimpleDes
 	H_tx_bufadr = AT_MEMRW_BUF( eng->dat.DMA_Base_Tx );//base of the descriptor
 	H_rx_bufadr = AT_MEMRW_BUF( eng->dat.DMA_Base_Rx );//base of the descriptor
 #endif
-	H_rx_desadr = eng->run.rdes_base;//base for read/write
-	H_tx_desadr = eng->run.tdes_base;//base for read/write
+	H_rx_desadr = eng->run.rdes_base;
+	H_tx_desadr = eng->run.tdes_base;
 
 #ifdef Delay_DES
 	DELAY( Delay_DES );

@@ -484,6 +484,90 @@ void scu_enable_mac(MAC_ENGINE *p_eng)
 	reg = SCU_RD(p_mac->base_clk_start);
 #endif
 }
+
+/**
+ * @brief setup mdc/mdio pinmix
+ * @todo push/pop pinmux registers
+*/
+void scu_set_pinmux(MAC_ENGINE *p_eng)
+{
+	uint32_t reg;
+	nt_log_func_name();
+
+#ifdef CONFIG_ASPEED_AST2600
+	/* MDC/MDIO pinmux */
+	switch (p_eng->run.mdio_idx) {
+	case 0:
+		reg = SCU_RD(0x430) | GENMASK(17, 16);
+		SCU_WR(reg, 0x430);
+		break;
+	case 1:
+		reg = SCU_RD(0x470) & ~GENMASK(13, 12);
+		SCU_WR(reg, 0x470);
+		reg = SCU_RD(0x410) | GENMASK(13, 12);
+		SCU_WR(reg, 0x410);
+		break;
+	case 2:
+		reg = SCU_RD(0x470) & ~GENMASK(1, 0);
+		SCU_WR(reg, 0x470);
+		reg = SCU_RD(0x410) | GENMASK(1, 0);
+		SCU_WR(reg, 0x410);
+		break;
+	case 3:
+		reg = SCU_RD(0x470) & ~GENMASK(3, 2);
+		SCU_WR(reg, 0x470);
+		reg = SCU_RD(0x410) | GENMASK(3, 2);
+		SCU_WR(reg, 0x410);
+		break;
+	default:
+		printf("%s:undefined MDIO idx\n", __func__,
+		       p_eng->run.mdio_idx);
+	}
+
+	switch (p_eng->run.mac_idx) {
+	case 0:
+#ifdef CONFIG_FPGA_ASPEED
+		setbits_le32(SCU_BASE + 0x410, BIT(4));
+#else
+		setbits_le32(SCU_BASE + 0x400, GENMASK(11, 0));
+		setbits_le32(SCU_BASE + 0x410, BIT(4));
+		clrbits_le32(SCU_BASE + 0x470, BIT(4));
+#endif
+		break;
+	case 1:
+		setbits_le32(SCU_BASE + 0x400, GENMASK(23, 12));
+		setbits_le32(SCU_BASE + 0x410, BIT(5));
+		clrbits_le32(SCU_BASE + 0x470, BIT(5));
+		break;
+	case 2:
+		setbits_le32(SCU_BASE + 0x410, GENMASK(27, 16));
+		setbits_le32(SCU_BASE + 0x410, BIT(6));
+		clrbits_le32(SCU_BASE + 0x470, BIT(6));
+		break;
+	case 3:
+		clrbits_le32(SCU_BASE + 0x410, GENMASK(31, 28));
+		setbits_le32(SCU_BASE + 0x4b0, GENMASK(31, 28));
+		clrbits_le32(SCU_BASE + 0x474, GENMASK(7, 0));
+		clrbits_le32(SCU_BASE + 0x414, GENMASK(7, 0));
+		setbits_le32(SCU_BASE + 0x4b4, GENMASK(7, 0));
+		setbits_le32(SCU_BASE + 0x410, BIT(7));
+		clrbits_le32(SCU_BASE + 0x470, BIT(7));
+		break;
+
+	}
+#else
+	/* MDC/MDIO pinmux */
+	if (p_eng->run.mdio_idx == 0) {
+		setbits_le32(SCU_BASE + 88, GENMASK(31, 30));
+	} else {
+		clrsetbits_le32(SCU_BASE + 90, BIT(6), BIT(2));
+	}
+
+	/* enable MAC#nLINK pin */
+	setbits_le32(SCU_BASE + 80, BIT(p_eng->run.mac_idx));
+#endif
+}
+
 static uint32_t check_mac_idx(MAC_ENGINE *p_eng)
 {
 	/* check if legal run_idx */
@@ -701,35 +785,30 @@ static uint32_t setup_running(MAC_ENGINE *p_eng)
 		else {
 			switch (p_eng->arg.run_speed) {
 			case SET_1GBPS:
-				printf("[1g] %d %d\n", p_eng->run.IO_Bund, n_desp_min);
 				p_eng->dat.Des_Num =
 				    p_eng->run.IO_Bund
 					? 100
 					: (n_desp_min) ? 512 : 4096;
 				break;
 			case SET_100MBPS:
-				printf("[100] %d %d\n", p_eng->run.IO_Bund, n_desp_min);
 				p_eng->dat.Des_Num =
 				    p_eng->run.IO_Bund
 					? 100
 					: (n_desp_min) ? 512 : 4096;
 				break;
 			case SET_10MBPS:
-				printf("[10] %d %d\n", p_eng->run.IO_Bund, n_desp_min);
 				p_eng->dat.Des_Num =
 				    p_eng->run.IO_Bund
 					? 100
 					: (n_desp_min) ? 100 : 830;
 				break;
 			case SET_1G_100M_10MBPS:
-			printf("[1g_100_10] %d %d\n", p_eng->run.IO_Bund, n_desp_min);
 				p_eng->dat.Des_Num =
 				    p_eng->run.IO_Bund
 					? 100
 					: (n_desp_min) ? 100 : 830;
 				break;
 			case SET_100M_10MBPS:
-			printf("[100_10] %d %d\n", p_eng->run.IO_Bund, n_desp_min);
 				p_eng->dat.Des_Num =
 				    p_eng->run.IO_Bund
 					? 100
@@ -872,6 +951,10 @@ static push_reg(MAC_ENGINE *p_eng)
 
 	/* MAC registers */
 	p_eng->reg.maccr.w = mac_reg_read(p_eng, 0x50);
+
+	p_eng->reg.mac_madr = mac_reg_read(p_eng, 0x08);
+	p_eng->reg.mac_ladr = mac_reg_read(p_eng, 0x0c);
+	p_eng->reg.mac_fear = mac_reg_read(p_eng, 0x40);
 }
 
 static void pop_reg(MAC_ENGINE *p_eng)
@@ -893,6 +976,9 @@ static void pop_reg(MAC_ENGINE *p_eng)
 
 	/* MAC registers */
 	mac_reg_write(p_eng, 0x50, p_eng->reg.maccr.w);
+	mac_reg_write(p_eng, 0x08, p_eng->reg.mac_madr);
+	mac_reg_write(p_eng, 0x0c, p_eng->reg.mac_ladr);
+	mac_reg_write(p_eng, 0x40, p_eng->reg.mac_fear);
 }
 static uint32_t init_mac_engine(MAC_ENGINE *p_eng, uint32_t mode)
 {
@@ -1071,6 +1157,11 @@ static uint32_t parse_arg_ncsi(int argc, char *const argv[], MAC_ENGINE *p_eng)
 }
 
 
+static void disable_wdt(MAC_ENGINE *p_eng) 
+{
+	/* FIXME */
+	return;
+}
 
 /**
  * @brief nettest main function
@@ -1114,6 +1205,14 @@ int mac_test(int argc, char * const argv[], uint32_t mode)
 	}
 
 	push_reg(&mac_eng);
+	disable_wdt(&mac_eng);
+
+	mac_set_addr(&mac_eng);
+	if (mac_eng.arg.ctrl.b.mac_int_loopback)
+		mac_set_interal_loopback(&mac_eng);
+	
+	if (mac_eng.arg.run_mode == MODE_DEDICATED)
+		scu_set_pinmux(&mac_eng);
 
 	scu_disable_mac(&mac_eng);
 	scu_enable_mac(&mac_eng);
@@ -1138,21 +1237,6 @@ int mac_test(int argc, char * const argv[], uint32_t mode)
 #endif
 
 #if 0
-
-//------------------------------------------------------------
-// Setup Running Parameter
-//------------------------------------------------------------
-
-
-//------------------------------------------------------------
-// SCU Initial
-//------------------------------------------------------------
-	get_mac_info( eng );
-	Setting_scu( eng );
-	if (eng->arg.run_mode == MODE_DEDICATED)
-		mac_set_pinmux(eng);
-
-
 //------------------------------------------------------------
 // Data Initial
 //------------------------------------------------------------
