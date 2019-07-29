@@ -1112,7 +1112,7 @@ int mac_test(int argc, char * const argv[], uint32_t mode)
 	get_mac_info( eng );
 	Setting_scu( eng );
 	if (eng->arg.run_mode == MODE_DEDICATED)
-		mac_set_pinmux_mdio(eng);
+		mac_set_pinmux(eng);
 
 
 //------------------------------------------------------------

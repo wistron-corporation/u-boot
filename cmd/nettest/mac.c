@@ -1003,24 +1003,87 @@ void Setting_scu (MAC_ENGINE *eng)
 
 
 
-//------------------------------------------------------------
-void mac_set_pinmux_mdio(MAC_ENGINE *p_eng)
+/**
+ * @brief setup mdc/mdio pinmix
+ * @todo push/pop pinmux registers
+*/
+void mac_set_pinmux(MAC_ENGINE *p_eng)
 {
 	uint32_t reg;
 	nt_log_func_name();
 
 #ifdef CONFIG_ASPEED_AST2600
+	/* MDC/MDIO pinmux */
+	switch (p_eng->run.mdio_idx) {
+	case 0:
+		reg = SCU_RD(0x430) | GENMASK(17, 16);
+		SCU_WR(reg, 0x430);
+		break;
+	case 1:
+		reg = SCU_RD(0x470) & ~GENMASK(13, 12);
+		SCU_WR(reg, 0x470);
+		reg = SCU_RD(0x410) | GENMASK(13, 12);
+		SCU_WR(reg, 0x410);
+		break;
+	case 2:
+		reg = SCU_RD(0x470) & ~GENMASK(1, 0);
+		SCU_WR(reg, 0x470);
+		reg = SCU_RD(0x410) | GENMASK(1, 0);
+		SCU_WR(reg, 0x410);
+		break;
+	case 3:
+		reg = SCU_RD(0x470) & ~GENMASK(3, 2);
+		SCU_WR(reg, 0x470);
+		reg = SCU_RD(0x410) | GENMASK(3, 2);
+		SCU_WR(reg, 0x410);
+		break;
+	default:
+		printf("%s:undefined MDIO idx\n", __func__,
+		       p_eng->run.mdio_idx);
+	}
+
+	switch (p_eng->run.mac_idx) {
+	case 0:
+#ifdef CONFIG_FPGA_ASPEED
+		setbits_le32(SCU_BASE + 0x410, BIT(4));
+#else
+		setbits_le32(SCU_BASE + 0x400, GENMASK(11, 0));
+		setbits_le32(SCU_BASE + 0x410, BIT(4));
+		clrbits_le32(SCU_BASE + 0x470, BIT(4));
+#endif
+		break;
+	case 1:
+		setbits_le32(SCU_BASE + 0x400, GENMASK(23, 12));
+		setbits_le32(SCU_BASE + 0x410, BIT(5));
+		clrbits_le32(SCU_BASE + 0x470, BIT(5));
+		break;
+	case 2:
+		setbits_le32(SCU_BASE + 0x410, GENMASK(27, 16));
+		setbits_le32(SCU_BASE + 0x410, BIT(6));
+		clrbits_le32(SCU_BASE + 0x470, BIT(6));
+		break;
+	case 3:
+		clrbits_le32(SCU_BASE + 0x410, GENMASK(31, 28));
+		setbits_le32(SCU_BASE + 0x4b0, GENMASK(31, 28));
+		clrbits_le32(SCU_BASE + 0x474, GENMASK(7, 0));
+		clrbits_le32(SCU_BASE + 0x414, GENMASK(7, 0));
+		setbits_le32(SCU_BASE + 0x4b4, GENMASK(7, 0));
+		setbits_le32(SCU_BASE + 0x410, BIT(7));
+		clrbits_le32(SCU_BASE + 0x470, BIT(7));
+		break;
+
+	}
 #else
 	/* MDC/MDIO pinmux */
 	if (p_eng->run.mdio_idx == 0) {
-		reg = SCU_RD(0x88) | GENMASK(31, 30);
-		SCU_WR(reg, 0x88);
+		setbits_le32(SCU_BASE + 88, GENMASK(31, 30));
 	} else {
-		reg = SCU_RD(0x90) & (~BIT(6));
-		reg |= BIT(2);
-		SCU_WR(reg, 0x90);
+		clrsetbits_le32(SCU_BASE + 90, BIT(6), BIT(2));
 	}
-#endif	
+
+	/* enable MAC#nLINK pin */
+	setbits_le32(SCU_BASE + 80, BIT(p_eng->run.mac_idx));
+#endif
 }
 
 //------------------------------------------------------------

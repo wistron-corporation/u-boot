@@ -931,7 +931,7 @@ GLOBAL void    PrintPHYAdr (MAC_ENGINE *eng);
 
 
 
-GLOBAL void    mac_set_pinmux_mdio (MAC_ENGINE *eng);
+GLOBAL void    mac_set_pinmux (MAC_ENGINE *eng);
 
 GLOBAL void    setup_arp (MAC_ENGINE *eng);
 GLOBAL void    TestingSetup (MAC_ENGINE *eng);
