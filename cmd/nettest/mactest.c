@@ -153,14 +153,14 @@ static void print_arg_phy_addr(MAC_ENGINE *p_eng)
 
 static void print_arg_ieee_select(MAC_ENGINE *p_eng) 
 {
-	uint8_t item[32] = "IEEE packet select (if test_mode == 1,2,3,4,5)";
+	uint8_t item[64] = "IEEE packet select (if test_mode == 1,2,3,4,5)";
 
 	printf("%20s| 0/1/2... (default:0)\n", item);
 }
 
 static void print_arg_delay_scan_boundary(MAC_ENGINE *p_eng) 
 {
-	uint8_t item[32] = "delay-scan boundary (if test_mode == 0)";
+	uint8_t item[64] = "delay-scan boundary (if test_mode == 0)";
 
 	printf("%20s| 0/1/3/5/7/... (default:%d)\n", item, DEF_GIOTIMINGBUND);
 	print_arg_ieee_select(p_eng);
@@ -256,8 +256,8 @@ static void print_usage(MAC_ENGINE *p_eng)
 static void finish_close(MAC_ENGINE *p_eng) 
 {
 	nt_log_func_name();
-	if (p_eng->reg.SCU_oldvld)
-		recov_scu(p_eng);
+	//if (p_eng->reg.SCU_oldvld)
+	//	recov_scu(p_eng);
 }
 
 char finish_check(MAC_ENGINE *p_eng, int value) 
@@ -491,6 +491,8 @@ static uint32_t check_mac_idx(MAC_ENGINE *p_eng)
 		printf("invalid run_idx = %d\n", p_eng->arg.mac_idx);	
 		return 1;
 	}
+	
+	return 0;
 }
 
 static void calc_loop_check_num(MAC_ENGINE *p_eng)
@@ -523,6 +525,8 @@ static void calc_loop_check_num(MAC_ENGINE *p_eng)
 
 static uint32_t setup_running(MAC_ENGINE *p_eng)
 {
+	uint32_t n_desp_min;
+
 	if (0 != check_mac_idx(p_eng)) {
 		return 1;
 	}
@@ -677,7 +681,82 @@ static uint32_t setup_running(MAC_ENGINE *p_eng)
 	p_eng->phy.default_phy = p_eng->run.TM_DefaultPHY;
 
 	p_eng->run.LOOP_MAX = p_eng->arg.loop_max;
-	calc_loop_check_num( p_eng );	
+	calc_loop_check_num(p_eng);
+
+	//------------------------------------------------------------
+	// Descriptor Number
+	//------------------------------------------------------------
+	//------------------------------
+	// [Dat]setup Des_Num
+	// [Dat]setup DMABuf_Size
+	// [Dat]setup DMABuf_Num
+	//------------------------------
+	if (p_eng->arg.run_mode == MODE_DEDICATED) {
+		n_desp_min = p_eng->run.TM_IOTiming;
+
+		if (p_eng->arg.ctrl.b.phy_skip_check &&
+		    (p_eng->arg.test_mode == 0))
+			/* for SMSC's LAN9303 issue */
+			p_eng->dat.Des_Num = 114;
+		else {
+			switch (p_eng->arg.run_speed) {
+			case SET_1GBPS:
+				printf("[1g] %d %d\n", p_eng->run.IO_Bund, n_desp_min);
+				p_eng->dat.Des_Num =
+				    p_eng->run.IO_Bund
+					? 100
+					: (n_desp_min) ? 512 : 4096;
+				break;
+			case SET_100MBPS:
+				printf("[100] %d %d\n", p_eng->run.IO_Bund, n_desp_min);
+				p_eng->dat.Des_Num =
+				    p_eng->run.IO_Bund
+					? 100
+					: (n_desp_min) ? 512 : 4096;
+				break;
+			case SET_10MBPS:
+				printf("[10] %d %d\n", p_eng->run.IO_Bund, n_desp_min);
+				p_eng->dat.Des_Num =
+				    p_eng->run.IO_Bund
+					? 100
+					: (n_desp_min) ? 100 : 830;
+				break;
+			case SET_1G_100M_10MBPS:
+			printf("[1g_100_10] %d %d\n", p_eng->run.IO_Bund, n_desp_min);
+				p_eng->dat.Des_Num =
+				    p_eng->run.IO_Bund
+					? 100
+					: (n_desp_min) ? 100 : 830;
+				break;
+			case SET_100M_10MBPS:
+			printf("[100_10] %d %d\n", p_eng->run.IO_Bund, n_desp_min);
+				p_eng->dat.Des_Num =
+				    p_eng->run.IO_Bund
+					? 100
+					: (n_desp_min) ? 100 : 830;
+				break;
+			}
+		}
+		/* keep in order: Des_Num -> DMABuf_Size -> DMABuf_Num */
+		p_eng->dat.Des_Num_Org = p_eng->dat.Des_Num;
+		p_eng->dat.DMABuf_Size = DMA_BufSize;
+		p_eng->dat.DMABuf_Num = DMA_BufNum;
+
+		if (DbgPrn_Info) {
+			printf("CheckBuf_MBSize : %d\n",
+			       p_eng->run.CheckBuf_MBSize);
+			printf("LOOP_CheckNum   : %d\n",
+			       p_eng->run.LOOP_CheckNum);
+			printf("Des_Num         : %d\n", p_eng->dat.Des_Num);
+			printf("DMA_BufSize     : %d bytes\n",
+			       p_eng->dat.DMABuf_Size);
+			printf("DMA_BufNum      : %d\n", p_eng->dat.DMABuf_Num);
+			printf("DMA_PakSize     : %d\n", DMA_PakSize);
+			printf("\n");
+		}
+		if (2 > p_eng->dat.DMABuf_Num)
+			return (finish_check(p_eng, Err_Flag_DMABufNum));
+	}
 }
 
 /**
@@ -1046,7 +1125,6 @@ int mac_test(int argc, char * const argv[], uint32_t mode)
 	pop_reg(&mac_eng);
 
 #if 0
-	int                  DES_LowNumber;		
 
 	int                  i;
 	int                  j;
@@ -1060,46 +1138,6 @@ int mac_test(int argc, char * const argv[], uint32_t mode)
 #endif
 
 #if 0
-//------------------------------------------------------------
-// Descriptor Number
-//------------------------------------------------------------
-	//------------------------------
-	// [Dat]setup Des_Num
-	// [Dat]setup DMABuf_Size
-	// [Dat]setup DMABuf_Num
-	//------------------------------
-	if ( eng->arg.run_mode == MODE_DEDICATED ) {
-		DES_LowNumber = eng->run.TM_IOTiming;
-
-		if ( eng->arg.ctrl.b.phy_skip_check && ( eng->arg.test_mode == 0 ) )
-			eng->dat.Des_Num = 114;//for SMSC's LAN9303 issue
-		else {
-			switch ( eng->arg.run_speed ) {
-				case SET_1GBPS          : eng->dat.Des_Num = ( eng->run.IO_Bund ) ? 100 : ( DES_LowNumber ) ? 512 : 4096; break;
-				case SET_100MBPS        : eng->dat.Des_Num = ( eng->run.IO_Bund ) ? 100 : ( DES_LowNumber ) ? 512 : 4096; break;
-				case SET_10MBPS         : eng->dat.Des_Num = ( eng->run.IO_Bund ) ? 100 : ( DES_LowNumber ) ? 100 :  830; break;
-				case SET_1G_100M_10MBPS : eng->dat.Des_Num = ( eng->run.IO_Bund ) ? 100 : ( DES_LowNumber ) ? 100 :  830; break;
-				case SET_100M_10MBPS    : eng->dat.Des_Num = ( eng->run.IO_Bund ) ? 100 : ( DES_LowNumber ) ? 100 :  830; break;
-			}
-		} // End if ( eng->arg.ctrl.b.phy_skip_check && ( eng->arg.test_mode == 0 ) )
-
-
-		eng->dat.Des_Num_Org = eng->dat.Des_Num;
-		eng->dat.DMABuf_Size = DMA_BufSize; //keep in order: Des_Num --> DMABuf_Size --> DMABuf_Num
-		eng->dat.DMABuf_Num  = DMA_BufNum;  //keep in order: Des_Num --> DMABuf_Size --> DMABuf_Num
-
-		if ( DbgPrn_Info ) {
-			printf("CheckBuf_MBSize : %d\n",       eng->run.CheckBuf_MBSize);
-			printf("LOOP_CheckNum   : %d\n",       eng->run.LOOP_CheckNum);
-			printf("Des_Num         : %d\n",       eng->dat.Des_Num);
-			printf("DMA_BufSize     : %d bytes\n", eng->dat.DMABuf_Size);
-			printf("DMA_BufNum      : %d\n",       eng->dat.DMABuf_Num);
-			printf("DMA_PakSize     : %d\n",        DMA_PakSize);
-			printf("\n");
-		}
-			if ( 2 > eng->dat.DMABuf_Num )
-				return( finish_check( eng, Err_Flag_DMABufNum ) );
-	} // End if ( eng->arg.run_mode == MODE_DEDICATED )
 
 //------------------------------------------------------------
 // Setup Running Parameter

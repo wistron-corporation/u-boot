@@ -267,12 +267,12 @@
 #define DMA_PakSize                            ( 2 * 1024 ) // The size of one LAN packet
 
 #ifdef SelectSimpleBoundary
-  #define DMA_BufSize                            (     ( ( ( ( eng->dat.Des_Num + 15 ) * DMA_PakSize ) >> 2 ) << 2 ) ) //vary by Des_Num
+  #define DMA_BufSize                            (     ( ( ( ( p_eng->dat.Des_Num + 15 ) * DMA_PakSize ) >> 2 ) << 2 ) ) //vary by Des_Num
 #else
-  #define DMA_BufSize                            ( 4 + ( ( ( ( eng->dat.Des_Num + 15 ) * DMA_PakSize ) >> 2 ) << 2 ) ) //vary by Des_Num
+  #define DMA_BufSize                            ( 4 + ( ( ( ( p_eng->dat.Des_Num + 15 ) * DMA_PakSize ) >> 2 ) << 2 ) ) //vary by Des_Num
 #endif
 
-#define DMA_BufNum                               ( ( DRAM_KByteSize * 1024 ) / ( eng->dat.DMABuf_Size ) )                //vary by eng->dat.Des_Num
+#define DMA_BufNum                               ( ( DRAM_KByteSize * 1024 ) / ( p_eng->dat.DMABuf_Size ) )                //vary by eng->dat.Des_Num
 #define GET_DMA_BASE_SETUP                       ( DMA_BASE )
 //#define GET_DMA_BASE(x)                          ( DMA_BASE + ( ( ( ( x ) % eng->dat.DMABuf_Num ) + 1 ) * eng->dat.DMABuf_Size ) )//vary by eng->dat.Des_Num
 #define GET_DMA_BASE(x)                          ( DMA_BASE + ( ( ( ( x ) % eng->dat.DMABuf_Num ) + 1 ) * eng->dat.DMABuf_Size ) + ( ( ( x ) % 7 ) * DMA_PakSize ) )//vary by eng->dat.Des_Num
