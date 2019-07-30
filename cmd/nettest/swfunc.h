@@ -36,14 +36,14 @@
 //#define   DbgPrn_Enable_Debug_pause                //[off]
 //#define DBG_LOG_FUNC_NAME
 #define   DbgPrn_ErrFlg                          0
-#define   DbgPrn_BufAdr                          0 //1
+#define   DbgPrn_BufAdr                          0
 #define   DbgPrn_Bufdat                          0
 #define   DbgPrn_BufdatDetail                    0
 #define   DbgPrn_PHYRW                           0
 #define   DbgPrn_PHYInit                         0
 #define   DbgPrn_PHYName                         0
-#define   DbgPrn_DumpMACCnt                      1
-#define   DbgPrn_Info                            0 //1
+#define   DbgPrn_DumpMACCnt                      0
+#define   DbgPrn_Info                            1
 #define   DbgPrn_FRAME_LEN                       0
 
 #ifdef DBG_LOG_FUNC_NAME

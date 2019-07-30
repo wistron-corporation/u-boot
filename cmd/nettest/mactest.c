@@ -23,6 +23,7 @@
 #include "mem_io.h"
 
 #include "phy_api.h"
+#include "mac_api.h"
 
 #define ARGV_MAC_IDX		1
 #define ARGV_MDIO_IDX		2
@@ -260,9 +261,7 @@ static void print_usage(MAC_ENGINE *p_eng)
 
 static void finish_close(MAC_ENGINE *p_eng) 
 {
-	nt_log_func_name();
-	//if (p_eng->reg.SCU_oldvld)
-	//	recov_scu(p_eng);
+	nt_log_func_name();		
 }
 
 char finish_check(MAC_ENGINE *p_eng, int value) 
@@ -308,27 +307,9 @@ char finish_check(MAC_ENGINE *p_eng, int value)
 
 	finish_close(p_eng);
 
-#if defined(CONFIG_ASPEED_AST2500)
-	reg = Read_Reg_SCU_DD(0x40);
-	if (eng->arg.run_mode == MODE_DEDICATED)
-		shift_value = 18 + p_eng->run.mac_idx;
-	else
-		shift_value = 16 + p_eng->run.mac_idx;
-#endif
-
 	if (p_eng->flg.Err_Flag) {
-		// Fail
-#if defined(CONFIG_ASPEED_AST2500)
-		reg = reg & ~(1 << shift_value);
-		Write_Reg_SCU_DD(0x40, reg);
-#endif
 		return (1);
 	} else {
-		// PASS
-#if defined(CONFIG_ASPEED_AST2500)
-		reg |= (1 << shift_value);
-		Write_Reg_SCU_DD(0x40, reg);
-#endif
 		return (0);
 	}
 }
@@ -701,7 +682,7 @@ static uint32_t setup_running(MAC_ENGINE *p_eng)
 			return (1);
 		}
 
-		if (0 != p_eng->arg.loop_max) {
+		if (0 == p_eng->arg.loop_max) {
 			switch (p_eng->arg.run_speed) {
 			case SET_1GBPS:
 				p_eng->arg.loop_max = DEF_GLOOP_MAX * 20;
@@ -1309,8 +1290,8 @@ void test_start(MAC_ENGINE *p_eng, PHY_ENGINE *p_phy_eng)
 
 				for (td = tbegin; td <= tend; td += tstep) {
 					p_eng->io.Dly_out = td;
+					p_eng->io.Dly_out_selval  = td;
 					if (p_eng->run.IO_MrgChk) {
-						p_eng->io.Dly_out_reg_hit = (p_eng->io.Dly_out_reg == td) ? 1 : 0;						
 						PrintIO_LineS(p_eng, STD_OUT);
 					} // End if (p_eng->run.IO_MrgChk)
 
@@ -1348,7 +1329,6 @@ void test_start(MAC_ENGINE *p_eng, PHY_ENGINE *p_phy_eng)
 							PrintIO_Line(p_eng, STD_OUT);
 
 							FPri_ErrFlag(p_eng, FP_LOG);
-							PrintIO_Line_LOG(p_eng);
 
 							p_eng->flg.Wrn_Flag  = 0;
 							p_eng->flg.Err_Flag  = 0;
@@ -1369,19 +1349,7 @@ void test_start(MAC_ENGINE *p_eng, PHY_ENGINE *p_phy_eng)
 
 				//------------------------------
 				// End
-				//------------------------------
-				printf("IO margin check result:\n");
-				for (rd = rbegin; rd <= rend; rd += rstep) {
-					printf("\n");
-					for (td = tbegin; td <= tend; td += tstep) {
-						if (p_eng->io.dlymap[rd][td]) {
-							printf("x");
-						} else {
-							printf("o");
-						}
-					}
-
-				}
+				//------------------------------				
 #if 0				
 				if (p_eng->run.IO_MrgChk) {
 					for (td = p_eng->io.Dly_out_min; td <= p_eng->io.Dly_out_max; td++)
@@ -1437,6 +1405,30 @@ Find_Err_Flag_IOMargin:
 	p_eng->flg.Des_Flag  = des_flag_allspeed;
 	p_eng->flg.NCSI_Flag = ncsi_flag_allspeed;
 }
+
+void dump_setting(MAC_ENGINE *p_eng)
+{
+	/* dump env */
+	printf("===================\n");
+	printf("p_eng->env\n");
+	printf("ast2600 = %d\n", p_eng->env.ast2600);
+	printf("ast2500 = %d\n", p_eng->env.ast2500);
+	printf("mac_num = %d\n", p_eng->env.mac_num);
+	printf("is_new_mdio_reg = %d %d %d %d\n",
+	       p_eng->env.is_new_mdio_reg[0],
+	       p_eng->env.is_new_mdio_reg[1],
+	       p_eng->env.is_new_mdio_reg[2],
+	       p_eng->env.is_new_mdio_reg[3]);
+	printf("is_1g_valid = %d %d %d %d\n",
+	       p_eng->env.is_1g_valid[0],
+	       p_eng->env.is_1g_valid[1],
+	       p_eng->env.is_1g_valid[2],
+	       p_eng->env.is_1g_valid[3]);
+	printf("at_least_1g_valid = %d\n", p_eng->env.at_least_1g_valid);
+	printf("===================\n");
+
+
+}
 /**
  * @brief nettest main function
 */
@@ -1466,12 +1458,14 @@ int mac_test(int argc, char * const argv[], uint32_t mode)
 
 	setup_running(&mac_eng);
 
+	dump_setting(&mac_eng);
+
 	/* init PHY engine */
 	phy_eng.fp_set = NULL;
 	phy_eng.fp_clr = NULL;
 
 	if (mac_eng.arg.ctrl.b.rmii_50m_out && 0 == mac_eng.run.is_rgmii ) {
-		mac_set_rmii_50m_output_enable();
+		mac_set_rmii_50m_output_enable(&mac_eng);
 	}
 
 	push_reg(&mac_eng);
@@ -1493,15 +1487,9 @@ int mac_test(int argc, char * const argv[], uint32_t mode)
 	}
 
 	/* Data Initial */
-	setup_data(&mac_eng);	
-
-//------------------------------------------------------------
-// main
-//------------------------------------------------------------
+	setup_data(&mac_eng);
 
 	mac_eng.flg.all_fail = 1;
-	memcpy(&mac_eng.run.speed_sel, &mac_eng.run.speed_cfg,
-	       sizeof(uint8_t) * 3);
 	for(int i = 0; i < 3; i++)
 		mac_eng.run.speed_sel[i] = mac_eng.run.speed_cfg[i];
 

@@ -56,6 +56,7 @@ U_BOOT_CMD(ncsitestd, NETESTCMD_MAX_ARGS, 0, do_ncsitestd,
 	   "Share LAN (NC-SI) test program and display more information", NULL);
 
 // ------------------------------------------------------------------------------
+#if 0
 void multi_pin_2_mdcmdio_init( MAC_ENGINE *eng )
 {  
 #if defined(CONFIG_ASPEED_AST2500)
@@ -413,6 +414,7 @@ U_BOOT_CMD(
 	"Setting GPIO to trun on the system for the MACTEST/NCSITEST (OEM)",
 	NULL	
 );
+#endif
 /*
 int do_clkduty (cmd_tbl_t * cmdtp, int flag, int argc, char *argv[])
 {

@@ -472,13 +472,6 @@ typedef struct {
 	uint32_t mac_ladr;
 	uint32_t mac_fear;
 
-	uint32_t MAC_040                       ;
-	uint32_t SCU_088                       ;
-	uint32_t SCU_090                       ;
-	uint32_t SCU_09c                       ;
-	uint32_t SCU_0b8                       ;
-	uint32_t SCU_0bc                       ;
-	uint32_t SCU_0f0                       ;
 	uint32_t WDT_00c                       ;
 	uint32_t WDT_02c                       ;
 	uint32_t WDT_04c                       ;
@@ -737,6 +730,7 @@ typedef struct delay_scan_s {
 	int8_t begin;
 	int8_t end;
 	int8_t step;
+	int8_t orig;
 } delay_scan_t;
 typedef struct {
 	CHAR                 init_done                     ;
@@ -763,7 +757,6 @@ typedef struct {
 	delay_scan_t tx_delay_scan;
 	delay_scan_t rx_delay_scan;	
 
-	uint32_t Dly_reg_idx                   ;
 	char                 Dly_reg_name_tx[32]           ;
 	char                 Dly_reg_name_rx[32]           ;
 	char                 Dly_reg_name_tx_new[32]       ;
@@ -781,8 +774,7 @@ typedef struct {
 	BYTE                 Dly_in_selval                 ;
 	BYTE                 Dly_out                       ;
 	BYTE                 Dly_out_selval                ;
-	uint32_t Dly_val                       ;
-	BYTE                 Dly_out_reg_hit               ;
+	uint32_t Dly_val                       ;	
 	CHAR                 Dly_result                    ;
 	CHAR                 dlymap[64][64]                ;
 } MAC_IO;
@@ -900,15 +892,15 @@ GLOBAL uint32_t Read_Mem_Dat_DD (uint32_t addr);
 GLOBAL uint32_t Read_Mem_Des_DD (uint32_t addr);
 //GLOBAL uint32_t mac_reg_read (MAC_ENGINE *eng, uint32_t addr);
 //GLOBAL uint32_t Read_Reg_PHY_DD (MAC_ENGINE *eng, uint32_t addr);
-GLOBAL uint32_t Read_Reg_SCU_DD_AST2600 (uint32_t addr);
-GLOBAL uint32_t Read_Reg_SCU_DD (uint32_t addr);
+//GLOBAL uint32_t Read_Reg_SCU_DD_AST2600 (uint32_t addr);
+//GLOBAL uint32_t Read_Reg_SCU_DD (uint32_t addr);
 GLOBAL uint32_t Read_Reg_WDT_DD (uint32_t addr);
 GLOBAL uint32_t Read_Reg_SDR_DD (uint32_t addr);
 GLOBAL uint32_t Read_Reg_TIMER_DD (uint32_t addr);
 GLOBAL uint32_t Read_Reg_GPIO_DD (uint32_t addr);
 GLOBAL void Write_Mem_Dat_NCSI_DD (uint32_t addr, uint32_t data);
 GLOBAL void Write_Mem_Des_NCSI_DD (uint32_t addr, uint32_t data);
-GLOBAL void Write_Mem_Dat_DD (uint32_t addr, uint32_t data);
+//GLOBAL void Write_Mem_Dat_DD (uint32_t addr, uint32_t data);
 GLOBAL void Write_Mem_Des_DD (uint32_t addr, uint32_t data);
 //GLOBAL void mac_reg_write (MAC_ENGINE *eng, uint32_t addr, uint32_t data);
 //GLOBAL void Write_Reg_PHY_DD (MAC_ENGINE *eng, uint32_t addr, uint32_t data);
@@ -919,7 +911,7 @@ GLOBAL void Write_Reg_TIMER_DD (uint32_t addr, uint32_t data);
 GLOBAL void Write_Reg_GPIO_DD (uint32_t addr, uint32_t data);
 GLOBAL void    init_iodelay (MAC_ENGINE *eng);
 
-//GLOBAL void    read_scu (MAC_ENGINE *eng);
+
 
 
 
@@ -942,7 +934,7 @@ GLOBAL void    TestingSetup (MAC_ENGINE *eng);
 
 GLOBAL void    init_mac (MAC_ENGINE *eng);
 GLOBAL char TestingLoop (MAC_ENGINE *eng, uint32_t loop_checknum);
-GLOBAL void    PrintIO_Line_LOG (MAC_ENGINE *eng);
+
 GLOBAL void    init_phy (MAC_ENGINE *eng, PHY_ENGINE *phyeng);
 
 
@@ -952,8 +944,8 @@ GLOBAL int     FindErr (MAC_ENGINE *eng, int value);
 GLOBAL int     FindErr_Des (MAC_ENGINE *eng, int value);
 GLOBAL void    PrintIO_Header (MAC_ENGINE *eng, BYTE option);
 
-GLOBAL void    PrintIO_LineS (MAC_ENGINE *eng, BYTE option);
-GLOBAL void    PrintIO_Line (MAC_ENGINE *eng, BYTE option);
+
+
 GLOBAL void    FPri_ErrFlag (MAC_ENGINE *eng, BYTE option);
 
 GLOBAL void init_hwtimer( void );

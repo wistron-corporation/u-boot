@@ -7,3 +7,6 @@ void mac_set_rmii_50m_output_enable(MAC_ENGINE *p_eng);
 int mac_set_scan_boundary(MAC_ENGINE *p_eng);
 void mac_set_addr(MAC_ENGINE *p_eng);
 void mac_set_interal_loopback(MAC_ENGINE *p_eng);
+
+void PrintIO_Line(MAC_ENGINE *p_eng, BYTE option);
+void PrintIO_LineS(MAC_ENGINE *p_eng, BYTE option);
