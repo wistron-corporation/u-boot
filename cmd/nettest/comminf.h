@@ -553,8 +553,8 @@ typedef struct {
 	uint32_t ncsi_tdes_base;
 	uint32_t ncsi_rdes_base;
 
-	CHAR                 Speed_org[3]                  ;//run_speed
-	CHAR                 Speed_sel[3]                  ;
+	uint8_t speed_cfg[3];
+	uint8_t speed_sel[3];
 	uint32_t speed_idx;
 
 	CHAR                 TM_Burst                      ;//test_mode
@@ -827,9 +827,9 @@ typedef struct {
 	uint32_t NCSI_Flag                     ;
 	uint32_t Bak_Err_Flag                  ;
 	uint32_t Bak_NCSI_Flag                 ;
-	CHAR                 Flag_PrintEn                  ;
 	uint32_t CheckDesFail_DesNum           ;
-	CHAR                 AllFail                       ;
+	uint8_t print_en;
+	uint8_t all_fail;
 } MAC_Flag;
 typedef struct {
 	mac_reg_t reg;

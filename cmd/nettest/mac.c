@@ -230,14 +230,18 @@ void debug_pause (void) {
 }
 
 //------------------------------------------------------------
-void dump_mac_ROreg (MAC_ENGINE *eng) {
-#ifdef Delay_MACDump
-	DELAY( Delay_MACDump );
-#endif
+void dump_mac_ROreg(MAC_ENGINE *p_eng) 
+{
+	int i = 0xa0;
+
+	printf("\nMAC%d base 0x%08x", p_eng->run.mac_idx, p_eng->run.mac_base);
+	printf("\n%02x:", i);
+	for (i = 0xa0; i <= 0xc8; i += 4) {
+		printf("%08x ", mac_reg_read(p_eng, i));
+		if ((i & 0xf) == 0xc)
+			printf("\n%02x:", i + 4);
+	}
 	printf("\n");
-	printf("[MAC-H] ROReg A0h~ACh: %08x %08x %08x %08x\n", mac_reg_read( eng, 0xA0 ), mac_reg_read( eng, 0xA4 ), mac_reg_read( eng, 0xA8 ), mac_reg_read( eng, 0xAC ));
-	printf("[MAC-H] ROReg B0h~BCh: %08x %08x %08x %08x\n", mac_reg_read( eng, 0xB0 ), mac_reg_read( eng, 0xB4 ), mac_reg_read( eng, 0xB8 ), mac_reg_read( eng, 0xBC ));
-	printf("[MAC-H] ROReg C0h~C8h: %08x %08x %08x      \n", mac_reg_read( eng, 0xC0 ), mac_reg_read( eng, 0xC4 ), mac_reg_read( eng, 0xC8 ));
 }
 
 //------------------------------------------------------------
@@ -258,7 +262,7 @@ static void get_mac_1g_delay_1(uint32_t addr, int32_t *p_rx_d, int32_t *p_tx_d)
 #endif
 	*p_tx_d = tx_d;
 	*p_rx_d = rx_d;
-	printf("%s:[%08x] %08x, rx_d=%d, tx_d=%d\n", __func__, addr, reg.w,
+	debug("%s:[%08x] %08x, rx_d=%d, tx_d=%d\n", __func__, addr, reg.w,
 	       rx_d, tx_d);
 }
 
@@ -277,7 +281,7 @@ static void get_mac_1g_delay_2(uint32_t addr, int32_t *p_rx_d, int32_t *p_tx_d)
 #endif
 	*p_tx_d = tx_d;
 	*p_rx_d = rx_d;
-	printf("%s:[%08x] %08x, rx_d=%d, tx_d=%d\n", __func__, addr, reg.w,
+	debug("%s:[%08x] %08x, rx_d=%d, tx_d=%d\n", __func__, addr, reg.w,
 	       rx_d, tx_d);
 }
 
@@ -296,7 +300,7 @@ static void get_mac_100_10_delay_1(uint32_t addr, int32_t *p_rx_d, int32_t *p_tx
 #endif
 	*p_tx_d = tx_d;
 	*p_rx_d = rx_d;
-	printf("%s:[%08x] %08x, rx_d=%d, tx_d=%d\n", __func__, addr, reg.w,
+	debug("%s:[%08x] %08x, rx_d=%d, tx_d=%d\n", __func__, addr, reg.w,
 	       rx_d, tx_d);
 }
 
@@ -315,7 +319,7 @@ static void get_mac_100_10_delay_2(uint32_t addr, int32_t *p_rx_d, int32_t *p_tx
 #endif
 	*p_tx_d = tx_d;
 	*p_rx_d = rx_d;
-	printf("%s:[%08x] %08x, rx_d=%d, tx_d=%d\n", __func__, addr, reg.w,
+	debug("%s:[%08x] %08x, rx_d=%d, tx_d=%d\n", __func__, addr, reg.w,
 	       rx_d, tx_d);
 }
 
@@ -327,7 +331,7 @@ static void get_mac_rmii_delay_1(uint32_t addr, int32_t *p_rx_d, int32_t *p_tx_d
 	*p_rx_d = reg.b.rx_delay_1;
 	*p_tx_d = reg.b.rmii_tx_data_at_falling_1;
 
-	printf("%s:[%08x] %08x, rx_d=%d, tx_d=%d\n", __func__, addr, reg.w,
+	debug("%s:[%08x] %08x, rx_d=%d, tx_d=%d\n", __func__, addr, reg.w,
 	       *p_rx_d, *p_tx_d);
 }
 static void get_mac_rmii_delay_2(uint32_t addr, int32_t *p_rx_d, int32_t *p_tx_d)
@@ -338,7 +342,7 @@ static void get_mac_rmii_delay_2(uint32_t addr, int32_t *p_rx_d, int32_t *p_tx_d
 	*p_rx_d = reg.b.rx_delay_2;
 	*p_tx_d = reg.b.rmii_tx_data_at_falling_2;
 
-	printf("%s:[%08x] %08x, rx_d=%d, tx_d=%d\n", __func__, addr, reg.w,
+	debug("%s:[%08x] %08x, rx_d=%d, tx_d=%d\n", __func__, addr, reg.w,
 	       *p_rx_d, *p_tx_d);
 }
 
@@ -425,7 +429,7 @@ void get_mac4_rmii_delay(MAC_ENGINE *p_eng, int32_t *p_rx_d, int32_t *p_tx_d)
 static
 void get_dummy_delay(MAC_ENGINE *p_eng, int32_t *p_rx_d, int32_t *p_tx_d)
 {
-	printf("%s\n", __func__);
+	debug("%s\n", __func__);
 }
 
 /**
@@ -548,7 +552,7 @@ static void set_mac_1g_delay_1(uint32_t addr, int32_t rx_d, int32_t tx_d)
 	reg.b.tx_delay_1 = tx_d;
 	writel(reg.w, addr);
 
-	printf("%s:[%08x] %08x, rx_d=%d, tx_d=%d\n", __func__, addr, reg.w,
+	debug("%s:[%08x] %08x, rx_d=%d, tx_d=%d\n", __func__, addr, reg.w,
 	       rx_d, tx_d);
 }
 
@@ -567,7 +571,7 @@ static void set_mac_1g_delay_2(uint32_t addr, int32_t rx_d, int32_t tx_d)
 	reg.b.tx_delay_2 = tx_d;
 	writel(reg.w, addr);
 
-	printf("%s:[%08x] %08x, rx_d=%d, tx_d=%d\n", __func__, addr, reg.w,
+	debug("%s:[%08x] %08x, rx_d=%d, tx_d=%d\n", __func__, addr, reg.w,
 	       rx_d, tx_d);
 }
 
@@ -586,7 +590,7 @@ static void set_mac_100_10_delay_1(uint32_t addr, int32_t rx_d, int32_t tx_d)
 	reg.b.tx_delay_1 = tx_d;
 	writel(reg.w, addr);
 
-	printf("%s:[%08x] %08x, rx_d=%d, tx_d=%d\n", __func__, addr, reg.w,
+	debug("%s:[%08x] %08x, rx_d=%d, tx_d=%d\n", __func__, addr, reg.w,
 	       rx_d, tx_d);
 }
 
@@ -605,7 +609,7 @@ static void set_mac_100_10_delay_2(uint32_t addr, int32_t rx_d, int32_t tx_d)
 	reg.b.tx_delay_2 = tx_d;
 	writel(reg.w, addr);
 
-	printf("%s:[%08x] %08x, rx_d=%d, tx_d=%d\n", __func__, addr, reg.w,
+	debug("%s:[%08x] %08x, rx_d=%d, tx_d=%d\n", __func__, addr, reg.w,
 	       rx_d, tx_d);
 }
 
@@ -618,7 +622,7 @@ static void set_mac_rmii_delay_1(uint32_t addr, int32_t rx_d, int32_t tx_d)
 	reg.b.rx_delay_1 = rx_d;
 	writel(reg.w, addr);
 
-	printf("%s:[%08x] %08x, rx_d=%d, tx_d=%d\n", __func__, addr, reg.w,
+	debug("%s:[%08x] %08x, rx_d=%d, tx_d=%d\n", __func__, addr, reg.w,
 	       rx_d, tx_d);
 }
 
@@ -631,7 +635,7 @@ static void set_mac_rmii_delay_2(uint32_t addr, int32_t rx_d, int32_t tx_d)
 	reg.b.rx_delay_2 = rx_d;
 	writel(reg.w, addr);
 
-	printf("%s:[%08x] %08x, rx_d=%d, tx_d=%d\n", __func__, addr, reg.w,
+	debug("%s:[%08x] %08x, rx_d=%d, tx_d=%d\n", __func__, addr, reg.w,
 	       rx_d, tx_d);
 }
 
@@ -917,7 +921,12 @@ int mac_set_scan_boundary(MAC_ENGINE *p_eng)
 		p_eng->io.rx_delay_scan.end = rx_max;
 
 	if (p_eng->io.tx_delay_scan.end > tx_max)
-		p_eng->io.tx_delay_scan.end = tx_max;		
+		p_eng->io.tx_delay_scan.end = tx_max;
+
+	debug("RX delay scan boundary:%d ~ %d\n",
+	       p_eng->io.rx_delay_scan.begin, p_eng->io.rx_delay_scan.end);
+	debug("TX delay scan boundary:%d ~ %d\n",
+	       p_eng->io.tx_delay_scan.begin, p_eng->io.tx_delay_scan.end);
 
 	return (0);
 }
@@ -1068,9 +1077,9 @@ void init_mac (MAC_ENGINE *eng)
 	maccr.b.fulldup = 1;
 	maccr.b.crc_apd = 1;
 
-	if (eng->run.Speed_sel[0]) {
+	if (eng->run.speed_sel[0]) {
 		maccr.b.gmac_mode = 1;
-	} else if (eng->run.Speed_sel[1]) {
+	} else if (eng->run.speed_sel[1]) {
 		maccr.b.speed_100 = 1;
 	}
 
@@ -1112,7 +1121,7 @@ void FPri_RegValue (MAC_ENGINE *eng, BYTE option)
 void FPri_End (MAC_ENGINE *eng, BYTE option) 
 {
 	nt_log_func_name();
-	if ((0 == eng->run.is_rgmii) && ( eng->phy.RMIICK_IOMode != 0 ) && eng->run.IO_MrgChk && eng->flg.AllFail ) {
+	if ((0 == eng->run.is_rgmii) && ( eng->phy.RMIICK_IOMode != 0 ) && eng->run.IO_MrgChk && eng->flg.all_fail ) {
 		if ( eng->arg.ctrl.b.rmii_phy_in == 0 ) {
 			PRINTF( option, "\n\n\n\n\n\n[Info] The PHY's RMII reference clock pin is setting to the OUTPUT mode now.\n" );
 			PRINTF( option, "       Maybe you can run the INPUT mode command \"mactest  %d %d %d %d %d %d %d\".\n\n\n\n", eng->arg.mac_idx, eng->arg.run_speed, (eng->arg.ctrl.w | 0x80), eng->arg.loop_max, eng->arg.test_mode, eng->arg.GPHYADR, eng->arg.delay_scan_boundary );
@@ -1121,7 +1130,7 @@ void FPri_End (MAC_ENGINE *eng, BYTE option)
 			PRINTF( option, "\n\n\n\n\n\n[Info] The PHY's RMII reference clock pin is setting to the INPUT mode now.\n" );
 			PRINTF( option, "       Maybe you can run the OUTPUT mode command \"mactest  %d %d %d %d %d %d %d\".\n\n\n\n", eng->arg.mac_idx, eng->arg.run_speed, (eng->arg.ctrl.w & 0x7f), eng->arg.loop_max, eng->arg.test_mode, eng->arg.GPHYADR, eng->arg.delay_scan_boundary );
 		}
-	} // End if ( eng->env.MAC_RMII && ( eng->phy.RMIICK_IOMode != 0 ) && eng->run.IO_MrgChk && eng->flg.AllFail )
+	} // End if ( eng->env.MAC_RMII && ( eng->phy.RMIICK_IOMode != 0 ) && eng->run.IO_MrgChk && eng->flg.all_fail )
 
 	if ( !eng->run.TM_RxDataEn ) {
 	}
@@ -1164,27 +1173,7 @@ void FPri_End (MAC_ENGINE *eng, BYTE option)
 
 	//------------------------------
 	//[Warning] IO Timing
-	//------------------------------	
-	
-		if ((eng->reg.SCU_0b8 != SCU_B8h_AST2500)) {
-			PRINTF(option,
-			       "\n[Warning] SCUB8 == 0x%08x is not the "
-			       "suggestion value 0x%08x.\n",
-			       eng->reg.SCU_0b8, SCU_B8h_AST2500);
-			PRINTF(option,
-			       "          This change at this platform must "
-			       "been proven again by the ASPEED.\n");
-		}
-		if ((eng->reg.SCU_0bc != SCU_BCh_AST2500)) {
-			PRINTF(option,
-			       "\n[Warning] SCUBC == 0x%08x is not the "
-			       "suggestion value 0x%08x.\n",
-			       eng->reg.SCU_0bc, SCU_BCh_AST2500);
-			PRINTF(option,
-			       "          This change at this platform must "
-			       "been proven again by the ASPEED.\n");
-		}
-
+	//------------------------------
 	if ( eng->arg.run_mode == MODE_NCSI ) {
 		PRINTF( option, "\n[Arg] %d %d %d %d %d %d %d {%d}\n", eng->arg.mac_idx, eng->arg.GPackageTolNum, eng->arg.GChannelTolNum, eng->arg.test_mode, eng->arg.delay_scan_boundary, eng->arg.ctrl.w, eng->arg.GARPNumCnt, TIME_OUT_NCSI );
 
@@ -1234,16 +1223,7 @@ void FPri_End (MAC_ENGINE *eng, BYTE option)
 		} // End switch ( eng->ncsi_cap.PCI_DID_VID )
 	}
 	else {
-#if 0		
-		if (eng->arg.loop_inf) {
-			PRINTF( option, "\n[Arg] %d %d %d # %d %d %d %x (%s){%d x:%d %d %d}[%d %d %d] %d\n"  , eng->arg.mac_idx, eng->arg.run_speed, eng->arg.ctrl.w,                     eng->arg.test_mode, eng->arg.GPHYADR, eng->arg.delay_scan_boundary, eng->arg.GUserDVal,  eng->run.TIME_OUT_Des_PHYRatio, TIME_OUT_Des_1G, TIME_OUT_Des_100M, TIME_OUT_Des_10M, eng->run.Loop_rl[0], eng->run.Loop_rl[1], eng->run.Loop_rl[2], eng->dat.Des_Num );
-		}
-		else {
-			PRINTF( option, "\n[Arg] %d %d %d %d %d %d %d %x (%s){%d x:%d %d %d}[%d %d %d] %d\n", eng->arg.mac_idx, eng->arg.run_speed, eng->arg.ctrl.w, eng->arg.loop_max, eng->arg.test_mode, eng->arg.GPHYADR, eng->arg.delay_scan_boundary, eng->arg.GUserDVal, eng->run.TIME_OUT_Des_PHYRatio, TIME_OUT_Des_1G, TIME_OUT_Des_100M, TIME_OUT_Des_10M, eng->run.Loop_rl[0], eng->run.Loop_rl[1], eng->run.Loop_rl[2], eng->dat.Des_Num );
-		}
-#endif		
-
-		PRINTF( option, "[PHY] Adr:%d ID2:%04x ID3:%04x (%s)\n", eng->phy.Adr, eng->phy.PHY_ID2, eng->phy.PHY_ID3, eng->phy.phy_name );
+		PRINTF( option, "[PHY] Adr:%d ID2:%04x ID3:%04x (%s)\n", eng->phy.Adr, eng->phy.PHY_ID2, eng->phy.PHY_ID3, eng->phy.phy_name);
 	} // End if ( eng->arg.run_mode == MODE_NCSI )
 
 
@@ -1254,7 +1234,7 @@ void FPri_End (MAC_ENGINE *eng, BYTE option)
 void FPri_ErrFlag (MAC_ENGINE *eng, BYTE option) 
 {
 	nt_log_func_name();
-	if ( eng->flg.Flag_PrintEn ) {
+	if ( eng->flg.print_en ) {
 		if ( eng->flg.Wrn_Flag ) {
 			if ( eng->flg.Wrn_Flag & Wrn_Flag_IOMarginOUF ) {
 				PRINTF( option, "[Warning] IO timing testing range out of boundary\n" );
@@ -1387,7 +1367,7 @@ void FPri_ErrFlag (MAC_ENGINE *eng, BYTE option)
 				if ( eng->flg.Err_Flag & Err_Flag_NCSI_Package_Num ) { PRINTF( option, "[NCSI] Peckage number expected: %d, real: %d\n", eng->arg.GPackageTolNum, eng->dat.number_pak ); }
 			} // End if ( eng->arg.run_mode == MODE_NCSI )
 		} // End if ( eng->flg.Err_Flag )
-	} // End if ( eng->flg.Flag_PrintEn )
+	} // End if ( eng->flg.print_en )
 } // End void FPri_ErrFlag (MAC_ENGINE *eng, BYTE option)
 
 //------------------------------------------------------------
@@ -1549,7 +1529,7 @@ void setup_arp (MAC_ENGINE *eng)
 	int        i;
 
 	nt_log_func_name();
-	for (i = 0; i < 16; i++ )
+	for (i = 0; i < 16; i++)
 		eng->dat.ARP_data[ i ] = ARP_org_data[ i ];
 
 	eng->dat.ARP_data[ 1 ] = 0x0000ffff
@@ -2211,7 +2191,9 @@ char check_des (MAC_ENGINE *eng, uint32_t bufnum, int checkpoint) {
 //------------------------------------------------------------
 // Print
 //-----------------------------------------------------------
-void PrintIO_Header (MAC_ENGINE *eng, BYTE option) {
+void PrintIO_Header (MAC_ENGINE *eng, BYTE option) 
+{
+	int32_t rx_d, tx_d_cur, rx_d_cur, step;
 
 	if (eng->run.TM_IOStrength) {
 		if (eng->io.drv_upper_bond > 1) {
@@ -2227,40 +2209,43 @@ void PrintIO_Header (MAC_ENGINE *eng, BYTE option) {
 		}
 	}
 
-	if      ( eng->run.Speed_sel[ 0 ] ) { PRINTF( option, "[1G  ]========================================>\n" ); }
-	else if ( eng->run.Speed_sel[ 1 ] ) { PRINTF( option, "[100M]========================================>\n" ); }
+	if      ( eng->run.speed_sel[ 0 ] ) { PRINTF( option, "[1G  ]========================================>\n" ); }
+	else if ( eng->run.speed_sel[ 1 ] ) { PRINTF( option, "[100M]========================================>\n" ); }
 	else                                { PRINTF( option, "[10M ]========================================>\n" ); }
 
 	if ( !(option == FP_LOG) ) {
-		PRINTF( option, "   SCU%2X      ", eng->io.Dly_reg_idx );
+		mac_get_delay(eng, &rx_d_cur, &tx_d_cur);
+		step = eng->io.rx_delay_scan.step;
 
-		for (eng->io.Dly_in = eng->io.rx_delay_scan.begin; eng->io.Dly_in <= eng->io.rx_delay_scan.end; eng->io.Dly_in+=eng->io.rx_delay_scan.step) {
-			eng->io.Dly_in_selval = eng->io.Dly_in;
-			PRINTF( option, "%1x", ( eng->io.Dly_in_selval >> 4 ) );
+		PRINTF(option, "   current RX delay: %d\n", rx_d_cur);
+		PRINTF(option, "   current TX delay: %d\n", tx_d_cur);
+
+		PRINTF(option, "          \n");
+		for (rx_d = eng->io.rx_delay_scan.begin;
+		     rx_d <= eng->io.rx_delay_scan.end; rx_d += step) {
+			PRINTF(option, "%1x", rx_d);
 		}
 
-		PRINTF( option, "\n%s    ", eng->io.Dly_reg_name_rx_new );
-		for ( eng->io.Dly_in = eng->io.rx_delay_scan.begin; eng->io.Dly_in <= eng->io.rx_delay_scan.end; eng->io.Dly_in+=eng->io.rx_delay_scan.step ) {
-			eng->io.Dly_in_selval = eng->io.Dly_in;
-			PRINTF( option, "%1x", eng->io.Dly_in_selval & 0xf );
-		}
-
-		PRINTF( option, "\n              " );
-		for ( eng->io.Dly_in = eng->io.rx_delay_scan.begin; eng->io.Dly_in <= eng->io.rx_delay_scan.end; eng->io.Dly_in+=eng->io.rx_delay_scan.step ) {
-			if ( eng->io.Dly_in_reg_idx == eng->io.Dly_in ) { PRINTF( option, "|" ); }
-			else                                            { PRINTF( option, " " ); }
+		PRINTF(option, "          \n");
+		for (rx_d = eng->io.rx_delay_scan.begin; rx_d <= eng->io.rx_delay_scan.end; rx_d += step) {
+			if (rx_d_cur == rx_d) {
+				PRINTF(option, "|" );
+			} else {
+				PRINTF(option, " " );
+			}
 		}
 		PRINTF( option, "\n");
-	} // End if ( !(option == FP_LOG) )
-} // End void PrintIO_Header (MAC_ENGINE *eng, BYTE option)
+	}
+}
 
 //------------------------------------------------------------
 void PrintIO_LineS (MAC_ENGINE *eng, BYTE option) {
 
-	if ( eng->io.Dly_out_reg_hit )
-		{ PRINTF( option, "%s%02x:-", eng->io.Dly_reg_name_tx_new, eng->io.Dly_out_selval ); }
-	else
-		{ PRINTF( option, "%s%02x: ", eng->io.Dly_reg_name_tx_new, eng->io.Dly_out_selval ); }
+	if (eng->io.Dly_out_reg_hit) { 
+		PRINTF( option, "%s%02x:-", eng->io.Dly_reg_name_tx_new, eng->io.Dly_out_selval ); 
+	} else {
+		PRINTF( option, "%s%02x: ", eng->io.Dly_reg_name_tx_new, eng->io.Dly_out_selval );
+	}
 } // End void PrintIO_LineS (MAC_ENGINE *eng, BYTE option)
 
 //------------------------------------------------------------
@@ -2288,6 +2273,7 @@ void PrintIO_Line(MAC_ENGINE *eng, BYTE option)
 //------------------------------------------------------------
 void PrintIO_Line_LOG (MAC_ENGINE *eng) 
 {
+#if 0	
 	if (eng->io.Dly_result) {
 		PRINTF(FP_LOG, "\n=====>[Check]%s%2x, %s%2x:  X\n",
 		       eng->io.Dly_reg_name_rx, eng->io.Dly_in_selval,
@@ -2297,6 +2283,7 @@ void PrintIO_Line_LOG (MAC_ENGINE *eng)
 		       eng->io.Dly_reg_name_rx, eng->io.Dly_in_selval,
 		       eng->io.Dly_reg_name_tx, eng->io.Dly_out_selval);
 	}
+#endif	
 }
 
 //------------------------------------------------------------
@@ -2452,6 +2439,6 @@ char TestingLoop (MAC_ENGINE *eng, uint32_t loop_checknum)
 	} // End while ( ( eng->run.Loop < eng->run.LOOP_MAX ) || eng->arg.loop_inf )
 	eng->run.Loop_rl[ (int)eng->run.speed_idx ] = eng->run.Loop;
 
-	eng->flg.AllFail = 0;
+	eng->flg.all_fail = 0;
 	return(0);
 } // End char TestingLoop (MAC_ENGINE *eng, uint32_t loop_checknum)

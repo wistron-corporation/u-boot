@@ -947,7 +947,7 @@ char phy_ncsi (MAC_ENGINE *eng) {
 		if ( eng->dat.NCSI_RxEr ) {
 			eng->flg.Wrn_Flag = eng->flg.Wrn_Flag | Wrn_Flag_RxErFloatting;
 			if ( eng->arg.ctrl.b.skip_rx_err ) {
-				eng->flg.AllFail = 0;
+				eng->flg.all_fail = 0;
 				return(0);
 			}
 			else {
@@ -956,7 +956,7 @@ char phy_ncsi (MAC_ENGINE *eng) {
 			}
 		}
 		else {
-			eng->flg.AllFail = 0;
+			eng->flg.all_fail = 0;
 			return(0);
 		}
 	}
