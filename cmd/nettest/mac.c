@@ -92,19 +92,6 @@ uint32_t mac_reg_read(MAC_ENGINE *p_eng, uint32_t addr)
 	return readl(p_eng->run.mac_base + addr);
 }
 
-uint32_t Read_Reg_SCU_DD(uint32_t addr)
-{
-#ifdef CONFIG_ASPEED_AST2600
-	return (0);
-#else
-#ifdef MAC_DEBUG_REGRW_SCU
-	printf("[RegRd-SCU] %08x = %08x\n", SCU_BASE + addr,
-	       SWAP_4B_LEDN_REG(ReadSOC_DD(SCU_BASE + addr)));
-#endif
-	return (SWAP_4B_LEDN_REG(ReadSOC_DD(SCU_BASE + addr)));
-#endif
-}
-
 uint32_t Read_Reg_WDT_DD(uint32_t addr)
 {
 #ifdef MAC_DEBUG_REGRW_WDT
@@ -114,14 +101,7 @@ uint32_t Read_Reg_WDT_DD(uint32_t addr)
 	return (SWAP_4B_LEDN_REG(ReadSOC_DD(WDT_BASE + addr)));
 }
 
-uint32_t Read_Reg_SDR_DD(uint32_t addr)
-{
-#ifdef MAC_DEBUG_REGRW_SDR
-	printf("[RegRd-SDR] %08x = %08x\n", SDR_BASE + addr,
-	       SWAP_4B_LEDN_REG(ReadSOC_DD(SDR_BASE + addr)));
-#endif
-	return (SWAP_4B_LEDN_REG(ReadSOC_DD(SDR_BASE + addr)));
-}
+
 
 uint32_t Read_Reg_TIMER_DD(uint32_t addr)
 {
@@ -177,21 +157,6 @@ void mac_reg_write(MAC_ENGINE *p_eng, uint32_t addr, uint32_t data)
 	writel(data, p_eng->run.mac_base + addr);
 }
 
-void Write_Reg_SCU_DD_AST2600 (uint32_t addr, uint32_t data) {
-#ifdef MAC_DEBUG_REGRW_SCU
-	printf("[RegWr-SCU] %08x = %08x\n", SCU_BASE + addr, SWAP_4B_LEDN_REG( data ));
-#endif
-	WriteSOC_DD( SCU_BASE + addr, SWAP_4B_LEDN_REG( data ) );
-}
-void Write_Reg_SCU_DD (uint32_t addr, uint32_t data) {
-#ifdef CONFIG_ASPEED_AST2600
-#else
-#ifdef MAC_DEBUG_REGRW_SCU
-	printf("[RegWr-SCU] %08x = %08x\n", SCU_BASE + addr, SWAP_4B_LEDN_REG( data ));
-#endif
-	WriteSOC_DD( SCU_BASE + addr, SWAP_4B_LEDN_REG( data ) );
-#endif
-}
 void Write_Reg_WDT_DD (uint32_t addr, uint32_t data) {
 #ifdef MAC_DEBUG_REGRW_WDT
 	printf("[RegWr-WDT] %08x = %08x\n", WDT_BASE + addr, SWAP_4B_LEDN_REG( data ));
@@ -927,52 +892,6 @@ int mac_set_scan_boundary(MAC_ENGINE *p_eng)
 }
 
 //------------------------------------------------------------
-// SCU
-//------------------------------------------------------------
-void read_scu (MAC_ENGINE *eng) 
-{
-	nt_log_func_name();
-
-	if ( !eng->reg.SCU_oldvld ) {
-		//WDT
-		eng->reg.WDT_00c = Read_Reg_WDT_DD( 0x00c );
-		eng->reg.WDT_02c = Read_Reg_WDT_DD( 0x02c );
-		eng->reg.WDT_04c = Read_Reg_WDT_DD( 0x04c );
-
-		eng->reg.SCU_oldvld = 1;
-	} // End if ( !eng->reg.SCU_oldvld )
-
-
-#ifdef CONFIG_ASPEED_AST2600
-	Write_Reg_SCU_DD_AST2600( 0x000 , 0x1688a8a8 );
-	Write_Reg_SCU_DD_AST2600( 0x010 , 0x1688a8a8 );
-//(clock enable) --------------------
-	Write_Reg_SCU_DD_AST2600( 0x084 , 0x00300000 );
-	Write_Reg_SCU_DD_AST2600( 0x094 , 0x00300000 );
-//(Reset) --------------------
-	Write_Reg_SCU_DD_AST2600( 0x040 , 0x00001800 );
-//	Write_Reg_SCU_DD_AST2600( 0x050 , 0x00001800 );//Old
-	Write_Reg_SCU_DD_AST2600( 0x050 , 0x00300000 );//New
-//PMI --------------------
-//	Write_Reg_SCU_DD_AST2600( 0x054 , 0x00002000 );//Old
-	Write_Reg_SCU_DD_AST2600( 0x054 , 0x00000008 );//New
-//(RGMII) --------------------
-/*	Write_Reg_SCU_DD_AST2600( 0x500 , 0x000000c0 );
-	Write_Reg_SCU_DD_AST2600( 0x510 , 0x00000003 );
-*/
-//(RMII) --------------------
-/*
-	Write_Reg_SCU_DD_AST2600( 0x504 , 0x000000c0 );
-	Write_Reg_SCU_DD_AST2600( 0x514 , 0x00000003 );
-*/
-//(Reset) --------------------
-	Write_Reg_SCU_DD_AST2600( 0x044 , 0x00001800 );
-//	Write_Reg_SCU_DD_AST2600( 0x054 , 0x00001800 );//Old
-	Write_Reg_SCU_DD_AST2600( 0x054 , 0x00300000 );//New
-#endif
-} // End read_scu(MAC_ENGINE *eng)
-
-//------------------------------------------------------------
 // MAC
 //------------------------------------------------------------
 void mac_set_addr(MAC_ENGINE *p_eng)
@@ -1082,8 +1001,8 @@ void FPri_RegValue (MAC_ENGINE *eng, BYTE option)
 {
 	nt_log_func_name();
 
-	PRINTF( option, "[SDR] Date:%08x\n", Read_Reg_SDR_DD( 0x88 ) );
-	PRINTF( option, "[SDR]  80:%08x %08x %08x %08x\n", Read_Reg_SDR_DD( 0x80 ), Read_Reg_SDR_DD( 0x84 ), Read_Reg_SDR_DD( 0x88 ), Read_Reg_SDR_DD( 0x8c ) );
+	PRINTF( option, "[SRAM] Date:%08x\n", SRAM_RD( 0x88 ) );
+	PRINTF( option, "[SRAM]  80:%08x %08x %08x %08x\n", SRAM_RD( 0x80 ), SRAM_RD( 0x84 ), SRAM_RD( 0x88 ), SRAM_RD( 0x8c ) );
 	
 	PRINTF( option, "[SCU]  a0:%08x  a4:%08x  b8:%08x  bc:%08x\n", SCU_RD( 0x0a0 ), SCU_RD( 0x0a4 ), SCU_RD( 0x0b8 ), SCU_RD( 0x0bc ));
 

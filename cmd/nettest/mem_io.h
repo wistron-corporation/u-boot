@@ -55,3 +55,5 @@ typedef union {
 		uint32_t reserved_0 : 30;	/* bit[31:2] */
 	}b;
 } hw_strap2_t;
+
+uint32_t SRAM_RD(uint32_t addr);

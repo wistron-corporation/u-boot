@@ -216,7 +216,7 @@ static void print_arg_speed(MAC_ENGINE *p_eng)
 {
 	uint8_t item[32] = "speed[hex]";
 
-	printf("%20s| bit[2]->1G  bit[1]->100M  bit[0]->10M "
+	printf("%20s| bit[0]->1G  bit[1]->100M  bit[2]->10M "
 	       "(default:0x%02lx)\n",
 	       item, DEF_GSPEED);
 }

@@ -92,9 +92,9 @@
 
 #define  DEF_GCTRL                               (( DEF_MAC_LOOP_BACK << 6 ) | ( DEF_SKIP_CHECK_PHY << 5 ) | ( DEF_INTERNAL_LOOP_PHY << 4 ) | ( DEF_INIT_PHY << 3 ) | ( DEF_DIS_RECOVPHY << 2 ))
 
-#define  SET_1GBPS                               BIT(2)
+#define  SET_1GBPS                               BIT(0)
 #define  SET_100MBPS                             BIT(1)
-#define  SET_10MBPS                              BIT(0)
+#define  SET_10MBPS                              BIT(2)
 #define  SET_1G_100M_10MBPS                      (SET_1GBPS | SET_100MBPS | SET_10MBPS)
 #define  SET_100M_10MBPS                         (SET_100MBPS | SET_10MBPS)
 
@@ -888,24 +888,18 @@ static  const  BYTE IOValue_Array_A0[16] = {8,1, 10,3, 12,5, 14,7, 0,9, 2,11, 4,
 GLOBAL void    debug_pause (void);
 GLOBAL uint32_t Read_Mem_Dat_NCSI_DD (uint32_t addr);
 GLOBAL uint32_t Read_Mem_Des_NCSI_DD (uint32_t addr);
-GLOBAL uint32_t Read_Mem_Dat_DD (uint32_t addr);
-GLOBAL uint32_t Read_Mem_Des_DD (uint32_t addr);
-//GLOBAL uint32_t mac_reg_read (MAC_ENGINE *eng, uint32_t addr);
-//GLOBAL uint32_t Read_Reg_PHY_DD (MAC_ENGINE *eng, uint32_t addr);
-//GLOBAL uint32_t Read_Reg_SCU_DD_AST2600 (uint32_t addr);
-//GLOBAL uint32_t Read_Reg_SCU_DD (uint32_t addr);
+
+
+
 GLOBAL uint32_t Read_Reg_WDT_DD (uint32_t addr);
-GLOBAL uint32_t Read_Reg_SDR_DD (uint32_t addr);
+
 GLOBAL uint32_t Read_Reg_TIMER_DD (uint32_t addr);
 GLOBAL uint32_t Read_Reg_GPIO_DD (uint32_t addr);
 GLOBAL void Write_Mem_Dat_NCSI_DD (uint32_t addr, uint32_t data);
 GLOBAL void Write_Mem_Des_NCSI_DD (uint32_t addr, uint32_t data);
 //GLOBAL void Write_Mem_Dat_DD (uint32_t addr, uint32_t data);
 GLOBAL void Write_Mem_Des_DD (uint32_t addr, uint32_t data);
-//GLOBAL void mac_reg_write (MAC_ENGINE *eng, uint32_t addr, uint32_t data);
-//GLOBAL void Write_Reg_PHY_DD (MAC_ENGINE *eng, uint32_t addr, uint32_t data);
-GLOBAL void Write_Reg_SCU_DD_AST2600 (uint32_t addr, uint32_t data);
-GLOBAL void Write_Reg_SCU_DD (uint32_t addr, uint32_t data);
+
 GLOBAL void Write_Reg_WDT_DD (uint32_t addr, uint32_t data);
 GLOBAL void Write_Reg_TIMER_DD (uint32_t addr, uint32_t data);
 GLOBAL void Write_Reg_GPIO_DD (uint32_t addr, uint32_t data);

@@ -62,10 +62,10 @@ void multi_pin_2_mdcmdio_init( MAC_ENGINE *eng )
 #if defined(CONFIG_ASPEED_AST2500)
 	switch (eng->run.mdio_idx) {
 	case 0:
-		Write_Reg_SCU_DD(0x088, (Read_Reg_SCU_DD(0x088) | 0xC0000000));
+		SCU_WR((SCU_RD(0x088) | 0xC0000000), 0x88);
 		break;
 	case 1:
-		Write_Reg_SCU_DD(0x090, (Read_Reg_SCU_DD(0x090) | 0x00000004));
+		SCU_WR((SCU_RD(0x090) | 0x00000004), 0x90);
 		break;
 	default:
 		break;
@@ -430,14 +430,16 @@ int do_clkduty (cmd_tbl_t * cmdtp, int flag, int argc, char *argv[])
 	}
 	argc--;
 
-	Write_Reg_SCU_DD( 0x1DC, 0 );
+	SCU_WR(0,  0x1DC);
 	mac_test( argc, re, MODE_DEDICATED );
-	printf("SCU1DC= %x\n", Read_Reg_SCU_DD(0x1DC) );
+	printf("SCU1DC= %x\n", SCU_RD(0x1DC) );
 
 	for ( i = 0; i < 64; i += temp )
 	{
-		Write_Reg_SCU_DD( 0x1DC, ( ((uint32_t)(i + 0x40) << 16) | ((uint32_t)(i + 0x40) << 8) ) );
-		printf("SCU1DC= %x [%x]\n", Read_Reg_SCU_DD(0x1DC) , (uint32_t)temp );
+		SCU_WR((((uint32_t)(i + 0x40) << 16) | ((uint32_t)(i + 0x40) <<
+			8) ), 0x1DC);
+		
+		printf("SCU1DC= %x [%x]\n", SCU_RD(0x1DC) , (uint32_t)temp );
 		mac_test( argc, re, MODE_DEDICATED );
 	}
 
