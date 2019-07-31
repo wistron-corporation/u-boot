@@ -12,12 +12,7 @@
 #define PHY_C
 //#define PHY_debug
 //#define PHY_debug_set_clr
-//#define Realtek_debug
 
-#ifdef Realtek_debug
-int     GPIO_20h_Value;
-int     GPIO_24h_Value;
-#endif
 
 #include "comminf.h"
 #include "swfunc.h"
@@ -30,6 +25,38 @@ int     GPIO_24h_Value;
 #include "typedef.h"
 
 #include "phy_tbl.h"
+#include "mem_io.h"
+
+#define RTK_DEBUG
+#define RTK_DBG_GPIO		BIT(22)
+#ifdef RTK_DEBUG
+#define RTK_DBG_PRINTF		printf
+#else
+#define RTK_DBG_PRINTF(...)
+#endif
+
+static void rtk_dbg_gpio_set(void)
+{
+#ifdef RTK_DEBUG		
+	GPIO_WR(GPIO_RD(0x20) | RTK_DBG_GPIO, 0x20);
+#endif	
+}
+
+static void rtk_dbg_gpio_clr(void)
+{
+#ifdef RTK_DEBUG		
+	GPIO_WR(GPIO_RD(0x20) & ~RTK_DBG_GPIO, 0x20);
+#endif	
+}
+
+static void rtk_dbg_gpio_init(void)
+{
+#ifdef RTK_DEBUG
+	GPIO_WR(GPIO_RD(0x24) | RTK_DBG_GPIO, 0x24);
+
+	rtk_dbg_gpio_set();
+#endif	
+}
 
 //------------------------------------------------------------
 // PHY R/W basic
@@ -234,19 +261,15 @@ void phy_id (MAC_ENGINE *eng, BYTE option)
 }
 
 //------------------------------------------------------------
-void phy_delay (int dt) {
-#ifdef Realtek_debug
-Write_Reg_GPIO_DD( 0x20, GPIO_20h_Value & 0xffbfffff);
-//      delay_hwtimer( dt );
-#endif
+void phy_delay (int dt) 
+{
+	rtk_dbg_gpio_clr();
+
 #ifdef PHY_debug
         printf("delay %d ms\n", dt);
 #endif
-        DELAY( dt );
-
-#ifdef Realtek_debug
-Write_Reg_GPIO_DD( 0x20, GPIO_20h_Value );
-#endif
+        DELAY(dt);
+	rtk_dbg_gpio_set();
 }
 
 //------------------------------------------------------------
@@ -1078,10 +1101,10 @@ void phy_realtek1 (MAC_ENGINE *eng) {//RTL8211D
 } // End void phy_realtek1 (MAC_ENGINE *eng)
 
 //------------------------------------------------------------
-void recov_phy_realtek2 (MAC_ENGINE *eng) {//RTL8211E
-#ifdef Realtek_debug
-printf ("\nClear RTL8211E [Start] =====>\n");
-#endif
+void recov_phy_realtek2 (MAC_ENGINE *eng)
+{
+	RTK_DBG_PRINTF("\nClear RTL8211E [Start] =====>\n");
+
         if ( eng->run.TM_Burst ) {
                 if ( eng->run.TM_IEEE ) {
                         if ( eng->run.speed_sel[ 0 ] ) {
@@ -1121,34 +1144,10 @@ printf ("\nClear RTL8211E [Start] =====>\n");
         }
         else {
                 if ( eng->run.speed_sel[ 0 ] ) {
-                        //Rev 1.5  //not stable
-//                      phy_write( eng, 31, 0x0000 );
-//                      phy_write( eng,  0, 0x8000 );
-//                      phy_Wait_Reset_Done( eng );
-//                      phy_delay(30);
-//                      phy_write( eng, 23, 0x2160 );
-//                      phy_write( eng, 31, 0x0007 );
-//                      phy_write( eng, 30, 0x0040 );
-//                      phy_write( eng, 24, 0x0004 );
-//                      phy_write( eng, 24, 0x1a24 );
-//                      phy_write( eng, 25, 0xfd00 );
-//                      phy_write( eng, 24, 0x0000 );
-//                      phy_write( eng, 31, 0x0000 );
-//                      phy_write( eng,  0, 0x1140 );
-//                      phy_write( eng, 26, 0x0040 );
-//                      phy_write( eng, 31, 0x0007 );
-//                      phy_write( eng, 30, 0x002f );
-//                      phy_write( eng, 23, 0xd88f );
-//                      phy_write( eng, 30, 0x0023 );
-//                      phy_write( eng, 22, 0x0300 );
-//                      phy_write( eng, 31, 0x0000 );
-//                      phy_write( eng, 21, 0x1006 );
-//                      phy_write( eng, 23, 0x2100 );
-
                         //Rev 1.6
                         phy_write( eng, 31, 0x0000 );
                         phy_write( eng,  0, 0x8000 );
-#ifdef Realtek_debug
+#ifdef RTK_DEBUG
 #else
                         phy_Wait_Reset_Done( eng );
                         phy_delay(30);
@@ -1184,34 +1183,33 @@ printf ("\nClear RTL8211E [Start] =====>\n");
                         phy_write( eng, 31, 0x0000 );
                         phy_write( eng,  0, 0x1140 );
                 }
-#ifdef Realtek_debug
+#ifdef RTK_DEBUG
 #else
                 // Check register 0x11 bit10 Link OK or not OK
                 phy_check_register ( eng, 17, 0x0c02, 0x0000, 10, "clear RTL8211E");
 #endif
         }
-#ifdef Realtek_debug
-printf ("\nClear RTL8211E [End] =====>\n");
-#endif
+
+	RTK_DBG_PRINTF("\nClear RTL8211E [End] =====>\n");
 } // End void recov_phy_realtek2 (MAC_ENGINE *eng)
 
 //------------------------------------------------------------
 //internal loop 1G  : no  loopback stub
 //internal loop 100M: no  loopback stub
 //internal loop 10M : no  loopback stub
-void phy_realtek2 (MAC_ENGINE *eng) {//RTL8211E
+// for RTL8211E
+void phy_realtek2 (MAC_ENGINE *eng) 
+{
         uint16_t     check_value;
-#ifdef Realtek_debug
-printf ("\nSet RTL8211E [Start] =====>\n");
-GPIO_20h_Value = Read_Reg_GPIO_DD( 0x20 );
-GPIO_24h_Value = Read_Reg_GPIO_DD( 0x24 ) | 0x00400000;
 
-Write_Reg_GPIO_DD( 0x24, GPIO_24h_Value );
-#endif
+	RTK_DBG_PRINTF("\nSet RTL8211E [Start] =====>\n");
+
+	rtk_dbg_gpio_init();	
+
         if ( DbgPrn_PHYName )
                 printf("--->(%04x %04x)[Realtek] %s\n", eng->phy.PHY_ID2, eng->phy.PHY_ID3, eng->phy.phy_name);
 
-#ifdef Realtek_debug
+#ifdef RTK_DEBUG
 #else
         phy_write( eng, 31, 0x0000 );
         phy_Read_Write( eng,  0, 0x0000, 0x8000 | eng->phy.PHY_00h ); // clr set // Rst PHY
@@ -1280,7 +1278,7 @@ Write_Reg_GPIO_DD( 0x24, GPIO_24h_Value );
                 }
         }
         else if ( eng->phy.loop_phy ) {
-#ifdef Realtek_debug
+#ifdef RTK_DEBUG
                 phy_write( eng,  0, 0x0000 );
                 phy_write( eng,  0, 0x8000 );
                 phy_delay(60);
@@ -1301,50 +1299,17 @@ Write_Reg_GPIO_DD( 0x24, GPIO_24h_Value );
 #ifdef Enable_Dual_Mode
                 if ( eng->run.speed_sel[ 0 ] ) {
                         check_value = 0x0c02 | 0xa000;
-                        //set GPIO
                 }
                 else if ( eng->run.speed_sel[ 1 ] ) {
                         check_value = 0x0c02 | 0x6000;
-                        //set GPIO
                 }
                 else if ( eng->run.speed_sel[ 2 ] ) {
                         check_value = 0x0c02 | 0x2000;
-                        //set GPIO
                 }
 #else
                 if ( eng->run.speed_sel[ 0 ] ) {
-                        check_value = 0x0c02 | 0xa000;
-                        //Rev 1.5  //not stable
-//                      phy_write( eng, 23, 0x2160 );
-//                      phy_write( eng, 31, 0x0007 );
-//                      phy_write( eng, 30, 0x0040 );
-//                      phy_write( eng, 24, 0x0004 );
-//                      phy_write( eng, 24, 0x1a24 );
-//                      phy_write( eng, 25, 0x7d00 );
-//                      phy_write( eng, 31, 0x0000 );
-//                      phy_write( eng, 23, 0x2100 );
-//                      phy_write( eng, 31, 0x0007 );
-//                      phy_write( eng, 30, 0x0040 );
-//                      phy_write( eng, 24, 0x0000 );
-//                      phy_write( eng, 30, 0x0023 );
-//                      phy_write( eng, 22, 0x0006 );
-//                      phy_write( eng, 31, 0x0000 );
-//                      phy_write( eng,  0, 0x0140 );
-//                      phy_write( eng, 26, 0x0060 );
-//                      phy_write( eng, 31, 0x0007 );
-//                      phy_write( eng, 30, 0x002f );
-//                      phy_write( eng, 23, 0xd820 );
-//                      phy_write( eng, 31, 0x0000 );
-//                      phy_write( eng, 21, 0x0206 );
-//                      phy_write( eng, 23, 0x2120 );
-//                      phy_write( eng, 23, 0x2160 );
-
-                        //Rev 1.6
-//                      phy_write( eng, 31, 0x0000 );
-//                      phy_write( eng,  0, 0x8000 );
-//                      phy_Wait_Reset_Done( eng );
-//                      phy_delay(30);
-  #ifdef Realtek_debug
+                        check_value = 0x0c02 | 0xa000;                
+#ifdef RTK_DEBUG
                         phy_write( eng, 31, 0x0000 );
                         phy_write( eng,  0, 0x8000 );
                         phy_delay(60);
@@ -1365,7 +1330,7 @@ Write_Reg_GPIO_DD( 0x24, GPIO_24h_Value );
                         phy_write( eng, 21, 0x0206 );
                         phy_write( eng, 23, 0x2120 );
                         phy_write( eng, 23, 0x2160 );
-  #ifdef Realtek_debug
+  #ifdef RTK_DEBUG
                         phy_delay(600);
   #else
                         phy_delay(300);
@@ -1394,22 +1359,21 @@ Write_Reg_GPIO_DD( 0x24, GPIO_24h_Value );
                                 check_value = 0x0c02 | 0x2000;
                         phy_write( eng, 31, 0x0000 );
                         phy_write( eng,  0, eng->phy.PHY_00h );
-  #ifdef Realtek_debug
+  #ifdef RTK_DEBUG
                         phy_delay(300);
   #else
                         phy_delay(150);
   #endif
                 }
 #endif
-#ifdef Realtek_debug
+#ifdef RTK_DEBUG
 #else
                 // Check register 0x11 bit10 Link OK or not OK
                 phy_check_register ( eng, 17, 0x0c02 | 0xe000, check_value, 10, "set RTL8211E");
 #endif
         }
-#ifdef Realtek_debug
-printf ("\nSet RTL8211E [End] =====>\n");
-#endif
+
+	RTK_DBG_PRINTF("\nSet RTL8211E [End] =====>\n");
 } // End void phy_realtek2 (MAC_ENGINE *eng)
 
 //------------------------------------------------------------
@@ -1673,10 +1637,10 @@ void phy_realtek4 (MAC_ENGINE *eng) {//RTL8201F
 }
 
 //------------------------------------------------------------
-void recov_phy_realtek5 (MAC_ENGINE *eng) {//RTL8211F
-#ifdef Realtek_debug
-printf ("\nClear RTL8211F [Start] =====>\n");
-#endif
+/* for RTL8211F */
+void recov_phy_realtek5 (MAC_ENGINE *eng) 
+{
+	RTK_DBG_PRINTF("\nClear RTL8211F [Start] =====>\n");
         if ( eng->run.TM_Burst ) {
                 if ( eng->run.TM_IEEE ) {
                         if ( eng->run.speed_sel[ 0 ] ) {
@@ -1731,7 +1695,7 @@ printf ("\nClear RTL8211F [Start] =====>\n");
                         phy_write( eng,  0, 0x1040 );
                 }
 
-#ifdef Realtek_debug
+#ifdef RTK_DEBUG
 #else
                 // Check register 0x1A bit2 Link OK or not OK
                 phy_write( eng, 31, 0x0a43 );
@@ -1739,17 +1703,15 @@ printf ("\nClear RTL8211F [Start] =====>\n");
                 phy_write( eng, 31, 0x0000 );
 #endif
         }
-#ifdef Realtek_debug
-printf ("\nClear RTL8211F [End] =====>\n");
-#endif
+
+	RTK_DBG_PRINTF("\nClear RTL8211F [End] =====>\n");
 }
 
 //------------------------------------------------------------
 void phy_realtek5 (MAC_ENGINE *eng) {//RTL8211F
         uint16_t     check_value;
-#ifdef Realtek_debug
-printf ("\nSet RTL8211F [Start] =====>\n");
-#endif
+
+	RTK_DBG_PRINTF("\nSet RTL8211F [Start] =====>\n");
         if ( DbgPrn_PHYName )
                 printf("--->(%04x %04x)[Realtek] %s\n", eng->phy.PHY_ID2, eng->phy.PHY_ID3, eng->phy.phy_name);
 
@@ -1831,7 +1793,7 @@ printf ("\nSet RTL8211F [Start] =====>\n");
                         //Rev 1.1
                         phy_write( eng, 31, 0x0a43 );
                         phy_write( eng,  0, 0x8000 );
-#ifdef Realtek_debug
+#ifdef RTK_DEBUG
                         phy_delay(60);
 #else
                         phy_Wait_Reset_Done( eng );
@@ -1840,7 +1802,7 @@ printf ("\nSet RTL8211F [Start] =====>\n");
 
                         phy_write( eng,  0, 0x0140 );
                         phy_write( eng, 24, 0x2d18 );
-#ifdef Realtek_debug
+#ifdef RTK_DEBUG
                         phy_delay(600);
 #else
                         phy_delay(300);
@@ -1877,7 +1839,7 @@ printf ("\nSet RTL8211F [Start] =====>\n");
                                 check_value = 0x0004 | 0x0018;
                         else
                                 check_value = 0x0004 | 0x0008;
-#ifdef Realtek_debug
+#ifdef RTK_DEBUG
 #else
                         phy_write( eng, 31, 0x0a43 );
                         phy_write( eng,  0, 0x8000 );
@@ -1887,14 +1849,14 @@ printf ("\nSet RTL8211F [Start] =====>\n");
 
                         phy_write( eng, 31, 0x0000 );
                         phy_write( eng,  0, eng->phy.PHY_00h );
-#ifdef Realtek_debug
+#ifdef RTK_DEBUG
                         phy_delay(300);
 #else
                         phy_delay(150);
 #endif
                 }
 
-#ifdef Realtek_debug
+#ifdef RTK_DEBUG
 #else
                 // Check register 0x1A bit2 Link OK or not OK
                 phy_write( eng, 31, 0x0a43 );
@@ -1902,9 +1864,8 @@ printf ("\nSet RTL8211F [Start] =====>\n");
                 phy_write( eng, 31, 0x0000 );
 #endif
         }
-#ifdef Realtek_debug
-printf ("\nSet RTL8211F [End] =====>\n");
-#endif
+
+	RTK_DBG_PRINTF("\nSet RTL8211F [End] =====>\n");
 }
 
 //------------------------------------------------------------

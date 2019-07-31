@@ -22,20 +22,25 @@
 #define MDIO3_BASE	(PMI_BASE + 0x18)
 #endif
 
+#define GPIO_BASE	0x1e780000
+
 /* macros for register access */
 #define SCU_RD(offset)          readl(SCU_BASE + offset)
 #define SCU_WR(value, offset)   writel(value, SCU_BASE + offset)
 
-#define MAC1_RD(offset)          readl(MAC1_BASE + offset)
-#define MAC1_WR(value, offset)   writel(value, MAC1_BASE + offset)
-#define MAC2_RD(offset)          readl(MAC2_BASE + offset)
-#define MAC2_WR(value, offset)   writel(value, MAC2_BASE + offset)
+#define MAC1_RD(offset)		readl(MAC1_BASE + offset)
+#define MAC1_WR(value, offset)	writel(value, MAC1_BASE + offset)
+#define MAC2_RD(offset)		readl(MAC2_BASE + offset)
+#define MAC2_WR(value, offset)	writel(value, MAC2_BASE + offset)
 #ifdef CONFIG_ASPEED_AST2600
-#define MAC3_RD(offset)          readl(MAC3_BASE + offset)
-#define MAC3_WR(value, offset)   writel(value, MAC3_BASE + offset)
-#define MAC4_RD(offset)          readl(MAC4_BASE + offset)
-#define MAC4_WR(value, offset)   writel(value, MAC4_BASE + offset)
+#define MAC3_RD(offset)		readl(MAC3_BASE + offset)
+#define MAC3_WR(value, offset)	writel(value, MAC3_BASE + offset)
+#define MAC4_RD(offset)		readl(MAC4_BASE + offset)
+#define MAC4_WR(value, offset)	writel(value, MAC4_BASE + offset)
 #endif
+
+#define GPIO_RD(offset)		readl(GPIO_BASE + offset)
+#define GPIO_WR(value, offset)	writel(value, GPIO_BASE + offset)
 /* typedef for register access */
 typedef union {
 	uint32_t w;

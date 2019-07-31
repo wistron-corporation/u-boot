@@ -401,10 +401,10 @@ U_BOOT_CMD(
 // ------------------------------------------------------------------------------
 int do_macgpio (cmd_tbl_t * cmdtp, int flag, int argc, char *argv[])
 {
-	Write_Reg_GPIO_DD( 0x78 , Read_Reg_GPIO_DD( 0x78 ) & 0xf7bfffff );
-	Write_Reg_GPIO_DD( 0x7c , Read_Reg_GPIO_DD( 0x7c ) | 0x08400000 );
+	GPIO_WR(GPIO_RD( 0x78 ) & 0xf7bfffff, 0x78);
+	GPIO_WR(GPIO_RD( 0x7c ) | 0x08400000, 0x7c);
 	DELAY( 100 );
-	Write_Reg_GPIO_DD( 0x78 , Read_Reg_GPIO_DD( 0x78 ) | 0x08400000 );
+	GPIO_WR(GPIO_RD( 0x78 ) | 0x08400000, 0x78);
 
 	return 0;
 }

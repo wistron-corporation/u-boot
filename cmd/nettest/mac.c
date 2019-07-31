@@ -101,26 +101,6 @@ uint32_t Read_Reg_WDT_DD(uint32_t addr)
 	return (SWAP_4B_LEDN_REG(ReadSOC_DD(WDT_BASE + addr)));
 }
 
-
-
-uint32_t Read_Reg_TIMER_DD(uint32_t addr)
-{
-#ifdef MAC_DEBUG_REGRW_TIMER
-	printf("[RegRd-TIMER] %08x = %08x\n", TIMER_BASE + addr,
-	       SWAP_4B_LEDN_REG(ReadSOC_DD(TIMER_BASE + addr)));
-#endif
-	return (SWAP_4B_LEDN_REG(ReadSOC_DD(TIMER_BASE + addr)));
-}
-
-uint32_t Read_Reg_GPIO_DD(uint32_t addr)
-{
-#ifdef MAC_DEBUG_REGRW_GPIO
-	printf("[RegRd-GPIO] %08x = %08x\n", GPIO_BASE + addr,
-	       SWAP_4B_LEDN_REG(ReadSOC_DD(GPIO_BASE + addr)));
-#endif
-	return (SWAP_4B_LEDN_REG(ReadSOC_DD(GPIO_BASE + addr)));
-}
-
 //------------------------------------------------------------
 // Write Memory
 //------------------------------------------------------------
@@ -168,12 +148,6 @@ void Write_Reg_TIMER_DD (uint32_t addr, uint32_t data) {
 	printf("[RegWr-TIMER] %08x = %08x\n", TIMER_BASE + addr, SWAP_4B_LEDN_REG( data ));
 #endif
 	WriteSOC_DD( TIMER_BASE + addr, SWAP_4B_LEDN_REG( data ) );
-}
-void Write_Reg_GPIO_DD (uint32_t addr, uint32_t data) {
-#ifdef MAC_DEBUG_REGRW_GPIO
-	printf("[RegWr-GPIO]%08x: %08x\n", GPIO_BASE + addr, SWAP_4B_LEDN_REG( data ));
-#endif
-	WriteSOC_DD( GPIO_BASE + addr, SWAP_4B_LEDN_REG( data ) );
 }
 
 //------------------------------------------------------------

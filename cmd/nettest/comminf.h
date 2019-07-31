@@ -893,16 +893,16 @@ GLOBAL uint32_t Read_Mem_Des_NCSI_DD (uint32_t addr);
 
 GLOBAL uint32_t Read_Reg_WDT_DD (uint32_t addr);
 
-GLOBAL uint32_t Read_Reg_TIMER_DD (uint32_t addr);
-GLOBAL uint32_t Read_Reg_GPIO_DD (uint32_t addr);
+
+
 GLOBAL void Write_Mem_Dat_NCSI_DD (uint32_t addr, uint32_t data);
 GLOBAL void Write_Mem_Des_NCSI_DD (uint32_t addr, uint32_t data);
 //GLOBAL void Write_Mem_Dat_DD (uint32_t addr, uint32_t data);
-GLOBAL void Write_Mem_Des_DD (uint32_t addr, uint32_t data);
+//GLOBAL void Write_Mem_Des_DD (uint32_t addr, uint32_t data);
 
 GLOBAL void Write_Reg_WDT_DD (uint32_t addr, uint32_t data);
 GLOBAL void Write_Reg_TIMER_DD (uint32_t addr, uint32_t data);
-GLOBAL void Write_Reg_GPIO_DD (uint32_t addr, uint32_t data);
+
 GLOBAL void    init_iodelay (MAC_ENGINE *eng);
 
 
