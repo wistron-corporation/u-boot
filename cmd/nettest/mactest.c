@@ -221,6 +221,18 @@ static void print_arg_speed(MAC_ENGINE *p_eng)
 	       item, DEF_GSPEED);
 }
 
+static void print_arg_mdio_idx(MAC_ENGINE *p_eng) 
+{
+	uint8_t item[32] = "mdio_idx[dec]";
+
+	printf("%20s| 0->MDIO1 1->MDIO2", item);
+	
+	if (p_eng->env.mac_num > 2) {
+		printf(" 2->MDIO3 3->MDIO4");
+	}
+	printf("\n");
+}
+
 static void print_arg_mac_idx(MAC_ENGINE *p_eng) 
 {
 	uint8_t item[32] = "mac_idx[dec]";
@@ -239,6 +251,7 @@ static void print_usage(MAC_ENGINE *p_eng)
 		printf("mactest <idx> <run_speed> <ctrl> <loop_max> <test "
 		       "mode> <phy addr> <timing boundary> <user data>\n");
 		print_arg_mac_idx(p_eng);
+		print_arg_mdio_idx(p_eng);
 		print_arg_speed(p_eng);
 		print_arg_ctrl(p_eng);
 		print_arg_loop(p_eng);
@@ -249,6 +262,7 @@ static void print_usage(MAC_ENGINE *p_eng)
 		printf("ncsitest <idx> <packet num> <channel num> <test mode>"
 		       "<timing boundary> <ctrl> <ARP num>\n");
 		print_arg_mac_idx(p_eng);
+		print_arg_mdio_idx(p_eng);
 		print_arg_package_num(p_eng);
 		print_arg_channel_num(p_eng);
 		print_arg_test_mode(p_eng);
@@ -827,6 +841,8 @@ static uint32_t setup_running(MAC_ENGINE *p_eng)
 		if (2 > p_eng->dat.DMABuf_Num)
 			return (finish_check(p_eng, Err_Flag_DMABufNum));
 	}
+
+	return 0;
 }
 
 /**
@@ -922,7 +938,7 @@ static uint32_t setup_env(MAC_ENGINE *p_eng)
 	return 0;
 }
 
-static push_reg(MAC_ENGINE *p_eng)
+static void push_reg(MAC_ENGINE *p_eng)
 {
 	/* SCU delay settings */
 	p_eng->io.mac12_1g_delay.value.w = readl(p_eng->io.mac12_1g_delay.addr);
@@ -1097,30 +1113,33 @@ static uint32_t parse_arg_dedicated(int argc, char *const argv[],
 				    MAC_ENGINE *p_eng) 
 {
 	switch (argc) {
+	case 10:
+		p_eng->arg.GUserDVal = simple_strtol(argv[9], NULL, 16);
 	case 9:
-		p_eng->arg.GUserDVal = simple_strtol(argv[8], NULL, 16);
-	case 8:
-		p_eng->arg.delay_scan_boundary = simple_strtol(argv[7], NULL, 10);
+		p_eng->arg.delay_scan_boundary = simple_strtol(argv[8], NULL, 10);
 		p_eng->arg.ieee_sel = p_eng->arg.delay_scan_boundary;
+	case 8:
+		p_eng->arg.GPHYADR = simple_strtol(argv[7], NULL, 10);
 	case 7:
-		p_eng->arg.GPHYADR = simple_strtol(argv[6], NULL, 10);
-	case 6:
-		p_eng->arg.test_mode = simple_strtol(argv[5], NULL, 16);
+		p_eng->arg.test_mode = simple_strtol(argv[6], NULL, 16);
 		printf("test mode = %d\n", p_eng->arg.test_mode);
-	case 5:
-		if (0 == strcmp(argv[4], "#")) {
+	case 6:
+		if (0 == strcmp(argv[5], "#")) {
 			p_eng->arg.loop_inf = 1;
 			printf("loop max = INF\n");
 		} else {
-			p_eng->arg.loop_max = simple_strtol(argv[4], NULL, 10);
+			p_eng->arg.loop_max = simple_strtol(argv[5], NULL, 10);
 			printf("loop max = %d\n", p_eng->arg.loop_max);
 		}
-	case 4:
-		p_eng->arg.ctrl.w = simple_strtol(argv[3], NULL, 16);
+	case 5:
+		p_eng->arg.ctrl.w = simple_strtol(argv[4], NULL, 16);
 		printf("ctrl=0x%02x\n", p_eng->arg.ctrl.w);
-	case 3:
-		p_eng->arg.run_speed = simple_strtol(argv[2], NULL, 16);
+	case 4:
+		p_eng->arg.run_speed = simple_strtol(argv[3], NULL, 16);
 		printf("run_speed=0x%02x\n", p_eng->arg.run_speed);
+	case 3:
+		p_eng->arg.mdio_idx = simple_strtol(argv[2], NULL, 10);
+		printf("mdio_idx=%d\n", p_eng->arg.mdio_idx);		
 	}
 
 	return 0;
@@ -1180,6 +1199,8 @@ static uint32_t setup_data(MAC_ENGINE *p_eng)
 	if (!p_eng->run.is_rgmii)
 		if (mac_set_scan_boundary(p_eng))
 			return (finish_check(p_eng, 0));
+
+	return 0;			
 }
 
 static uint32_t get_time_out_desc(MAC_ENGINE *p_eng)
@@ -1449,7 +1470,7 @@ int mac_test(int argc, char * const argv[], uint32_t mode)
 
 	mac_eng.arg.mac_idx = simple_strtol(argv[1], NULL, 16);
 
-	/* FIXME: add new argv to indicate MDIO index */
+	/* default mdio_idx = mac_idx */
 	mac_eng.arg.mdio_idx = mac_eng.arg.mac_idx;
 	if (MODE_DEDICATED == mode)
 		parse_arg_dedicated(argc, argv, &mac_eng);
