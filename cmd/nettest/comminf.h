@@ -167,11 +167,13 @@
 #define RESV_SIZE			0x00000000		/* reserved */
 
 #define DRAM_BASE			0x80000000
+#if 0
 #define BUF_BASE			(DRAM_BASE)
 #define TDES_BASE			(BUF_BASE + BUF_SIZE)
 #define RDES_BASE			(TDES_BASE + TDES_SIZE)
 #define RESV_BASE			(RDES_BASE + RDES_SIZE)
 #define DMA_BASE 			(RESV_BASE + RESV_SIZE)
+#endif
 
 #define TDES_IniVal (0xb0000000 + eng->dat.FRAME_LEN_Cur)
 #define RDES_IniVal (0x00000fff)
@@ -180,8 +182,8 @@
 #define HWOwnRx(dat) ((dat & 0x80000000) == 0)
 #define HWEOR(dat) (dat & 0x40000000)
 
-#define AT_MEMRW_BUF(x) ((x) - BUF_BASE)
-#define AT_BUF_MEMRW(x) ((x) + BUF_BASE)
+#define AT_MEMRW_BUF(x) ((x) - DRAM_BASE)
+#define AT_BUF_MEMRW(x) ((x) + DRAM_BASE)
 
 //---------------------------------------------------------
 // Error Flag Bits
@@ -259,8 +261,10 @@
 //---------------------------------------------------------
 // DMA Buffer information
 //---------------------------------------------------------
-#define DRAM_KByteSize				(56 * 1024)
+#define DMA_BUF_SIZE				(56 * 1024 * 1024)
 
+#define DMA_BASE				((uint32_t)(&dma_buf[0]))
+extern uint8_t __attribute__ ((aligned (1024*1024))) dma_buf[DMA_BUF_SIZE];
 /* The size of one LAN packet */
 #define DMA_PakSize 				(2 * 1024)
 
@@ -270,11 +274,10 @@
 #define DMA_BufSize                                                            \
 	(4 + ((((p_eng->dat.Des_Num + 15) * DMA_PakSize) >> 2) << 2))
 #endif
-
-#define DMA_BufNum                               ( ( DRAM_KByteSize * 1024 ) / ( p_eng->dat.DMABuf_Size ) )                //vary by eng->dat.Des_Num
-#define GET_DMA_BASE_SETUP                       ( DMA_BASE )
+#define DMA_BufNum                               ( DMA_BUF_SIZE / ( p_eng->dat.DMABuf_Size ) )                //vary by eng->dat.Des_Num
+#define GET_DMA_BASE_SETUP                       ((uint32_t)(&dma_buf[0]))
+#define GET_DMA_BASE(x)                          (GET_DMA_BASE_SETUP + ( ( ( ( x ) % eng->dat.DMABuf_Num ) + 1 ) * eng->dat.DMABuf_Size ) + ( ( ( x ) % 7 ) * DMA_PakSize ) )
 //#define GET_DMA_BASE(x)                          ( DMA_BASE + ( ( ( ( x ) % eng->dat.DMABuf_Num ) + 1 ) * eng->dat.DMABuf_Size ) )//vary by eng->dat.Des_Num
-#define GET_DMA_BASE(x)                          ( DMA_BASE + ( ( ( ( x ) % eng->dat.DMABuf_Num ) + 1 ) * eng->dat.DMABuf_Size ) + ( ( ( x ) % 7 ) * DMA_PakSize ) )//vary by eng->dat.Des_Num
 
 #define SEED_START                               8
 #define DATA_SEED(seed)                          ( ( seed ) | (( seed + 1 ) << 16 ) )
@@ -521,7 +524,7 @@ typedef struct {
 	uint32_t mac_base;
 	uint32_t mdio_idx;
 	uint32_t mdio_base;
-	uint8_t is_rgmii;
+	uint32_t is_rgmii;
 	uint32_t ieee_sel;		/* derived from delay_scan_range */
 
 	uint32_t tdes_base;
@@ -530,9 +533,20 @@ typedef struct {
 	uint32_t ncsi_tdes_base;
 	uint32_t ncsi_rdes_base;
 
+	uint32_t LOOP_CheckNum                 ;
+	uint32_t CheckBuf_MBSize               ;
+	uint32_t TIME_OUT_Des                  ;
+	uint32_t TIME_OUT_Des_PHYRatio         ;
+
+	int                  Loop_ofcnt                    ;
+	int                  Loop                          ;
+	int                  Loop_rl[3]                    ;
+	uint32_t speed_idx;
+	int                  NCSI_RxTimeOutScale           ;
+
+	int                  LOOP_MAX                      ;
 	uint8_t speed_cfg[3];
 	uint8_t speed_sel[3];
-	uint32_t speed_idx;
 
 	CHAR                 TM_Burst                      ;//test_mode
 	CHAR                 TM_IEEE                       ;//test_mode
@@ -548,17 +562,6 @@ typedef struct {
 	CHAR                 IO_MrgChk                     ;
 
 
-	int                  NCSI_RxTimeOutScale           ;
-
-	int                  LOOP_MAX                      ;
-	uint32_t LOOP_CheckNum                 ;
-	uint32_t CheckBuf_MBSize               ;
-	uint32_t TIME_OUT_Des                  ;
-	uint32_t TIME_OUT_Des_PHYRatio         ;
-
-	int                  Loop_ofcnt                    ;
-	int                  Loop                          ;
-	int                  Loop_rl[3]                    ;
 } MAC_Running;
 typedef struct {
 	CHAR                 SA[6]                         ;	
@@ -746,10 +749,11 @@ typedef struct {
 	char                 Dly_reg_name_tx_new[32]       ;
 	char                 Dly_reg_name_rx_new[32]       ;
 	uint32_t Dly_in_reg                    ;
+	uint32_t Dly_out_reg                   ;
+	uint32_t Dly_val                       ;	
 	BYTE                 Dly_in_reg_idx                ;
 	SCHAR                Dly_in_min                    ;
 	BYTE                 Dly_in_max                    ;
-	uint32_t Dly_out_reg                   ;
 	BYTE                 Dly_out_reg_idx               ;
 	SCHAR                Dly_out_min                   ;
 	BYTE                 Dly_out_max                   ;	
@@ -758,9 +762,8 @@ typedef struct {
 	BYTE                 Dly_in_selval                 ;
 	BYTE                 Dly_out                       ;
 	BYTE                 Dly_out_selval                ;
-	uint32_t Dly_val                       ;	
 	CHAR                 Dly_result                    ;
-	CHAR                 dlymap[64][64]                ;
+	CHAR                 dlymap[128][64]                ;
 } MAC_IO;
 typedef struct {
 #ifdef Enable_ShowBW

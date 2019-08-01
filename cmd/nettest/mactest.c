@@ -35,6 +35,10 @@
 #define ARGV_TIMING_MARGIN	8
 
 
+uint8_t __attribute__ ((aligned (1024*1024))) tdes_buf[TDES_SIZE];
+uint8_t __attribute__ ((aligned (1024*1024))) rdes_buf[RDES_SIZE];
+uint8_t __attribute__ ((aligned (1024*1024))) dma_buf[DMA_BUF_SIZE];
+
 struct mac_ctrl_desc {
 	uint32_t base_reset_assert;
 	uint32_t bit_reset_assert;
@@ -757,9 +761,9 @@ static uint32_t setup_running(MAC_ENGINE *p_eng)
 		}
 #endif		
 	}
-
-	p_eng->run.tdes_base = TDES_BASE;
-	p_eng->run.rdes_base = RDES_BASE;
+	
+	p_eng->run.tdes_base = (uint32_t)(&tdes_buf[0]);
+	p_eng->run.rdes_base = (uint32_t)(&rdes_buf[0]);
 
 	if (p_eng->run.TM_IOTiming || p_eng->run.delay_margin)
 		p_eng->run.IO_MrgChk = 1;
@@ -1344,7 +1348,8 @@ void test_start(MAC_ENGINE *p_eng, PHY_ENGINE *p_phy_eng)
 						else {
 							p_eng->io.Dly_result = TestingLoop(p_eng, p_eng->run.LOOP_CheckNum);
 						}
-						p_eng->io.dlymap[rd][td] = p_eng->io.Dly_result;
+						
+						p_eng->io.dlymap[rd + 64][td] = p_eng->io.Dly_result;
 
 						// Display to Log file and monitor
 						if (p_eng->run.IO_MrgChk) {

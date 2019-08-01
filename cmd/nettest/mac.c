@@ -914,8 +914,8 @@ void init_mac (MAC_ENGINE *eng)
 	} while(maccr.b.sw_rst);
 #endif
 
-	mac_reg_write(eng, 0x20, AT_MEMRW_BUF(eng->run.tdes_base));
-	mac_reg_write(eng, 0x24, AT_MEMRW_BUF(eng->run.rdes_base));
+	mac_reg_write(eng, 0x20, eng->run.tdes_base - DRAM_BASE);
+	mac_reg_write(eng, 0x24, eng->run.rdes_base - DRAM_BASE);
 
 	mac_reg_write(eng, 0x08, eng->reg.mac_madr);
 	mac_reg_write(eng, 0x0c, eng->reg.mac_ladr);

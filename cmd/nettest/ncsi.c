@@ -174,7 +174,7 @@ void NCSI_Struct_Initialize_SLT (MAC_ENGINE *eng) {
 	eng->run.ncsi_tdes_base = eng->run.tdes_base;//base for read/write
 	Write_Mem_Des_NCSI_DD( eng->run.ncsi_tdes_base + 0x04, 0                        );
 	Write_Mem_Des_NCSI_DD( eng->run.ncsi_tdes_base + 0x08, 0                        );
-	Write_Mem_Des_NCSI_DD( eng->run.ncsi_tdes_base + 0x0C, AT_MEMRW_BUF( DMA_BASE ) );
+	Write_Mem_Des_NCSI_DD( eng->run.ncsi_tdes_base + 0x0C, DMA_BASE - DRAM_BASE);
 
 	eng->run.ncsi_rdes_base = eng->run.rdes_base;//base for read/write
 	NCSI_RxDatBase = AT_MEMRW_BUF( NCSI_RxDMA_BASE );//base of the descriptor
@@ -438,14 +438,13 @@ char NCSI_Tx (MAC_ENGINE *eng, unsigned char command, unsigned char allid, uint1
 		PRINTF( FP_LOG ,"[Frm-NCSI][Tx IID:%2d]\n", eng->ncsi_req.IID );
 	}
 
+#if 0
 	// Copy data to DMA buffer
 	for ( i = 0; i < dwsize; i++ )
 		Write_Mem_Dat_NCSI_DD( DMA_BASE + ( i << 2 ), SWAP_4B_LEDN_NCSI( eng->dat.NCSI_TxDWBUF[i] ) );
+#endif		
 
 	// Setting one TX descriptor
-//	Write_Mem_Des_NCSI_DD( eng->run.ncsi_tdes_base + 0x04, 0                        );
-//	Write_Mem_Des_NCSI_DD( eng->run.ncsi_tdes_base + 0x08, 0                        );
-//	Write_Mem_Des_NCSI_DD( eng->run.ncsi_tdes_base + 0x0C, AT_MEMRW_BUF( DMA_BASE ) );
 	Write_Mem_Des_NCSI_DD( eng->run.ncsi_tdes_base       , 0xf0008000 + bytesize );
 
 //	mac_reg_write( eng, 0x40, eng->reg.MAC_040 ); // 20170505
@@ -497,7 +496,7 @@ char NCSI_ARP (MAC_ENGINE *eng) {
 		if ( eng->arg.ctrl.b.print_ncsi )
 			PRINTF( FP_LOG, "      [Tx%02d] %08x %08x\n", i, eng->dat.ARP_data[i], SWAP_4B( eng->dat.ARP_data[i] ) );
 
-		Write_Mem_Dat_NCSI_DD( DMA_BASE + ( i << 2 ), eng->dat.ARP_data[i] );
+		Write_Mem_Dat_NCSI_DD( &dma_buf + ( i << 2 ), eng->dat.ARP_data[i] );
 	}
 
 //	Write_Mem_Des_NCSI_DD( eng->run.ncsi_tdes_base + 0x04, 0                        );
