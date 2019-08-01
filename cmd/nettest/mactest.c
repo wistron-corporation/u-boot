@@ -164,11 +164,12 @@ static void print_arg_ieee_select(MAC_ENGINE *p_eng)
 	printf("%20s| 0/1/2... (default:0)\n", item);
 }
 
-static void print_arg_delay_scan_boundary(MAC_ENGINE *p_eng) 
+static void print_arg_delay_scan_range(MAC_ENGINE *p_eng) 
 {
-	uint8_t item[64] = "delay-scan boundary (if test_mode == 0)";
+	uint8_t item[32] = "delay-scan range";
 
-	printf("%20s| 0/1/3/5/7/... (default:%d)\n", item, DEF_GIOTIMINGBUND);
+	printf("%20s| 1/2/3/... only for test_mode 0 (default:%d)\n", item, DEF_GIOTIMINGBUND);
+	printf("%20s| will scan from (orig - range) to (orig + range)\n", "");
 	print_arg_ieee_select(p_eng);
 }
 
@@ -257,7 +258,7 @@ static void print_usage(MAC_ENGINE *p_eng)
 		print_arg_loop(p_eng);
 		print_arg_test_mode(p_eng);
 		print_arg_phy_addr(p_eng);
-		print_arg_delay_scan_boundary(p_eng);
+		print_arg_delay_scan_range(p_eng);
 	} else if (MODE_NCSI == p_eng->arg.run_mode) {
 		printf("ncsitest <idx> <packet num> <channel num> <test mode>"
 		       "<timing boundary> <ctrl> <ARP num>\n");
@@ -266,7 +267,7 @@ static void print_usage(MAC_ENGINE *p_eng)
 		print_arg_package_num(p_eng);
 		print_arg_channel_num(p_eng);
 		print_arg_test_mode(p_eng);
-		print_arg_delay_scan_boundary(p_eng);
+		print_arg_delay_scan_range(p_eng);
 		print_arg_ctrl(p_eng);
 	} else {
 		printf("unknown run mode\n");
@@ -723,14 +724,14 @@ static uint32_t setup_running(MAC_ENGINE *p_eng)
 
 	if (p_eng->run.TM_Burst) {
 		p_eng->run.ieee_sel = p_eng->arg.ieee_sel;
-		p_eng->run.IO_Bund = 0;
+		p_eng->run.delay_margin = 0;
 	} else {
 		p_eng->run.ieee_sel = 0;			
-		p_eng->run.IO_Bund = p_eng->arg.delay_scan_boundary;
+		p_eng->run.delay_margin = p_eng->arg.delay_scan_range;
 
-		if (!((p_eng->run.IO_Bund & 0x1) ||(p_eng->run.IO_Bund == 0))) {
+		if (p_eng->run.delay_margin == 0) {
 			printf("Error IO margin!!!\n");
-			print_arg_delay_scan_boundary(p_eng);
+			print_arg_delay_scan_range(p_eng);
 			return(1);
 		}						
 	}
@@ -760,7 +761,7 @@ static uint32_t setup_running(MAC_ENGINE *p_eng)
 	p_eng->run.tdes_base = TDES_BASE1;
 	p_eng->run.rdes_base = RDES_BASE1;
 
-	if (p_eng->run.TM_IOTiming || p_eng->run.IO_Bund)
+	if (p_eng->run.TM_IOTiming || p_eng->run.delay_margin)
 		p_eng->run.IO_MrgChk = 1;
 	else
 		p_eng->run.IO_MrgChk = 0;
@@ -791,31 +792,31 @@ static uint32_t setup_running(MAC_ENGINE *p_eng)
 			switch (p_eng->arg.run_speed) {
 			case SET_1GBPS:
 				p_eng->dat.Des_Num =
-				    p_eng->run.IO_Bund
+				    p_eng->run.delay_margin
 					? 100
 					: (n_desp_min) ? 512 : 4096;
 				break;
 			case SET_100MBPS:
 				p_eng->dat.Des_Num =
-				    p_eng->run.IO_Bund
+				    p_eng->run.delay_margin
 					? 100
 					: (n_desp_min) ? 512 : 4096;
 				break;
 			case SET_10MBPS:
 				p_eng->dat.Des_Num =
-				    p_eng->run.IO_Bund
+				    p_eng->run.delay_margin
 					? 100
 					: (n_desp_min) ? 100 : 830;
 				break;
 			case SET_1G_100M_10MBPS:
 				p_eng->dat.Des_Num =
-				    p_eng->run.IO_Bund
+				    p_eng->run.delay_margin
 					? 100
 					: (n_desp_min) ? 100 : 830;
 				break;
 			case SET_100M_10MBPS:
 				p_eng->dat.Des_Num =
-				    p_eng->run.IO_Bund
+				    p_eng->run.delay_margin
 					? 100
 					: (n_desp_min) ? 100 : 830;
 				break;
@@ -995,7 +996,7 @@ static uint32_t init_mac_engine(MAC_ENGINE *p_eng, uint32_t mode)
 	}
 	
 	p_eng->arg.run_mode = mode;
-	p_eng->arg.delay_scan_boundary = DEF_GIOTIMINGBUND;
+	p_eng->arg.delay_scan_range = DEF_GIOTIMINGBUND;
 	p_eng->arg.test_mode = DEF_GTESTMODE;
 
 	if (p_eng->arg.run_mode == MODE_NCSI ) {
@@ -1116,8 +1117,8 @@ static uint32_t parse_arg_dedicated(int argc, char *const argv[],
 	case 10:
 		p_eng->arg.GUserDVal = simple_strtol(argv[9], NULL, 16);
 	case 9:
-		p_eng->arg.delay_scan_boundary = simple_strtol(argv[8], NULL, 10);
-		p_eng->arg.ieee_sel = p_eng->arg.delay_scan_boundary;
+		p_eng->arg.delay_scan_range = simple_strtol(argv[8], NULL, 10);
+		p_eng->arg.ieee_sel = p_eng->arg.delay_scan_range;
 	case 8:
 		p_eng->arg.GPHYADR = simple_strtol(argv[7], NULL, 10);
 	case 7:
@@ -1154,7 +1155,7 @@ static uint32_t parse_arg_ncsi(int argc, char *const argv[], MAC_ENGINE *p_eng)
 		p_eng->arg.ctrl.w = simple_strtol(argv[6], NULL, 16);
 		printf("ctrl=0x%02x\n", p_eng->arg.ctrl.w);
 	case 6:
-		p_eng->arg.delay_scan_boundary = simple_strtol(argv[5], NULL, 10);		
+		p_eng->arg.delay_scan_range = simple_strtol(argv[5], NULL, 10);		
 	case 5:
 		p_eng->arg.test_mode = simple_strtol(argv[4], NULL, 16);
 	case 4:
@@ -1287,7 +1288,7 @@ void test_start(MAC_ENGINE *p_eng, PHY_ENGINE *p_phy_eng)
 						mac_set_driving_strength(p_eng, drv);
 					}
 
-					if (p_eng->run.IO_Bund)
+					if (p_eng->run.delay_margin)
 						PrintIO_Header(p_eng, FP_LOG);
 					if (p_eng->run.TM_IOTiming)
 						PrintIO_Header(p_eng, FP_IO);

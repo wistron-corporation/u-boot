@@ -79,7 +79,7 @@
 // Default argument
 //---------------------------------------------------------
 #define  DEF_GUSER_DEF_PACKET_VAL                0x66666666     //0xff00ff00, 0xf0f0f0f0, 0xcccccccc, 0x55aa55aa, 0x5a5a5a5a, 0x66666666
-#define  DEF_GIOTIMINGBUND                       5              //0/1/3/5/7
+#define  DEF_GIOTIMINGBUND                       2
 #define  DEF_GPHY_ADR                            0
 #define  DEF_GTESTMODE                           0              //[0]0: no burst mode, 1: 0xff, 2: 0x55, 3: random, 4: ARP, 5: ARP, 6: IO timing, 7: IO timing+IO Strength
 #define  DEF_GLOOP_MAX                           1
@@ -525,7 +525,7 @@ typedef struct {
 					   argv[4] for ncsi */
 
 	uint32_t GPHYADR;		/* argv[6] for dedicated */
-	uint32_t delay_scan_boundary;	/* argv[7] for dedicated
+	uint32_t delay_scan_range;	/* argv[7] for dedicated
 					   argv[5] for ncsi */	
 	uint32_t ieee_sel;		/* argv[7] for dedicated */
 
@@ -538,7 +538,7 @@ typedef struct {
 	uint32_t mdio_idx;
 	uint32_t mdio_base;
 	uint8_t is_rgmii;
-	uint32_t ieee_sel;		/* derived from delay_scan_boundary */
+	uint32_t ieee_sel;		/* derived from delay_scan_range */
 
 	uint32_t tdes_base;
 	uint32_t rdes_base;
@@ -560,7 +560,7 @@ typedef struct {
 	CHAR                 TM_DefaultPHY                 ;//test_mode
 	CHAR                 TM_NCSI_DiSChannel            ;//test_mode
 
-	BYTE                 IO_Bund                       ;
+	BYTE                 delay_margin                       ;
 	CHAR                 IO_MrgChk                     ;
 
 

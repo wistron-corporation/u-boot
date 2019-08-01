@@ -824,13 +824,13 @@ int mac_set_scan_boundary(MAC_ENGINE *p_eng)
 		p_eng->io.rx_delay_scan.end = rx_max >> rx_scaling;
 		p_eng->io.tx_delay_scan.begin = tx_min >> tx_scaling;
 		p_eng->io.tx_delay_scan.end = tx_max >> tx_scaling;
-	} else if (p_eng->run.IO_Bund) {
+	} else if (p_eng->run.delay_margin) {
 		p_eng->io.rx_delay_scan.step = 1;
 		p_eng->io.tx_delay_scan.step = 1;
-		p_eng->io.rx_delay_scan.begin = rx_cur - (p_eng->run.IO_Bund >> 1);
-		p_eng->io.rx_delay_scan.end = rx_cur + (p_eng->run.IO_Bund >> 1);
-		p_eng->io.tx_delay_scan.begin = tx_cur - (p_eng->run.IO_Bund >> 1);
-		p_eng->io.tx_delay_scan.end = tx_cur + (p_eng->run.IO_Bund >> 1);
+		p_eng->io.rx_delay_scan.begin = rx_cur - p_eng->run.delay_margin;
+		p_eng->io.rx_delay_scan.end = rx_cur + p_eng->run.delay_margin;
+		p_eng->io.tx_delay_scan.begin = tx_cur - p_eng->run.delay_margin;
+		p_eng->io.tx_delay_scan.end = tx_cur + p_eng->run.delay_margin;
 	} else {
 		p_eng->io.rx_delay_scan.step = 1;
 		p_eng->io.tx_delay_scan.step = 1;
@@ -995,11 +995,11 @@ void FPri_End (MAC_ENGINE *eng, BYTE option)
 	if ((0 == eng->run.is_rgmii) && ( eng->phy.RMIICK_IOMode != 0 ) && eng->run.IO_MrgChk && eng->flg.all_fail ) {
 		if ( eng->arg.ctrl.b.rmii_phy_in == 0 ) {
 			PRINTF( option, "\n\n\n\n\n\n[Info] The PHY's RMII reference clock pin is setting to the OUTPUT mode now.\n" );
-			PRINTF( option, "       Maybe you can run the INPUT mode command \"mactest  %d %d %d %d %d %d %d\".\n\n\n\n", eng->arg.mac_idx, eng->arg.run_speed, (eng->arg.ctrl.w | 0x80), eng->arg.loop_max, eng->arg.test_mode, eng->arg.GPHYADR, eng->arg.delay_scan_boundary );
+			PRINTF( option, "       Maybe you can run the INPUT mode command \"mactest  %d %d %d %d %d %d %d\".\n\n\n\n", eng->arg.mac_idx, eng->arg.run_speed, (eng->arg.ctrl.w | 0x80), eng->arg.loop_max, eng->arg.test_mode, eng->arg.GPHYADR, eng->arg.delay_scan_range );
 		}
 		else {
 			PRINTF( option, "\n\n\n\n\n\n[Info] The PHY's RMII reference clock pin is setting to the INPUT mode now.\n" );
-			PRINTF( option, "       Maybe you can run the OUTPUT mode command \"mactest  %d %d %d %d %d %d %d\".\n\n\n\n", eng->arg.mac_idx, eng->arg.run_speed, (eng->arg.ctrl.w & 0x7f), eng->arg.loop_max, eng->arg.test_mode, eng->arg.GPHYADR, eng->arg.delay_scan_boundary );
+			PRINTF( option, "       Maybe you can run the OUTPUT mode command \"mactest  %d %d %d %d %d %d %d\".\n\n\n\n", eng->arg.mac_idx, eng->arg.run_speed, (eng->arg.ctrl.w & 0x7f), eng->arg.loop_max, eng->arg.test_mode, eng->arg.GPHYADR, eng->arg.delay_scan_range );
 		}
 	} // End if ( eng->env.MAC_RMII && ( eng->phy.RMIICK_IOMode != 0 ) && eng->run.IO_MrgChk && eng->flg.all_fail )
 
@@ -1044,7 +1044,7 @@ void FPri_End (MAC_ENGINE *eng, BYTE option)
 	//[Warning] IO Timing
 	//------------------------------
 	if ( eng->arg.run_mode == MODE_NCSI ) {
-		PRINTF( option, "\n[Arg] %d %d %d %d %d %d %d {%d}\n", eng->arg.mac_idx, eng->arg.GPackageTolNum, eng->arg.GChannelTolNum, eng->arg.test_mode, eng->arg.delay_scan_boundary, eng->arg.ctrl.w, eng->arg.GARPNumCnt, TIME_OUT_NCSI );
+		PRINTF( option, "\n[Arg] %d %d %d %d %d %d %d {%d}\n", eng->arg.mac_idx, eng->arg.GPackageTolNum, eng->arg.GChannelTolNum, eng->arg.test_mode, eng->arg.delay_scan_range, eng->arg.ctrl.w, eng->arg.GARPNumCnt, TIME_OUT_NCSI );
 
 		switch ( eng->ncsi_cap.PCI_DID_VID ) {
 			case PCI_DID_VID_Intel_82574L             : { PRINTF( option, "[NC]%08x %08x: Intel 82574L       \n", eng->ncsi_cap.manufacturer_id, eng->ncsi_cap.PCI_DID_VID ); break; }
@@ -1110,7 +1110,7 @@ void FPri_ErrFlag (MAC_ENGINE *eng, BYTE option)
 				if (0 == eng->run.is_rgmii) {
 					PRINTF( option, "      (reg:%d,%d) %dx1(%d~%d,%d)\n", eng->io.Dly_in_reg_idx,
 											      eng->io.Dly_out_reg_idx,
-											      eng->run.IO_Bund,
+											      eng->run.delay_margin,
 											      eng->io.Dly_in_min,
 											      eng->io.Dly_in_max,
 											      eng->io.Dly_out_min );
@@ -1118,8 +1118,8 @@ void FPri_ErrFlag (MAC_ENGINE *eng, BYTE option)
 				else {
 					PRINTF( option, "      (reg:%d,%d) %dx%d(%d~%d,%d~%d)\n", eng->io.Dly_in_reg_idx,
 												  eng->io.Dly_out_reg_idx,
-												  eng->run.IO_Bund,
-												  eng->run.IO_Bund,
+												  eng->run.delay_margin,
+												  eng->run.delay_margin,
 												  eng->io.Dly_in_min,
 												  eng->io.Dly_in_max,
 												  eng->io.Dly_out_min,
@@ -1168,7 +1168,7 @@ void FPri_ErrFlag (MAC_ENGINE *eng, BYTE option)
 				if (0 == eng->run.is_rgmii) {
 					PRINTF( option, "      (reg:%d,%d) %dx1(%d~%d,%d)\n", eng->io.Dly_in_reg_idx,
 											      eng->io.Dly_out_reg_idx,
-											      eng->run.IO_Bund,
+											      eng->run.delay_margin,
 											      eng->io.Dly_in_min,
 											      eng->io.Dly_in_max,
 											      eng->io.Dly_out_min );
@@ -1176,8 +1176,8 @@ void FPri_ErrFlag (MAC_ENGINE *eng, BYTE option)
 				else {
 					PRINTF( option, "      (reg:%d,%d) %dx%d(%d~%d,%d~%d)\n", eng->io.Dly_in_reg_idx,
 												  eng->io.Dly_out_reg_idx,
-												  eng->run.IO_Bund,
-												  eng->run.IO_Bund,
+												  eng->run.delay_margin,
+												  eng->run.delay_margin,
 												  eng->io.Dly_in_min,
 												  eng->io.Dly_in_max,
 												  eng->io.Dly_out_min,
@@ -2266,7 +2266,7 @@ char TestingLoop (MAC_ENGINE *eng, uint32_t loop_checknum)
 		if ( eng->arg.loop_inf )
 			printf("===============> Loop[%d]: %d  \r", eng->run.Loop_ofcnt, eng->run.Loop);
 		else if ( eng->arg.test_mode == 0 ) {
-			if ( !( DbgPrn_BufAdr || eng->run.IO_Bund ) )
+			if ( !( DbgPrn_BufAdr || eng->run.delay_margin ) )
 				printf(" [%d]%d                        \r", eng->run.Loop_ofcnt, eng->run.Loop);
 		}
 
