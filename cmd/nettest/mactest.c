@@ -758,8 +758,8 @@ static uint32_t setup_running(MAC_ENGINE *p_eng)
 #endif		
 	}
 
-	p_eng->run.tdes_base = TDES_BASE1;
-	p_eng->run.rdes_base = RDES_BASE1;
+	p_eng->run.tdes_base = TDES_BASE;
+	p_eng->run.rdes_base = RDES_BASE;
 
 	if (p_eng->run.TM_IOTiming || p_eng->run.delay_margin)
 		p_eng->run.IO_MrgChk = 1;

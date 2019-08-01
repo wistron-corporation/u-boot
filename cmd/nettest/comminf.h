@@ -160,16 +160,16 @@
 //              |   #n, n = DMA_BufNum  |
 //              |                       |
 //      ---------------------------------
-#define DRAM_OFS_BUF                         0x04000000
 
-#define DRAM_OFS_WINDOW                      0x80000000
-#define DRAM_OFS_REMAP                       0x00000000
+#define BUF_SIZE			0x04000000
+#define TDES_SIZE			0x00040000
+#define RDES_SIZE			0x000C0000
 
-#define TDES_BASE1                                                             \
-	(0x00000000 + DRAM_OFS_BUF - DRAM_OFS_REMAP + DRAM_OFS_WINDOW)
-#define RDES_BASE1                                                             \
-	(0x00040000 + DRAM_OFS_BUF - DRAM_OFS_REMAP + DRAM_OFS_WINDOW)
-#define DMA_BASE (0x00100000 + DRAM_OFS_BUF - DRAM_OFS_REMAP + DRAM_OFS_WINDOW)
+#define DRAM_BASE			0x80000000
+#define BUF_BASE			(DRAM_BASE)
+#define TDES_BASE			(BUF_BASE + BUF_SIZE)
+#define RDES_BASE			(TDES_BASE + TDES_SIZE)
+#define DMA_BASE 			(RDES_BASE + RDES_SIZE)
 
 #define TDES_IniVal (0xb0000000 + eng->dat.FRAME_LEN_Cur)
 #define RDES_IniVal (0x00000fff)
@@ -178,8 +178,8 @@
 #define HWOwnRx(dat) ((dat & 0x80000000) == 0)
 #define HWEOR(dat) (dat & 0x40000000)
 
-#define AT_MEMRW_BUF(x) ((x) + DRAM_OFS_REMAP - DRAM_OFS_WINDOW)
-#define AT_BUF_MEMRW(x) ((x)-DRAM_OFS_REMAP + DRAM_OFS_WINDOW)
+#define AT_MEMRW_BUF(x) ((x) - BUF_BASE)
+#define AT_BUF_MEMRW(x) ((x) + BUF_BASE)
 
 //---------------------------------------------------------
 // Error Flag Bits
