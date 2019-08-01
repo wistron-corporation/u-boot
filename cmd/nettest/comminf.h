@@ -163,13 +163,15 @@
 
 #define BUF_SIZE			0x04000000
 #define TDES_SIZE			0x00040000
-#define RDES_SIZE			0x000C0000
+#define RDES_SIZE			0x00040000
+#define RESV_SIZE			0x00000000		/* reserved */
 
 #define DRAM_BASE			0x80000000
 #define BUF_BASE			(DRAM_BASE)
 #define TDES_BASE			(BUF_BASE + BUF_SIZE)
 #define RDES_BASE			(TDES_BASE + TDES_SIZE)
-#define DMA_BASE 			(RDES_BASE + RDES_SIZE)
+#define RESV_BASE			(RDES_BASE + RDES_SIZE)
+#define DMA_BASE 			(RESV_BASE + RESV_SIZE)
 
 #define TDES_IniVal (0xb0000000 + eng->dat.FRAME_LEN_Cur)
 #define RDES_IniVal (0x00000fff)
@@ -257,11 +259,7 @@
 //---------------------------------------------------------
 // DMA Buffer information
 //---------------------------------------------------------
-#ifdef FPGA
-  #define DRAM_KByteSize			(56 * 1024)
-#else  
-  #define DRAM_KByteSize			(16500)         //16.11328125 K
-#endif
+#define DRAM_KByteSize				(56 * 1024)
 
 /* The size of one LAN packet */
 #define DMA_PakSize 				(2 * 1024)
@@ -281,20 +279,6 @@
 #define SEED_START                               8
 #define DATA_SEED(seed)                          ( ( seed ) | (( seed + 1 ) << 16 ) )
 #define DATA_IncVal                              0x00020001
-//#define DATA_IncVal                              0x01000001     //fail
-//#define DATA_IncVal                              0x10000001     //fail
-//#define DATA_IncVal                              0x10000000     //fail
-//#define DATA_IncVal                              0x80000000     //fail
-//#define DATA_IncVal                              0x00000001     //ok
-//#define DATA_IncVal                              0x01000100     //ok
-//#define DATA_IncVal                              0x01010000     //ok
-//#define DATA_IncVal                              0x01010101     //ok
-//#define DATA_IncVal                              0x00000101     //ok
-//#define DATA_IncVal                              0x00001111     //fail
-//#define DATA_IncVal                              0x00000011     //fail
-//#define DATA_IncVal                              0x10100101     //fail
-//#define DATA_IncVal                              0xfeff0201
-//#define DATA_IncVal                              0x00010001
 #define PktByteSize                              ( ( ( ( ZeroCopy_OFFSET + eng->dat.FRAME_LEN_Cur - 1 ) >> 2 ) + 1) << 2 )
 
 //---------------------------------------------------------
