@@ -8,14 +8,14 @@
  *  along with this program; if not, write to the Free Software
  *  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  */
-
+#include <stdlib.h>
 #include <common.h>
 #include <console.h>
 #include <bootretry.h>
 #include <cli.h>
 #include <command.h>
 #include <console.h>
-
+#include <malloc.h>
 #include <inttypes.h>
 #include <mapmem.h>
 #include <asm/io.h>
@@ -23,12 +23,75 @@
 
 DECLARE_GLOBAL_DATA_PTR;
 
-#define OTP_PASSWD	0x349fe38a
-#define RETRY		3
-#define MODE_CONF	1
-#define MODE_STRAP	2
-#define MODE_DATA	3
-#define MODE_ALL	4
+#define OTP_PASSWD			0x349fe38a
+#define RETRY				3
+#define OTP_REGION_STRAP		1
+#define OTP_REGION_CONF			2
+#define OTP_REGION_DATA			3
+#define OTP_REGION_ALL			4
+
+#define DISABLE_SECREG_PROG		BIT(0)
+#define ENABLE_SEC_BOOT			BIT(1)
+#define INIT_PROG_DONE			BIT(2)
+#define ENABLE_USERREG_ECC		BIT(3)
+#define ENABLE_SECREG_ECC		BIT(4)
+#define DISABLE_LOW_SEC_KEY		BIT(5)
+#define IGNORE_SEC_BOOT_HWSTRAP		BIT(6)
+#define SEC_BOOT_MDOES(x)		(x >> 7)
+#define   SEC_MODE1			0x0
+#define   SEC_MODE2			0x1
+#define OTP_BIT_CELL_MODES(x)		((x >> 8) & 0x3)
+#define   SINGLE_CELL_MODE		0x0
+#define   DIFFERENTIAL_MODE		0x1
+#define   DIFFERENTIAL_REDUDANT_MODE	0x2
+#define CRYPTO_MODES(x)			((x >> 10) & 0x3)
+#define   CRYPTO_RSA1024		0x0
+#define   CRYPTO_RSA2048		0x1
+#define   CRYPTO_RSA3072		0x2
+#define   CRYPTO_RSA4096		0x3
+#define HASH_MODES(x)			((x >> 12) & 0x3)
+#define   HASH_SAH224			0x0
+#define   HASH_SAH256			0x1
+#define   HASH_SAH384			0x2
+#define   HASH_SAH512			0x3
+#define SECREG_SIZE(x)			((x >> 16) & 0x3f)
+#define WRITE_PROTECT_SECREG		BIT(22)
+#define WRITE_PROTECT_USERREG		BIT(23)
+#define WRITE_PROTECT_CONFREG		BIT(24)
+#define WRITE_PROTECT_STRAPREG		BIT(25)
+#define ENABLE_COPY_TO_SRAM		BIT(26)
+#define ENABLE_IMAGE_ENC		BIT(27)
+#define WRITE_PROTECT_KEY_RETIRE	BIT(29)
+#define ENABLE_SIPROM_RED		BIT(30)
+#define ENABLE_SIPROM_MLOCK		BIT(31)
+
+#define VENDER_ID(x) 			(x & 0xFFFF)
+#define KEY_REVISION(x)			((x >> 16) & 0xFFFF)
+
+#define SEC_BOOT_HEADER_OFFSET(x)	(x & 0xFFFF)
+
+#define KEYS_VALID_BITS(x)		(x & 0xff)
+#define KEYS_RETIRE_BITS(x)		((x >> 16) & 0xff)
+
+#define PBSTR "||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||"
+#define PBWIDTH 60
+
+void printProgress(int numerator, int denominator, char *format, ...)
+{
+	int val = numerator * 100 / denominator;
+	int lpad = numerator * PBWIDTH / denominator;
+	int rpad = PBWIDTH - lpad;
+	char buffer[256];
+	va_list aptr;
+
+	va_start(aptr, format);
+	vsprintf(buffer, format, aptr);
+	va_end(aptr);
+
+	printf("\r%3d%% [%.*s%*s] %s", val, lpad, PBSTR, rpad, "", buffer);
+	if (numerator == denominator)
+		printf("\n");
+}
 
 struct otpstrap {
 	int value;
@@ -138,7 +201,7 @@ static void otp_prog(uint32_t otp_addr, uint32_t prog_bit)
 	udelay(85);
 }
 
-static int prog_verify(uint32_t otp_addr, int bit_offset, int value)
+static int verify_bit(uint32_t otp_addr, int bit_offset, int value)
 {
 	int ret;
 
@@ -146,191 +209,448 @@ static int prog_verify(uint32_t otp_addr, int bit_offset, int value)
 	writel(0x23b1e361, 0x1e6f2004); //trigger read
 	udelay(2);
 	ret = readl(0x1e6f2020);
-	// printf("prog_verify = %x\n", ret);
+	// printf("verify_bit = %x\n", ret);
 	if (((ret >> bit_offset) & 1) == value)
 		return 0;
 	else
 		return -1;
 }
 
-static int otp_conf_parse(uint32_t *OTPCFG)
+static uint32_t verify_dw(uint32_t otp_addr, uint32_t *value, uint32_t *keep, uint32_t *compare, int size)
 {
-	int tmp, i, pass;
+	uint32_t ret[2];
 
-	printf("OTPCFG0-D[0]\n");
-	if (OTPCFG[0] & (1))
-		printf("  Disable Secure Region programming\n");
+	otp_addr &= ~(1 << 15);
+
+	if (otp_addr % 2 == 0)
+		writel(otp_addr, 0x1e6f2010); //Read address
 	else
-		printf("  Enable Secure Region programming\n");
-	printf("OTPCFG0-D[1]\n");
-	if (OTPCFG[0] & (1 << 1))
-		printf("  Enable Secure Boot\n");
-	else
-		printf("  Disable Secure Boot\n");
-	printf("OTPCFG0-D[3]\n");
-	if (OTPCFG[0] & (1 << 3))
-		printf("  User region ECC enable\n");
-	else
-		printf("  User region ECC disable\n");
-	printf("OTPCFG0-D[4]\n");
-	if (OTPCFG[0] & (1 << 4))
-		printf("  Secure Region ECC enable\n");
-	else
-		printf("  Secure Region ECC disable\n");
-	printf("OTPCFG0-D[5]\n");
-	if (OTPCFG[0] & (1 << 5))
-		printf("  Disable low security key\n");
-	else
-		printf("  Enable low security key\n");
-	printf("OTPCFG0-D[6]\n");
-	if (OTPCFG[0] & (1 << 6))
-		printf("  Ignore Secure Boot hardware strap\n");
-	else
-		printf("  Do not ignore Secure Boot hardware strap\n");
-	printf("OTPCFG0-D[7]\n");
-	printf("  Secure Boot Mode: %d\n", (OTPCFG[0] >> 7) & 1);
-	printf("OTPCFG0-D[9:8]\n");
-	printf("  OTP bit cell mode : ");
-	tmp = ((OTPCFG[0] >> 8) & 3);
-	if (tmp == 0) {
-		printf("Single cell mode (recommended)\n");
-	} else if (tmp == 1) {
-		printf("Differnetial mode\n");
-	} else if (tmp == 2) {
-		printf("Differential-redundant mode\n");
+		writel(otp_addr - 1, 0x1e6f2010); //Read address
+	writel(0x23b1e361, 0x1e6f2004); //trigger read
+	udelay(2);
+	ret[0] = readl(0x1e6f2020);
+	ret[1] = readl(0x1e6f2024);
+	if (size == 1) {
+		if (otp_addr % 2 == 0) {
+			// printf("check %x : %x = %x\n", otp_addr, ret[0], value[0]);
+			if ((value[0] & ~keep[0]) == (ret[0] & ~keep[0])) {
+				compare[0] = 0;
+				return 0;
+			} else {
+				compare[0] = value[0] ^ ret[0];
+				return -1;
+			}
+
+		} else {
+			// printf("check %x : %x = %x\n", otp_addr, ret[1], value[0]);
+			if ((value[0] & ~keep[0]) == (ret[1] & ~keep[0])) {
+				compare[0] = ~0;
+				return 0;
+			} else {
+				compare[0] = ~(value[0] ^ ret[1]);
+				return -1;
+			}
+		}
+	} else if (size == 2) {
+		// otp_addr should be even
+		if ((value[0] & ~keep[0]) == (ret[0] & ~keep[0]) && (value[1] & ~keep[1]) == (ret[1] & ~keep[1])) {
+			// printf("check[0] %x : %x = %x\n", otp_addr, ret[0], value[0]);
+			// printf("check[1] %x : %x = %x\n", otp_addr, ret[1], value[1]);
+			compare[0] = 0;
+			compare[1] = ~0;
+			return 0;
+		} else {
+			// printf("check[0] %x : %x = %x\n", otp_addr, ret[0], value[0]);
+			// printf("check[1] %x : %x = %x\n", otp_addr, ret[1], value[1]);
+			compare[0] = value[0] ^ ret[0];
+			compare[1] = ~(value[1] ^ ret[1]);
+			return -1;
+		}
 	} else {
-		printf("Value error\n");
 		return -1;
 	}
-	printf("OTPCFG0-D[11:10]\n");
-	printf("  RSA mode : ");
-	tmp = ((OTPCFG[0] >> 10) & 3);
-	if (tmp == 0) {
-		printf("RSA1024\n");
-	} else if (tmp == 1) {
-		printf("RSA2048\n");
-	} else if (tmp == 2) {
-		printf("RSA3072\n");
+}
+
+void otp_soak(int soak)
+{
+	if (soak) {
+		otp_write(0x3000, 0x4021); // Write MRA
+		otp_write(0x5000, 0x1027); // Write MRB
+		otp_write(0x1000, 0x4820); // Write MR
+		writel(0x041930d4, 0x1e602008); //soak program
 	} else {
-		printf("RSA4096\n");
+		otp_write(0x3000, 0x4061); // Write MRA
+		otp_write(0x5000, 0x302f); // Write MRB
+		otp_write(0x1000, 0x4020); // Write MR
+		writel(0x04190760, 0x1e602008); //normal program
 	}
-	printf("OTPCFG0-D[13:12]\n");
-	printf("  SHA mode : ");
-	tmp = ((OTPCFG[0] >> 12) & 3);
-	if (tmp == 0) {
-		printf("SHA224\n");
-	} else if (tmp == 1) {
-		printf("SHA256\n");
-	} else if (tmp == 2) {
-		printf("SHA384\n");
+}
+
+static void otp_prog_dw(uint32_t value, uint32_t keep, uint32_t prog_address)
+{
+	int j, bit_value, prog_bit;
+
+	for (j = 0; j < 32; j++) {
+		if ((keep >> j) & 0x1)
+			continue;
+		bit_value = (value >> j) & 0x1;
+		if (prog_address % 2 == 0) {
+			if (bit_value)
+				prog_bit = ~(0x1 << j);
+			else
+				continue;
+		} else {
+			prog_address |= 1 << 15;
+			if (bit_value)
+				continue;
+			else
+				prog_bit = 0x1 << j;
+		}
+		otp_prog(prog_address, prog_bit);
+	}
+}
+
+static int otp_conf_parse(uint32_t *OTPCFG)
+{
+	int tmp, i;
+	int pass = 0;
+	uint32_t *OTPCFG_KEEP = &OTPCFG[12];
+
+	if (OTPCFG_KEEP[0] & DISABLE_SECREG_PROG) {
+		printf("OTPCFG0-D[0]\n");
+		printf("  Skip\n");
 	} else {
-		printf("SHA512\n");
+		printf("OTPCFG0-D[0]\n");
+		if (OTPCFG[0] & DISABLE_SECREG_PROG)
+			printf("  Disable Secure Region programming\n");
+		else
+			printf("  Enable Secure Region programming\n");
 	}
 
-	printf("OTPCFG0-D[21:16]\n");
-	tmp = ((OTPCFG[0] >> 16) & 0x3F);
-	printf("  Secure Region size (DW): %x\n", tmp);
+	if (OTPCFG_KEEP[0] & ENABLE_SEC_BOOT) {
+		printf("OTPCFG0-D[1]\n");
+		printf("  Skip\n");
+	} else {
 
-	printf("OTPCFG0-D[22]\n");
-	if (OTPCFG[0] & (1 << 22))
-		printf("  Secure Region : Write Protect\n");
-	else
-		printf("  Secure Region : Writable\n");
-	printf("OTPCFG0-D[23]\n");
-	if (OTPCFG[0] & (1 << 23))
-		printf("  User Region : Write Protect\n");
-	else
-		printf("  User Region : Writable\n");
-	printf("OTPCFG0-D[24]\n");
-	if (OTPCFG[0] & (1 << 24))
-		printf("  Configure Region : Write Protect\n");
-	else
-		printf("  Configure Region : Writable\n");
-	printf("OTPCFG0-D[25]\n");
-	if (OTPCFG[0] & (1 << 7))
-		printf("  OTP strap Region : Write Protect\n");
-	else
-		printf("  OTP strap Region : Writable\n");
-	printf("OTPCFG0-D[26]\n");
-	if (OTPCFG[0] & (1 << 26))
-		printf("  Copy Boot Image to Internal SRAM\n");
-	else
-		printf("  Disable Copy Boot Image to Internal SRAM\n");
-	printf("OTPCFG0-D[27]\n");
-	if (OTPCFG[0] & (1 << 27))
-		printf("  Enable image encryption\n");
-	else
-		printf("  Disable image encryption\n");
-	printf("OTPCFG0-D[29]\n");
-	if (OTPCFG[0] & (1 << 29))
-		printf("  OTP key retire Region : Write Protect\n");
-	else
-		printf("  OTP key retire Region : Writable\n");
-	printf("OTPCFG0-D[30]\n");
-	if (OTPCFG[0] & (1 << 30))
-		printf("  SIPROM RED_EN redundancy repair enable\n");
-	else
-		printf("  SIPROM RED_EN redundancy repair disable\n");
-	printf("OTPCFG0-D[31]\n");
-	if (OTPCFG[0] & (1 << 31))
-		printf("  SIPROM Mlock memory lock enable\n");
-	else
-		printf("  SIPROM Mlock memory lock disable\n");
+		printf("OTPCFG0-D[1]\n");
+		if (OTPCFG[0] & ENABLE_SEC_BOOT)
+			printf("  Enable Secure Boot\n");
+		else
+			printf("  Disable Secure Boot\n");
+	}
 
-	printf("OTPCFG2-D[15:0]\n");
-	tmp = (OTPCFG[2] & 0xFFFF);
-	printf("  Vender ID : %x\n", tmp);
+	if (OTPCFG_KEEP[0] & ENABLE_USERREG_ECC) {
+		printf("OTPCFG0-D[3]\n");
+		printf("  Skip\n");
+	} else {
+		printf("OTPCFG0-D[3]\n");
+		if (OTPCFG[0] & ENABLE_USERREG_ECC)
+			printf("  User region ECC enable\n");
+		else
+			printf("  User region ECC disable\n");
+	}
 
-	printf("OTPCFG2-D[31:16]\n");
-	tmp = ((OTPCFG[2] >> 16) & 0xFFFF);
-	printf("  Key Revision : %x\n", tmp);
+	if (OTPCFG_KEEP[0] & ENABLE_SECREG_ECC) {
+		printf("OTPCFG0-D[4]\n");
+		printf("  Skip\n");
+	} else {
+		printf("OTPCFG0-D[4]\n");
+		if (OTPCFG[0] & ENABLE_SECREG_ECC)
+			printf("  Secure Region ECC enable\n");
+		else
+			printf("  Secure Region ECC disable\n");
+	}
 
-	printf("OTPCFG3-D[15:0]\n");
-	tmp = (OTPCFG[3] & 0xFFFF);
-	printf("  Secure boot header offset : %x\n", tmp);
+	if (OTPCFG_KEEP[0] & DISABLE_LOW_SEC_KEY) {
+		printf("OTPCFG0-D[5]\n");
+		printf("  Skip\n");
+	} else {
+		printf("OTPCFG0-D[5]\n");
+		if (OTPCFG[0] & DISABLE_LOW_SEC_KEY)
+			printf("  Disable low security key\n");
+		else
+			printf("  Enable low security key\n");
+	}
 
-	printf("OTPCFG4-D[7:0]\n");
-	tmp = (OTPCFG[4] & 0xff);
-	pass = -1;
-	for (i = 0; i < 7; i++) {
-		if (tmp == (1 << i)) {
-			if (pass != -1) {
-				printf("  Keys valid ID value error : %x\n", tmp);
-				return -1;
-			}
-			pass = i;
+	if (OTPCFG_KEEP[0] & IGNORE_SEC_BOOT_HWSTRAP) {
+		printf("OTPCFG0-D[6]\n");
+		printf("  Skip\n");
+	} else {
+		printf("OTPCFG0-D[6]\n");
+		if (OTPCFG[0] & IGNORE_SEC_BOOT_HWSTRAP)
+			printf("  Ignore Secure Boot hardware strap\n");
+		else
+			printf("  Do not ignore Secure Boot hardware strap\n");
+	}
+
+	if (SEC_BOOT_MDOES(OTPCFG_KEEP[0]) == 0x1) {
+		printf("OTPCFG0-D[7]\n");
+		printf("  Skip\n");
+	} else {
+		printf("OTPCFG0-D[7]\n");
+		if (SEC_BOOT_MDOES(OTPCFG[0]) == SEC_MODE1)
+			printf("  Secure Boot Mode: 1\n");
+		else
+			printf("  Secure Boot Mode: 2\n");
+	}
+
+	if (OTP_BIT_CELL_MODES(OTPCFG_KEEP[0]) == 0x3) {
+		printf("OTPCFG0-D[9:8]\n");
+		printf("  Skip\n");
+	} else {
+		printf("OTPCFG0-D[9:8]\n");
+		printf("  OTP bit cell mode : ");
+		tmp = OTP_BIT_CELL_MODES(OTPCFG[0]);
+		if (tmp == SINGLE_CELL_MODE) {
+			printf("Single cell mode (recommended)\n");
+		} else if (tmp == DIFFERENTIAL_MODE) {
+			printf("Differnetial mode\n");
+		} else if (tmp == DIFFERENTIAL_REDUDANT_MODE) {
+			printf("Differential-redundant mode\n");
+		} else {
+			printf("Value error\n");
+			return -1;
 		}
 	}
-	printf("  Keys valid ID : %d\n", pass);
-
-	printf("OTPCFG4-D[23:16]\n");
-	tmp = ((OTPCFG[4] >> 16) & 0xff);
-	pass = -1;
-	for (i = 0; i < 7; i++) {
-		if (tmp == (1 << i)) {
-			if (pass != -1) {
-				printf("  Keys Retire ID value error : %x\n", tmp);
-				return -1;
-			}
-			pass = i;
+	if (CRYPTO_MODES(OTPCFG_KEEP[0]) == 0x3) {
+		printf("OTPCFG0-D[11:10]\n");
+		printf("  Skip\n");
+	} else {
+		printf("OTPCFG0-D[11:10]\n");
+		printf("  RSA mode : ");
+		tmp = CRYPTO_MODES(OTPCFG[0]);
+		if (tmp == CRYPTO_RSA1024) {
+			printf("RSA1024\n");
+		} else if (tmp == CRYPTO_RSA2048) {
+			printf("RSA2048\n");
+		} else if (tmp == CRYPTO_RSA3072) {
+			printf("RSA3072\n");
+		} else {
+			printf("RSA4096\n");
 		}
 	}
-	printf("  Keys Retire ID : %d\n", pass);
+	if (HASH_MODES(OTPCFG_KEEP[0]) == 0x3) {
+		printf("OTPCFG0-D[13:12]\n");
+		printf("  Skip\n");
+	} else {
+		printf("OTPCFG0-D[13:12]\n");
+		printf("  SHA mode : ");
+		tmp = HASH_MODES(OTPCFG[0]);
+		if (tmp == HASH_SAH224) {
+			printf("SHA224\n");
+		} else if (tmp == HASH_SAH256) {
+			printf("SHA256\n");
+		} else if (tmp == HASH_SAH384) {
+			printf("SHA384\n");
+		} else {
+			printf("SHA512\n");
+		}
+	}
 
-	printf("OTPCFG5-D[31:0]\n");
-	printf("  User define data, random number low : %x\n", OTPCFG[5]);
+	if (SECREG_SIZE(OTPCFG_KEEP[0]) == 0x3f) {
+		printf("OTPCFG0-D[21:16]\n");
+		printf("  Skip\n");
+	} else {
+		printf("OTPCFG0-D[21:16]\n");
+		printf("  Secure Region size (DW): %x\n", SECREG_SIZE(OTPCFG[0]));
+	}
 
-	printf("OTPCFG6-D[31:0]\n");
-	printf("  User define data, random number high : %x\n", OTPCFG[6]);
+	if (OTPCFG_KEEP[0] & WRITE_PROTECT_SECREG) {
+		printf("OTPCFG0-D[22]\n");
+		printf("  Skip\n");
+	} else {
+		printf("OTPCFG0-D[22]\n");
+		if (OTPCFG[0] & WRITE_PROTECT_SECREG)
+			printf("  Secure Region : Write Protect\n");
+		else
+			printf("  Secure Region : Writable\n");
+	}
 
-	printf("OTPCFG8-D[31:0]\n");
-	printf("  Redundancy Repair : %x\n", OTPCFG[8]);
+	if (OTPCFG_KEEP[0] & WRITE_PROTECT_USERREG) {
+		printf("OTPCFG0-D[23]\n");
+		printf("  Skip\n");
+	} else {
+		printf("OTPCFG0-D[23]\n");
+		if (OTPCFG[0] & WRITE_PROTECT_USERREG)
+			printf("  User Region : Write Protect\n");
+		else
+			printf("  User Region : Writable\n");
+	}
 
-	printf("OTPCFG10-D[31:0]\n");
-	printf("  Manifest ID low : %x\n", OTPCFG[10]);
+	if (OTPCFG_KEEP[0] & WRITE_PROTECT_CONFREG) {
+		printf("OTPCFG0-D[24]\n");
+		printf("  Skip\n");
+	} else {
+		printf("OTPCFG0-D[24]\n");
+		if (OTPCFG[0] & WRITE_PROTECT_CONFREG)
+			printf("  Configure Region : Write Protect\n");
+		else
+			printf("  Configure Region : Writable\n");
+	}
 
-	printf("OTPCFG11-D[31:0]\n");
-	printf("  Manifest ID high : %x\n", OTPCFG[11]);
+	if (OTPCFG_KEEP[0] & WRITE_PROTECT_STRAPREG) {
+		printf("OTPCFG0-D[25]\n");
+		printf("  Skip\n");
+	} else {
+		printf("OTPCFG0-D[25]\n");
+		if (OTPCFG[0] & WRITE_PROTECT_STRAPREG)
+			printf("  OTP strap Region : Write Protect\n");
+		else
+			printf("  OTP strap Region : Writable\n");
+	}
+
+	if (OTPCFG_KEEP[0] & ENABLE_COPY_TO_SRAM) {
+		printf("OTPCFG0-D[25]\n");
+		printf("  Skip\n");
+	} else {
+		printf("OTPCFG0-D[26]\n");
+		if (OTPCFG[0] & ENABLE_COPY_TO_SRAM)
+			printf("  Copy Boot Image to Internal SRAM\n");
+		else
+			printf("  Disable Copy Boot Image to Internal SRAM\n");
+	}
+	if (OTPCFG_KEEP[0] & ENABLE_IMAGE_ENC) {
+		printf("OTPCFG0-D[27]\n");
+		printf("  Skip\n");
+	} else {
+		printf("OTPCFG0-D[27]\n");
+		if (OTPCFG[0] & ENABLE_IMAGE_ENC)
+			printf("  Enable image encryption\n");
+		else
+			printf("  Disable image encryption\n");
+	}
+
+	if (OTPCFG_KEEP[0] & WRITE_PROTECT_KEY_RETIRE) {
+		printf("OTPCFG0-D[29]\n");
+		printf("  Skip\n");
+	} else {
+		printf("OTPCFG0-D[29]\n");
+		if (OTPCFG[0] & WRITE_PROTECT_KEY_RETIRE)
+			printf("  OTP key retire Region : Write Protect\n");
+		else
+			printf("  OTP key retire Region : Writable\n");
+	}
+
+	if (OTPCFG_KEEP[0] & ENABLE_SIPROM_RED) {
+		printf("OTPCFG0-D[30]\n");
+		printf("  Skip\n");
+	} else {
+		printf("OTPCFG0-D[30]\n");
+		if (OTPCFG[0] & ENABLE_SIPROM_RED)
+			printf("  SIPROM RED_EN redundancy repair enable\n");
+		else
+			printf("  SIPROM RED_EN redundancy repair disable\n");
+	}
+
+	if (OTPCFG_KEEP[0] & ENABLE_SIPROM_MLOCK) {
+		printf("OTPCFG0-D[31]\n");
+		printf("  Skip\n");
+	} else {
+		printf("OTPCFG0-D[31]\n");
+		if (OTPCFG[0] & ENABLE_SIPROM_MLOCK)
+			printf("  SIPROM Mlock memory lock enable\n");
+		else
+			printf("  SIPROM Mlock memory lock disable\n");
+	}
+	if (SECREG_SIZE(OTPCFG_KEEP[2]) == 0xFFFF) {
+		printf("OTPCFG2-D[15:0]\n");
+		printf("  Skip\n");
+	} else {
+		printf("OTPCFG2-D[15:0]\n");
+		printf("  Vender ID : %x\n", VENDER_ID(OTPCFG[2]));
+	}
+
+	if (SECREG_SIZE(OTPCFG_KEEP[2]) == 0xFFFF) {
+		printf("OTPCFG2-D[31:16]\n");
+		printf("  Skip\n");
+	} else {
+		printf("OTPCFG2-D[31:16]\n");
+		printf("  Key Revision : %x\n", KEY_REVISION(OTPCFG[2]));
+	}
+
+	if (SEC_BOOT_HEADER_OFFSET(OTPCFG_KEEP[3]) == 0xFFFF) {
+		printf("OTPCFG3-D[15:0]\n");
+		printf("  Skip\n");
+	} else {
+		printf("OTPCFG3-D[15:0]\n");
+		printf("  Secure boot header offset : %x\n",
+			   SEC_BOOT_HEADER_OFFSET(OTPCFG[3]));
+	}
+
+	if (KEYS_VALID_BITS(OTPCFG_KEEP[4]) == 0xFF) {
+		printf("OTPCFG4-D[7:0]\n");
+		printf("  Skip\n");
+	} else {
+		printf("OTPCFG4-D[7:0]\n");
+		tmp = KEYS_VALID_BITS(OTPCFG[4]);
+		if (tmp != 0) {
+			for (i = 0; i < 7; i++) {
+				if (tmp == (1 << i)) {
+					pass = i + 1;
+				}
+			}
+		} else {
+			pass = 0;
+		}
+		printf("  Keys valid  : %d\n", pass);
+	}
+	if (KEYS_RETIRE_BITS(OTPCFG_KEEP[4]) == 0xFF) {
+		printf("OTPCFG4-D[23:16]\n");
+		printf("  Skip\n");
+	} else {
+		printf("OTPCFG4-D[23:16]\n");
+		tmp = KEYS_RETIRE_BITS(OTPCFG[4]);
+		if (tmp != 0) {
+			for (i = 0; i < 7; i++) {
+				if (tmp == (1 << i)) {
+					pass = i + 1;
+				}
+			}
+		} else {
+			pass = 0;
+		}
+		printf("  Keys Retire ID : %d\n", pass);
+	}
+	if (OTPCFG_KEEP[5] == 0xFFFFFFFF) {
+		printf("OTPCFG5-D[31:0]\n");
+		printf("  Skip\n");
+	} else {
+		printf("OTPCFG5-D[31:0]\n");
+		printf("  User define data, random number low : %x\n", OTPCFG[5]);
+	}
+
+	if (OTPCFG_KEEP[6] == 0xFFFFFFFF) {
+		printf("OTPCFG6-D[31:0]\n");
+		printf("  Skip\n");
+	} else {
+		printf("OTPCFG6-D[31:0]\n");
+		printf("  User define data, random number high : %x\n", OTPCFG[6]);
+	}
+
+	if (OTPCFG_KEEP[8] == 0xFFFFFFFF) {
+		printf("OTPCFG8-D[31:0]\n");
+		printf("  Skip\n");
+	} else {
+		printf("OTPCFG8-D[31:0]\n");
+		printf("  Redundancy Repair : %x\n", OTPCFG[8]);
+	}
+
+	if (OTPCFG_KEEP[10] == 0xFFFFFFFF) {
+		printf("OTPCFG10-D[31:0]\n");
+		printf("  Skip\n");
+	} else {
+		printf("OTPCFG10-D[31:0]\n");
+		printf("  Manifest ID low : %x\n", OTPCFG[10]);
+	}
+
+	if (OTPCFG_KEEP[11] == 0xFFFFFFFF) {
+		printf("OTPCFG11-D[31:0]\n");
+		printf("  Skip\n");
+	} else {
+		printf("OTPCFG11-D[31:0]\n");
+		printf("  Manifest ID high : %x\n", OTPCFG[11]);
+	}
+
 	return 0;
 
 }
@@ -350,7 +670,7 @@ static void buf_print(char *buf, int len)
 	}
 }
 
-static int otp_data_parse(uint32_t *buf, int dw_count)
+static int otp_data_parse(uint32_t *buf)
 {
 	int key_id, key_offset, last, key_type, key_length, exp_length;
 	char *byte_buf;
@@ -410,7 +730,7 @@ static int otp_data_parse(uint32_t *buf, int dw_count)
 				printf("HMAC(SHA512)\n");
 				break;
 			}
-		} else if (key_type != 0 || key_type != 1) {
+		} else if (key_type != 0 && key_type != 1) {
 			printf("RSA SHA Type: ");
 			switch (key_length) {
 			case 0:
@@ -456,52 +776,87 @@ static int otp_data_parse(uint32_t *buf, int dw_count)
 	return 0;
 }
 
-static int otp_prog_conf(uint32_t *buf, int otp_addr, int dw_count)
+static int otp_prog_conf(uint32_t *buf)
 {
-	int i, j, k, bit_value;
-	int pass, soak;
-	uint32_t prog_bit, prog_address;
+	int i, k;
+	int pass = 0;
+	int soak = 0;
+	uint32_t prog_address;
+	uint32_t data[12];
+	uint32_t compare[2];
+	uint32_t *buf_keep = &buf[12];
+	uint32_t data_masked;
+	uint32_t buf_masked;
 
-	for (i = 0; i < dw_count; i++) {
+	printf("Read OTP Config Region:\n");
+
+	printProgress(0, 12, "");
+	for (i = 0; i < 12 ; i ++) {
+		printProgress(i + 1, 12, "");
 		prog_address = 0x800;
-		prog_address |= ((i + otp_addr) / 8) * 0x200;
-		prog_address |= ((i + otp_addr) % 8) * 0x2;
-		for (j = 0; j < 32; j++) {
-			bit_value = (buf[i] >> j) & 0x1;
-			if (bit_value)
-				prog_bit = ~(0x1 << j);
-			else
-				continue;
-			pass = 0;
-			soak = 0;
-			otp_write(0x3000, 0x4061); // Write MRA
-			otp_write(0x5000, 0x302f); // Write MRB
-			otp_write(0x1000, 0x4020); // Write MR
-			writel(0x04190760, 0x1e602008); //normal program
-			for (k = 0; k < RETRY; k++) {
-				if (!soak) {
-					otp_prog(prog_address, prog_bit);
-					if (prog_verify(prog_address, j, bit_value) == 0) {
-						pass = 1;
-						break;
-					}
-					soak = 1;
-					otp_write(0x3000, 0x4021); // Write MRA
-					otp_write(0x5000, 0x1027); // Write MRB
-					otp_write(0x1000, 0x4820); // Write MR
-					writel(0x041930d4, 0x1e602008); //soak program
-				}
-				otp_prog(prog_address, prog_bit);
-				if (prog_verify(prog_address, j, bit_value) == 0) {
-					pass = 1;
-					break;
-				}
-			}
-			if (!pass)
-				return -1;
+		prog_address |= (i / 8) * 0x200;
+		prog_address |= (i % 8) * 0x2;
+		otp_read_data(prog_address, &data[i]);
+	}
+
+	printf("Check writable...\n");
+	for (i = 0; i < 12; i++) {
+		data_masked = data[i]  & ~buf_keep[i];
+		buf_masked  = buf[i] & ~buf_keep[i];
+		if (data_masked == buf_masked)
+			continue;
+		if ((data_masked | buf_masked) == buf_masked) {
+			continue;
+		} else {
+			printf("Input image can't program into OTP, please check.\n");
+			printf("OTPCFG[%d] = %x\n", i, data[i]);
+			printf("Input [%d] = %x\n", i, buf[i]);
+			printf("Mask  [%x] = %x\n", i, ~buf_keep[i]);
+			return -1;
 		}
 	}
+
+	printf("Start Programing...\n");
+	printProgress(0, 12, "");
+	otp_soak(0);
+	for (i = 0; i < 12; i++) {
+		data_masked = data[i]  & ~buf_keep[i];
+		buf_masked  = buf[i] & ~buf_keep[i];
+		prog_address = 0x800;
+		prog_address |= (i / 8) * 0x200;
+		prog_address |= (i % 8) * 0x2;
+		if (data_masked == buf_masked) {
+			printProgress(i + 1, 12, "[%03X]=%08X HIT", prog_address, buf[i]);
+			continue;
+		}
+		if (soak) {
+			soak = 0;
+			otp_soak(0);
+		}
+		printProgress(i + 1, 12, "[%03X]=%08X    ", prog_address, buf[i]);
+
+		otp_prog_dw(buf[i], buf_keep[i], prog_address);
+
+		pass = 0;
+		for (k = 0; k < RETRY; k++) {
+			if (verify_dw(prog_address, &buf[i], &buf_keep[i], compare, 1) != 0) {
+				if (soak == 0) {
+					soak = 1;
+					otp_soak(1);
+				}
+				otp_prog_dw(compare[0], prog_address, 1);
+			} else {
+				pass = 1;
+				break;
+			}
+		}
+	}
+
+	if (!pass)
+		return -1;
+
 	return 0;
+
 }
 
 static void otp_strp_status(struct otpstrap *otpstrap)
@@ -596,7 +951,7 @@ static int otp_strap_parse(uint32_t *buf)
 		if (pbit == 1) {
 			printf("    This bit will be protected and become non-writable.\n");
 		}
-		printf("    Write 1 to OTPSTRAP[%d] OPTION[%d], that value becomes frome %d to %d.\n", i, otpstrap[i].writeable_option + 1, otpstrap[i].value, otpstrap[i].value ^ 1);
+		printf("    Write 1 to OTPSTRAP[%d] OPTION[%d], that value becomes from %d to %d.\n", i, otpstrap[i].writeable_option + 1, otpstrap[i].value, otpstrap[i].value ^ 1);
 	}
 	if (fail == 1)
 		return -1;
@@ -604,14 +959,14 @@ static int otp_strap_parse(uint32_t *buf)
 		return 0;
 }
 
-static void otp_print_strap(void)
+static void otp_print_strap(int start, int count)
 {
 	int i, j;
 	struct otpstrap otpstrap[64];
 
 	otp_strp_status(otpstrap);
 
-	for (i = 0; i < 64; i++) {
+	for (i = start; i < start + count; i++) {
 		printf("OTPSTRAP[%d]:\n", i);
 		printf("  OTP Option value: ");
 		for (j = 1; j <= 7; j++)
@@ -649,6 +1004,7 @@ static int otp_prog_strap(uint32_t *buf)
 	otp_write(0x5000, 0x302f); // Write MRB
 	otp_write(0x1000, 0x4020); // Write MR
 	for (i = 0; i < 64; i++) {
+		printProgress(i + 1, 64, "");
 		prog_address = 0x800;
 		if (i < 32) {
 			offset = i;
@@ -691,7 +1047,7 @@ static int otp_prog_strap(uint32_t *buf)
 		for (j = 0; j < RETRY; j++) {
 			if (!soak) {
 				otp_prog(prog_address, prog_bit);
-				if (prog_verify(prog_address, offset, 1) == 0) {
+				if (verify_bit(prog_address, offset, 1) == 0) {
 					pass = 1;
 					break;
 				}
@@ -702,7 +1058,7 @@ static int otp_prog_strap(uint32_t *buf)
 				writel(0x041930d4, 0x1e602008); //soak program
 			}
 			otp_prog(prog_address, prog_bit);
-			if (prog_verify(prog_address, offset, 1) == 0) {
+			if (verify_bit(prog_address, offset, 1) == 0) {
 				pass = 1;
 				break;
 			}
@@ -722,7 +1078,7 @@ static int otp_prog_strap(uint32_t *buf)
 			if (!soak) {
 				writel(0x04190760, 0x1e602008); //normal program
 				otp_prog(prog_address, prog_bit);
-				if (prog_verify(prog_address, offset, 1) == 0) {
+				if (verify_bit(prog_address, offset, 1) == 0) {
 					pass = 1;
 					break;
 				}
@@ -730,7 +1086,7 @@ static int otp_prog_strap(uint32_t *buf)
 			}
 			writel(0x041930d4, 0x1e602008); //soak program
 			otp_prog(prog_address, prog_bit);
-			if (prog_verify(prog_address, offset, 1) == 0) {
+			if (verify_bit(prog_address, offset, 1) == 0) {
 				pass = 1;
 				break;
 			}
@@ -746,100 +1102,205 @@ static int otp_prog_strap(uint32_t *buf)
 
 }
 
-static int otp_prog_data(uint32_t *buf, int otp_addr, int dw_count)
+static void otp_prog_bit(uint32_t value, uint32_t prog_address, uint32_t bit_offset, int soak)
 {
-	int i, j, k, bit_value;
-	int pass, soak;
-	uint32_t prog_bit, prog_address;
+	int prog_bit;
 
-	for (i = 0; i < dw_count; i++) {
-		prog_address = i + otp_addr;
-		for (j = 0; j < 32; j++) {
-			bit_value = (buf[i] >> j) & 0x1;
-			if (prog_address % 2 == 0) {
-				prog_address |= 1 << 15;
-				if (bit_value)
-					prog_bit = ~(0x1 << j);
-				else
-					continue;
-			} else {
-				prog_address |= 1 << 15;
-				// printf("bit_value = %x\n", bit_value);
-				if (bit_value)
-					continue;
-				else
-					prog_bit = 0x1 << j;
-			}
-			pass = 0;
-			soak = 0;
-			otp_write(0x3000, 0x4061); // Write MRA
-			otp_write(0x5000, 0x302f); // Write MRB
-			otp_write(0x1000, 0x4020); // Write MR
-			writel(0x04190760, 0x1e602008); //normal program
-			for (k = 0; k < RETRY; k++) {
-				if (!soak) {
-					// printf("prog_address = %x\n", prog_address);
-					// printf("prog_bit = %x\n", prog_bit);
-					otp_prog(prog_address, prog_bit);
-					if (prog_verify(prog_address, j, bit_value) == 0) {
-						pass = 1;
-						break;
-					}
-					soak = 1;
-					otp_write(0x3000, 0x4021); // Write MRA
-					otp_write(0x5000, 0x1027); // Write MRB
-					otp_write(0x1000, 0x4820); // Write MR
-					writel(0x041930d4, 0x1e602008); //soak program
-				}
-				otp_prog(prog_address, prog_bit);
-				if (prog_verify(prog_address, j, bit_value) == 0) {
-					pass = 1;
-					break;
-				}
-			}
-			if (!pass)
-				return -1;
-		}
+	if (soak) {
+		otp_write(0x3000, 0x4021); // Write MRA
+		otp_write(0x5000, 0x1027); // Write MRB
+		otp_write(0x1000, 0x4820); // Write MR
+		writel(0x041930d4, 0x1e602008); //soak program
+	} else {
+		otp_write(0x3000, 0x4061); // Write MRA
+		otp_write(0x5000, 0x302f); // Write MRB
+		otp_write(0x1000, 0x4020); // Write MR
+		writel(0x04190760, 0x1e602008); //normal program
 	}
-	return 0;
+	if (prog_address % 2 == 0) {
+		if (value)
+			prog_bit = ~(0x1 << bit_offset);
+		else
+			return;
+	} else {
+		prog_address |= 1 << 15;
+		if (!value)
+			prog_bit = 0x1 << bit_offset;
+		else
+			return;
+	}
+	otp_prog(prog_address, prog_bit);
 }
 
-static int do_otp_prog(int mode, int addr, int otp_addr, int dw_count, int nconfirm)
+static int otp_prog_data(uint32_t *buf)
+{
+	int i, k;
+	int pass;
+	int soak = 0;
+	uint32_t prog_address;
+	uint32_t data[2048];
+	uint32_t compare[2];
+	uint32_t *buf_keep = &buf[2048];
+
+	uint32_t data0_masked;
+	uint32_t data1_masked;
+	uint32_t buf0_masked;
+	uint32_t buf1_masked;
+
+	printf("Read OTP Data:\n");
+
+	printProgress(0, 2048, "");
+	for (i = 0; i < 2048 ; i += 2) {
+		printProgress(i + 2, 2048, "");
+		otp_read_data(i, &data[i]);
+	}
+
+
+	printf("Check writable...\n");
+	for (i = 0; i < 2048; i++) {
+		data0_masked = data[i]  & ~buf_keep[i];
+		buf0_masked  = buf[i] & ~buf_keep[i];
+		if (data0_masked == buf0_masked)
+			continue;
+		if (i % 2 == 0) {
+			if ((data0_masked | buf0_masked) == buf0_masked) {
+				continue;
+			} else {
+				printf("Input image can't program into OTP, please check.\n");
+				printf("OTP_ADDR[%x] = %x\n", i, data[i]);
+				printf("Input   [%x] = %x\n", i, buf[i]);
+				printf("Mask    [%x] = %x\n", i, ~buf_keep[i]);
+				return -1;
+			}
+		} else {
+			if ((data0_masked & buf0_masked) == buf0_masked) {
+				continue;
+			} else {
+				printf("Input image can't program into OTP, please check.\n");
+				printf("OTP_ADDR[%x] = %x\n", i, data[i]);
+				printf("Input   [%x] = %x\n", i, buf[i]);
+				printf("Mask    [%x] = %x\n", i, ~buf_keep[i]);
+				return -1;
+			}
+		}
+	}
+
+	printf("Start Programing...\n");
+	printProgress(0, 2048, "");
+
+	for (i = 0; i < 2048; i += 2) {
+		prog_address = i;
+		data0_masked = data[i]  & ~buf_keep[i];
+		buf0_masked  = buf[i] & ~buf_keep[i];
+		data1_masked = data[i + 1]  & ~buf_keep[i + 1];
+		buf1_masked  = buf[i + 1] & ~buf_keep[i + 1];
+		if ((data0_masked == buf0_masked) && (data1_masked == buf1_masked)) {
+			printProgress(i + 2, 2048, "[%03X]=%08X HIT;[%03X]=%08X HIT", prog_address, buf[i], prog_address + 1, buf[i + 1]);
+			continue;
+		}
+		if (soak) {
+			soak = 0;
+			otp_soak(0);
+		}
+		if (data1_masked == buf1_masked) {
+			printProgress(i + 2, 2048, "[%03X]=%08X    ;[%03X]=%08X HIT", prog_address, buf[i], prog_address + 1, buf[i + 1]);
+			otp_prog_dw(buf[i], buf_keep[i], prog_address);
+		} else if (data0_masked == buf0_masked) {
+			printProgress(i + 2, 2048, "[%03X]=%08X HIT;[%03X]=%08X    ", prog_address, buf[i], prog_address + 1, buf[i + 1]);
+			otp_prog_dw(buf[i + 1], buf_keep[i + 1], prog_address + 1);
+		} else {
+			printProgress(i + 2, 2048, "[%03X]=%08X    ;[%03X]=%08X    ", prog_address, buf[i], prog_address + 1, buf[i + 1]);
+			otp_prog_dw(buf[i], buf_keep[i], prog_address);
+			otp_prog_dw(buf[i + 1], buf_keep[i + 1], prog_address + 1);
+		}
+
+		pass = 0;
+		for (k = 0; k < RETRY; k++) {
+			if (verify_dw(prog_address, &buf[i], &buf_keep[i], compare, 2) != 0) {
+				if (soak == 0) {
+					soak = 1;
+					otp_soak(1);
+				}
+				if (compare[0] != 0) {
+					otp_prog_dw(compare[0], buf_keep[i], prog_address);
+				}
+				if (compare[1] != ~0) {
+					otp_prog_dw(compare[1], buf_keep[i], prog_address + 1);
+				}
+			} else {
+				pass = 1;
+				break;
+			}
+		}
+
+		if (!pass)
+			return -1;
+	}
+	return 0;
+
+}
+
+static int do_otp_prog(int addr, int byte_size, int nconfirm)
 {
 	int ret;
+	int mode;
 	uint32_t *buf;
+	uint32_t *data_region = NULL;
+	uint32_t *conf_region = NULL;
+	uint32_t *strap_region = NULL;
 
-	buf = map_physmem(addr, dw_count * 4, MAP_WRBACK);
+	buf = map_physmem(addr, byte_size, MAP_WRBACK);
 	if (!buf) {
 		puts("Failed to map physical memory\n");
 		return 1;
 	}
+
+	if (((buf[0] >> 29) & 0x7) == 0x7) {
+		mode = OTP_REGION_ALL;
+		conf_region = &buf[1];
+		strap_region = &buf[25];
+		data_region = &buf[31];
+	} else {
+		if (buf[0] & BIT(29)) {
+			mode = OTP_REGION_DATA;
+			data_region = &buf[31];
+		}
+		if (buf[0] & BIT(30)) {
+			mode = OTP_REGION_CONF;
+			strap_region = &buf[25];
+		}
+		if (buf[0] & BIT(31)) {
+			mode = OTP_REGION_STRAP;
+			conf_region = &buf[1];
+		}
+	}
+
 	if (!nconfirm) {
-		if (mode == MODE_CONF) {
-			if (otp_conf_parse(buf) < 0) {
+		if (mode == OTP_REGION_CONF) {
+			if (otp_conf_parse(conf_region) < 0) {
 				printf("OTP config error, please check.\n");
 				return -1;
 			}
-		} else if (mode == MODE_DATA) {
-			if (otp_data_parse(buf, dw_count) < 0) {
+		} else if (mode == OTP_REGION_DATA) {
+			if (otp_data_parse(data_region) < 0) {
 				printf("OTP data error, please check.\n");
 				return -1;
 			}
-		} else if (mode == MODE_STRAP) {
-			if (otp_strap_parse(buf) < 0) {
+		} else if (mode == OTP_REGION_STRAP) {
+			if (otp_strap_parse(strap_region) < 0) {
 				printf("OTP strap error, please check.\n");
 				return -1;
 			}
-		} else if (mode == MODE_ALL) {
-			if (otp_conf_parse(buf) < 0) {
+		} else if (mode == OTP_REGION_ALL) {
+			if (otp_conf_parse(conf_region) < 0) {
 				printf("OTP config error, please check.\n");
 				return -1;
 			}
-			if (otp_strap_parse(&buf[12]) < 0) {
+			if (otp_strap_parse(strap_region) < 0) {
 				printf("OTP strap error, please check.\n");
 				return -1;
 			}
-			if (otp_data_parse(&buf[18], dw_count - 18) < 0) {
+			if (otp_data_parse(data_region) < 0) {
 				printf("OTP data error, please check.\n");
 				return -1;
 			}
@@ -850,15 +1311,15 @@ static int do_otp_prog(int mode, int addr, int otp_addr, int dw_count, int nconf
 			return 1;
 		}
 	}
-	if (mode == MODE_CONF) {
-		return otp_prog_conf(buf, otp_addr, dw_count);
-	} else if (mode == MODE_STRAP) {
-		return otp_prog_strap(buf);
-	} else if (mode == MODE_DATA) {
-		return otp_prog_data(buf, otp_addr, dw_count);
-	} else if (mode == MODE_ALL) {
+	if (mode == OTP_REGION_CONF) {
+		return otp_prog_conf(conf_region);
+	} else if (mode == OTP_REGION_STRAP) {
+		return otp_prog_strap(strap_region);
+	} else if (mode == OTP_REGION_DATA) {
+		return otp_prog_data(data_region);
+	} else if (mode == OTP_REGION_ALL) {
 		printf("programing data region ... ");
-		ret = otp_prog_data(&buf[16], 0, dw_count - 18);
+		ret = otp_prog_data(data_region);
 		if (ret < 0) {
 			printf("Error\n");
 			return ret;
@@ -866,7 +1327,7 @@ static int do_otp_prog(int mode, int addr, int otp_addr, int dw_count, int nconf
 			printf("Done\n");
 		}
 		printf("programing strap region ... ");
-		ret = otp_prog_strap(&buf[12]);
+		ret = otp_prog_strap(strap_region);
 		if (ret < 0) {
 			printf("Error\n");
 			return ret;
@@ -874,7 +1335,7 @@ static int do_otp_prog(int mode, int addr, int otp_addr, int dw_count, int nconf
 			printf("Done\n");
 		}
 		printf("programing configuration region ... ");
-		ret = otp_prog_conf(buf, 0, 12);
+		ret = otp_prog_conf(conf_region);
 		if (ret < 0) {
 			printf("Error\n");
 			return ret;
@@ -884,13 +1345,127 @@ static int do_otp_prog(int mode, int addr, int otp_addr, int dw_count, int nconf
 	}
 	return 0;
 }
+
+static int do_otp_prog_bit(int mode, int otp_dw_offset, int bit_offset, int value, int protect, int nconfirm)
+{
+	uint32_t ret[2];
+	uint32_t strap_buf[6];
+	uint32_t prog_address = 0;
+	struct otpstrap otpstrap[64];
+	int otp_bit;
+	int i;
+	int pass;
+
+	switch (mode) {
+	case OTP_REGION_CONF:
+		otp_read_config(otp_dw_offset, ret);
+		prog_address = 0x800;
+		prog_address |= (otp_dw_offset / 8) * 0x200;
+		prog_address |= (otp_dw_offset % 8) * 0x2;
+		otp_bit = (ret[0] >> bit_offset) & 0x1;
+		if (otp_bit == value) {
+			printf("OTPCFG%X[%d] = %d\n", otp_dw_offset, bit_offset, value);
+			printf("No need to program\n");
+			return 0;
+		}
+		if (otp_bit == 1 && value == 0) {
+			printf("OTPCFG%X[%d] = 1\n", otp_dw_offset, bit_offset);
+			printf("OTP is programed, which can't be clean\n");
+			return -1;
+		}
+		printf("Program OTPCFG%X[%d] to 1\n", otp_dw_offset, bit_offset);
+		break;
+	case OTP_REGION_DATA:
+		prog_address = otp_dw_offset;
+
+		if (otp_dw_offset % 2 == 0) {
+			otp_read_data(otp_dw_offset, ret);
+			otp_bit = (ret[0] >> bit_offset) & 0x1;
+		} else {
+			otp_read_data(otp_dw_offset - 1, ret);
+			otp_bit = (ret[1] >> bit_offset) & 0x1;
+		}
+		if (otp_bit == value) {
+			printf("OTPDATA%X[%d] = %d\n", otp_dw_offset, bit_offset, value);
+			printf("No need to program\n");
+			return 0;
+		}
+		if (otp_bit == 1 && value == 0) {
+			printf("OTPDATA%X[%d] = 1\n", otp_dw_offset, bit_offset);
+			printf("OTP is programed, which can't be clean\n");
+			return -1;
+		}
+		printf("Program OTPDATA%X[%d] to 1\n", otp_dw_offset, bit_offset);
+		break;
+	case OTP_REGION_STRAP:
+		otp_strp_status(otpstrap);
+		otp_print_strap(bit_offset, 1);
+		if (bit_offset < 32) {
+			strap_buf[0] = value << bit_offset;
+			strap_buf[2] = ~BIT(bit_offset);
+			strap_buf[3] = ~0;
+			strap_buf[5] = 0;
+			if (protect)
+				strap_buf[4] = BIT(bit_offset);
+			else
+				strap_buf[4] = 0;
+		} else {
+			strap_buf[1] = value << (bit_offset - 32);
+			strap_buf[2] = ~0;
+			strap_buf[3] = ~BIT(bit_offset - 32);
+			strap_buf[4] = 0;
+			if (protect)
+				strap_buf[5] = BIT(bit_offset - 32);
+			else
+				strap_buf[5] = 0;
+		}
+		if (otp_strap_parse(strap_buf) < 0)
+			return -1;
+		break;
+	}
+
+	if (!nconfirm) {
+		printf("type \"YES\" (no quotes) to continue:\n");
+		if (!confirm_yesno()) {
+			printf(" Aborting\n");
+			return 1;
+		}
+	}
+
+	switch (mode) {
+	case OTP_REGION_STRAP:
+		return otp_prog_strap(strap_buf);
+	case OTP_REGION_CONF:
+	case OTP_REGION_DATA:
+		otp_prog_bit(value, prog_address, bit_offset, 0);
+		pass = -1;
+		for (i = 0; i < RETRY; i++) {
+			if (verify_bit(prog_address, bit_offset, value) != 0) {
+				otp_prog_bit(value, prog_address, bit_offset, 1);
+			} else {
+				pass = 0;
+				break;
+			}
+		}
+		return pass;
+	}
+
+	return -1;
+}
+
 static int do_ast_otp(cmd_tbl_t *cmdtp, int flag, int argc,
 		      char *const argv[])
 {
 	char *cmd;
 	int mode = 0;
 	int nconfirm = 0;
-	uint32_t addr, dw_count, otp_addr;
+	uint32_t addr = 0;
+	uint32_t otp_addr = 0;
+	int dw_count = 0;
+	int byte_size = 0;
+	int bit_offset = 0;
+	int value = 0;
+	int protect = 0;
 
 
 
@@ -902,43 +1477,72 @@ usage:
 	cmd = argv[1];
 	if (!strcmp(cmd, "read")) {
 		if (!strcmp(argv[2], "conf"))
-			mode = MODE_CONF;
+			mode = OTP_REGION_CONF;
 		else if (!strcmp(argv[2], "data"))
-			mode = MODE_DATA;
+			mode = OTP_REGION_DATA;
 		else if (!strcmp(argv[2], "strap"))
-			mode = MODE_STRAP;
+			mode = OTP_REGION_STRAP;
 		else
 			goto usage;
 
 		writel(OTP_PASSWD, 0x1e6f2000); //password
 		otp_addr = simple_strtoul(argv[3], NULL, 16);
 		dw_count = simple_strtoul(argv[4], NULL, 16);
-		if (mode == MODE_CONF) {
+		if (mode == OTP_REGION_CONF) {
 			otp_print_config(otp_addr, dw_count);
-		} else if (mode == MODE_DATA) {
+		} else if (mode == OTP_REGION_DATA) {
 			otp_print_data(otp_addr, dw_count);
-		} else if (mode == MODE_STRAP) {
-			otp_print_strap();
+		} else if (mode == OTP_REGION_STRAP) {
+			otp_print_strap(0, 64);
 		}
 	} else if (!strcmp(cmd, "prog")) {
-		if (!strcmp(argv[2], "conf"))
-			mode = MODE_CONF;
-		else if (!strcmp(argv[2], "strap"))
-			mode = MODE_STRAP;
-		else if (!strcmp(argv[2], "data"))
-			mode = MODE_DATA;
-		else if (!strcmp(argv[2], "all"))
-			mode = MODE_ALL;
-		else
-			goto usage;
+		// if (!strcmp(argv[2], "conf"))
+		// 	mode = OTP_REGION_CONF;
+		// else if (!strcmp(argv[2], "strap"))
+		// 	mode = OTP_REGION_STRAP;
+		// else if (!strcmp(argv[2], "data"))
+		// 	mode = OTP_REGION_DATA;
+		// else if (!strcmp(argv[2], "all"))
+		// 	mode = OTP_REGION_ALL;
+		// else
+		// 	goto usage;
 
-		if (!strcmp(argv[3], "f"))
+		if (!strcmp(argv[2], "f"))
 			nconfirm = 1;
 		writel(OTP_PASSWD, 0x1e6f2000); //password
-		addr = simple_strtoul(argv[3 + nconfirm], NULL, 16);
-		otp_addr = simple_strtoul(argv[4 + nconfirm], NULL, 16);
-		dw_count = simple_strtoul(argv[5 + nconfirm], NULL, 16);
-		return do_otp_prog(mode, addr, otp_addr, dw_count, nconfirm);
+		addr = simple_strtoul(argv[2 + nconfirm], NULL, 16);
+		byte_size = simple_strtoul(argv[3 + nconfirm], NULL, 16);
+		return do_otp_prog(addr, byte_size, nconfirm);
+	} else if (!strcmp(cmd, "pb")) {
+		if (!strcmp(argv[2], "conf"))
+			mode = OTP_REGION_CONF;
+		else if (!strcmp(argv[2], "strap"))
+			mode = OTP_REGION_STRAP;
+		else if (!strcmp(argv[2], "data"))
+			mode = OTP_REGION_DATA;
+		else
+			goto usage;
+		if (!strcmp(argv[3], "f"))
+			nconfirm = 1;
+
+		if (mode == OTP_REGION_STRAP) {
+			bit_offset = simple_strtoul(argv[3 + nconfirm], NULL, 16);
+			value = simple_strtoul(argv[4 + nconfirm], NULL, 16);
+			protect = simple_strtoul(argv[5 + nconfirm], NULL, 16);
+			if (bit_offset >= 64)
+				return -1;
+		} else {
+			otp_addr = simple_strtoul(argv[3 + nconfirm], NULL, 16);
+			bit_offset = simple_strtoul(argv[4 + nconfirm], NULL, 16);
+			value = simple_strtoul(argv[5 + nconfirm], NULL, 16);
+			if (bit_offset >= 32)
+				return -1;
+		}
+		if (value != 0 && value != 1)
+			return -1;
+
+		writel(OTP_PASSWD, 0x1e6f2000); //password
+		return do_otp_prog_bit(mode, otp_addr, bit_offset, value, protect, nconfirm);
 	} else if (!strcmp(cmd, "comp")) {
 		writel(OTP_PASSWD, 0x1e6f2000); //password
 		addr = simple_strtoul(argv[2], NULL, 16);
@@ -960,7 +1564,9 @@ usage:
 U_BOOT_CMD(
 	otp, 7, 0,  do_ast_otp,
 	"ASPEED One-Time-Programmable sub-system",
-	"read conf|strap|data <otp_addr> <dw_count>\n"
-	"otp prog conf|strap|data|all [f] <addr> <otp_addr> <dw_count>\n"
-	"otp comp <addr> <otp_addr>"
+	"read conf|strap|data <otp_dw_offset> <dw_count>\n"
+	"otp prog [f] <addr> <byte_size>\n"
+	"otp pb conf|data [f] <otp_dw_offset> <bit_offset> <value>\n"
+	"otp pb strap [f] <bit_offset> <value> <protect>\n"
+	"otp comp <addr> <otp_dw_offset>\n"
 );
