@@ -51,11 +51,12 @@ struct pcie_aspeed {
 
 static int pcie_addr_valid(pci_dev_t d, int first_busno)
 {
+#if 0
 	if ((PCI_BUS(d) == first_busno) && (PCI_DEV(d) > 0))
 		return 0;
 	if ((PCI_BUS(d) == first_busno + 1) && (PCI_DEV(d) > 0))
 		return 0;
-
+#endif
 	return 1;
 }
 
@@ -64,7 +65,7 @@ static int pcie_aspeed_read_config(struct udevice *bus, pci_dev_t bdf,
 				     enum pci_size_t size)
 {
 	struct pcie_aspeed *pcie = dev_get_priv(bus);
-
+	
 	debug("PCIE CFG read:  (b,d,f)=(%2d,%2d,%2d) ",
 	      PCI_BUS(bdf), PCI_DEV(bdf), PCI_FUNC(bdf));
 
@@ -74,19 +75,10 @@ static int pcie_aspeed_read_config(struct udevice *bus, pci_dev_t bdf,
 		return 0;
 	}
 
-	if(PCI_BUS(bdf) == 0)
-		aspeed_pcie_cfg_read(pcie->h2x_pt, 0, 
-						(PCI_BUS(bdf) << 24) |
-						(PCI_DEV(bdf) << 19) |
-						(PCI_FUNC(bdf) << 16) | 
-						offset, valuep);
-	else	
-		aspeed_pcie_cfg_read(pcie->h2x_pt, 0, 
-						(PCI_BUS(bdf) << 24) |
-						(PCI_DEV(bdf) << 19) |
-						(PCI_FUNC(bdf) << 16) | 
-						offset, valuep);
+	aspeed_pcie_cfg_read(pcie->h2x_pt, bdf, offset, valuep);
 
+	debug("(addr,val)=(0x%04x, 0x%08lx)\n", offset, *valuep);
+	*valuep = pci_conv_32_to_size(*valuep, offset, size);
 
 	return 0;
 }
@@ -106,22 +98,10 @@ static int pcie_aspeed_write_config(struct udevice *bus, pci_dev_t bdf,
 		return 0;
 	}
 
-	if(PCI_BUS(bdf) == 0)
-		aspeed_pcie_cfg_write(pcie->h2x_pt, 0, 0xf,
-						(PCI_BUS(bdf) << 24) |
-						(PCI_DEV(bdf) << 19) |
-						(PCI_FUNC(bdf) << 16) | 
-						(offset & ~3), value);
-	else	
-		aspeed_pcie_cfg_write(pcie->h2x_pt, 1, 0xf,
-						(PCI_BUS(bdf) << 24) |
-						(PCI_DEV(bdf) << 19) |
-						(PCI_FUNC(bdf) << 16) | 
-						(offset & ~3), value);
+	aspeed_pcie_cfg_write(pcie->h2x_pt, bdf, offset, value, size);
 
 	return 0;
 }
-
 
 static int pcie_aspeed_probe(struct udevice *dev)
 {
@@ -190,8 +170,6 @@ static int pcie_aspeed_ofdata_to_platdata(struct udevice *dev)
 	pcie->cfg_base = (void *)devfdt_get_addr_size_index(dev, 1,
 							 &pcie->cfg_size);
 
-	printf("pcie->ctrl_base %x , pcie->cfg_base  %x \n", (u32)pcie->ctrl_base, (u32)pcie->cfg_base);
-
 	return 0;
 }
 
@@ -201,7 +179,7 @@ static const struct dm_pci_ops pcie_aspeed_ops = {
 };
 
 static const struct udevice_id pcie_aspeed_ids[] = {
-	{ .compatible = "aspeed,aspeed-pcie" },
+	{ .compatible = "aspeed,ast2600-pcie" },
 	{ }
 };
 

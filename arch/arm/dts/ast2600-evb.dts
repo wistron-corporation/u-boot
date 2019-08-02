@@ -69,6 +69,7 @@
 
 &mac1 {
 	status = "okay";
+
 	phy-mode = "rgmii";
 	pinctrl-names = "default";
 	pinctrl-0 = <&pinctrl_mac2link_default &pinctrl_mdio2_default>;
@@ -76,6 +77,7 @@
 
 &mac2 {
 	status = "okay";
+
 	phy-mode = "rgmii";
 	pinctrl-names = "default";
 	pinctrl-0 = <&pinctrl_mac3link_default &pinctrl_mdio3_default>;
@@ -83,6 +85,7 @@
 
 &mac3 {
 	status = "okay";
+
 	phy-mode = "rgmii";
 	pinctrl-names = "default";
 	pinctrl-0 = <&pinctrl_mac4link_default &pinctrl_mdio4_default>;
@@ -147,3 +150,12 @@
         status = "okay";
 
 };
+
+&h2x {
+	status = "okay";
+};
+
+&pcie_bridge {
+	status = "okay";
+};
+
