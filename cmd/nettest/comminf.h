@@ -890,8 +890,6 @@ GLOBAL void Write_Mem_Des_NCSI_DD (uint32_t addr, uint32_t data);
 GLOBAL void Write_Reg_WDT_DD (uint32_t addr, uint32_t data);
 GLOBAL void Write_Reg_TIMER_DD (uint32_t addr, uint32_t data);
 
-GLOBAL void    init_iodelay (MAC_ENGINE *eng);
-
 
 
 

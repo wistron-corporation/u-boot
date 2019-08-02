@@ -52,36 +52,36 @@ const uint32_t ARP_org_data[16] = {
 uint32_t Read_Mem_Dat_NCSI_DD(uint32_t addr)
 {
 #ifdef MAC_DEBUG_MEMRW_Dat
-	printf("[MEMRd-Dat] %08x = %08x\n", addr, SWAP_4B_LEDN_MEM( ReadSOC_DD(addr) ) );
+	printf("[MEMRd-Dat] %08x = %08x\n", addr, SWAP_4B_LEDN_MEM( readl(addr) ) );
 #endif
-	return ( SWAP_4B_LEDN_MEM( ReadSOC_DD(addr) ) );
+	return ( SWAP_4B_LEDN_MEM( readl(addr) ) );
 }
 
 uint32_t Read_Mem_Des_NCSI_DD(uint32_t addr)
 {
 #ifdef MAC_DEBUG_MEMRW_Des
 	printf("[MEMRd-Des] %08x = %08x\n", addr,
-	       SWAP_4B_LEDN_MEM(ReadSOC_DD(addr)));
+	       SWAP_4B_LEDN_MEM(readl(addr)));
 #endif
-	return (SWAP_4B_LEDN_MEM(ReadSOC_DD(addr)));
+	return (SWAP_4B_LEDN_MEM(readl(addr)));
 }
 
 uint32_t Read_Mem_Dat_DD(uint32_t addr)
 {
 #ifdef MAC_DEBUG_MEMRW_Dat
 	printf("[MEMRd-Dat] %08x = %08x\n", addr,
-	       SWAP_4B_LEDN_MEM(ReadSOC_DD(addr)));
+	       SWAP_4B_LEDN_MEM(readl(addr)));
 #endif
-	return (SWAP_4B_LEDN_MEM(ReadSOC_DD(addr)));
+	return (SWAP_4B_LEDN_MEM(readl(addr)));
 }
 
 uint32_t Read_Mem_Des_DD(uint32_t addr)
 {
 #ifdef MAC_DEBUG_MEMRW_Des
 	printf("[MEMRd-Des] %08x = %08x\n", addr,
-	       SWAP_4B_LEDN_MEM(ReadSOC_DD(addr)));
+	       SWAP_4B_LEDN_MEM(readl(addr)));
 #endif
-	return (SWAP_4B_LEDN_MEM(ReadSOC_DD(addr)));
+	return (SWAP_4B_LEDN_MEM(readl(addr)));
 }
 
 //------------------------------------------------------------
@@ -96,9 +96,9 @@ uint32_t Read_Reg_WDT_DD(uint32_t addr)
 {
 #ifdef MAC_DEBUG_REGRW_WDT
 	printf("[RegRd-WDT] %08x = %08x\n", WDT_BASE + addr,
-	       SWAP_4B_LEDN_REG(ReadSOC_DD(WDT_BASE + addr)));
+	       SWAP_4B_LEDN_REG(readl(WDT_BASE + addr)));
 #endif
-	return (SWAP_4B_LEDN_REG(ReadSOC_DD(WDT_BASE + addr)));
+	return (SWAP_4B_LEDN_REG(readl(WDT_BASE + addr)));
 }
 
 //------------------------------------------------------------
@@ -108,25 +108,25 @@ void Write_Mem_Dat_NCSI_DD (uint32_t addr, uint32_t data) {
 #ifdef MAC_DEBUG_MEMRW_Dat
 	printf("[MEMWr-Dat] %08x = %08x\n", addr, SWAP_4B_LEDN_MEM( data ) );
 #endif
-	WriteSOC_DD( addr, SWAP_4B_LEDN_MEM( data ) );
+	writel(data, addr);
 }
 void Write_Mem_Des_NCSI_DD (uint32_t addr, uint32_t data) {
 #ifdef MAC_DEBUG_MEMRW_Des
 	printf("[MEMWr-Des] %08x = %08x\n", addr, SWAP_4B_LEDN_MEM( data ) );
 #endif
-	WriteSOC_DD( addr, SWAP_4B_LEDN_MEM( data ) );
+	writel(data, addr);
 }
 void Write_Mem_Dat_DD (uint32_t addr, uint32_t data) {
 #ifdef MAC_DEBUG_MEMRW_Dat
 	printf("[MEMWr-Dat] %08x = %08x\n", addr, SWAP_4B_LEDN_MEM( data ) );
 #endif
-	WriteSOC_DD( addr, SWAP_4B_LEDN_MEM( data ) );
+	writel(data, addr);
 }
 void Write_Mem_Des_DD (uint32_t addr, uint32_t data) {
 #ifdef MAC_DEBUG_MEMRW_Des
 	printf("[MEMWr-Des] %08x = %08x\n", addr, SWAP_4B_LEDN_MEM( data ) );
 #endif
-	WriteSOC_DD( addr, SWAP_4B_LEDN_MEM( data ) );
+	writel(data, addr);
 }
 
 //------------------------------------------------------------
@@ -141,13 +141,13 @@ void Write_Reg_WDT_DD (uint32_t addr, uint32_t data) {
 #ifdef MAC_DEBUG_REGRW_WDT
 	printf("[RegWr-WDT] %08x = %08x\n", WDT_BASE + addr, SWAP_4B_LEDN_REG( data ));
 #endif
-	WriteSOC_DD( WDT_BASE + addr, SWAP_4B_LEDN_REG( data ) );
+	writel(data, WDT_BASE + addr);
 }
 void Write_Reg_TIMER_DD (uint32_t addr, uint32_t data) {
 #ifdef MAC_DEBUG_REGRW_TIMER
 	printf("[RegWr-TIMER] %08x = %08x\n", TIMER_BASE + addr, SWAP_4B_LEDN_REG( data ));
 #endif
-	WriteSOC_DD( TIMER_BASE + addr, SWAP_4B_LEDN_REG( data ) );
+	writel(data, TIMER_BASE + addr);
 }
 
 //------------------------------------------------------------
@@ -768,15 +768,6 @@ void mac_set_rmii_50m_output_enable(MAC_ENGINE *p_eng)
 	writel(value.w, addr);
 }
 
-void init_iodelay(MAC_ENGINE *eng)
-{
-	int        index;
-
-	nt_log_func_name();
-
-	eng->io.init_done = 1;
-}
-
 //------------------------------------------------------------
 int mac_set_scan_boundary(MAC_ENGINE *p_eng)
 {
@@ -1207,10 +1198,10 @@ void FPri_ErrFlag (MAC_ENGINE *eng, BYTE option)
 				for (int i = 0; i < 4; i++) {
 					if (eng->env.is_1g_valid[i]) {
 						PRINTF(option,
-						       "[MAC%d] is RGMII\n");
+						       "[MAC%d] is RGMII\n", i);
 					} else {
 						PRINTF(option,
-						       "[MAC%d] RMII\n");
+						       "[MAC%d] RMII\n", i);
 					}
 				}
 			} // End if ( eng->flg.Err_Flag & Err_Flag_MACMode )
@@ -1429,8 +1420,10 @@ void setup_buf (MAC_ENGINE *eng)
 	uint32_t      adr_end;
 	uint32_t      Current_framelen;
 	uint32_t      gdata = 0;
+#ifdef SelectSimpleDA	
 	int        cnt;
 	uint32_t      len;
+#endif	
 
 
 	nt_log_func_name();
@@ -1517,10 +1510,11 @@ void setup_buf (MAC_ENGINE *eng)
 
 			if ( DbgPrn_FRAME_LEN )
 				PRINTF( FP_LOG, "[setup_buf      ] Current_framelen:%08x[Des:%d][loop[%d]:%d]\n", Current_framelen, des_num, eng->run.Loop_ofcnt, eng->run.Loop );
-
+#ifdef SelectSimpleDA
 			cnt     = 0;
 			len     = ( ( ( Current_framelen - 14 ) & 0xff ) << 8) |
 			            ( ( Current_framelen - 14 ) >> 8 );
+#endif				    
 			adr_end = adr_srt + DMA_PakSize;
 			for ( adr = adr_srt; adr < adr_end; adr += 4 ) {
   #ifdef SelectSimpleDA
@@ -2068,7 +2062,7 @@ char check_des (MAC_ENGINE *eng, uint32_t bufnum, int checkpoint) {
 //-----------------------------------------------------------
 void PrintIO_Header (MAC_ENGINE *eng, BYTE option) 
 {
-	int32_t rx_d, tx_d_cur, rx_d_cur, step, tmp;
+	int32_t rx_d, step, tmp;
 
 	if (eng->run.TM_IOStrength) {
 		if (eng->io.drv_upper_bond > 1) {
@@ -2089,11 +2083,7 @@ void PrintIO_Header (MAC_ENGINE *eng, BYTE option)
 	else                                { PRINTF( option, "[10M ]========================================>\n" ); }
 
 	if ( !(option == FP_LOG) ) {
-		mac_get_delay(eng, &rx_d_cur, &tx_d_cur);
 		step = eng->io.rx_delay_scan.step;
-
-		PRINTF(option, "   current RX delay: %d\n", rx_d_cur);
-		PRINTF(option, "   current TX delay: %d\n", tx_d_cur);
 
 		PRINTF(option, "\n    ");
 		for (rx_d = eng->io.rx_delay_scan.begin; rx_d <= eng->io.rx_delay_scan.end; rx_d += step) {
@@ -2118,12 +2108,12 @@ void PrintIO_Header (MAC_ENGINE *eng, BYTE option)
 		PRINTF(option, "\n    ");
 		for (rx_d = eng->io.rx_delay_scan.begin;
 		     rx_d <= eng->io.rx_delay_scan.end; rx_d += step) {
-			PRINTF(option, "%1d", abs(rx_d) % 10);
+			PRINTF(option, "%1d", (uint32_t)abs(rx_d) % 10);
 		}
 
 		PRINTF(option, "\n    ");
 		for (rx_d = eng->io.rx_delay_scan.begin; rx_d <= eng->io.rx_delay_scan.end; rx_d += step) {
-			if (rx_d_cur == rx_d) {
+			if (eng->io.rx_delay_scan.orig == rx_d) {
 				PRINTF(option, "|" );
 			} else {
 				PRINTF(option, " " );

@@ -10,3 +10,5 @@ void mac_set_interal_loopback(MAC_ENGINE *p_eng);
 
 void PrintIO_Line(MAC_ENGINE *p_eng, BYTE option);
 void PrintIO_LineS(MAC_ENGINE *p_eng, BYTE option);
+void FPri_End(MAC_ENGINE *eng, BYTE option);
+void FPri_RegValue(MAC_ENGINE *eng, BYTE option);

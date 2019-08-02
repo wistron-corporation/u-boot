@@ -285,9 +285,6 @@ static void finish_close(MAC_ENGINE *p_eng)
 
 char finish_check(MAC_ENGINE *p_eng, int value) 
 {
-
-	uint32_t reg;
-	BYTE shift_value = 0;
 	nt_log_func_name();
 
 	if (p_eng->arg.run_mode == MODE_DEDICATED) {
@@ -423,7 +420,7 @@ static uint32_t check_test_mode(MAC_ENGINE *p_eng)
 void scu_disable_mac(MAC_ENGINE *p_eng) 
 {
 	uint32_t mac_idx = p_eng->run.mac_idx;
-	struct mac_ctrl_desc *p_mac = &mac_ctrl_lookup_tbl[mac_idx];
+	const struct mac_ctrl_desc *p_mac = &mac_ctrl_lookup_tbl[mac_idx];
 	uint32_t reg;
 
 	debug("MAC%d:reset assert=0x%02x[%08x] deassert=0x%02x[%08x]\n",
@@ -453,7 +450,7 @@ void scu_disable_mac(MAC_ENGINE *p_eng)
 void scu_enable_mac(MAC_ENGINE *p_eng) 
 {
 	uint32_t mac_idx = p_eng->run.mac_idx;
-	struct mac_ctrl_desc *p_mac = &mac_ctrl_lookup_tbl[mac_idx];
+	const struct mac_ctrl_desc *p_mac = &mac_ctrl_lookup_tbl[mac_idx];
 	uint32_t reg;
 
 	debug("MAC%d:reset assert=0x%02x[%08x] deassert=0x%02x[%08x]\n",
@@ -529,7 +526,7 @@ void scu_set_pinmux(MAC_ENGINE *p_eng)
 		SCU_WR(reg, 0x410);
 		break;
 	default:
-		printf("%s:undefined MDIO idx\n", __func__,
+		printf("%s:undefined MDIO idx %d\n", __func__,
 		       p_eng->run.mdio_idx);
 	}
 
@@ -1198,7 +1195,6 @@ static uint32_t setup_data(MAC_ENGINE *p_eng)
 			setup_arp(p_eng);
 	}
 
-	init_iodelay(p_eng);
 	p_eng->run.speed_idx = 0;	
 	if (mac_set_scan_boundary(p_eng))
 		return (finish_check(p_eng, 0));
@@ -1223,9 +1219,8 @@ static uint32_t get_time_out_desc(MAC_ENGINE *p_eng)
 	
 	return time_out;		
 }
-void test_start(MAC_ENGINE *p_eng, PHY_ENGINE *p_phy_eng)
+uint32_t test_start(MAC_ENGINE *p_eng, PHY_ENGINE *p_phy_eng)
 {
-	int i, j;
 	uint32_t drv, speed;
 	int td, rd, tbegin, rbegin, tend, rend;
 	int tstep, rstep;
@@ -1367,32 +1362,6 @@ void test_start(MAC_ENGINE *p_eng, PHY_ENGINE *p_phy_eng)
 					}
 				} // End for (td = p_eng->io.tx_delay_scan.begin; td <= p_eng->io.tx_delay_scan.end; td+=p_eng->io.tx_delay_scan.step)
 
-
-				//------------------------------
-				// End
-				//------------------------------				
-#if 0				
-				if (p_eng->run.IO_MrgChk) {
-					for (td = p_eng->io.Dly_out_min; td <= p_eng->io.Dly_out_max; td++)
-						for (rd = p_eng->io.Dly_in_min; rd <= p_eng->io.Dly_in_max; rd++)
-							if (p_eng->io.dlymap[rd][td]) {
-								if (p_eng->run.TM_IOTiming) {
-									for (j = p_eng->io.Dly_out_min; j <= p_eng->io.Dly_out_max; j++) {
-										for (i = p_eng->io.Dly_in_min; i <= p_eng->io.Dly_in_max; i++)
-											if (p_eng->io.dlymap[i][j])
-												{ printf("x "); }
-											else
-												{ printf("o "); }
-										printf("\n");
-									}
-								} // End if (p_eng->run.TM_IOTiming)
-
-								FindErr(p_eng, Err_Flag_IOMargin);
-								goto Find_Err_Flag_IOMargin;
-							} // End if (p_eng->io.dlymap[rd][td])
-				} // End if (p_eng->run.IO_MrgChk)
-#endif				
-Find_Err_Flag_IOMargin:
 				if (!p_eng->run.TM_Burst)
 					FPri_ErrFlag(p_eng, FP_LOG);
 				if (p_eng->run.TM_IOTiming)
@@ -1425,6 +1394,8 @@ Find_Err_Flag_IOMargin:
 	p_eng->flg.Err_Flag  = err_flag_allspeed;
 	p_eng->flg.Des_Flag  = des_flag_allspeed;
 	p_eng->flg.NCSI_Flag = ncsi_flag_allspeed;
+	
+	return(finish_check(p_eng, 0));
 }
 
 void dump_setting(MAC_ENGINE *p_eng)
@@ -1511,6 +1482,7 @@ int mac_test(int argc, char * const argv[], uint32_t mode)
 	setup_data(&mac_eng);
 
 	mac_eng.flg.all_fail = 1;
+	mac_eng.io.init_done = 1;
 	for(int i = 0; i < 3; i++)
 		mac_eng.run.speed_sel[i] = mac_eng.run.speed_cfg[i];
 
