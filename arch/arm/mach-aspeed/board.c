@@ -55,11 +55,26 @@ void lowlevel_init(void)
 int board_init(void)
 {
 	struct udevice *dev;
+	int i;
+	int ret;
 
 	gd->bd->bi_boot_params = CONFIG_SYS_SDRAM_BASE + 0x100;
 
-	uclass_first_device_check(UCLASS_MISC, &dev);
-#if 0	
+	/*
+	 * Loop over all MISC uclass drivers to call the comphy code
+	 * and init all CP110 devices enabled in the DT
+	 */
+	i = 0;
+	while (1) {
+		/* Call the comphy code via the MISC uclass driver */
+		ret = uclass_get_device(UCLASS_MISC, i++, &dev);
+
+		/* We're done, once no further CP110 device is found */
+		if (ret)
+			break;
+	}
+
+#if 0
 	if (!dev) 
 		printf("No MISC found.\n");
 #endif
@@ -87,3 +102,14 @@ int dram_init(void)
 	gd->ram_size = ram.size;
 	return 0;
 }
+
+int arch_early_init_r(void)
+{
+#ifdef CONFIG_DM_PCI
+	/* Trigger PCIe devices detection */
+	pci_init();
+#endif
+
+	return 0;
+}
+
