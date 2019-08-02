@@ -122,7 +122,7 @@
 //---------------------------------------------------------
 // Data information
 //---------------------------------------------------------
-#define ZeroCopy_OFFSET                    (( eng->run.TM_Burst ) ? 0 : 2)
+#define ZeroCopy_OFFSET                    (( eng->run.tm_tx_only ) ? 0 : 2)
 
 //      --------------------------------- DRAM_MapAdr            = tdes_base
 //              | TX descriptor ring    |
@@ -479,7 +479,7 @@ typedef struct {
 	uint32_t ieee_sel;		/* argv[7] for dedicated */
 
 	uint32_t GARPNumCnt;		/* argv[7] for ncsi */
-	uint32_t GUserDVal;		/* argv[8] for dedicated */
+	uint32_t user_def_val;		/* argv[8] for dedicated */
 } mac_arg_t;
 typedef struct {
 	uint32_t mac_idx;
@@ -508,7 +508,7 @@ typedef struct {
 	uint8_t speed_cfg[3];
 	uint8_t speed_sel[3];
 
-	int8_t                 TM_Burst                      ;//test_mode
+	int8_t                 tm_tx_only                      ;//test_mode
 	int8_t                 TM_IEEE                       ;//test_mode
 	int8_t                 TM_IOTiming                   ;//test_mode
 	int8_t                 TM_IOStrength                 ;//test_mode
@@ -518,7 +518,7 @@ typedef struct {
 	int8_t                 TM_DefaultPHY                 ;//test_mode
 	int8_t                 TM_NCSI_DiSChannel            ;//test_mode
 
-	uint8_t                 delay_margin                       ;
+	uint8_t                 delay_margin;
 	int8_t                 IO_MrgChk                     ;
 
 
@@ -715,8 +715,8 @@ typedef struct {
 	uint8_t                 Dly_in_selval                 ;
 	uint8_t                 Dly_out                       ;
 	uint8_t                 Dly_out_selval                ;
-	int8_t                 Dly_result                    ;
-	int8_t                 dlymap[128][64]                ;
+	int8_t                 result                    ;
+	int8_t                 result_history[128][64]                ;
 	uint32_t init_done;
 } MAC_IO;
 typedef struct {

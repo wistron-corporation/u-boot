@@ -660,6 +660,34 @@ void mac_set_delay(MAC_ENGINE *p_eng, int32_t rx_d, int32_t tx_d)
 	set_delay_func_tbl[rgmii][mac_idx][speed_idx] (p_eng, rx_d, tx_d);
 }
 
+uint32_t mac_get_driving_strength(MAC_ENGINE *p_eng)
+{
+#ifdef CONFIG_ASPEED_AST2600
+	mac34_drv_t reg;
+	
+	reg.w = readl(p_eng->io.mac34_drv_reg.addr);
+	/* ast2600 : only MAC#3 & MAC#4 have driving strength setting */
+	if (p_eng->run.mac_idx == 2) {
+		return (reg.b.mac3_tx_drv);
+	} else if (p_eng->run.mac_idx == 3) {
+		return (reg.b.mac4_tx_drv);
+	} else {
+		return 0;
+	}
+#else
+	mac12_drv_t reg;
+
+	reg.w = readl(p_eng->io.mac12_drv_reg.addr);
+	
+	if (p_eng->run.mac_idx == 0) {
+		return (reg.b.mac1_tx_drv);
+	} else if (p_eng->run.mac_idx == 1) {
+		return (reg.b.mac2_tx_drv);
+	} else {
+		return 0;
+	}
+#endif		
+}
 void mac_set_driving_strength(MAC_ENGINE *p_eng, uint32_t strength)
 {
 #ifdef CONFIG_ASPEED_AST2600
@@ -706,7 +734,7 @@ void mac_set_driving_strength(MAC_ENGINE *p_eng, uint32_t strength)
 		if (p_eng->run.mac_idx == 0) {
 			reg.b.mac1_rmii_tx_drv =
 			    strength;
-		} else if (p_eng->run.mac_idx == 2) {
+		} else if (p_eng->run.mac_idx == 1) {
 			reg.b.mac2_rmii_tx_drv =
 			    strength;
 		}
@@ -809,19 +837,24 @@ int mac_set_scan_boundary(MAC_ENGINE *p_eng)
 		p_eng->io.rx_delay_scan.begin = p_eng->io.rx_delay_scan.end;
 
 	if (p_eng->io.tx_delay_scan.begin > p_eng->io.tx_delay_scan.end)
-		p_eng->io.tx_delay_scan.begin = p_eng->io.tx_delay_scan.end;		
+		p_eng->io.tx_delay_scan.begin = p_eng->io.tx_delay_scan.end;
 
-	if ((p_eng->io.rx_delay_scan.orig < p_eng->io.rx_delay_scan.begin) ||
-	    (p_eng->io.rx_delay_scan.orig > p_eng->io.rx_delay_scan.end)) {
-		printf("Warning: current delay is not in the scan-range\n");
-		printf("RX delay scan range:%d ~ %d, curr:%d\n",
-		       p_eng->io.rx_delay_scan.begin,
-		       p_eng->io.rx_delay_scan.end,
-		       p_eng->io.rx_delay_scan.orig);
-		printf("TX delay scan range:%d ~ %d, curr:%d\n",
-		       p_eng->io.tx_delay_scan.begin,
-		       p_eng->io.tx_delay_scan.end,
-		       p_eng->io.tx_delay_scan.orig);
+	if (p_eng->run.IO_MrgChk) {
+		if ((p_eng->io.rx_delay_scan.orig <
+		     p_eng->io.rx_delay_scan.begin) ||
+		    (p_eng->io.rx_delay_scan.orig >
+		     p_eng->io.rx_delay_scan.end)) {
+			printf("Warning: current delay is not in the "
+			       "scan-range\n");
+			printf("RX delay scan range:%d ~ %d, curr:%d\n",
+			       p_eng->io.rx_delay_scan.begin,
+			       p_eng->io.rx_delay_scan.end,
+			       p_eng->io.rx_delay_scan.orig);
+			printf("TX delay scan range:%d ~ %d, curr:%d\n",
+			       p_eng->io.tx_delay_scan.begin,
+			       p_eng->io.tx_delay_scan.end,
+			       p_eng->io.tx_delay_scan.orig);
+		}
 	}
 
 	return (0);
@@ -1307,7 +1340,7 @@ void setup_framesize (MAC_ENGINE *eng)
 			else
 				eng->dat.FRAME_LEN[ des_num ] = FRAME_LENL;
 #else
-			if ( eng->run.TM_Burst ) {
+			if ( eng->run.tm_tx_only ) {
 				if ( eng->run.TM_IEEE )
 					eng->dat.FRAME_LEN[ des_num ] = 1514;
 				else  
@@ -1322,7 +1355,7 @@ void setup_framesize (MAC_ENGINE *eng)
 				else
 					eng->dat.FRAME_LEN[ des_num ] = FRAME_LENL;
   #endif
-			} // End if ( eng->run.TM_Burst )
+			} // End if ( eng->run.tm_tx_only )
 #endif
 			if ( DbgPrn_FRAME_LEN )
 				PRINTF( FP_LOG, "[setup_framesize] FRAME_LEN_Cur:%08x[Des:%d][loop[%d]:%d]\n", eng->dat.FRAME_LEN[ des_num ], des_num, eng->run.loop_of_cnt, eng->run.loop_cnt );
@@ -1404,7 +1437,7 @@ void setup_buf (MAC_ENGINE *eng)
 	eng->dat.DMA_Base_Setup = GET_DMA_BASE_SETUP & 0xfffffffc;
 	adr_srt = eng->dat.DMA_Base_Setup;//base for read/write
 
-	if ( eng->run.TM_Burst ) {
+	if ( eng->run.tm_tx_only ) {
 		if ( eng->run.TM_IEEE ) {
 			for ( des_num = 0; des_num < eng->dat.Des_Num; des_num++ ) {
 				if ( DbgPrn_BufAdr )
@@ -1419,11 +1452,13 @@ void setup_buf (MAC_ENGINE *eng)
 				for ( adr =  adr_srt;       adr < (adr_srt + DMA_PakSize); adr += 4 )
 #endif
 				{
-					switch( eng->arg.test_mode ) {
-						case 1: gdata = 0xffffffff;              break;
-						case 2: gdata = 0x55555555;              break;
-						case 3: gdata = rand() | (rand() << 16); break;
-						case 5: gdata = eng->arg.GUserDVal;      break;
+					switch (eng->arg.test_mode) {
+					case 4:
+						gdata = rand() | (rand() << 16);
+						break;
+					case 5:
+						gdata = eng->arg.user_def_val;
+						break;
 					}
 					Write_Mem_Dat_DD( adr, gdata );
 				} // End for()
@@ -1506,7 +1541,7 @@ void setup_buf (MAC_ENGINE *eng)
 			}
 			adr_srt += DMA_PakSize;
 		} // End for (des_num = 0; des_num < eng->dat.Des_Num; des_num++)
-	} // End if ( eng->run.TM_Burst )
+	} // End if ( eng->run.tm_tx_only )
 } // End void setup_buf (MAC_ENGINE *eng)
 
 //------------------------------------------------------------
@@ -1812,7 +1847,7 @@ char check_des_header_Tx (MAC_ENGINE *eng, char *type, uint32_t adr, int32_t des
 
 	while ( HWOwnTx( eng->dat.TxDes0DW ) ) {
 		// we will run again, if transfer has not been completed.
-		if ((eng->run.TM_Burst || eng->run.TM_RxDataEn) &&
+		if ((eng->run.tm_tx_only || eng->run.TM_RxDataEn) &&
 		    (++timeout > eng->run.timeout_th)) {
 			PRINTF(FP_LOG,
 			       "[%sTxDesOwn] Address %08x = %08x "
@@ -2116,13 +2151,13 @@ void PrintIO_Line(MAC_ENGINE *p_eng, uint8_t option)
 {
 	if ((p_eng->io.Dly_in_selval == p_eng->io.rx_delay_scan.orig) && 
 	    (p_eng->io.Dly_out_selval == p_eng->io.tx_delay_scan.orig)) {
-		if (p_eng->io.Dly_result) {
+		if (p_eng->io.result) {
 			PRINTF(option, "X");
 		} else {
 			PRINTF(option, "O");
 		}
 	} else {
-		if (p_eng->io.Dly_result) {
+		if (p_eng->io.result) {
 			PRINTF(option, "x");
 		} else {
 			PRINTF(option, "o");
@@ -2178,7 +2213,7 @@ char TestingLoop (MAC_ENGINE *eng, uint32_t loop_checknum)
 		looplast = !eng->arg.loop_inf && ( eng->run.loop_cnt == eng->run.LOOP_MAX - 1 );
 
 #ifdef CheckRxBuf
-		if (!eng->run.TM_Burst)
+		if (!eng->run.tm_tx_only)
 			checkprd = ((eng->run.loop_cnt % loop_checknum) == (loop_checknum - 1));
 		checken = looplast | checkprd;
 #endif

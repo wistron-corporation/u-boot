@@ -115,16 +115,12 @@ void Print_Header (MAC_ENGINE *eng, uint8_t option)
 	}
 
 	switch ( eng->arg.test_mode ) {
-		case 0 : { PRINTF( option, "Tx/Rx frame checking       \n" ); break;                     }
-		case 1 : { PRINTF( option, "Tx output 0xff frame       \n" ); break;                     }
-		case 2 : { PRINTF( option, "Tx output 0x55 frame       \n" ); break;                     }
-		case 3 : { PRINTF( option, "Tx output random frame     \n" ); break;                     }
-		case 4 : { PRINTF( option, "Tx output ARP frame        \n" ); break;                     }
-		case 5 : { PRINTF( option, "Tx output 0x%08x frame    \n", eng->arg.GUserDVal ); break; }
-		case 6 : { PRINTF( option, "IO delay testing           \n" ); break;                     }
-		case 7 : { PRINTF( option, "IO delay testing(Strength) \n" ); break;                     }
-		case 8 : { PRINTF( option, "Tx frame                   \n" ); break;                     }
-		case 9 : { PRINTF( option, "Rx frame checking          \n" ); break;                     }
+		case 0 : { PRINTF( option, "check TX/RX delay margin       \n" ); break;                     }
+		case 1 : { PRINTF( option, "scan TX/RX delay           \n" ); break;                     }
+		case 2 : { PRINTF( option, "scan TX/RX delay + driving strength \n" ); break;                     }
+		case 3 : { PRINTF( option, "TX ARP frame        \n" ); break;                     }		
+		case 4 : { PRINTF( option, "TX random frame     \n" ); break;                     }
+		case 5 : { PRINTF( option, "TX 0x%08x frame    \n", eng->arg.user_def_val ); break; }
 	}
 }
 #endif
@@ -136,22 +132,20 @@ static void print_arg_test_mode(MAC_ENGINE *p_eng)
 		printf("%20s| 0: NCSI configuration with    "
 		       "Disable_Channel request\n", item);
 		printf("%20s| (default:%3d)\n", "", DEF_GTESTMODE);
-		printf("%20s| 1: NCSI configuration without "
+		printf("%20s| 1: TX/RX delay scan\n", "");
+		printf("%20s| 2: TX/RX delay and IO driving scan\n", "");
+		printf("%20s| 3: NCSI configuration without "
 		       "Disable_Channel request\n", "");
 	} else {
-		printf("%20s| (default:%3d)\n", "", DEF_GTESTMODE);
-		printf("%20s| 0: delay-scanning by frame-loopback\n", item);
-		printf("%20s| 1: Tx output 0xff frame\n","");
-		printf("%20s| 2: Tx output 0x55 frame\n", "");
-		printf("%20s| 3: Tx output random frame\n", "");
-		printf("%20s| 4: Tx output ARP frame\n", "");
-		printf("%20s| 5: Tx output user defined value "
-		       "frame (default:0x%8x)\n", "",
+		printf("%20s| (default:%3d)\n", item, DEF_GTESTMODE);
+		printf("%20s| 0: TX/RX delay margin check\n", "");
+		printf("%20s| 1: TX/RX delay scan\n", "");
+		printf("%20s| 2: TX/RX delay and IO driving scan\n", "");
+		printf("%20s| 3: TX frame - ARP\n", "");
+		printf("%20s| 4: TX frame - random\n", "");
+		printf("%20s| 5: TX frame - user defined (default:0x%8x)\n", "",
 		       DEF_GUSER_DEF_PACKET_VAL);
-	}
-
-	printf("%20s| 6: IO timing testing\n", "");
-	printf("%20s| 7: IO timing + strength testing\n", "");
+	}	
 }
 
 static void print_arg_phy_addr(MAC_ENGINE *p_eng)
@@ -163,17 +157,18 @@ static void print_arg_phy_addr(MAC_ENGINE *p_eng)
 
 static void print_arg_ieee_select(MAC_ENGINE *p_eng) 
 {
-	uint8_t item[64] = "IEEE packet select (if test_mode == 1,2,3,4,5)";
+	uint8_t item[64] = "IEEE packet select";
 
-	printf("%20s| 0/1/2... (default:0)\n", item);
+	printf("%20s| 0/1/2... (default:0)  only for test_mode 1,2,3,4,5)\n", item);
 }
 
 static void print_arg_delay_scan_range(MAC_ENGINE *p_eng) 
 {
-	uint8_t item[32] = "delay-scan range";
+	uint8_t item[32] = "TX/RX delay margin";
 
-	printf("%20s| 1/2/3/... only for test_mode 0 (default:%d)\n", item, DEF_GIOTIMINGBUND);
-	printf("%20s| will scan from (orig - range) to (orig + range)\n", "");
+	printf("%20s| 1/2/3/... (default:%d) only for test_mode 0\n", item,
+	       DEF_GIOTIMINGBUND);
+	printf("%20s| check range = (orig - margin) ~ (orig + margin)\n", "");
 	print_arg_ieee_select(p_eng);
 }
 
@@ -206,7 +201,7 @@ static void print_arg_ctrl(MAC_ENGINE *p_eng)
 {
 	uint8_t item[32] = "ctrl[hex]";
 
-	printf("%20s| default: 0x%04x\n", item, DEF_GCTRL);
+	printf("%20s| default: 0x%02x\n", item, DEF_GCTRL);
 	printf("%20s| bit0  : 1->single packet\n", "");
 	printf("%20s| bit1  : 1->inverse RGMII RXCLK\n", "");
 	printf("%20s| bit2  : 1->Disable recovering PHY status\n", "");
@@ -300,7 +295,7 @@ char finish_check(MAC_ENGINE *p_eng, int value)
 	if (DbgPrn_ErrFlg)
 		printf("\nErr_Flag: [%08x]\n", p_eng->flg.Err_Flag);
 
-	if (!p_eng->run.TM_Burst)
+	if (!p_eng->run.tm_tx_only)
 		FPri_ErrFlag(p_eng, FP_LOG);
 
 	if (p_eng->run.TM_IOTiming)
@@ -308,7 +303,7 @@ char finish_check(MAC_ENGINE *p_eng, int value)
 
 	FPri_ErrFlag(p_eng, STD_OUT);
 
-	if (!p_eng->run.TM_Burst)
+	if (!p_eng->run.tm_tx_only)
 		FPri_End(p_eng, FP_LOG);
 
 	if (p_eng->run.TM_IOTiming)
@@ -316,7 +311,7 @@ char finish_check(MAC_ENGINE *p_eng, int value)
 
 	FPri_End(p_eng, STD_OUT);
 
-	if (!p_eng->run.TM_Burst)
+	if (!p_eng->run.tm_tx_only)
 		FPri_RegValue(p_eng, FP_LOG);
 	if (p_eng->run.TM_IOTiming)
 		FPri_RegValue(p_eng, FP_IO);
@@ -337,14 +332,14 @@ static uint32_t check_test_mode(MAC_ENGINE *p_eng)
 		case 0:
 			break;
 		case 1:
-			p_eng->run.TM_NCSI_DiSChannel = 0;
-			break;
-		case 6:
 			p_eng->run.TM_IOTiming = 1;
 			break;
-		case 7:
+		case 2:
 			p_eng->run.TM_IOTiming = 1;
 			p_eng->run.TM_IOStrength = 1;
+			break;
+		case 3:
+			p_eng->run.TM_NCSI_DiSChannel = 0;
 			break;
 		default:
 			printf("Error test_mode!!!\n");
@@ -356,38 +351,24 @@ static uint32_t check_test_mode(MAC_ENGINE *p_eng)
 		case 0:
 			break;
 		case 1:
-		case 2:
-		case 3:
-		case 5:			
-			p_eng->run.TM_RxDataEn = 0;
-			p_eng->run.TM_Burst = 1;
-			p_eng->run.TM_IEEE = 1;
-			break;
-		case 4:
-			p_eng->run.TM_RxDataEn = 0;
-			p_eng->run.TM_Burst = 1;
-			p_eng->run.TM_IEEE = 0;
-			break;
-		case 6:
 			p_eng->run.TM_IOTiming = 1;
 			break;
-		case 7:
+		case 2:
 			p_eng->run.TM_IOTiming = 1;
 			p_eng->run.TM_IOStrength = 1;
 			break;
-#if 0			
-		case 8:
+		case 3:
+			/* TX ARP frame */
 			p_eng->run.TM_RxDataEn = 0;
-			p_eng->run.TM_DefaultPHY = 1;
+			p_eng->run.tm_tx_only = 1;
+			p_eng->run.TM_IEEE = 0;
 			break;
-		case 9:
-			p_eng->run.TM_TxDataEn = 0;
-			p_eng->run.TM_DefaultPHY = 1;
+		case 4:
+		case 5:			
+			p_eng->run.TM_RxDataEn = 0;
+			p_eng->run.tm_tx_only = 1;
+			p_eng->run.TM_IEEE = 1;
 			break;
-		case 10:
-			p_eng->run.TM_WaitStart = 1;
-			break;
-#endif			
 		default:
 			printf("Error test_mode!!!\n");
 			print_arg_test_mode(p_eng);
@@ -727,7 +708,7 @@ static uint32_t setup_running(MAC_ENGINE *p_eng)
 		return 1;
 	}
 
-	if (p_eng->run.TM_Burst) {
+	if (p_eng->run.tm_tx_only) {
 		p_eng->run.ieee_sel = p_eng->arg.ieee_sel;
 		p_eng->run.delay_margin = 0;
 	} else {
@@ -1011,7 +992,7 @@ static uint32_t init_mac_engine(MAC_ENGINE *p_eng, uint32_t mode)
 		p_eng->arg.ctrl.w = 0;
 		p_eng->arg.run_speed = SET_100MBPS;        // In NCSI mode, we set to 100M bps
 	} else {
-		p_eng->arg.GUserDVal  = DEF_GUSER_DEF_PACKET_VAL;
+		p_eng->arg.user_def_val  = DEF_GUSER_DEF_PACKET_VAL;
 		p_eng->arg.phy_addr  = DEF_GPHY_ADR;
 		p_eng->arg.loop_inf = 0;
 		p_eng->arg.loop_max = 0;
@@ -1114,7 +1095,7 @@ static uint32_t parse_arg_dedicated(int argc, char *const argv[],
 {
 	switch (argc) {
 	case 10:
-		p_eng->arg.GUserDVal = simple_strtol(argv[9], NULL, 16);
+		p_eng->arg.user_def_val = simple_strtol(argv[9], NULL, 16);
 	case 9:
 		p_eng->arg.delay_scan_range = simple_strtol(argv[8], NULL, 10);
 		p_eng->arg.ieee_sel = p_eng->arg.delay_scan_range;
@@ -1123,20 +1104,18 @@ static uint32_t parse_arg_dedicated(int argc, char *const argv[],
 	case 7:
 		p_eng->arg.test_mode = simple_strtol(argv[6], NULL, 16);
 		printf("test mode = %d\n", p_eng->arg.test_mode);
-	case 6:
-		if (0 == strcmp(argv[5], "#")) {
+	case 6:		
+		p_eng->arg.loop_max = simple_strtol(argv[5], NULL, 10);
+		if (p_eng->arg.loop_max == -1) {
 			p_eng->arg.loop_inf = 1;
-			printf("loop max = INF\n");
-		} else {
-			p_eng->arg.loop_max = simple_strtol(argv[5], NULL, 10);
-			printf("loop max = %d\n", p_eng->arg.loop_max);
 		}
+		printf("loop max=%d, loop_inf=%d\n", p_eng->arg.loop_max, p_eng->arg.loop_inf);
 	case 5:
 		p_eng->arg.ctrl.w = simple_strtol(argv[4], NULL, 16);
 		printf("ctrl=0x%02x\n", p_eng->arg.ctrl.w);
 	case 4:
 		p_eng->arg.run_speed = simple_strtol(argv[3], NULL, 16);
-		printf("run_speed=0x%02x\n", p_eng->arg.run_speed);
+		printf("speed=0x%1x\n", p_eng->arg.run_speed);
 	case 3:
 		p_eng->arg.mdio_idx = simple_strtol(argv[2], NULL, 10);
 		printf("mdio_idx=%d\n", p_eng->arg.mdio_idx);		
@@ -1175,7 +1154,7 @@ static void disable_wdt(MAC_ENGINE *p_eng)
 static uint32_t setup_data(MAC_ENGINE *p_eng)
 {
 	if (p_eng->arg.run_mode == MODE_DEDICATED) {
-		if (p_eng->run.TM_Burst)
+		if (p_eng->run.tm_tx_only)
 			setup_arp(p_eng);
 		
 		p_eng->dat.FRAME_LEN =
@@ -1194,7 +1173,8 @@ static uint32_t setup_data(MAC_ENGINE *p_eng)
 			setup_arp(p_eng);
 	}
 
-	p_eng->run.speed_idx = 0;	
+	p_eng->run.speed_idx = 0;
+	p_eng->io.drv_curr = mac_get_driving_strength(p_eng);
 	if (mac_set_scan_boundary(p_eng))
 		return (finish_check(p_eng, 0));
 
@@ -1263,15 +1243,14 @@ uint32_t test_start(MAC_ENGINE *p_eng, PHY_ENGINE *p_phy_eng)
 		//------------------------------
 		// [Start] The loop of different IO strength
 		//------------------------------
-		printf("drirving scan range: %d ~ %d\n",
+		debug("drirving scan range: %d ~ %d\n",
 		       p_eng->io.drv_lower_bond, p_eng->io.drv_upper_bond);
 		for (drv = p_eng->io.drv_lower_bond;
 		     drv <= p_eng->io.drv_upper_bond; drv++) {
-			p_eng->io.drv_curr = drv;
-
 			if (p_eng->run.IO_MrgChk) {
 				if (p_eng->run.TM_IOStrength) {
 					mac_set_driving_strength(p_eng, drv);
+					p_eng->io.drv_curr = mac_get_driving_strength(p_eng);
 				}
 
 				if (p_eng->run.delay_margin)
@@ -1314,9 +1293,7 @@ uint32_t test_start(MAC_ENGINE *p_eng, PHY_ENGINE *p_phy_eng)
 						scu_disable_mac(p_eng);
 						mac_set_delay(p_eng, rd, td);
 						scu_enable_mac(p_eng);
-					} // End if
-					  // (p_eng->run.IO_MrgChk)
-
+					}
 					//------------------------------
 					// MAC Initial
 					//------------------------------
@@ -1325,17 +1302,16 @@ uint32_t test_start(MAC_ENGINE *p_eng, PHY_ENGINE *p_phy_eng)
 						return (finish_check(p_eng, 0));
 
 					if (p_eng->arg.run_mode == MODE_NCSI) {
-						p_eng->io.Dly_result =
+						p_eng->io.result =
 						    phy_ncsi(p_eng);
 					} else {
-						p_eng->io
-						    .Dly_result = TestingLoop(
+						p_eng->io.result = TestingLoop(
 						    p_eng,
 						    p_eng->run.LOOP_CheckNum);
 					}
 
-					p_eng->io.dlymap[rd + 64][td] =
-					    p_eng->io.Dly_result;
+					p_eng->io.result_history[rd + 64][td] =
+					    p_eng->io.result;
 
 					// Display to Log file and
 					// monitor
@@ -1357,12 +1333,9 @@ uint32_t test_start(MAC_ENGINE *p_eng, PHY_ENGINE *p_phy_eng)
 					}
 					printf("\n");
 				}
-			} // End for (td =
-			  // p_eng->io.tx_delay_scan.begin; td <=
-			  // p_eng->io.tx_delay_scan.end;
-			  // td+=p_eng->io.tx_delay_scan.step)
+			}
 
-			if (!p_eng->run.TM_Burst)
+			if (!p_eng->run.tm_tx_only)
 				FPri_ErrFlag(p_eng, FP_LOG);
 			if (p_eng->run.TM_IOTiming)
 				FPri_ErrFlag(p_eng, FP_IO);

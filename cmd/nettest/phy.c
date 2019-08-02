@@ -87,7 +87,7 @@ void phy_write (MAC_ENGINE *eng, int index, uint32_t data)
 		/* check time-out */
 		while(readl(eng->run.mdio_base) & MAC_PHYBusy_New) {
 			if (++timeout > TIME_OUT_PHY_RW) {
-				if (!eng->run.TM_Burst)
+				if (!eng->run.tm_tx_only)
 					PRINTF(FP_LOG,
 					       "[PHY-Write] Time out: %08x\n",
 					       readl(eng->run.mdio_base));
@@ -103,7 +103,7 @@ void phy_write (MAC_ENGINE *eng, int index, uint32_t data)
 
 		while (readl(eng->run.mdio_base) & MAC_PHYWr) {
 			if (++timeout > TIME_OUT_PHY_RW) {
-				if (!eng->run.TM_Burst)
+				if (!eng->run.tm_tx_only)
 					PRINTF(FP_LOG,
 					       "[PHY-Write] Time out: %08x\n",
 					       readl(eng->run.mdio_base));
@@ -117,7 +117,7 @@ void phy_write (MAC_ENGINE *eng, int index, uint32_t data)
 	if (DbgPrn_PHYRW) {
 		printf("[Wr ]%02d: 0x%04x (%02d:%08x)\n", index, data,
 		       eng->phy.Adr, eng->run.mdio_base);
-		if (!eng->run.TM_Burst)
+		if (!eng->run.tm_tx_only)
 			PRINTF(FP_LOG, "[Wr ]%02d: 0x%04x (%02d:%08x)\n", index,
 			       data, eng->phy.Adr, eng->run.mdio_base);
 	}
@@ -147,7 +147,7 @@ uint32_t phy_read (MAC_ENGINE *eng, int index)
 
 		while (readl(eng->run.mdio_base) & MAC_PHYBusy_New) {
 			if (++timeout > TIME_OUT_PHY_RW) {
-				if (!eng->run.TM_Burst)
+				if (!eng->run.tm_tx_only)
 					PRINTF(FP_LOG,
 					       "[PHY-Read] Time out: %08x\n",
 					       readl(eng->run.mdio_base));
@@ -168,7 +168,7 @@ uint32_t phy_read (MAC_ENGINE *eng, int index)
 
 		while (readl(eng->run.mdio_base) & MAC_PHYRd) {
 			if (++timeout > TIME_OUT_PHY_RW) {
-				if (!eng->run.TM_Burst)
+				if (!eng->run.tm_tx_only)
 					PRINTF(FP_LOG,
 					       "[PHY-Read] Time out: %08x\n",
 					       readl(eng->run.mdio_base));
@@ -188,7 +188,7 @@ uint32_t phy_read (MAC_ENGINE *eng, int index)
 	if (DbgPrn_PHYRW) {
 		printf("[Rd ]%02d: 0x%04x (%02d:%08x)\n", index, read_value,
 		       eng->phy.Adr, eng->run.mdio_base);
-		if (!eng->run.TM_Burst)
+		if (!eng->run.tm_tx_only)
 			PRINTF(FP_LOG, "[Rd ]%02d: 0x%04x (%02d:%08x)\n", index,
 			       read_value, eng->phy.Adr, eng->run.mdio_base);
 	}
@@ -202,7 +202,7 @@ void phy_Read_Write (MAC_ENGINE *eng, int adr, uint32_t clr_mask, uint32_t set_m
 	if (DbgPrn_PHYRW) {
 		printf("[RW ]%02d: clr:0x%04x: set:0x%04x (%02d:%08x)\n", adr,
 		       clr_mask, set_mask, eng->phy.Adr, eng->run.mdio_base);
-		if (!eng->run.TM_Burst)
+		if (!eng->run.tm_tx_only)
 			PRINTF(
 			    FP_LOG,
 			    "[RW ]%02d: clr:0x%04x: set:0x%04x (%02d:%08x)\n",
@@ -268,7 +268,7 @@ void phy_basic_setting (MAC_ENGINE *eng) {
 
         if ( DbgPrn_PHYRW ) {
                 printf("[Set]00: 0x%04x (%02d:%08x)\n", phy_read( eng, PHY_REG_BMCR ), eng->phy.Adr, eng->run.mdio_base );
-                if ( !eng->run.TM_Burst ) PRINTF( FP_LOG, "[Set]00: 0x%04x (%02d:%08x)\n", phy_read( eng, PHY_REG_BMCR ), eng->phy.Adr, eng->run.mdio_base );
+                if ( !eng->run.tm_tx_only ) PRINTF( FP_LOG, "[Set]00: 0x%04x (%02d:%08x)\n", phy_read( eng, PHY_REG_BMCR ), eng->phy.Adr, eng->run.mdio_base );
         }
 }
 
@@ -278,7 +278,7 @@ void phy_Wait_Reset_Done (MAC_ENGINE *eng) {
 
         while (  phy_read( eng, PHY_REG_BMCR ) & 0x8000 ) {
                 if (++timeout > TIME_OUT_PHY_Rst) {
-                        if ( !eng->run.TM_Burst )
+                        if ( !eng->run.tm_tx_only )
                                 PRINTF( FP_LOG, "[PHY-Reset] Time out: %08x\n", readl(eng->run.mdio_base));
 
                         FindErr( eng, Err_Flag_PHY_TimeOut_Rst );
@@ -289,7 +289,7 @@ void phy_Wait_Reset_Done (MAC_ENGINE *eng) {
 
         if ( DbgPrn_PHYRW ) {
                 printf("[Clr]00: 0x%04x (%02d:%08x)\n", phy_read( eng, PHY_REG_BMCR ), eng->phy.Adr, eng->run.mdio_base );
-                if ( !eng->run.TM_Burst ) PRINTF( FP_LOG, "[Clr]00: 0x%04x (%02d:%08x)\n", phy_read( eng, PHY_REG_BMCR ), eng->phy.Adr, eng->run.mdio_base );
+                if ( !eng->run.tm_tx_only ) PRINTF( FP_LOG, "[Clr]00: 0x%04x (%02d:%08x)\n", phy_read( eng, PHY_REG_BMCR ), eng->phy.Adr, eng->run.mdio_base );
         }
 #ifdef Delay_PHYRst
         DELAY( Delay_PHYRst );
@@ -338,7 +338,7 @@ void phy_check_register (MAC_ENGINE *eng, uint32_t adr, uint32_t check_mask, uin
 // PHY IC
 //------------------------------------------------------------
 void recov_phy_marvell (MAC_ENGINE *eng) {//88E1111
-        if ( eng->run.TM_Burst ) {
+        if ( eng->run.tm_tx_only ) {
         }
         else if ( eng->phy.loopback ) {
         }
@@ -367,7 +367,7 @@ void phy_marvell (MAC_ENGINE *eng) {//88E1111
         if ( DbgPrn_PHYName )
                 printf("--->(%04x %04x)[Marvell] %s\n", eng->phy.PHY_ID2, eng->phy.PHY_ID3, eng->phy.phy_name);
 
-        if ( eng->run.TM_Burst ) {
+        if ( eng->run.tm_tx_only ) {
                 phy_Reset( eng );
         }
         else if ( eng->phy.loopback ) {
@@ -403,7 +403,7 @@ void phy_marvell (MAC_ENGINE *eng) {//88E1111
 
 //------------------------------------------------------------
 void recov_phy_marvell0 (MAC_ENGINE *eng) {//88E1310
-        if ( eng->run.TM_Burst ) {
+        if ( eng->run.tm_tx_only ) {
         }
         else if ( eng->phy.loopback ) {
         }
@@ -429,14 +429,14 @@ void phy_marvell0 (MAC_ENGINE *eng) {//88E1310
         if ( eng->phy.PHY_15h & 0x0030 ) {
                 printf("\n\n[Warning] Page2, Register 21, bit 4~5 must be 0 [Reg15_2:%04x]\n\n", eng->phy.PHY_15h);
                 if ( eng->run.TM_IOTiming ) PRINTF( FP_IO, "\n\n[Warning] Page2, Register 21, bit 4~5 must be 0 [Reg15_2:%04x]\n\n", eng->phy.PHY_15h );
-                if ( !eng->run.TM_Burst ) PRINTF( FP_LOG, "\n\n[Warning] Page2, Register 21, bit 4~5 must be 0 [Reg15_2:%04x]\n\n", eng->phy.PHY_15h );
+                if ( !eng->run.tm_tx_only ) PRINTF( FP_LOG, "\n\n[Warning] Page2, Register 21, bit 4~5 must be 0 [Reg15_2:%04x]\n\n", eng->phy.PHY_15h );
 
                 phy_write( eng, 21, eng->phy.PHY_15h & 0xffcf ); // Set [5]Rx Dly, [4]Tx Dly to 0
         }
 phy_read( eng, 21 ); // v069
         phy_write( eng, 22, 0x0000 );
 
-        if ( eng->run.TM_Burst ) {
+        if ( eng->run.tm_tx_only ) {
                 phy_Reset( eng );
         }
         else if ( eng->phy.loopback ) {
@@ -480,7 +480,7 @@ void recov_phy_marvell1 (MAC_ENGINE *eng) {//88E6176
 
         PHY_ADR_org = eng->phy.Adr;
         for ( eng->phy.Adr = 16; eng->phy.Adr <= 22; eng->phy.Adr++ ) {
-                if ( eng->run.TM_Burst ) {
+                if ( eng->run.tm_tx_only ) {
                 }
                 else {
                         phy_write( eng,  6, eng->phy.PHY_06hA[eng->phy.Adr-16] );//06h[5]P5 loopback, 06h[6]P6 loopback
@@ -500,7 +500,7 @@ void phy_marvell1 (MAC_ENGINE *eng) {//88E6176
         if ( DbgPrn_PHYName )
                 printf("--->(%04x %04x)[Marvell] %s\n", eng->phy.PHY_ID2, eng->phy.PHY_ID3, eng->phy.phy_name);
 
-        if ( eng->run.TM_Burst ) {
+        if ( eng->run.tm_tx_only ) {
                 printf("This mode doesn't support in 88E6176.\n");
         } else {
                 //The 88E6176 is switch with 7 Port(P0~P6) and the PHYAdr will be fixed at 0x10~0x16, and only P5/P6 can be connected to the MAC.
@@ -530,7 +530,7 @@ void phy_marvell1 (MAC_ENGINE *eng) {//88E6176
 
 //------------------------------------------------------------
 void recov_phy_marvell2 (MAC_ENGINE *eng) {//88E1512//88E15 10/12/14/18
-        if ( eng->run.TM_Burst ) {
+        if ( eng->run.tm_tx_only ) {
         }
         else if ( eng->phy.loopback ) {
         }
@@ -559,14 +559,14 @@ void phy_marvell2 (MAC_ENGINE *eng) {//88E1512//88E15 10/12/14/18
         if ( eng->phy.PHY_15h & 0x0030 ) {
                 printf("\n\n[Warning] Page2, Register 21, bit 4~5 must be 0 [Reg15h_2:%04x]\n\n", eng->phy.PHY_15h);
                 if ( eng->run.TM_IOTiming ) PRINTF( FP_IO, "\n\n[Warning] Page2, Register 21, bit 4~5 must be 0 [Reg15h_2:%04x]\n\n", eng->phy.PHY_15h );
-                if ( !eng->run.TM_Burst ) PRINTF( FP_LOG, "\n\n[Warning] Page2, Register 21, bit 4~5 must be 0 [Reg15h_2:%04x]\n\n", eng->phy.PHY_15h );
+                if ( !eng->run.tm_tx_only ) PRINTF( FP_LOG, "\n\n[Warning] Page2, Register 21, bit 4~5 must be 0 [Reg15h_2:%04x]\n\n", eng->phy.PHY_15h );
 
                 phy_write( eng, 21, eng->phy.PHY_15h & 0xffcf );
         }
         phy_write( eng, 22, 0x0000 );
 
 
-        if ( eng->run.TM_Burst ) {
+        if ( eng->run.tm_tx_only ) {
                 phy_Reset( eng );
         }
         else if ( eng->phy.loopback ) {
@@ -579,7 +579,7 @@ void phy_marvell2 (MAC_ENGINE *eng) {//88E1512//88E15 10/12/14/18
                 if ( ( eng->phy.PHY_14h & 0x003f ) != 0x0010 ) {
                         printf("\n\n[Warning] Internal loopback funciton only support in copper mode[%04x]\n\n", eng->phy.PHY_14h);
                         if ( eng->run.TM_IOTiming ) PRINTF( FP_IO, "\n\n[Warning] Internal loopback funciton only support in copper mode[%04x]\n\n", eng->phy.PHY_14h);
-                        if ( !eng->run.TM_Burst ) PRINTF( FP_LOG, "\n\n[Warning] Internal loopback funciton only support in copper mode[%04x]\n\n", eng->phy.PHY_14h);
+                        if ( !eng->run.tm_tx_only ) PRINTF( FP_LOG, "\n\n[Warning] Internal loopback funciton only support in copper mode[%04x]\n\n", eng->phy.PHY_14h);
 
                         phy_write( eng, 20, ( eng->phy.PHY_14h & 0xffc0 ) | 0x8010 );
                         // do software reset
@@ -627,7 +627,7 @@ void phy_marvell2 (MAC_ENGINE *eng) {//88E1512//88E15 10/12/14/18
         }
 
 //      if ( !eng->phy.loopback )
-////    if ( !eng->run.TM_Burst )
+////    if ( !eng->run.tm_tx_only )
 //              phy_check_register ( eng, 17, 0x0400, 0x0400, 10, "wait 88E15 10/12/14/18 link-up");
 ////    Retry = 0;
 ////    do {
@@ -641,7 +641,7 @@ void phy_marvell3 (MAC_ENGINE *eng)
 
         if ( DbgPrn_PHYName ) {
                 printf("--->(%04x %04x)[Marvell] %s\n", eng->phy.PHY_ID2, eng->phy.PHY_ID3, eng->phy.phy_name);
-                if ( !eng->run.TM_Burst ) PRINTF( FP_LOG, "--->(%04x %04x)[Marvell] %s\n", eng->phy.PHY_ID2, eng->phy.PHY_ID3, eng->phy.phy_name);
+                if ( !eng->run.tm_tx_only ) PRINTF( FP_LOG, "--->(%04x %04x)[Marvell] %s\n", eng->phy.PHY_ID2, eng->phy.PHY_ID3, eng->phy.phy_name);
         }
 
         //Reg1ch[11:10]: MAC Interface Mode
@@ -664,7 +664,7 @@ void phy_marvell3 (MAC_ENGINE *eng)
                 }
         }
 
-        if ( eng->run.TM_Burst ) {
+        if ( eng->run.tm_tx_only ) {
                 phy_Reset( eng );
         }
         else if ( eng->phy.loopback ) {
@@ -719,7 +719,7 @@ void recov_phy_broadcom0 (MAC_ENGINE *eng) {//BCM54612
 //      phy_write( eng, 24, eng->phy.PHY_18h | 0xf007 );//write reg 18h, shadow value 111
 //      phy_write( eng, 28, eng->phy.PHY_1ch | 0x8c00 );//write reg 1Ch, shadow value 00011
 
-        if ( eng->run.TM_Burst ) {
+        if ( eng->run.tm_tx_only ) {
         }
         else if ( eng->phy.loopback ) {
                 phy_write( eng,  0, eng->phy.PHY_00h );
@@ -749,7 +749,7 @@ void phy_broadcom0 (MAC_ENGINE *eng) {//BCM54612
                 PHY_new = ( eng->phy.PHY_18h & 0x0af0 ) | 0xf007;
                 printf("\n\n[Warning] Shadow value 111, Register 24, bit 8 must be 0 [Reg18h_7:%04x->%04x]\n\n", eng->phy.PHY_18h, PHY_new);
                 if ( eng->run.TM_IOTiming ) PRINTF( FP_IO, "\n\n[Warning] Shadow value 111, Register 24, bit 8 must be 0 [Reg18h_7:%04x->%04x]\n\n", eng->phy.PHY_18h, PHY_new );
-                if ( !eng->run.TM_Burst ) PRINTF( FP_LOG, "\n\n[Warning] Shadow value 111, Register 24, bit 8 must be 0 [Reg18h_7:%04x->%04x]\n\n", eng->phy.PHY_18h, PHY_new );
+                if ( !eng->run.tm_tx_only ) PRINTF( FP_LOG, "\n\n[Warning] Shadow value 111, Register 24, bit 8 must be 0 [Reg18h_7:%04x->%04x]\n\n", eng->phy.PHY_18h, PHY_new );
 
                 phy_write( eng, 24, PHY_new ); // Disable RGMII RXD to RXC Skew
         }
@@ -757,12 +757,12 @@ void phy_broadcom0 (MAC_ENGINE *eng) {//BCM54612
                 PHY_new = ( eng->phy.PHY_1ch & 0x0000 ) | 0x8c00;
                 printf("\n\n[Warning] Shadow value 00011, Register 28, bit 9 must be 0 [Reg1ch_3:%04x->%04x]\n\n", eng->phy.PHY_1ch, PHY_new);
                 if ( eng->run.TM_IOTiming ) PRINTF( FP_IO, "\n\n[Warning] Shadow value 00011, Register 28, bit 9 must be 0 [Reg1ch_3:%04x->%04x]\n\n", eng->phy.PHY_1ch, PHY_new );
-                if ( !eng->run.TM_Burst ) PRINTF( FP_LOG, "\n\n[Warning] Shadow value 00011, Register 28, bit 9 must be 0 [Reg1ch_3:%04x->%04x]\n\n", eng->phy.PHY_1ch, PHY_new );
+                if ( !eng->run.tm_tx_only ) PRINTF( FP_LOG, "\n\n[Warning] Shadow value 00011, Register 28, bit 9 must be 0 [Reg1ch_3:%04x->%04x]\n\n", eng->phy.PHY_1ch, PHY_new );
 
                 phy_write( eng, 28, PHY_new );// Disable GTXCLK Clock Delay Enable
         }
 
-        if ( eng->run.TM_Burst ) {
+        if ( eng->run.tm_tx_only ) {
                 phy_basic_setting( eng );
         }
         else if ( eng->phy.loopback ) {
@@ -855,7 +855,7 @@ void phy_realtek0 (MAC_ENGINE *eng) {//RTL8201E
                 phy_write( eng, 25, eng->phy.PHY_19h | 0x0400 );
                 printf("\n\n[Warning] Register 25, bit 10 must be 1 [Reg19h:%04x]\n\n", eng->phy.PHY_19h);
                 if ( eng->run.TM_IOTiming ) PRINTF( FP_IO, "\n\n[Warning] Register 25, bit 10 must be 1 [Reg19h:%04x]\n\n", eng->phy.PHY_19h );
-                if ( !eng->run.TM_Burst ) PRINTF( FP_LOG, "\n\n[Warning] Register 25, bit 10 must be 1 [Reg19h:%04x]\n\n", eng->phy.PHY_19h );
+                if ( !eng->run.tm_tx_only ) PRINTF( FP_LOG, "\n\n[Warning] Register 25, bit 10 must be 1 [Reg19h:%04x]\n\n", eng->phy.PHY_19h );
         }
         //Check TXC Input/Output Direction
         if ( eng->arg.ctrl.b.rmii_phy_in == 0 ) {
@@ -863,14 +863,14 @@ void phy_realtek0 (MAC_ENGINE *eng) {//RTL8201E
                         phy_write( eng, 25, eng->phy.PHY_19h & 0xf7ff );
                         printf("\n\n[Warning] Register 25, bit 11 must be 0 (TXC should be output mode)[Reg19h:%04x]\n\n", eng->phy.PHY_19h);
                         if ( eng->run.TM_IOTiming ) PRINTF( FP_IO, "\n\n[Warning] Register 25, bit 11 must be 0 (TXC should be output mode)[Reg19h:%04x]\n\n", eng->phy.PHY_19h );
-                        if ( !eng->run.TM_Burst ) PRINTF( FP_LOG, "\n\n[Warning] Register 25, bit 11 must be 0 (TXC should be output mode)[Reg19h:%04x]\n\n", eng->phy.PHY_19h );
+                        if ( !eng->run.tm_tx_only ) PRINTF( FP_LOG, "\n\n[Warning] Register 25, bit 11 must be 0 (TXC should be output mode)[Reg19h:%04x]\n\n", eng->phy.PHY_19h );
                 }
         } else {
                 if ( ( eng->phy.PHY_19h & 0x0800 ) == 0x0000 ) {
                         phy_write( eng, 25, eng->phy.PHY_19h | 0x0800 );
                         printf("\n\n[Warning] Register 25, bit 11 must be 1 (TXC should be input mode)[Reg19h:%04x]\n\n", eng->phy.PHY_19h);
                         if ( eng->run.TM_IOTiming ) PRINTF( FP_IO, "\n\n[Warning] Register 25, bit 11 must be 1 (TXC should be input mode)[Reg19h:%04x]\n\n", eng->phy.PHY_19h );
-                        if ( !eng->run.TM_Burst ) PRINTF( FP_LOG, "\n\n[Warning] Register 25, bit 11 must be 1 (TXC should be input mode)[Reg19h:%04x]\n\n", eng->phy.PHY_19h );
+                        if ( !eng->run.tm_tx_only ) PRINTF( FP_LOG, "\n\n[Warning] Register 25, bit 11 must be 1 (TXC should be input mode)[Reg19h:%04x]\n\n", eng->phy.PHY_19h );
                 }
         }
 
@@ -888,7 +888,7 @@ void phy_realtek0 (MAC_ENGINE *eng) {//RTL8201E
 
 //------------------------------------------------------------
 void recov_phy_realtek1 (MAC_ENGINE *eng) {//RTL8211D
-        if ( eng->run.TM_Burst ) {
+        if ( eng->run.tm_tx_only ) {
                 if ( eng->run.TM_IEEE ) {
                         if ( eng->run.speed_sel[ 0 ] ) {
                                 if ( eng->run.ieee_sel == 0 ) {//Test Mode 1
@@ -957,7 +957,7 @@ void recov_phy_realtek1 (MAC_ENGINE *eng) {//RTL8211D
                 }
                 phy_Reset( eng );
                 phy_delay(2000);
-        } // End if ( eng->run.TM_Burst )
+        } // End if ( eng->run.tm_tx_only )
 } // End void recov_phy_realtek1 (MAC_ENGINE *eng)
 
 //------------------------------------------------------------
@@ -968,7 +968,7 @@ void phy_realtek1 (MAC_ENGINE *eng) {//RTL8211D
         if ( DbgPrn_PHYName )
                 printf("--->(%04x %04x)[Realtek] %s\n", eng->phy.PHY_ID2, eng->phy.PHY_ID3, eng->phy.phy_name);
 
-        if ( eng->run.TM_Burst ) {
+        if ( eng->run.tm_tx_only ) {
                 if ( eng->run.TM_IEEE ) {
                         if ( eng->run.speed_sel[ 0 ] ) {
                                 if ( eng->run.ieee_sel == 0 ) {//Test Mode 1
@@ -1083,7 +1083,7 @@ void recov_phy_realtek2 (MAC_ENGINE *eng)
 {
 	RTK_DBG_PRINTF("\nClear RTL8211E [Start] =====>\n");
 
-        if ( eng->run.TM_Burst ) {
+        if ( eng->run.tm_tx_only ) {
                 if ( eng->run.TM_IEEE ) {
                         if ( eng->run.speed_sel[ 0 ] ) {
                                 //Rev 1.2
@@ -1195,7 +1195,7 @@ void phy_realtek2 (MAC_ENGINE *eng)
         phy_delay(30);
 #endif
 
-        if ( eng->run.TM_Burst ) {
+        if ( eng->run.tm_tx_only ) {
                 if ( eng->run.TM_IEEE ) {
                         //Rev 1.2
                         phy_write( eng, 31, 0x0005 );
@@ -1356,7 +1356,7 @@ void phy_realtek2 (MAC_ENGINE *eng)
 
 //------------------------------------------------------------
 void recov_phy_realtek3 (MAC_ENGINE *eng) {//RTL8211C
-        if ( eng->run.TM_Burst ) {
+        if ( eng->run.tm_tx_only ) {
                 if ( eng->run.TM_IEEE ) {
                         if ( eng->run.speed_sel[ 0 ] ) {
                                 phy_write( eng,  9, 0x0000 );
@@ -1408,7 +1408,7 @@ void phy_realtek3 (MAC_ENGINE *eng) {//RTL8211C
         if ( DbgPrn_PHYName )
                 printf("--->(%04x %04x)[Realtek] %s\n", eng->phy.PHY_ID2, eng->phy.PHY_ID3, eng->phy.phy_name);
 
-        if ( eng->run.TM_Burst ) {
+        if ( eng->run.tm_tx_only ) {
                 if ( eng->run.TM_IEEE ) {
                         if ( eng->run.speed_sel[ 0 ] ) {
                                 if ( eng->run.ieee_sel == 0 ) {   //Test Mode 1
@@ -1519,7 +1519,7 @@ void phy_realtek4 (MAC_ENGINE *eng) {//RTL8201F
                 phy_write( eng, 16, eng->phy.PHY_10h | 0x0008 );
                 printf("\n\n[Warning] Page 7 Register 16, bit 3 must be 1 [Reg10h_7:%04x]\n\n", eng->phy.PHY_10h);
                 if ( eng->run.TM_IOTiming ) PRINTF( FP_IO, "\n\n[Warning] Page 7 Register 16, bit 3 must be 1 [Reg10h_7:%04x]\n\n", eng->phy.PHY_10h );
-                if ( !eng->run.TM_Burst ) PRINTF( FP_LOG, "\n\n[Warning] Page 7 Register 16, bit 3 must be 1 [Reg10h_7:%04x]\n\n", eng->phy.PHY_10h );
+                if ( !eng->run.tm_tx_only ) PRINTF( FP_LOG, "\n\n[Warning] Page 7 Register 16, bit 3 must be 1 [Reg10h_7:%04x]\n\n", eng->phy.PHY_10h );
         }
         //Check TXC Input/Output Direction
         if ( eng->arg.ctrl.b.rmii_phy_in == 0 ) {
@@ -1527,19 +1527,19 @@ void phy_realtek4 (MAC_ENGINE *eng) {//RTL8201F
                         phy_write( eng, 16, eng->phy.PHY_10h & 0xefff );
                         printf("\n\n[Warning] Page 7 Register 16, bit 12 must be 0 (TXC should be output mode)[Reg10h_7:%04x]\n\n", eng->phy.PHY_10h);
                         if ( eng->run.TM_IOTiming ) PRINTF( FP_IO, "\n\n[Warning] Page 7 Register 16, bit 12 must be 0 (TXC should be output mode)[Reg10h_7:%04x]\n\n", eng->phy.PHY_10h );
-                        if ( !eng->run.TM_Burst ) PRINTF( FP_LOG, "\n\n[Warning] Page 7 Register 16, bit 12 must be 0 (TXC should be output mode)[Reg10h_7:%04x]\n\n", eng->phy.PHY_10h );
+                        if ( !eng->run.tm_tx_only ) PRINTF( FP_LOG, "\n\n[Warning] Page 7 Register 16, bit 12 must be 0 (TXC should be output mode)[Reg10h_7:%04x]\n\n", eng->phy.PHY_10h );
                 }
         } else {
                 if ( ( eng->phy.PHY_10h & 0x1000 ) == 0x0000 ) {
                         phy_write( eng, 16, eng->phy.PHY_10h | 0x1000 );
                         printf("\n\n[Warning] Page 7 Register 16, bit 12 must be 1 (TXC should be input mode)[Reg10h_7:%04x]\n\n", eng->phy.PHY_10h);
                         if ( eng->run.TM_IOTiming ) PRINTF( FP_IO, "\n\n[Warning] Page 7 Register 16, bit 12 must be 1 (TXC should be input mode)[Reg10h_7:%04x]\n\n", eng->phy.PHY_10h );
-                        if ( !eng->run.TM_Burst ) PRINTF( FP_LOG, "\n\n[Warning] Page 7 Register 16, bit 12 must be 1 (TXC should be input mode)[Reg10h_7:%04x]\n\n", eng->phy.PHY_10h );
+                        if ( !eng->run.tm_tx_only ) PRINTF( FP_LOG, "\n\n[Warning] Page 7 Register 16, bit 12 must be 1 (TXC should be input mode)[Reg10h_7:%04x]\n\n", eng->phy.PHY_10h );
                 }
         }
         phy_write( eng, 31, 0x0000 );
 
-        if ( eng->run.TM_Burst ) {
+        if ( eng->run.tm_tx_only ) {
                 if ( eng->run.TM_IEEE ) {
                         //Rev 1.0
                         phy_write( eng, 31, 0x0004 );
@@ -1619,7 +1619,7 @@ void phy_realtek4 (MAC_ENGINE *eng) {//RTL8201F
 void recov_phy_realtek5 (MAC_ENGINE *eng) 
 {
 	RTK_DBG_PRINTF("\nClear RTL8211F [Start] =====>\n");
-        if ( eng->run.TM_Burst ) {
+        if ( eng->run.tm_tx_only ) {
                 if ( eng->run.TM_IEEE ) {
                         if ( eng->run.speed_sel[ 0 ] ) {
                                 //Rev 1.0
@@ -1694,7 +1694,7 @@ void phy_realtek5 (MAC_ENGINE *eng) {//RTL8211F
 		printf("--->(%04x %04x)[Realtek] %s\n", eng->phy.PHY_ID2,
 		       eng->phy.PHY_ID3, eng->phy.phy_name);
 
-	if (eng->run.TM_Burst) {
+	if (eng->run.tm_tx_only) {
 		if (eng->run.TM_IEEE) {
 			if (eng->run.speed_sel[0]) {
 				// Rev 1.0
@@ -1824,7 +1824,7 @@ void phy_realtek6 (MAC_ENGINE *eng)
 		printf("--->(%04x %04x)[Realtek] %s\n", eng->phy.PHY_ID2,
 		       eng->phy.PHY_ID3, eng->phy.phy_name);
 
-	if (eng->run.TM_Burst) {
+	if (eng->run.tm_tx_only) {
 		printf("This mode doesn't support in RTL8363S.\n");
 	} else if (eng->phy.loopback) {
 
@@ -1945,7 +1945,7 @@ printf("Reg2.5 = %04x -> %04x\n", temp, phy_read( eng, 14 ));
 printf("Reg2.8 = %04x -> %04x\n", temp, phy_read( eng, 14 ));
 */
 
-        if ( eng->run.TM_Burst ) {
+        if ( eng->run.tm_tx_only ) {
                 if ( eng->run.TM_IEEE ) {
                         phy_Reset( eng );
                 }
@@ -1976,7 +1976,7 @@ void phy_micrel2 (MAC_ENGINE *eng)
         if ( DbgPrn_PHYName )
                 printf("--->(%04x %04x)[Micrel] %s\n", eng->phy.PHY_ID2, eng->phy.PHY_ID3, eng->phy.phy_name);
 
-        if ( eng->run.TM_Burst ) {
+        if ( eng->run.tm_tx_only ) {
                 if ( eng->run.TM_IEEE ) {
                         phy_Reset( eng );
                 }
@@ -1997,7 +1997,7 @@ void phy_micrel2 (MAC_ENGINE *eng)
 
 //------------------------------------------------------------
 void recov_phy_vitesse (MAC_ENGINE *eng) {//VSC8601
-        if ( eng->run.TM_Burst ) {
+        if ( eng->run.tm_tx_only ) {
 //              if ( eng->run.TM_IEEE ) {
 //              }
 //              else {
@@ -2018,7 +2018,7 @@ void phy_vitesse (MAC_ENGINE *eng) {//VSC8601
         if ( DbgPrn_PHYName )
                 printf("--->(%04x %04x)[VITESSE] %s\n", eng->phy.PHY_ID2, eng->phy.PHY_ID3, eng->phy.phy_name);
 
-        if ( eng->run.TM_Burst ) {
+        if ( eng->run.tm_tx_only ) {
                 if ( eng->run.TM_IEEE ) {
                         phy_Reset( eng );
                 }
@@ -2047,7 +2047,7 @@ void phy_vitesse (MAC_ENGINE *eng) {//VSC8601
 
 //------------------------------------------------------------
 void recov_phy_atheros (MAC_ENGINE *eng) {//AR8035
-	if (eng->run.TM_Burst) {
+	if (eng->run.tm_tx_only) {
 		if (eng->run.TM_IEEE) {
 		} else {
 		}
@@ -2072,7 +2072,7 @@ void phy_atheros (MAC_ENGINE *eng)
 #endif
 		printf("--->(%04x %04x)[ATHEROS] %s\n", eng->phy.PHY_ID2,
 		       eng->phy.PHY_ID3, eng->phy.phy_name);
-		if (!eng->run.TM_Burst)
+		if (!eng->run.tm_tx_only)
 			PRINTF(FP_LOG, "--->(%04x %04x)[ATHEROS] %s\n",
 			       eng->phy.PHY_ID2, eng->phy.PHY_ID3,
 			       eng->phy.phy_name);
@@ -2090,7 +2090,7 @@ void phy_atheros (MAC_ENGINE *eng)
 			       "\n\n[Warning] Debug register offset = 11, bit "
 			       "15 must be 0 [%04x]\n\n",
 			       eng->phy.PHY_1eh);
-		if (!eng->run.TM_Burst)
+		if (!eng->run.tm_tx_only)
 			PRINTF(FP_LOG,
 			       "\n\n[Warning] Debug register offset = 11, bit "
 			       "15 must be 0 [%04x]\n\n",
@@ -2112,7 +2112,7 @@ void phy_atheros (MAC_ENGINE *eng)
 			       "\n\n[Warning] Debug register offset = 0, bit "
 			       "15 must be 0 [%04x]\n\n",
 			       eng->phy.PHY_1eh);
-		if (!eng->run.TM_Burst)
+		if (!eng->run.tm_tx_only)
 			PRINTF(FP_LOG,
 			       "\n\n[Warning] Debug register offset = 0, bit "
 			       "15 must be 0 [%04x]\n\n",
@@ -2134,7 +2134,7 @@ void phy_atheros (MAC_ENGINE *eng)
 			       "\n\n[Warning] Debug register offset = 5, bit 8 "
 			       "must be 0 [%04x]\n\n",
 			       eng->phy.PHY_1eh);
-		if (!eng->run.TM_Burst)
+		if (!eng->run.tm_tx_only)
 			PRINTF(FP_LOG,
 			       "\n\n[Warning] Debug register offset = 5, bit 8 "
 			       "must be 0 [%04x]\n\n",
@@ -2158,7 +2158,7 @@ void phy_atheros (MAC_ENGINE *eng)
 			       "\n\n[Warning] Device addrress = 7, Addrress "
 			       "ofset = 0x8016, bit 4~3 must be 3 [%04x]\n\n",
 			       eng->phy.PHY_0eh);
-		if (!eng->run.TM_Burst)
+		if (!eng->run.tm_tx_only)
 			PRINTF(FP_LOG,
 			       "\n\n[Warning] Device addrress = 7, Addrress "
 			       "ofset = 0x8016, bit 4~3 must be 3 [%04x]\n\n",
@@ -2169,7 +2169,7 @@ void phy_atheros (MAC_ENGINE *eng)
 		phy_write(eng, 14, (eng->phy.PHY_0eh & 0xffe7) | 0x0018);
 	}
 
-	if (eng->run.TM_Burst) {
+	if (eng->run.tm_tx_only) {
 		if (eng->run.TM_IEEE) {
 			phy_write(eng, 0, eng->phy.PHY_00h);
 		} else {
@@ -2254,7 +2254,7 @@ uint32_t phy_find_addr (MAC_ENGINE *eng)
 		if (ret == 1) {
 			if (PHY_ADR_org != eng->phy.Adr) {
 				phy_id(eng, STD_OUT);
-				if (!eng->run.TM_Burst)
+				if (!eng->run.tm_tx_only)
 					phy_id(eng, FP_LOG);
 			}
 		} else {
@@ -2288,7 +2288,7 @@ uint32_t phy_find_addr (MAC_ENGINE *eng)
 void phy_set00h (MAC_ENGINE *eng) 
 {
 	nt_log_func_name();
-	if (eng->run.TM_Burst) {
+	if (eng->run.tm_tx_only) {
 		if (eng->run.TM_IEEE) {
 			if (eng->run.speed_sel[0])
 				eng->phy.PHY_00h = 0x0140;
