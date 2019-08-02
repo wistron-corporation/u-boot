@@ -1019,8 +1019,7 @@ static uint32_t init_mac_engine(MAC_ENGINE *p_eng, uint32_t mode)
 		p_eng->arg.run_speed = DEF_GSPEED;
 	}
 
-	p_eng->flg.print_en  = 1;
-	p_eng->run.TIME_OUT_Des_PHYRatio = 1;
+	p_eng->flg.print_en  = 1;	
 	
 	p_eng->run.TM_TxDataEn = 1;
 	p_eng->run.TM_RxDataEn = 1;
@@ -1204,15 +1203,14 @@ static uint32_t setup_data(MAC_ENGINE *p_eng)
 
 static uint32_t get_time_out_desc(MAC_ENGINE *p_eng)
 {
-	uint32_t time_out;
-	uint32_t ratio = p_eng->run.TIME_OUT_Des_PHYRatio;
+	uint32_t time_out;	
 	
 	if (p_eng->run.speed_sel[0])		
-		time_out = ratio * TIME_OUT_Des_1G;
+		time_out = TIME_OUT_Des_1G;
 	else if (p_eng->run.speed_sel[1])
-		time_out = ratio * TIME_OUT_Des_100M;
+		time_out = TIME_OUT_Des_100M;
 	else
-		time_out = ratio * TIME_OUT_Des_10M;
+		time_out = TIME_OUT_Des_10M;
 
 	if (p_eng->run.TM_WaitStart)
 		time_out = time_out * 10000;
@@ -1233,169 +1231,179 @@ uint32_t test_start(MAC_ENGINE *p_eng, PHY_ENGINE *p_phy_eng)
 	for (speed = 0; speed < 3; speed++) {
 		p_eng->flg.print_en = 1;
 		p_eng->run.speed_idx = speed;
-		if (p_eng->run.speed_sel[speed]) {
-			p_eng->run.TIME_OUT_Des = get_time_out_desc(p_eng);
+		if (0 == p_eng->run.speed_sel[speed]) {
+			continue;
+		}
 
-			if (p_eng->arg.run_mode ==  MODE_DEDICATED) {
-				if ((p_eng->arg.run_speed ==
-				     SET_1G_100M_10MBPS) ||
-				    (p_eng->arg.run_speed == SET_100M_10MBPS)) {
-					if (p_eng->run.speed_sel[0])
-						p_eng->run.LOOP_MAX =
-						    p_eng->arg.loop_max;
-					else if (p_eng->run.speed_sel[1])
-						p_eng->run.LOOP_MAX =
-						    p_eng->arg.loop_max / 100;
-					else
-						p_eng->run.LOOP_MAX =
-						    p_eng->arg.loop_max / 1000;
+		p_eng->run.TIME_OUT_Des = get_time_out_desc(p_eng);
+		if (p_eng->arg.run_mode == MODE_DEDICATED) {
+			if ((p_eng->arg.run_speed == SET_1G_100M_10MBPS) ||
+			    (p_eng->arg.run_speed == SET_100M_10MBPS)) {
+				if (p_eng->run.speed_sel[0])
+					p_eng->run.LOOP_MAX =
+					    p_eng->arg.loop_max;
+				else if (p_eng->run.speed_sel[1])
+					p_eng->run.LOOP_MAX =
+					    p_eng->arg.loop_max / 100;
+				else
+					p_eng->run.LOOP_MAX =
+					    p_eng->arg.loop_max / 1000;
 
-					if (!p_eng->run.LOOP_MAX)
-						p_eng->run.LOOP_MAX = 1;
+				if (!p_eng->run.LOOP_MAX)
+					p_eng->run.LOOP_MAX = 1;
 
-					calc_loop_check_num(p_eng);
-				}
-
-				//------------------------------
-				// PHY Initial
-				//------------------------------
-				if (p_phy_eng->fp_set != 0) {
-					init_phy(p_eng, p_phy_eng);  
-				}
-
-				if (p_eng->flg.Err_Flag)
-					return(finish_check(p_eng, 0));
+				calc_loop_check_num(p_eng);
 			}
 
 			//------------------------------
-			// [Start] The loop of different IO strength
+			// PHY Initial
 			//------------------------------
-			printf("drirving scan range: %d ~ %d\n",
-			       p_eng->io.drv_lower_bond,
-			       p_eng->io.drv_upper_bond);
-			for (drv = p_eng->io.drv_lower_bond; drv <= p_eng->io.drv_upper_bond; drv++) {
-				p_eng->io.drv_curr = drv;				
+			if (p_phy_eng->fp_set != 0) {
+				init_phy(p_eng, p_phy_eng);
+			}
 
+			if (p_eng->flg.Err_Flag)
+				return (finish_check(p_eng, 0));
+		}
+
+		//------------------------------
+		// [Start] The loop of different IO strength
+		//------------------------------
+		printf("drirving scan range: %d ~ %d\n",
+		       p_eng->io.drv_lower_bond, p_eng->io.drv_upper_bond);
+		for (drv = p_eng->io.drv_lower_bond;
+		     drv <= p_eng->io.drv_upper_bond; drv++) {
+			p_eng->io.drv_curr = drv;
+
+			if (p_eng->run.IO_MrgChk) {
+				if (p_eng->run.TM_IOStrength) {
+					mac_set_driving_strength(p_eng, drv);
+				}
+
+				if (p_eng->run.delay_margin)
+					PrintIO_Header(p_eng, FP_LOG);
+				if (p_eng->run.TM_IOTiming)
+					PrintIO_Header(p_eng, FP_IO);
+				PrintIO_Header(p_eng, STD_OUT);
+			} else {
+				if (p_eng->arg.run_mode == MODE_DEDICATED) {
+					Print_Header(p_eng, STD_OUT);
+				}
+			} // End if (p_eng->run.IO_MrgChk)
+
+			//------------------------------
+			// [Start] The loop of different IO out delay
+			//------------------------------
+			tbegin = p_eng->io.tx_delay_scan.begin;
+			tend = p_eng->io.tx_delay_scan.end;
+			tstep = p_eng->io.tx_delay_scan.step;
+
+			rbegin = p_eng->io.rx_delay_scan.begin;
+			rend = p_eng->io.rx_delay_scan.end;
+			rstep = p_eng->io.rx_delay_scan.step;
+
+			for (td = tbegin; td <= tend; td += tstep) {
+				p_eng->io.Dly_out = td;
+				p_eng->io.Dly_out_selval = td;
 				if (p_eng->run.IO_MrgChk) {
-					if (p_eng->run.TM_IOStrength) {
-						mac_set_driving_strength(p_eng, drv);
-					}
-
-					if (p_eng->run.delay_margin)
-						PrintIO_Header(p_eng, FP_LOG);
-					if (p_eng->run.TM_IOTiming)
-						PrintIO_Header(p_eng, FP_IO);
-					PrintIO_Header(p_eng, STD_OUT);
-				} else {
-					if (p_eng->arg.run_mode == MODE_DEDICATED) {
-						Print_Header(p_eng, STD_OUT);
-					}
+					PrintIO_LineS(p_eng, STD_OUT);
 				} // End if (p_eng->run.IO_MrgChk)
 
 				//------------------------------
-				// [Start] The loop of different IO out delay
+				// [Start] The loop of different IO in
+				// delay
 				//------------------------------
-				tbegin = p_eng->io.tx_delay_scan.begin;
-				tend = p_eng->io.tx_delay_scan.end;
-				tstep = p_eng->io.tx_delay_scan.step;
-
-				rbegin = p_eng->io.rx_delay_scan.begin;
-				rend = p_eng->io.rx_delay_scan.end;
-				rstep = p_eng->io.rx_delay_scan.step;
-
-				for (td = tbegin; td <= tend; td += tstep) {
-					p_eng->io.Dly_out = td;
-					p_eng->io.Dly_out_selval  = td;
+				for (rd = rbegin; rd <= rend; rd += rstep) {
+					p_eng->io.Dly_in = rd;
 					if (p_eng->run.IO_MrgChk) {
-						PrintIO_LineS(p_eng, STD_OUT);
-					} // End if (p_eng->run.IO_MrgChk)
-
+						p_eng->io.Dly_in_selval = rd;
+						scu_disable_mac(p_eng);
+						mac_set_delay(p_eng, rd, td);
+						scu_enable_mac(p_eng);
+					} // End if
+					  // (p_eng->run.IO_MrgChk)
 
 					//------------------------------
-					// [Start] The loop of different IO in delay
+					// MAC Initial
 					//------------------------------
-					for (rd = rbegin; rd <= rend; rd += rstep) {
-						p_eng->io.Dly_in = rd;
-						if (p_eng->run.IO_MrgChk) {
-							p_eng->io.Dly_in_selval  = rd;
-							scu_disable_mac(p_eng);
-							mac_set_delay(p_eng, rd, td);
-							scu_enable_mac(p_eng);
+					init_mac(p_eng);
+					if (p_eng->flg.Err_Flag)
+						return (finish_check(p_eng, 0));
 
-						} // End if (p_eng->run.IO_MrgChk)
-
-						//------------------------------
-						// MAC Initial
-						//------------------------------
-						init_mac(p_eng);
-						if (p_eng->flg.Err_Flag)
-							return(finish_check(p_eng, 0));
-
-						if (p_eng->arg.run_mode == MODE_NCSI) {
-							p_eng->io.Dly_result = phy_ncsi(p_eng);
-						}
-						else {
-							p_eng->io.Dly_result = TestingLoop(p_eng, p_eng->run.LOOP_CheckNum);
-						}
-						
-						p_eng->io.dlymap[rd + 64][td] = p_eng->io.Dly_result;
-
-						// Display to Log file and monitor
-						if (p_eng->run.IO_MrgChk) {
-							PrintIO_Line(p_eng, STD_OUT);
-
-							FPri_ErrFlag(p_eng, FP_LOG);
-
-							p_eng->flg.Wrn_Flag  = 0;
-							p_eng->flg.Err_Flag  = 0;
-							p_eng->flg.Des_Flag  = 0;
-							p_eng->flg.NCSI_Flag = 0;
-						}
+					if (p_eng->arg.run_mode == MODE_NCSI) {
+						p_eng->io.Dly_result =
+						    phy_ncsi(p_eng);
+					} else {
+						p_eng->io
+						    .Dly_result = TestingLoop(
+						    p_eng,
+						    p_eng->run.LOOP_CheckNum);
 					}
 
+					p_eng->io.dlymap[rd + 64][td] =
+					    p_eng->io.Dly_result;
 
+					// Display to Log file and
+					// monitor
 					if (p_eng->run.IO_MrgChk) {
-						if (p_eng->run.TM_IOTiming) {
-							PRINTF(FP_IO, "\n");
-						}
-						printf("\n");
+						PrintIO_Line(p_eng, STD_OUT);
+
+						FPri_ErrFlag(p_eng, FP_LOG);
+
+						p_eng->flg.Wrn_Flag = 0;
+						p_eng->flg.Err_Flag = 0;
+						p_eng->flg.Des_Flag = 0;
+						p_eng->flg.NCSI_Flag = 0;
 					}
-				} // End for (td = p_eng->io.tx_delay_scan.begin; td <= p_eng->io.tx_delay_scan.end; td+=p_eng->io.tx_delay_scan.step)
+				}
 
-				if (!p_eng->run.TM_Burst)
-					FPri_ErrFlag(p_eng, FP_LOG);
-				if (p_eng->run.TM_IOTiming)
-					FPri_ErrFlag(p_eng, FP_IO);
+				if (p_eng->run.IO_MrgChk) {
+					if (p_eng->run.TM_IOTiming) {
+						PRINTF(FP_IO, "\n");
+					}
+					printf("\n");
+				}
+			} // End for (td =
+			  // p_eng->io.tx_delay_scan.begin; td <=
+			  // p_eng->io.tx_delay_scan.end;
+			  // td+=p_eng->io.tx_delay_scan.step)
 
-				FPri_ErrFlag(p_eng, STD_OUT);
+			if (!p_eng->run.TM_Burst)
+				FPri_ErrFlag(p_eng, FP_LOG);
+			if (p_eng->run.TM_IOTiming)
+				FPri_ErrFlag(p_eng, FP_IO);
 
-				wrn_flag_allspeed  = wrn_flag_allspeed  | p_eng->flg.Wrn_Flag;
-				err_flag_allspeed  = err_flag_allspeed  | p_eng->flg.Err_Flag;
-				des_flag_allspeed  = des_flag_allspeed  | p_eng->flg.Err_Flag;
-				ncsi_flag_allspeed = ncsi_flag_allspeed | p_eng->flg.Err_Flag;
-				p_eng->flg.Wrn_Flag  = 0;
-				p_eng->flg.Err_Flag  = 0;
-				p_eng->flg.Des_Flag  = 0;
-				p_eng->flg.NCSI_Flag = 0;
-			}
+			FPri_ErrFlag(p_eng, STD_OUT);
 
-			if (p_eng->arg.run_mode == MODE_DEDICATED) {
-				if (p_phy_eng->fp_clr != 0)
-					recov_phy(p_eng, p_phy_eng);
-			}
+			wrn_flag_allspeed =
+			    wrn_flag_allspeed | p_eng->flg.Wrn_Flag;
+			err_flag_allspeed =
+			    err_flag_allspeed | p_eng->flg.Err_Flag;
+			des_flag_allspeed =
+			    des_flag_allspeed | p_eng->flg.Err_Flag;
+			ncsi_flag_allspeed =
+			    ncsi_flag_allspeed | p_eng->flg.Err_Flag;
+			p_eng->flg.Wrn_Flag = 0;
+			p_eng->flg.Err_Flag = 0;
+			p_eng->flg.Des_Flag = 0;
+			p_eng->flg.NCSI_Flag = 0;
+		}
 
-			p_eng->run.speed_sel[speed] = 0;
-		} // End if (p_eng->run.speed_sel[speed])
+		if (p_eng->arg.run_mode == MODE_DEDICATED) {
+			if (p_phy_eng->fp_clr != 0)
+				recov_phy(p_eng, p_phy_eng);
+		}
 
+		p_eng->run.speed_sel[speed] = 0;
 		p_eng->flg.print_en = 0;
 	} // End for (speed = 0; speed < 3; speed++)
 
-	p_eng->flg.Wrn_Flag  = wrn_flag_allspeed;
-	p_eng->flg.Err_Flag  = err_flag_allspeed;
-	p_eng->flg.Des_Flag  = des_flag_allspeed;
+	p_eng->flg.Wrn_Flag = wrn_flag_allspeed;
+	p_eng->flg.Err_Flag = err_flag_allspeed;
+	p_eng->flg.Des_Flag = des_flag_allspeed;
 	p_eng->flg.NCSI_Flag = ncsi_flag_allspeed;
-	
-	return(finish_check(p_eng, 0));
+
+	return (finish_check(p_eng, 0));
 }
 
 void dump_setting(MAC_ENGINE *p_eng)

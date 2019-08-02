@@ -533,8 +533,7 @@ typedef struct {
 
 	uint32_t LOOP_CheckNum                 ;
 	uint32_t CheckBuf_MBSize               ;
-	uint32_t TIME_OUT_Des                  ;
-	uint32_t TIME_OUT_Des_PHYRatio         ;
+	uint32_t TIME_OUT_Des;
 
 	int                  Loop_ofcnt                    ;
 	int                  Loop                          ;
@@ -882,8 +881,6 @@ GLOBAL uint32_t Read_Reg_WDT_DD (uint32_t addr);
 
 GLOBAL void Write_Mem_Dat_NCSI_DD (uint32_t addr, uint32_t data);
 GLOBAL void Write_Mem_Des_NCSI_DD (uint32_t addr, uint32_t data);
-//GLOBAL void Write_Mem_Dat_DD (uint32_t addr, uint32_t data);
-//GLOBAL void Write_Mem_Des_DD (uint32_t addr, uint32_t data);
 
 GLOBAL void Write_Reg_WDT_DD (uint32_t addr, uint32_t data);
 GLOBAL void Write_Reg_TIMER_DD (uint32_t addr, uint32_t data);
