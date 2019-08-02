@@ -248,8 +248,8 @@ static void print_arg_mac_idx(MAC_ENGINE *p_eng)
 static void print_usage(MAC_ENGINE *p_eng)
 {
 	if (MODE_DEDICATED == p_eng->arg.run_mode) {
-		printf("mactest <idx> <run_speed> <ctrl> <loop_max> <test "
-		       "mode> <phy addr> <timing boundary> <user data>\n");
+		printf("mactest <mac_idx> <mdio_idx> <speed> <ctrl> <loop_max> <test "
+		       "mode> <phy addr> <margin / IEEE select> <user data>\n");
 		print_arg_mac_idx(p_eng);
 		print_arg_mdio_idx(p_eng);
 		print_arg_speed(p_eng);
@@ -260,7 +260,7 @@ static void print_usage(MAC_ENGINE *p_eng)
 		print_arg_delay_scan_range(p_eng);
 	} else if (MODE_NCSI == p_eng->arg.run_mode) {
 		printf("ncsitest <idx> <packet num> <channel num> <test mode>"
-		       "<timing boundary> <ctrl> <ARP num>\n");
+		       "<margin> <ctrl> <ARP num>\n");
 		print_arg_mac_idx(p_eng);
 		print_arg_mdio_idx(p_eng);
 		print_arg_package_num(p_eng);
