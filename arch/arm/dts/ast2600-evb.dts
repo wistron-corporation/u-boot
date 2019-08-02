@@ -18,6 +18,15 @@
 		ethernet2 = &mac2;
 		ethernet3 = &mac3;
 	};
+
+	cpus {
+		cpu@0 {
+			clock-frequency = <800000000>;
+		};
+		cpu@1 {
+			clock-frequency = <800000000>;
+		};
+	};
 };
 
 &uart5 {

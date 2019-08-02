@@ -83,8 +83,8 @@ ENDPROC(ast_bootmode)
 
 .macro timer_init
 #ifdef CONFIG_FPGA_ASPEED
-    movw    r0, #0x0
-    movt    r0, #0x2500
+    movw    r0, #0x7840
+    movt    r0, #0x17D
 #else
     ldr     r0, =AST_SCU_REV_ID
     ldr     r0, [r0]
