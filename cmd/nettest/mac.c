@@ -24,7 +24,6 @@
 #include "swfunc.h"
 
 #include "comminf.h"
-#include "stduboot.h"
 #include <command.h>
 #include <common.h>
 #include <malloc.h>
@@ -955,7 +954,7 @@ void init_mac (MAC_ENGINE *eng)
 //------------------------------------------------------------
 // Basic
 //------------------------------------------------------------
-void FPri_RegValue (MAC_ENGINE *eng, BYTE option) 
+void FPri_RegValue (MAC_ENGINE *eng, uint8_t option) 
 {
 	nt_log_func_name();
 
@@ -970,10 +969,10 @@ void FPri_RegValue (MAC_ENGINE *eng, BYTE option)
 	PRINTF( option, "[MAC]  B0|%08x %08x %08x %08x\n", mac_reg_read( eng, 0xb0 ), mac_reg_read( eng, 0xb4 ), mac_reg_read( eng, 0xb8 ), mac_reg_read( eng, 0xbc ) );
 	PRINTF( option, "[MAC]  C0|%08x %08x %08x\n",       mac_reg_read( eng, 0xc0 ), mac_reg_read( eng, 0xc4 ), mac_reg_read( eng, 0xc8 ) );
 
-} // End void FPri_RegValue (MAC_ENGINE *eng, BYTE *fp)
+} // End void FPri_RegValue (MAC_ENGINE *eng, uint8_t *fp)
 
 //------------------------------------------------------------
-void FPri_End (MAC_ENGINE *eng, BYTE option) 
+void FPri_End (MAC_ENGINE *eng, uint8_t option) 
 {
 	nt_log_func_name();
 	if ((0 == eng->run.is_rgmii) && ( eng->phy.RMIICK_IOMode != 0 ) && eng->run.IO_MrgChk && eng->flg.all_fail ) {
@@ -1081,10 +1080,10 @@ void FPri_End (MAC_ENGINE *eng, BYTE option)
 
 
 	PRINTF( option, "[Ver II] %s\n", version_name );
-} // End void FPri_End (MAC_ENGINE *eng, BYTE option)
+} // End void FPri_End (MAC_ENGINE *eng, uint8_t option)
 
 //------------------------------------------------------------
-void FPri_ErrFlag (MAC_ENGINE *eng, BYTE option) 
+void FPri_ErrFlag (MAC_ENGINE *eng, uint8_t option) 
 {
 	nt_log_func_name();
 	if ( eng->flg.print_en ) {
@@ -1221,7 +1220,7 @@ void FPri_ErrFlag (MAC_ENGINE *eng, BYTE option)
 			} // End if ( eng->arg.run_mode == MODE_NCSI )
 		} // End if ( eng->flg.Err_Flag )
 	} // End if ( eng->flg.print_en )
-} // End void FPri_ErrFlag (MAC_ENGINE *eng, BYTE option)
+} // End void FPri_ErrFlag (MAC_ENGINE *eng, uint8_t option)
 
 //------------------------------------------------------------
 
@@ -1945,7 +1944,7 @@ char check_des_header_Rx (MAC_ENGINE *eng, char *type, uint32_t adr, int32_t des
 //------------------------------------------------------------
 char check_des (MAC_ENGINE *eng, uint32_t bufnum, int checkpoint) {
 	int32_t       desnum;
-	CHAR       desnum_last;
+	int8_t       desnum_last;
 	uint32_t      H_rx_desadr;
 	uint32_t      H_tx_desadr;
 	uint32_t      H_tx_bufadr;
@@ -2060,7 +2059,7 @@ char check_des (MAC_ENGINE *eng, uint32_t bufnum, int checkpoint) {
 //------------------------------------------------------------
 // Print
 //-----------------------------------------------------------
-void PrintIO_Header (MAC_ENGINE *eng, BYTE option) 
+void PrintIO_Header (MAC_ENGINE *eng, uint8_t option) 
 {
 	int32_t rx_d, step, tmp;
 
@@ -2124,17 +2123,17 @@ void PrintIO_Header (MAC_ENGINE *eng, BYTE option)
 }
 
 //------------------------------------------------------------
-void PrintIO_LineS(MAC_ENGINE *p_eng, BYTE option)
+void PrintIO_LineS(MAC_ENGINE *p_eng, uint8_t option)
 {
 	if (p_eng->io.tx_delay_scan.orig == p_eng->io.Dly_out_selval) {
 		PRINTF( option, "%02d:-", p_eng->io.Dly_out_selval); 
 	} else {
 		PRINTF( option, "%02d: ", p_eng->io.Dly_out_selval);
 	}	
-} // End void PrintIO_LineS (MAC_ENGINE *eng, BYTE option)
+} // End void PrintIO_LineS (MAC_ENGINE *eng, uint8_t option)
 
 //------------------------------------------------------------
-void PrintIO_Line(MAC_ENGINE *p_eng, BYTE option) 
+void PrintIO_Line(MAC_ENGINE *p_eng, uint8_t option) 
 {
 	if ((p_eng->io.Dly_in_selval == p_eng->io.rx_delay_scan.orig) && 
 	    (p_eng->io.Dly_out_selval == p_eng->io.tx_delay_scan.orig)) {

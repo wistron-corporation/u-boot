@@ -461,7 +461,7 @@ typedef struct {
 	uint32_t WDT_02c                       ;
 	uint32_t WDT_04c                       ;
 
-	CHAR                 SCU_oldvld;
+	int8_t                 SCU_oldvld;
 } mac_reg_t;
 typedef struct {
 	uint8_t ast2600;
@@ -544,30 +544,30 @@ typedef struct {
 	uint8_t speed_cfg[3];
 	uint8_t speed_sel[3];
 
-	CHAR                 TM_Burst                      ;//test_mode
-	CHAR                 TM_IEEE                       ;//test_mode
-	CHAR                 TM_IOTiming                   ;//test_mode
-	CHAR                 TM_IOStrength                 ;//test_mode
-	CHAR                 TM_TxDataEn                   ;//test_mode
-	CHAR                 TM_RxDataEn                   ;//test_mode
-	CHAR                 TM_WaitStart                  ;//test_mode
-	CHAR                 TM_DefaultPHY                 ;//test_mode
-	CHAR                 TM_NCSI_DiSChannel            ;//test_mode
+	int8_t                 TM_Burst                      ;//test_mode
+	int8_t                 TM_IEEE                       ;//test_mode
+	int8_t                 TM_IOTiming                   ;//test_mode
+	int8_t                 TM_IOStrength                 ;//test_mode
+	int8_t                 TM_TxDataEn                   ;//test_mode
+	int8_t                 TM_RxDataEn                   ;//test_mode
+	int8_t                 TM_WaitStart                  ;//test_mode
+	int8_t                 TM_DefaultPHY                 ;//test_mode
+	int8_t                 TM_NCSI_DiSChannel            ;//test_mode
 
-	BYTE                 delay_margin                       ;
-	CHAR                 IO_MrgChk                     ;
+	uint8_t                 delay_margin                       ;
+	int8_t                 IO_MrgChk                     ;
 
 
 } MAC_Running;
 typedef struct {
-	CHAR                 SA[6]                         ;	
+	int8_t                 SA[6]                         ;	
 } MAC_Information;
 typedef struct {
 	uint32_t mdio_base;
 	uint32_t loopback;
 	uint8_t phy_name[64];
-	CHAR                 default_phy                   ;
-	CHAR                 Adr                           ;
+	int8_t                 default_phy                   ;
+	int8_t                 Adr                           ;
 
 	uint32_t PHY_ID3                       ;
 	uint32_t PHY_ID2                       ;
@@ -740,19 +740,19 @@ typedef struct {
 	char                 Dly_reg_name_rx[32];
 	char                 Dly_reg_name_tx_new[32];
 	char                 Dly_reg_name_rx_new[32];
-	BYTE                 Dly_in_reg_idx;
-	SCHAR                Dly_in_min                    ;
-	BYTE                 Dly_in_max                    ;
-	BYTE                 Dly_out_reg_idx               ;
-	SCHAR                Dly_out_min                   ;
-	BYTE                 Dly_out_max                   ;	
+	uint8_t                 Dly_in_reg_idx;
+	int8_t                Dly_in_min                    ;
+	uint8_t                 Dly_in_max                    ;
+	uint8_t                 Dly_out_reg_idx               ;
+	int8_t                Dly_out_min                   ;
+	uint8_t                 Dly_out_max                   ;	
 	
-	BYTE                 Dly_in                        ;
-	BYTE                 Dly_in_selval                 ;
-	BYTE                 Dly_out                       ;
-	BYTE                 Dly_out_selval                ;
-	CHAR                 Dly_result                    ;
-	CHAR                 dlymap[128][64]                ;
+	uint8_t                 Dly_in                        ;
+	uint8_t                 Dly_in_selval                 ;
+	uint8_t                 Dly_out                       ;
+	uint8_t                 Dly_out_selval                ;
+	int8_t                 Dly_result                    ;
+	int8_t                 dlymap[128][64]                ;
 	uint32_t init_done;
 } MAC_IO;
 typedef struct {
@@ -778,8 +778,8 @@ typedef struct {
 	uint32_t RxDes0DW                      ;
 	uint32_t RxDes3DW                      ;
 
-	BYTE                 number_chl                    ;
-	BYTE                 number_pak                    ;
+	uint8_t                 number_chl                    ;
+	uint8_t                 number_pak                    ;
 	char                 NCSI_RxEr                     ;
 	uint32_t NCSI_TxDWBUF[512]             ;
 	uint32_t NCSI_RxDWBUF[512]             ;
@@ -842,11 +842,11 @@ GLOBAL  char phy_ncsi (MAC_ENGINE *eng);
 #define MODE_DEDICATED                           0x01
 #define MODE_NCSI                                0x02
 
-GLOBAL  UCHAR            *mmiobase;
+GLOBAL  uint8_t            *mmiobase;
 GLOBAL  uint32_t ulPCIBaseAddress;
 GLOBAL  uint32_t ulMMIOBaseAddress;
 
-GLOBAL  BYTE             display_lantest_log_msg;
+GLOBAL  uint8_t             display_lantest_log_msg;
 
 // ========================================================
 // For mac.c
@@ -859,7 +859,7 @@ GLOBAL  BYTE             display_lantest_log_msg;
 
 #if defined(MAC_C)
 static  const  char version_name[] = VER_NAME;
-static  const  BYTE IOValue_Array_A0[16] = {8,1, 10,3, 12,5, 14,7, 0,9, 2,11, 4,13, 6,15}; // AST2300-A0
+static  const  uint8_t IOValue_Array_A0[16] = {8,1, 10,3, 12,5, 14,7, 0,9, 2,11, 4,13, 6,15}; // AST2300-A0
 #endif
 
 GLOBAL void    debug_pause (void);
@@ -909,11 +909,11 @@ GLOBAL void    phy_sel (MAC_ENGINE *eng, PHY_ENGINE *phyeng);
 GLOBAL void    recov_phy (MAC_ENGINE *eng, PHY_ENGINE *phyeng);
 GLOBAL int     FindErr (MAC_ENGINE *eng, int value);
 GLOBAL int     FindErr_Des (MAC_ENGINE *eng, int value);
-GLOBAL void    PrintIO_Header (MAC_ENGINE *eng, BYTE option);
+GLOBAL void    PrintIO_Header (MAC_ENGINE *eng, uint8_t option);
 
 
 
-GLOBAL void    FPri_ErrFlag (MAC_ENGINE *eng, BYTE option);
+GLOBAL void    FPri_ErrFlag (MAC_ENGINE *eng, uint8_t option);
 
 GLOBAL void init_hwtimer( void );
 GLOBAL void delay_hwtimer(uint16_t msec);

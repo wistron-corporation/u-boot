@@ -29,7 +29,6 @@
 #include "comminf.h"
 #include "swfunc.h"
 
-#include "stduboot.h"
 #include <command.h>
 #include <common.h>
 
@@ -228,11 +227,11 @@ void phy_dump (MAC_ENGINE *eng) {
 }
 
 //------------------------------------------------------------
-void phy_id (MAC_ENGINE *eng, BYTE option)
+void phy_id (MAC_ENGINE *eng, uint8_t option)
 {
 
         uint32_t      reg_adr;
-        CHAR       PHY_ADR_org;
+        int8_t       PHY_ADR_org;
 
         PHY_ADR_org = eng->phy.Adr;
         for ( eng->phy.Adr = 0; eng->phy.Adr < 32; eng->phy.Adr++ ) {
@@ -478,7 +477,7 @@ phy_read( eng, 0 ); // v069
 
 //------------------------------------------------------------
 void recov_phy_marvell1 (MAC_ENGINE *eng) {//88E6176
-        CHAR       PHY_ADR_org;
+        int8_t       PHY_ADR_org;
 
         PHY_ADR_org = eng->phy.Adr;
         for ( eng->phy.Adr = 16; eng->phy.Adr <= 22; eng->phy.Adr++ ) {
@@ -497,7 +496,7 @@ void recov_phy_marvell1 (MAC_ENGINE *eng) {//88E6176
 //------------------------------------------------------------
 void phy_marvell1 (MAC_ENGINE *eng) {//88E6176
 //      uint32_t      PHY_01h;
-        CHAR       PHY_ADR_org;
+        int8_t       PHY_ADR_org;
 
         if ( DbgPrn_PHYName )
                 printf("--->(%04x %04x)[Marvell] %s\n", eng->phy.PHY_ID2, eng->phy.PHY_ID3, eng->phy.phy_name);
@@ -776,7 +775,7 @@ void phy_broadcom0 (MAC_ENGINE *eng) {//BCM54612
 #ifdef Delay_PHYRst
                 phy_delay( Delay_PHYRst );
 #endif
-                /* Only 1G Test is PASS, 100M and 10M is false @20130619 */
+                /* Only 1G Test is PASS, 100M and 10M is 0 @20130619 */
 
 // Waiting for BCM FAE's response
 //              if ( eng->run.speed_sel[ 0 ] ) {
@@ -2209,11 +2208,14 @@ void phy_default (MAC_ENGINE *eng)
 //------------------------------------------------------------
 // PHY Init
 //------------------------------------------------------------
+/**
+ * @return	1->addr found,  0->else
+*/
 uint32_t phy_find_addr (MAC_ENGINE *eng)
 {
         uint32_t      PHY_val;
-        uint32_t    ret = FALSE;
-        CHAR       PHY_ADR_org;
+        uint32_t    ret = 0;
+        int8_t       PHY_ADR_org;
 
 	nt_log_func_name();
         
@@ -2223,34 +2225,34 @@ uint32_t phy_find_addr (MAC_ENGINE *eng)
         PHY_ADR_org = eng->phy.Adr;
         PHY_val = phy_read(eng, PHY_REG_ID_1);
 	if (PHY_IS_VALID(PHY_val)) {
-		ret = TRUE;
+		ret = 1;
 	} else if (eng->arg.ctrl.b.phy_skip_check) {
 		PHY_val = phy_read(eng, PHY_REG_BMCR);
 
 		if ((PHY_val & 0x8000) & eng->arg.ctrl.b.phy_init) {
 		} else {
-			ret = TRUE;
+			ret = 1;
 		}
 	}
 
 #ifdef ENABLE_SCAN_PHY_ID
-	if (ret == FALSE) {
+	if (ret == 0) {
 		if (eng->arg.ctrl.b.phy_init)
 			printf("Scan PHY address\n");
 		for (eng->phy.Adr = 0; eng->phy.Adr < 32; eng->phy.Adr++) {
 			PHY_val = phy_read(eng, PHY_REG_ID_1);
 			if (PHY_IS_VALID(PHY_val)) {
-				ret = TRUE;
+				ret = 1;
 				break;
 			}
 		}
 	}
-	if (ret == FALSE)
+	if (ret == 0)
 		eng->phy.Adr = eng->arg.phy_addr;
 #endif
 
 	if (eng->arg.ctrl.b.phy_init) {
-		if (ret == TRUE) {
+		if (ret == 1) {
 			if (PHY_ADR_org != eng->phy.Adr) {
 				phy_id(eng, STD_OUT);
 				if (!eng->run.TM_Burst)
@@ -2281,7 +2283,7 @@ uint32_t phy_find_addr (MAC_ENGINE *eng)
 #endif
 
         return ret;
-} // End BOOLEAN phy_find_addr (MAC_ENGINE *eng)
+}
 
 //------------------------------------------------------------
 void phy_set00h (MAC_ENGINE *eng) 

@@ -13,8 +13,6 @@
 
 #include "swfunc.h"
 #include "comminf.h"
-//#include "io.h"
-#include "stduboot.h"
 #include <command.h>
 #include <common.h>
 #include <malloc.h>
@@ -104,7 +102,7 @@ const struct mac_ctrl_desc mac_ctrl_lookup_tbl[2] = {
 #endif
 
 #if 1
-void Print_Header (MAC_ENGINE *eng, BYTE option) 
+void Print_Header (MAC_ENGINE *eng, uint8_t option) 
 {
 	option = STD_OUT;
 
@@ -1477,7 +1475,7 @@ int mac_test(int argc, char * const argv[], uint32_t mode)
 	scu_disable_mac(&mac_eng);
 	scu_enable_mac(&mac_eng);
 	if (mac_eng.arg.run_mode == MODE_DEDICATED) {
-		if (TRUE == phy_find_addr(&mac_eng)) {
+		if (1 == phy_find_addr(&mac_eng)) {
 			phy_sel(&mac_eng, &phy_eng);		
 		}
 	}

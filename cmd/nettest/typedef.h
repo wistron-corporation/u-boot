@@ -14,18 +14,5 @@
 
 #include "swfunc.h"
 
-#define PCI		1
-#define PCIE		2
-#define AGP		3
-
-#define UCHAR		unsigned char
-#define CHAR		char
-#define BYTE		UCHAR
-#define BOOL		SHORT
-#define BOOLEAN		uint16_t
-#define SCHAR		signed char
-
-#define TRUE      	1
-#define FALSE     	0
 
 #endif /* end of "#ifndef _TYPEDEF_H_" */
