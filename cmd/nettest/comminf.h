@@ -320,7 +320,7 @@ extern uint8_t __attribute__ ((aligned (1024*1024))) dma_buf[DMA_BUF_SIZE];
 //---------------------------------------------------------
 // Others
 //---------------------------------------------------------
-#define Loop_OverFlow                            0x7fffffff
+#define LOOP_OVERFLOW_TH                            0x7fffffff
 
 //---------------------------------------------------------
 // Chip memory MAP
@@ -533,11 +533,10 @@ typedef struct {
 
 	uint32_t LOOP_CheckNum                 ;
 	uint32_t CheckBuf_MBSize               ;
-	uint32_t TIME_OUT_Des;
+	uint32_t timeout_th;	/* time out threshold (varies with run-speed) */
 
-	int                  Loop_ofcnt                    ;
-	int                  Loop                          ;
-	int                  Loop_rl[3]                    ;
+	uint32_t loop_of_cnt;
+	uint32_t loop_cnt;
 	uint32_t speed_idx;
 	int                  NCSI_RxTimeOutScale           ;
 
@@ -717,10 +716,6 @@ typedef struct delay_scan_s {
 	int8_t orig;
 } delay_scan_t;
 typedef struct {
-	CHAR                 init_done                     ;
-
-	BYTE                 Dly_MrgEn                     ;	
-
 	/* driving strength */
 #ifdef CONFIG_ASPEED_AST2600
 	mac34_drv_reg_t mac34_drv_reg;
@@ -741,14 +736,11 @@ typedef struct {
 	delay_scan_t tx_delay_scan;
 	delay_scan_t rx_delay_scan;	
 
-	char                 Dly_reg_name_tx[32]           ;
-	char                 Dly_reg_name_rx[32]           ;
-	char                 Dly_reg_name_tx_new[32]       ;
-	char                 Dly_reg_name_rx_new[32]       ;
-	uint32_t Dly_in_reg                    ;
-	uint32_t Dly_out_reg                   ;
-	uint32_t Dly_val                       ;	
-	BYTE                 Dly_in_reg_idx                ;
+	char                 Dly_reg_name_tx[32];
+	char                 Dly_reg_name_rx[32];
+	char                 Dly_reg_name_tx_new[32];
+	char                 Dly_reg_name_rx_new[32];
+	BYTE                 Dly_in_reg_idx;
 	SCHAR                Dly_in_min                    ;
 	BYTE                 Dly_in_max                    ;
 	BYTE                 Dly_out_reg_idx               ;
@@ -761,6 +753,7 @@ typedef struct {
 	BYTE                 Dly_out_selval                ;
 	CHAR                 Dly_result                    ;
 	CHAR                 dlymap[128][64]                ;
+	uint32_t init_done;
 } MAC_IO;
 typedef struct {
 #ifdef Enable_ShowBW

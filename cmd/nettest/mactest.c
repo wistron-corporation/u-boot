@@ -51,6 +51,8 @@ struct mac_ctrl_desc {
 	uint32_t bit_clk_start;
 };
 
+static const uint32_t timeout_th_tbl[3] = {
+    TIME_OUT_Des_1G, TIME_OUT_Des_100M, TIME_OUT_Des_10M};
 #if defined(CONFIG_ASPEED_AST2600)
 const uint32_t mac_base_lookup_tbl[4] = {MAC1_BASE, MAC2_BASE, MAC3_BASE,
 					 MAC4_BASE};
@@ -1201,17 +1203,11 @@ static uint32_t setup_data(MAC_ENGINE *p_eng)
 	return 0;			
 }
 
-static uint32_t get_time_out_desc(MAC_ENGINE *p_eng)
+static uint32_t get_time_out_th(MAC_ENGINE *p_eng)
 {
 	uint32_t time_out;	
 	
-	if (p_eng->run.speed_sel[0])		
-		time_out = TIME_OUT_Des_1G;
-	else if (p_eng->run.speed_sel[1])
-		time_out = TIME_OUT_Des_100M;
-	else
-		time_out = TIME_OUT_Des_10M;
-
+	time_out = timeout_th_tbl[p_eng->run.speed_idx];
 	if (p_eng->run.TM_WaitStart)
 		time_out = time_out * 10000;
 	
@@ -1235,7 +1231,7 @@ uint32_t test_start(MAC_ENGINE *p_eng, PHY_ENGINE *p_phy_eng)
 			continue;
 		}
 
-		p_eng->run.TIME_OUT_Des = get_time_out_desc(p_eng);
+		p_eng->run.timeout_th = get_time_out_th(p_eng);
 		if (p_eng->arg.run_mode == MODE_DEDICATED) {
 			if ((p_eng->arg.run_speed == SET_1G_100M_10MBPS) ||
 			    (p_eng->arg.run_speed == SET_100M_10MBPS)) {
