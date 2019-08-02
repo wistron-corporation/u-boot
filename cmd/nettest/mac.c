@@ -91,15 +91,6 @@ uint32_t mac_reg_read(MAC_ENGINE *p_eng, uint32_t addr)
 	return readl(p_eng->run.mac_base + addr);
 }
 
-uint32_t Read_Reg_WDT_DD(uint32_t addr)
-{
-#ifdef MAC_DEBUG_REGRW_WDT
-	printf("[RegRd-WDT] %08x = %08x\n", WDT_BASE + addr,
-	       SWAP_4B_LEDN_REG(readl(WDT_BASE + addr)));
-#endif
-	return (SWAP_4B_LEDN_REG(readl(WDT_BASE + addr)));
-}
-
 //------------------------------------------------------------
 // Write Memory
 //------------------------------------------------------------
@@ -136,18 +127,6 @@ void mac_reg_write(MAC_ENGINE *p_eng, uint32_t addr, uint32_t data)
 	writel(data, p_eng->run.mac_base + addr);
 }
 
-void Write_Reg_WDT_DD (uint32_t addr, uint32_t data) {
-#ifdef MAC_DEBUG_REGRW_WDT
-	printf("[RegWr-WDT] %08x = %08x\n", WDT_BASE + addr, SWAP_4B_LEDN_REG( data ));
-#endif
-	writel(data, WDT_BASE + addr);
-}
-void Write_Reg_TIMER_DD (uint32_t addr, uint32_t data) {
-#ifdef MAC_DEBUG_REGRW_TIMER
-	printf("[RegWr-TIMER] %08x = %08x\n", TIMER_BASE + addr, SWAP_4B_LEDN_REG( data ));
-#endif
-	writel(data, TIMER_BASE + addr);
-}
 
 //------------------------------------------------------------
 // Others
@@ -897,8 +876,8 @@ void init_mac (MAC_ENGINE *eng)
 	} while(maccr.b.sw_rst);
 #endif
 
-	mac_reg_write(eng, 0x20, eng->run.tdes_base - DRAM_BASE);
-	mac_reg_write(eng, 0x24, eng->run.rdes_base - DRAM_BASE);
+	mac_reg_write(eng, 0x20, eng->run.tdes_base - ASPEED_DRAM_BASE);
+	mac_reg_write(eng, 0x24, eng->run.rdes_base - ASPEED_DRAM_BASE);
 
 	mac_reg_write(eng, 0x08, eng->reg.mac_madr);
 	mac_reg_write(eng, 0x0c, eng->reg.mac_ladr);

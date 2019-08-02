@@ -163,15 +163,6 @@
 #define RDES_SIZE			0x00040000
 #define RESV_SIZE			0x00000000		/* reserved */
 
-#define DRAM_BASE			0x80000000
-#if 0
-#define BUF_BASE			(DRAM_BASE)
-#define TDES_BASE			(BUF_BASE + BUF_SIZE)
-#define RDES_BASE			(TDES_BASE + TDES_SIZE)
-#define RESV_BASE			(RDES_BASE + RDES_SIZE)
-#define DMA_BASE 			(RESV_BASE + RESV_SIZE)
-#endif
-
 #define TDES_IniVal (0xb0000000 + eng->dat.FRAME_LEN_Cur)
 #define RDES_IniVal (0x00000fff)
 #define EOR_IniVal (0x40008000)
@@ -179,8 +170,8 @@
 #define HWOwnRx(dat) ((dat & 0x80000000) == 0)
 #define HWEOR(dat) (dat & 0x40000000)
 
-#define AT_MEMRW_BUF(x) ((x) - DRAM_BASE)
-#define AT_BUF_MEMRW(x) ((x) + DRAM_BASE)
+#define AT_MEMRW_BUF(x) ((x) - ASPEED_DRAM_BASE)
+#define AT_BUF_MEMRW(x) ((x) + ASPEED_DRAM_BASE)
 
 //---------------------------------------------------------
 // Error Flag Bits
@@ -242,20 +233,6 @@
 #define NCSI_Flag_Reset_Channel                       ( 1 << 13 )   // Time out when Reset Channel
 
 //---------------------------------------------------------
-// SCU information
-//---------------------------------------------------------
-#define SCU_BASE				0x1e6e2000
-#define SDR_BASE				0x1e6e0000
-#define WDT_BASE				0x1e785000
-#define TIMER_BASE				0x1e782000
-#define GPIO_BASE				0x1e780000
-
-#define SCU_48h_AST2300				0x00222255
-#define SCU_48h_AST2500				0x00082208
-#define SCU_B8h_AST2500				0x00082208
-#define SCU_BCh_AST2500				0x00082208
-
-//---------------------------------------------------------
 // DMA Buffer information
 //---------------------------------------------------------
 #define DMA_BUF_SIZE				(56 * 1024 * 1024)
@@ -299,8 +276,6 @@ extern uint8_t __attribute__ ((aligned (1024*1024))) dma_buf[DMA_BUF_SIZE];
 //#define Delay_PHYRd                              5
 #define Delay_PHYRd                              1         //20150423
 
-//#define Delay_SCU                                11
-#define Delay_SCU                                1         //20150423
 #define Delay_MACRst                             1
 #define Delay_MACDump                            1
 
@@ -317,23 +292,13 @@ extern uint8_t __attribute__ ((aligned (1024*1024))) dma_buf[DMA_BUF_SIZE];
 #define TIME_OUT_PHY_Rst                     20000     //1000
 
 //---------------------------------------------------------
-// Others
+// loop counter overflow threshold
 //---------------------------------------------------------
 #define LOOP_OVERFLOW_TH                            0x7fffffff
 
 //---------------------------------------------------------
 // Chip memory MAP
 //---------------------------------------------------------
-#define LITTLE_ENDIAN_ADDRESS                    0
-#define BIG_ENDIAN_ADDRESS                       1
-
-typedef struct {
-    uint32_t StartAddr;
-    uint32_t EndAddr;
-}  LittleEndian_Area;
-
-static const LittleEndian_Area LittleEndianArea[] = {{ 0xFFFFFFFF, 0xFFFFFFFF }};
-
 typedef union {
 	uint32_t w;
 	struct {
@@ -867,14 +832,14 @@ GLOBAL uint32_t Read_Mem_Des_NCSI_DD (uint32_t addr);
 
 
 
-GLOBAL uint32_t Read_Reg_WDT_DD (uint32_t addr);
+
 
 
 
 GLOBAL void Write_Mem_Dat_NCSI_DD (uint32_t addr, uint32_t data);
 GLOBAL void Write_Mem_Des_NCSI_DD (uint32_t addr, uint32_t data);
 
-GLOBAL void Write_Reg_WDT_DD (uint32_t addr, uint32_t data);
+
 GLOBAL void Write_Reg_TIMER_DD (uint32_t addr, uint32_t data);
 
 

@@ -5,7 +5,6 @@
 #define MAC2_BASE	0x1e680000
 #define MDIO0_BASE	(MAC1_BASE + 0x60)
 #define MDIO1_BASE	(MAC2_BASE + 0x60)
-#define SRAM_BASE	0x1e6e0000
 #define SCU_BASE        0x1e6e2000
 
 

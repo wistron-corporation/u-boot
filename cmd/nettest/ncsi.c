@@ -174,7 +174,7 @@ void NCSI_Struct_Initialize_SLT (MAC_ENGINE *eng) {
 	eng->run.ncsi_tdes_base = eng->run.tdes_base;//base for read/write
 	Write_Mem_Des_NCSI_DD( eng->run.ncsi_tdes_base + 0x04, 0                        );
 	Write_Mem_Des_NCSI_DD( eng->run.ncsi_tdes_base + 0x08, 0                        );
-	Write_Mem_Des_NCSI_DD( eng->run.ncsi_tdes_base + 0x0C, DMA_BASE - DRAM_BASE);
+	Write_Mem_Des_NCSI_DD( eng->run.ncsi_tdes_base + 0x0C, DMA_BASE - ASPEED_DRAM_BASE);
 
 	eng->run.ncsi_rdes_base = eng->run.rdes_base;//base for read/write
 	NCSI_RxDatBase = AT_MEMRW_BUF( NCSI_RxDMA_BASE );//base of the descriptor
