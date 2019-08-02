@@ -480,7 +480,7 @@ typedef union {
 	uint32_t w;
 	struct {
 		uint32_t single_packet	: 1;	/* bit[0] */
-		uint32_t phy_addr_inv	: 1;	/* bit[1] */
+		uint32_t inv_rgmii_rxclk: 1;	/* bit[1] */
 		uint32_t phy_recov_dis	: 1;	/* bit[2] */
 		uint32_t phy_init	: 1;	/* bit[3] */
 		uint32_t phy_int_loopback : 1;	/* bit[4] */

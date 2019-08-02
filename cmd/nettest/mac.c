@@ -809,6 +809,12 @@ int mac_set_scan_boundary(MAC_ENGINE *p_eng)
 	mac_get_max_available_delay(p_eng, &rx_max, &tx_max);
 	mac_get_min_available_delay(p_eng, &rx_min, &tx_min);
 
+	if ((p_eng->run.is_rgmii) && (p_eng->arg.ctrl.b.inv_rgmii_rxclk)) {
+		rx_max = (rx_max > 0) ? 0 : rx_max;
+	} else {
+		rx_min = (rx_min < 0) ? 0 : rx_min;
+	}
+
 	if (p_eng->run.TM_IOTiming) {
 		if (p_eng->arg.ctrl.b.full_range) {
 			tx_scaling = 0;
@@ -857,10 +863,24 @@ int mac_set_scan_boundary(MAC_ENGINE *p_eng)
 	if (p_eng->io.tx_delay_scan.end > tx_max)
 		p_eng->io.tx_delay_scan.end = tx_max;
 
-	debug("RX delay scan boundary:%d ~ %d\n",
-	       p_eng->io.rx_delay_scan.begin, p_eng->io.rx_delay_scan.end);
-	debug("TX delay scan boundary:%d ~ %d\n",
-	       p_eng->io.tx_delay_scan.begin, p_eng->io.tx_delay_scan.end);
+	if (p_eng->io.rx_delay_scan.begin > p_eng->io.rx_delay_scan.end)
+		p_eng->io.rx_delay_scan.begin = p_eng->io.rx_delay_scan.end;
+
+	if (p_eng->io.tx_delay_scan.begin > p_eng->io.tx_delay_scan.end)
+		p_eng->io.tx_delay_scan.begin = p_eng->io.tx_delay_scan.end;		
+
+	if ((p_eng->io.rx_delay_scan.orig < p_eng->io.rx_delay_scan.begin) ||
+	    (p_eng->io.rx_delay_scan.orig > p_eng->io.rx_delay_scan.end)) {
+		printf("Warning: current delay is not in the scan-range\n");
+		printf("RX delay scan range:%d ~ %d, curr:%d\n",
+		       p_eng->io.rx_delay_scan.begin,
+		       p_eng->io.rx_delay_scan.end,
+		       p_eng->io.rx_delay_scan.orig);
+		printf("TX delay scan range:%d ~ %d, curr:%d\n",
+		       p_eng->io.tx_delay_scan.begin,
+		       p_eng->io.tx_delay_scan.end,
+		       p_eng->io.tx_delay_scan.orig);
+	}
 
 	return (0);
 }
@@ -2064,7 +2084,7 @@ char check_des (MAC_ENGINE *eng, uint32_t bufnum, int checkpoint) {
 //-----------------------------------------------------------
 void PrintIO_Header (MAC_ENGINE *eng, BYTE option) 
 {
-	int32_t rx_d, tx_d_cur, rx_d_cur, step;
+	int32_t rx_d, tx_d_cur, rx_d_cur, step, tmp;
 
 	if (eng->run.TM_IOStrength) {
 		if (eng->io.drv_upper_bond > 1) {
@@ -2092,9 +2112,29 @@ void PrintIO_Header (MAC_ENGINE *eng, BYTE option)
 		PRINTF(option, "   current TX delay: %d\n", tx_d_cur);
 
 		PRINTF(option, "\n    ");
+		for (rx_d = eng->io.rx_delay_scan.begin; rx_d <= eng->io.rx_delay_scan.end; rx_d += step) {
+
+			if (rx_d < 0) {
+				PRINTF(option, "-" );
+			} else {
+				PRINTF(option, "+" );
+			}
+		}
+
+		PRINTF(option, "\n    ");
+		for (rx_d = eng->io.rx_delay_scan.begin; rx_d <= eng->io.rx_delay_scan.end; rx_d += step) {
+			tmp = abs(rx_d) / 10;
+			if (tmp == 0) {
+				PRINTF(option, "0" );
+			} else {
+				PRINTF(option, "%1d", tmp);
+			}
+		}
+
+		PRINTF(option, "\n    ");
 		for (rx_d = eng->io.rx_delay_scan.begin;
 		     rx_d <= eng->io.rx_delay_scan.end; rx_d += step) {
-			PRINTF(option, "%1x", rx_d & 0xf);
+			PRINTF(option, "%1d", abs(rx_d) % 10);
 		}
 
 		PRINTF(option, "\n    ");
@@ -2113,9 +2153,9 @@ void PrintIO_Header (MAC_ENGINE *eng, BYTE option)
 void PrintIO_LineS(MAC_ENGINE *p_eng, BYTE option)
 {
 	if (p_eng->io.tx_delay_scan.orig == p_eng->io.Dly_out_selval) {
-		PRINTF( option, "%02x:-", p_eng->io.Dly_out_selval); 
+		PRINTF( option, "%02d:-", p_eng->io.Dly_out_selval); 
 	} else {
-		PRINTF( option, "%02x: ", p_eng->io.Dly_out_selval);
+		PRINTF( option, "%02d: ", p_eng->io.Dly_out_selval);
 	}	
 } // End void PrintIO_LineS (MAC_ENGINE *eng, BYTE option)
 

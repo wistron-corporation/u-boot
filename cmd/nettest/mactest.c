@@ -208,7 +208,7 @@ static void print_arg_ctrl(MAC_ENGINE *p_eng)
 
 	printf("%20s| default: 0x%04x\n", item, DEF_GCTRL);
 	printf("%20s| bit0  : 1->single packet\n", "");
-	printf("%20s| bit1  : 1->swap phy address\n", "");
+	printf("%20s| bit1  : 1->inverse RGMII RXCLK\n", "");
 	printf("%20s| bit2  : 1->Disable recovering PHY status\n", "");
 	printf("%20s| bit3  : 1->Enable PHY init\n", "");
 	printf("%20s| bit4  : 1->PHY internal loopback\n", "");
@@ -396,6 +396,10 @@ static uint32_t check_test_mode(MAC_ENGINE *p_eng)
 			print_arg_test_mode(p_eng);
 			return (1);
 		}
+	}
+
+	if (0 == p_eng->run.TM_IOStrength) {
+		p_eng->io.drv_upper_bond = 0;
 	}
 	return 0;
 }
@@ -1106,11 +1110,6 @@ static uint32_t init_mac_engine(MAC_ENGINE *p_eng, uint32_t mode)
 	p_eng->io.drv_upper_bond = 0x1;
 	p_eng->io.drv_lower_bond = 0;
 #endif
-
-	if (0 == p_eng->run.TM_IOStrength) {
-		p_eng->io.drv_upper_bond = 0;
-	}
-
 	return 0;
 }
 
