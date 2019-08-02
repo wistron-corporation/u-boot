@@ -511,7 +511,7 @@ typedef struct {
 	uint32_t test_mode;		/* argv[5] for dedicated
 					   argv[4] for ncsi */
 
-	uint32_t GPHYADR;		/* argv[6] for dedicated */
+	uint32_t phy_addr;		/* argv[6] for dedicated */
 	uint32_t delay_scan_range;	/* argv[7] for dedicated
 					   argv[5] for ncsi */	
 	uint32_t ieee_sel;		/* argv[7] for dedicated */
@@ -568,8 +568,8 @@ typedef struct {
 } MAC_Information;
 typedef struct {
 	uint32_t mdio_base;
+	uint32_t loopback;
 	uint8_t phy_name[64];
-	int                  loop_phy                      ;
 	CHAR                 default_phy                   ;
 	CHAR                 Adr                           ;
 

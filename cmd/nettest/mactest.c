@@ -699,7 +699,7 @@ static uint32_t setup_running(MAC_ENGINE *p_eng)
 			return (1);
 		}
 
-		if (p_eng->arg.GPHYADR > 31) {
+		if (p_eng->arg.phy_addr > 31) {
 			printf("Error phy_adr!!!\n");
 			print_arg_phy_addr(p_eng);
 			return (1);
@@ -774,8 +774,8 @@ static uint32_t setup_running(MAC_ENGINE *p_eng)
 	else
 		p_eng->run.IO_MrgChk = 0;
 
-	p_eng->phy.Adr         = p_eng->arg.GPHYADR;
-	p_eng->phy.loop_phy    = p_eng->arg.ctrl.b.phy_int_loopback;
+	p_eng->phy.Adr         = p_eng->arg.phy_addr;
+	p_eng->phy.loopback    = p_eng->arg.ctrl.b.phy_int_loopback;
 	p_eng->phy.default_phy = p_eng->run.TM_DefaultPHY;
 
 	p_eng->run.LOOP_MAX = p_eng->arg.loop_max;
@@ -1015,7 +1015,7 @@ static uint32_t init_mac_engine(MAC_ENGINE *p_eng, uint32_t mode)
 		p_eng->arg.run_speed = SET_100MBPS;        // In NCSI mode, we set to 100M bps
 	} else {
 		p_eng->arg.GUserDVal  = DEF_GUSER_DEF_PACKET_VAL;
-		p_eng->arg.GPHYADR  = DEF_GPHY_ADR;
+		p_eng->arg.phy_addr  = DEF_GPHY_ADR;
 		p_eng->arg.loop_inf = 0;
 		p_eng->arg.loop_max = 0;
 		p_eng->arg.ctrl.w = DEF_GCTRL;
@@ -1123,7 +1123,7 @@ static uint32_t parse_arg_dedicated(int argc, char *const argv[],
 		p_eng->arg.delay_scan_range = simple_strtol(argv[8], NULL, 10);
 		p_eng->arg.ieee_sel = p_eng->arg.delay_scan_range;
 	case 8:
-		p_eng->arg.GPHYADR = simple_strtol(argv[7], NULL, 10);
+		p_eng->arg.phy_addr = simple_strtol(argv[7], NULL, 10);
 	case 7:
 		p_eng->arg.test_mode = simple_strtol(argv[6], NULL, 16);
 		printf("test mode = %d\n", p_eng->arg.test_mode);
@@ -1199,10 +1199,9 @@ static uint32_t setup_data(MAC_ENGINE *p_eng)
 	}
 
 	init_iodelay(p_eng);
-	p_eng->run.speed_idx = 0;
-	if (!p_eng->run.is_rgmii)
-		if (mac_set_scan_boundary(p_eng))
-			return (finish_check(p_eng, 0));
+	p_eng->run.speed_idx = 0;	
+	if (mac_set_scan_boundary(p_eng))
+		return (finish_check(p_eng, 0));
 
 	return 0;			
 }
@@ -1276,15 +1275,11 @@ void test_start(MAC_ENGINE *p_eng, PHY_ENGINE *p_phy_eng)
 			//------------------------------
 			// [Start] The loop of different IO strength
 			//------------------------------
-			printf("drirving scan range: lo:%d up:%d\n",
+			printf("drirving scan range: %d ~ %d\n",
 			       p_eng->io.drv_lower_bond,
 			       p_eng->io.drv_upper_bond);
 			for (drv = p_eng->io.drv_lower_bond; drv <= p_eng->io.drv_upper_bond; drv++) {
-				printf("drv_curr:%d\n", drv);
-				p_eng->io.drv_curr = drv;
-				if (p_eng->run.is_rgmii)
-					if (mac_set_scan_boundary(p_eng))
-						return(finish_check(p_eng, 0));
+				p_eng->io.drv_curr = drv;				
 
 				if (p_eng->run.IO_MrgChk) {
 					if (p_eng->run.TM_IOStrength) {

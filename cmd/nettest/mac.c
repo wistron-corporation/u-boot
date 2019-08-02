@@ -786,26 +786,10 @@ int mac_set_scan_boundary(MAC_ENGINE *p_eng)
 
 	nt_log_func_name();
 
-#if 0
-	if (0 == p_eng->run.is_rgmii)
-		sprintf( p_eng->io.Dly_reg_name_tx, "Tx:SCU%2X=",  p_eng->io.Dly_reg_idx);
-	else
-		sprintf( p_eng->io.Dly_reg_name_tx, "Tx:SCU%2X=", p_eng->io.Dly_reg_idx);
-	sprintf( p_eng->io.Dly_reg_name_rx, "Rx:SCU%2X=", p_eng->io.Dly_reg_idx);
-
-	if (0 == p_eng->run.is_rgmii)
-		sprintf(p_eng->io.Dly_reg_name_tx_new,
-			"Tx=");
-	else
-		sprintf(p_eng->io.Dly_reg_name_tx_new,
-			"Tx=");
-	sprintf(p_eng->io.Dly_reg_name_rx_new,
-		"Rx=");
-#endif
-	/* 
-	 * Get current clock delay value of TX(out) and RX(in) to set test range
-	 */
+	/* get current delay setting */
 	mac_get_delay(p_eng, &rx_cur, &tx_cur);
+	
+	/* get physical boundaries */
 	mac_get_max_available_delay(p_eng, &rx_max, &tx_max);
 	mac_get_min_available_delay(p_eng, &rx_min, &tx_min);
 
@@ -1015,11 +999,11 @@ void FPri_End (MAC_ENGINE *eng, BYTE option)
 	if ((0 == eng->run.is_rgmii) && ( eng->phy.RMIICK_IOMode != 0 ) && eng->run.IO_MrgChk && eng->flg.all_fail ) {
 		if ( eng->arg.ctrl.b.rmii_phy_in == 0 ) {
 			PRINTF( option, "\n\n\n\n\n\n[Info] The PHY's RMII reference clock pin is setting to the OUTPUT mode now.\n" );
-			PRINTF( option, "       Maybe you can run the INPUT mode command \"mactest  %d %d %d %d %d %d %d\".\n\n\n\n", eng->arg.mac_idx, eng->arg.run_speed, (eng->arg.ctrl.w | 0x80), eng->arg.loop_max, eng->arg.test_mode, eng->arg.GPHYADR, eng->arg.delay_scan_range );
+			PRINTF( option, "       Maybe you can run the INPUT mode command \"mactest  %d %d %d %d %d %d %d\".\n\n\n\n", eng->arg.mac_idx, eng->arg.run_speed, (eng->arg.ctrl.w | 0x80), eng->arg.loop_max, eng->arg.test_mode, eng->arg.phy_addr, eng->arg.delay_scan_range );
 		}
 		else {
 			PRINTF( option, "\n\n\n\n\n\n[Info] The PHY's RMII reference clock pin is setting to the INPUT mode now.\n" );
-			PRINTF( option, "       Maybe you can run the OUTPUT mode command \"mactest  %d %d %d %d %d %d %d\".\n\n\n\n", eng->arg.mac_idx, eng->arg.run_speed, (eng->arg.ctrl.w & 0x7f), eng->arg.loop_max, eng->arg.test_mode, eng->arg.GPHYADR, eng->arg.delay_scan_range );
+			PRINTF( option, "       Maybe you can run the OUTPUT mode command \"mactest  %d %d %d %d %d %d %d\".\n\n\n\n", eng->arg.mac_idx, eng->arg.run_speed, (eng->arg.ctrl.w & 0x7f), eng->arg.loop_max, eng->arg.test_mode, eng->arg.phy_addr, eng->arg.delay_scan_range );
 		}
 	} // End if ( eng->env.MAC_RMII && ( eng->phy.RMIICK_IOMode != 0 ) && eng->run.IO_MrgChk && eng->flg.all_fail )
 
@@ -1034,8 +1018,8 @@ void FPri_End (MAC_ENGINE *eng, BYTE option)
 	//[Warning] PHY Address
 	//------------------------------
 	if ( eng->arg.run_mode == MODE_DEDICATED ) {
-		if ( eng->arg.GPHYADR != eng->phy.Adr )
-			PRINTF( option, "\n[Warning] PHY Address change from %d to %d !!!\n", eng->arg.GPHYADR, eng->phy.Adr );
+		if ( eng->arg.phy_addr != eng->phy.Adr )
+			PRINTF( option, "\n[Warning] PHY Address change from %d to %d !!!\n", eng->arg.phy_addr, eng->phy.Adr );
 	}
 
 	//------------------------------
