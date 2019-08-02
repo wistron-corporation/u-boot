@@ -37,7 +37,7 @@
 #include "phy_tbl.h"
 #include "mem_io.h"
 
-#define RTK_DEBUG
+//#define RTK_DEBUG
 #define RTK_DBG_GPIO		BIT(22)
 #ifdef RTK_DEBUG
 #define RTK_DBG_PRINTF		printf
