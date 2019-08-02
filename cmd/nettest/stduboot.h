@@ -12,6 +12,6 @@
 #ifndef _STDUBOOT_H_
 #define _STDUBOOT_H_
 
-int atoi(char s[]);
+//int atoi(char s[]);
 
 #endif /* end of "#ifndef _STDUBOOT_H_" */

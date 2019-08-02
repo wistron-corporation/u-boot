@@ -496,7 +496,7 @@ char NCSI_ARP (MAC_ENGINE *eng) {
 		if ( eng->arg.ctrl.b.print_ncsi )
 			PRINTF( FP_LOG, "      [Tx%02d] %08x %08x\n", i, eng->dat.ARP_data[i], SWAP_4B( eng->dat.ARP_data[i] ) );
 
-		Write_Mem_Dat_NCSI_DD( &dma_buf + ( i << 2 ), eng->dat.ARP_data[i] );
+		Write_Mem_Dat_NCSI_DD(((uint32_t)&dma_buf) + ( i << 2 ), eng->dat.ARP_data[i] );
 	}
 
 //	Write_Mem_Des_NCSI_DD( eng->run.ncsi_tdes_base + 0x04, 0                        );

@@ -10,7 +10,7 @@
  */
 
 #define STDUBOOT_C
-
+#if 0
 #include "swfunc.h"
 
 int isspace(char c)
@@ -196,4 +196,5 @@ int atoi( char s[] )
 
     return ans;
 }
+#endif
 

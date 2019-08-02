@@ -16,8 +16,6 @@
 
 #include "typedef.h"
 #include "mac.h"
-#include "physpecial.h"
-#include "phygpio.h"
 
 //---------------------------------------------------------
 // Print Message
