@@ -12,7 +12,6 @@
 #ifndef NCSI_H
 #define NCSI_H
 
-#include "typedef.h"
 
 #define NCSI_RxDMA_PakSize                       2048
 #define NCSI_RxDMA_BASE                          ( DMA_BASE + 0x00100000 )

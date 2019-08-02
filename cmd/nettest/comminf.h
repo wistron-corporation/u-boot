@@ -14,7 +14,6 @@
 
 #include "swfunc.h"
 
-#include "typedef.h"
 #include "mac.h"
 
 //---------------------------------------------------------

@@ -33,7 +33,6 @@
 #include <common.h>
 
 #include "phy.h"
-#include "typedef.h"
 
 #include "phy_tbl.h"
 #include "mem_io.h"
