@@ -17,39 +17,25 @@
 #include <command.h>
 
 #include "ncsi.h"
-#include "io.h"
+#include <asm/io.h>
 
 // --------------------------------------------------------------
 // Define
 // --------------------------------------------------------------
-//#define Force_Enable_NewMDIO           //[off][SLT:off] (Force enable new MDC/MDIO)
-#define Enable_RecovSCU                //[ON]
-//#define Enable_Fast_SCU                //[off]
 #define ENABLE_DASA                    //[ON]
-//#define Enable_Int125MHz               //[off] only for AST2300/AST2500
-//#define ENABLE_ARP_2_WOL               //[off]
 //#define Enable_MAC_SWRst               //[off]
-//#define Enable_MAC_ExtLoop             //[off]
-//#define   Enable_MAC_ExtLoop_PakcegMode//[off]
 #define   Enable_No_IOBoundary         //[ON]
-//#define Enable_LOOP_INFINI             //[off]
 //#define Enable_Dual_Mode               //[off]
-//#define Enable_CLK_Stable              //[off]
 
 //#define Enable_Runt
-//#define Enable_Jumbo
-//#define Enable_BufMerge
-//#define Disable_VGA
 //#define Enable_ShowBW
 
-#define AST2500_IOStageStep                    1
-#define AST2500_IOStageShiftBit_In             2 //0~2
-#define AST2500_IOStageShiftBit_Out            2 //0~2
+#define TX_DELAY_SCALING			2
+#define RX_DELAY_SCALING			2
 
 //#define SelectSimpleBoundary                                    //[off] Using in debug
 //#define SelectSimpleData                                        //[off] Using in debug
 //#define SelectSimpleLength                       1514           //[off] 60(0x3c) ~ 1514(0x5ea); 1512(0x5e8)
-//#define SelectDesNumber                          8             //[off] 1 ~
 //#define SelectSimpleDA                                          //[off] Using in debug
 //#define SelectSimpleDes                                         //[off]
 //#define SelectLengthInc                                         //[off] Using in debug
@@ -79,11 +65,7 @@
 #define   SelectWOLDA_DatH                       0x206a
 #define   SelectWOLDA_DatL                       0x8a374d9b
 
-#ifdef Enable_MAC_ExtLoop_PakcegMode
-  #define MOVE_DATA_MB_SEC                       80             // MByte per second to move data
-#else
-  #define MOVE_DATA_MB_SEC                       800            // MByte per second to move data
-#endif
+#define MOVE_DATA_MB_SEC                       800            // MByte per second to move data
 
 //---------------------------------------------------------
 // Frame size
@@ -95,16 +77,6 @@
 #define   RAND_SIZE_MAX                          1514
 
 #define FRAME_SELH_PERD                          7
-#ifdef Enable_Jumbo
-    #define FRAME_LENH                           9592           //max:9592
-    #define FRAME_LENL                           9592           //max:9592
-//    #define FRAME_LENH                           9212           //max:9212
-//    #define FRAME_LENL                           9211           //max:9212
-//    #define FRAME_LENH                           9212           //max:9212
-//    #define FRAME_LENL                           9212           //max:9212
-//    #define FRAME_LENH                           2048
-//    #define FRAME_LENL                           2048
-#else
   #ifdef SelectSimpleLength
 //    #define FRAME_LENH                           ( SelectSimpleLength + 1 )
 //    #define FRAME_LENL                           ( SelectSimpleLength     )
@@ -116,6 +88,5 @@
     #define FRAME_LENH                           1514           //max:1514
     #define FRAME_LENL                           1514           //max:1514
   #endif
-#endif
 
 #endif // MAC_H
