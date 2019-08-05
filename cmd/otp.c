@@ -30,6 +30,10 @@ DECLARE_GLOBAL_DATA_PTR;
 #define OTP_REGION_DATA			3
 #define OTP_REGION_ALL			4
 
+#define OTP_USAGE			-1
+#define OTP_FAILURE			-2
+#define OTP_SUCCESS			0
+
 #define DISABLE_SECREG_PROG		BIT(0)
 #define ENABLE_SEC_BOOT			BIT(1)
 #define INIT_PROG_DONE			BIT(2)
@@ -101,17 +105,16 @@ struct otpstrap {
 	int protected;
 };
 
-static int otp_read_data(uint32_t offset, uint32_t *data)
+static void otp_read_data(uint32_t offset, uint32_t *data)
 {
 	writel(offset, 0x1e6f2010); //Read address
 	writel(0x23b1e361, 0x1e6f2004); //trigger read
 	udelay(2);
 	data[0] = readl(0x1e6f2020);
 	data[1] = readl(0x1e6f2024);
-	return 1;
 }
 
-static int otp_read_config(uint32_t offset, uint32_t *data)
+static void otp_read_config(uint32_t offset, uint32_t *data)
 {
 	int config_offset;
 
@@ -123,8 +126,6 @@ static int otp_read_config(uint32_t offset, uint32_t *data)
 	writel(0x23b1e361, 0x1e6f2004); //trigger read
 	udelay(2);
 	data[0] = readl(0x1e6f2020);
-
-	return 1;
 }
 
 static int otp_print_config(uint32_t offset, int dw_count)
@@ -133,13 +134,13 @@ static int otp_print_config(uint32_t offset, int dw_count)
 	uint32_t ret[1];
 
 	if (offset + dw_count > 32)
-		return -1;
+		return OTP_USAGE;
 	for (i = offset; i < offset + dw_count; i ++) {
 		otp_read_config(i, ret);
 		printf("OTPCFG%d: %08X\n", i, ret[0]);
 	}
 	printf("\n");
-	return 1;
+	return OTP_SUCCESS;
 }
 
 static int otp_print_data(uint32_t offset, int dw_count)
@@ -148,7 +149,7 @@ static int otp_print_data(uint32_t offset, int dw_count)
 	uint32_t ret[2];
 
 	if (offset + dw_count > 2048 || offset % 4 != 0)
-		return -1;
+		return OTP_USAGE;
 	for (i = offset; i < offset + dw_count; i += 2) {
 		otp_read_data(i, ret);
 		if (i % 4 == 0)
@@ -158,7 +159,7 @@ static int otp_print_data(uint32_t offset, int dw_count)
 
 	}
 	printf("\n");
-	return 1;
+	return OTP_SUCCESS;
 }
 
 static int otp_compare(uint32_t otp_addr, uint32_t addr)
@@ -574,7 +575,7 @@ static int otp_conf_parse(uint32_t *OTPCFG)
 	} else {
 		printf("OTPCFG3-D[15:0]\n");
 		printf("  Secure boot header offset : %x\n",
-			   SEC_BOOT_HEADER_OFFSET(OTPCFG[3]));
+		       SEC_BOOT_HEADER_OFFSET(OTPCFG[3]));
 	}
 
 	if (KEYS_VALID_BITS(OTPCFG_KEEP[4]) == 0xFF) {
@@ -812,7 +813,7 @@ static int otp_prog_conf(uint32_t *buf)
 			printf("OTPCFG[%d] = %x\n", i, data[i]);
 			printf("Input [%d] = %x\n", i, buf[i]);
 			printf("Mask  [%x] = %x\n", i, ~buf_keep[i]);
-			return -1;
+			return OTP_FAILURE;
 		}
 	}
 
@@ -853,9 +854,9 @@ static int otp_prog_conf(uint32_t *buf)
 	}
 
 	if (!pass)
-		return -1;
+		return OTP_FAILURE;
 
-	return 0;
+	return OTP_SUCCESS;
 
 }
 
@@ -959,10 +960,16 @@ static int otp_strap_parse(uint32_t *buf)
 		return 0;
 }
 
-static void otp_print_strap(int start, int count)
+static int otp_print_strap(int start, int count)
 {
 	int i, j;
 	struct otpstrap otpstrap[64];
+
+	if (start < 0 || start > 64)
+		return OTP_USAGE;
+
+	if ((start + count) < 0 || (start + count) > 64)
+		return OTP_USAGE;
 
 	otp_strp_status(otpstrap);
 
@@ -985,6 +992,8 @@ static void otp_print_strap(int start, int count)
 			}
 		}
 	}
+
+	return OTP_SUCCESS;
 }
 
 static int otp_prog_strap(uint32_t *buf)
@@ -1064,7 +1073,7 @@ static int otp_prog_strap(uint32_t *buf)
 			}
 		}
 		if (!pass)
-			return -1;
+			return OTP_FAILURE;
 
 		if (pbit == 0)
 			continue;
@@ -1092,13 +1101,13 @@ static int otp_prog_strap(uint32_t *buf)
 			}
 		}
 		if (!pass)
-			return -1;
+			return OTP_FAILURE;
 
 	}
 	if (fail == 1)
-		return -1;
+		return OTP_FAILURE;
 	else
-		return 0;
+		return OTP_SUCCESS;
 
 }
 
@@ -1170,7 +1179,7 @@ static int otp_prog_data(uint32_t *buf)
 				printf("OTP_ADDR[%x] = %x\n", i, data[i]);
 				printf("Input   [%x] = %x\n", i, buf[i]);
 				printf("Mask    [%x] = %x\n", i, ~buf_keep[i]);
-				return -1;
+				return OTP_FAILURE;
 			}
 		} else {
 			if ((data0_masked & buf0_masked) == buf0_masked) {
@@ -1180,7 +1189,7 @@ static int otp_prog_data(uint32_t *buf)
 				printf("OTP_ADDR[%x] = %x\n", i, data[i]);
 				printf("Input   [%x] = %x\n", i, buf[i]);
 				printf("Mask    [%x] = %x\n", i, ~buf_keep[i]);
-				return -1;
+				return OTP_FAILURE;
 			}
 		}
 	}
@@ -1234,9 +1243,9 @@ static int otp_prog_data(uint32_t *buf)
 		}
 
 		if (!pass)
-			return -1;
+			return OTP_FAILURE;
 	}
-	return 0;
+	return OTP_SUCCESS;
 
 }
 
@@ -1252,7 +1261,7 @@ static int do_otp_prog(int addr, int byte_size, int nconfirm)
 	buf = map_physmem(addr, byte_size, MAP_WRBACK);
 	if (!buf) {
 		puts("Failed to map physical memory\n");
-		return 1;
+		return OTP_FAILURE;
 	}
 
 	if (((buf[0] >> 29) & 0x7) == 0x7) {
@@ -1274,41 +1283,40 @@ static int do_otp_prog(int addr, int byte_size, int nconfirm)
 			conf_region = &buf[1];
 		}
 	}
-
 	if (!nconfirm) {
 		if (mode == OTP_REGION_CONF) {
 			if (otp_conf_parse(conf_region) < 0) {
 				printf("OTP config error, please check.\n");
-				return -1;
+				return OTP_FAILURE;
 			}
 		} else if (mode == OTP_REGION_DATA) {
 			if (otp_data_parse(data_region) < 0) {
 				printf("OTP data error, please check.\n");
-				return -1;
+				return OTP_FAILURE;
 			}
 		} else if (mode == OTP_REGION_STRAP) {
 			if (otp_strap_parse(strap_region) < 0) {
 				printf("OTP strap error, please check.\n");
-				return -1;
+				return OTP_FAILURE;
 			}
 		} else if (mode == OTP_REGION_ALL) {
 			if (otp_conf_parse(conf_region) < 0) {
 				printf("OTP config error, please check.\n");
-				return -1;
+				return OTP_FAILURE;
 			}
 			if (otp_strap_parse(strap_region) < 0) {
 				printf("OTP strap error, please check.\n");
-				return -1;
+				return OTP_FAILURE;
 			}
 			if (otp_data_parse(data_region) < 0) {
 				printf("OTP data error, please check.\n");
-				return -1;
+				return OTP_FAILURE;
 			}
 		}
 		printf("type \"YES\" (no quotes) to continue:\n");
 		if (!confirm_yesno()) {
 			printf(" Aborting\n");
-			return 1;
+			return OTP_FAILURE;
 		}
 	}
 	if (mode == OTP_REGION_CONF) {
@@ -1320,7 +1328,7 @@ static int do_otp_prog(int addr, int byte_size, int nconfirm)
 	} else if (mode == OTP_REGION_ALL) {
 		printf("programing data region ... ");
 		ret = otp_prog_data(data_region);
-		if (ret < 0) {
+		if (ret != 0) {
 			printf("Error\n");
 			return ret;
 		} else {
@@ -1328,7 +1336,7 @@ static int do_otp_prog(int addr, int byte_size, int nconfirm)
 		}
 		printf("programing strap region ... ");
 		ret = otp_prog_strap(strap_region);
-		if (ret < 0) {
+		if (ret != 0) {
 			printf("Error\n");
 			return ret;
 		} else {
@@ -1336,17 +1344,18 @@ static int do_otp_prog(int addr, int byte_size, int nconfirm)
 		}
 		printf("programing configuration region ... ");
 		ret = otp_prog_conf(conf_region);
-		if (ret < 0) {
+		if (ret != 0) {
 			printf("Error\n");
 			return ret;
 		}
 		printf("Done\n");
-		return ret;
+		return OTP_SUCCESS;
 	}
-	return 0;
+
+	return OTP_USAGE;
 }
 
-static int do_otp_prog_bit(int mode, int otp_dw_offset, int bit_offset, int value, int protect, int nconfirm)
+static int do_otp_prog_bit(int mode, int otp_dw_offset, int bit_offset, int value, int nconfirm)
 {
 	uint32_t ret[2];
 	uint32_t strap_buf[6];
@@ -1366,12 +1375,12 @@ static int do_otp_prog_bit(int mode, int otp_dw_offset, int bit_offset, int valu
 		if (otp_bit == value) {
 			printf("OTPCFG%X[%d] = %d\n", otp_dw_offset, bit_offset, value);
 			printf("No need to program\n");
-			return 0;
+			return OTP_SUCCESS;
 		}
 		if (otp_bit == 1 && value == 0) {
 			printf("OTPCFG%X[%d] = 1\n", otp_dw_offset, bit_offset);
 			printf("OTP is programed, which can't be clean\n");
-			return -1;
+			return OTP_FAILURE;
 		}
 		printf("Program OTPCFG%X[%d] to 1\n", otp_dw_offset, bit_offset);
 		break;
@@ -1388,12 +1397,12 @@ static int do_otp_prog_bit(int mode, int otp_dw_offset, int bit_offset, int valu
 		if (otp_bit == value) {
 			printf("OTPDATA%X[%d] = %d\n", otp_dw_offset, bit_offset, value);
 			printf("No need to program\n");
-			return 0;
+			return OTP_SUCCESS;
 		}
 		if (otp_bit == 1 && value == 0) {
 			printf("OTPDATA%X[%d] = 1\n", otp_dw_offset, bit_offset);
 			printf("OTP is programed, which can't be clean\n");
-			return -1;
+			return OTP_FAILURE;
 		}
 		printf("Program OTPDATA%X[%d] to 1\n", otp_dw_offset, bit_offset);
 		break;
@@ -1405,22 +1414,22 @@ static int do_otp_prog_bit(int mode, int otp_dw_offset, int bit_offset, int valu
 			strap_buf[2] = ~BIT(bit_offset);
 			strap_buf[3] = ~0;
 			strap_buf[5] = 0;
-			if (protect)
-				strap_buf[4] = BIT(bit_offset);
-			else
-				strap_buf[4] = 0;
+			// if (protect)
+			// 	strap_buf[4] = BIT(bit_offset);
+			// else
+			// 	strap_buf[4] = 0;
 		} else {
 			strap_buf[1] = value << (bit_offset - 32);
 			strap_buf[2] = ~0;
 			strap_buf[3] = ~BIT(bit_offset - 32);
 			strap_buf[4] = 0;
-			if (protect)
-				strap_buf[5] = BIT(bit_offset - 32);
-			else
-				strap_buf[5] = 0;
+			// if (protect)
+			// 	strap_buf[5] = BIT(bit_offset - 32);
+			// else
+			// 	strap_buf[5] = 0;
 		}
 		if (otp_strap_parse(strap_buf) < 0)
-			return -1;
+			return OTP_FAILURE;
 		break;
 	}
 
@@ -1428,7 +1437,7 @@ static int do_otp_prog_bit(int mode, int otp_dw_offset, int bit_offset, int valu
 		printf("type \"YES\" (no quotes) to continue:\n");
 		if (!confirm_yesno()) {
 			printf(" Aborting\n");
-			return 1;
+			return OTP_FAILURE;
 		}
 	}
 
@@ -1447,126 +1456,195 @@ static int do_otp_prog_bit(int mode, int otp_dw_offset, int bit_offset, int valu
 				break;
 			}
 		}
-		return pass;
+		if (pass == 0)
+			return OTP_SUCCESS;
 	}
 
-	return -1;
+	return OTP_USAGE;
 }
 
-static int do_ast_otp(cmd_tbl_t *cmdtp, int flag, int argc,
-		      char *const argv[])
+static int do_otpread(cmd_tbl_t *cmdtp, int flag, int argc, char *const argv[])
 {
-	char *cmd;
-	int mode = 0;
-	int nconfirm = 0;
-	uint32_t addr = 0;
-	uint32_t otp_addr = 0;
-	int dw_count = 0;
-	int byte_size = 0;
-	int bit_offset = 0;
-	int value = 0;
-	int protect = 0;
+	uint32_t offset, count;
+	int ret;
 
-
-
-	if (argc < 2) {
-usage:
+	if (argc == 4) {
+		offset = simple_strtoul(argv[2], NULL, 16);
+		count = simple_strtoul(argv[3], NULL, 16);
+	} else if (argc == 3) {
+		offset = simple_strtoul(argv[2], NULL, 16);
+		count = 1;
+	} else {
 		return CMD_RET_USAGE;
 	}
 
-	cmd = argv[1];
-	if (!strcmp(cmd, "read")) {
-		if (!strcmp(argv[2], "conf"))
-			mode = OTP_REGION_CONF;
-		else if (!strcmp(argv[2], "data"))
-			mode = OTP_REGION_DATA;
-		else if (!strcmp(argv[2], "strap"))
-			mode = OTP_REGION_STRAP;
-		else
-			goto usage;
 
+	if (!strcmp(argv[1], "conf")) {
 		writel(OTP_PASSWD, 0x1e6f2000); //password
-		otp_addr = simple_strtoul(argv[3], NULL, 16);
-		dw_count = simple_strtoul(argv[4], NULL, 16);
-		if (mode == OTP_REGION_CONF) {
-			otp_print_config(otp_addr, dw_count);
-		} else if (mode == OTP_REGION_DATA) {
-			otp_print_data(otp_addr, dw_count);
-		} else if (mode == OTP_REGION_STRAP) {
-			otp_print_strap(0, 64);
-		}
-	} else if (!strcmp(cmd, "prog")) {
-		// if (!strcmp(argv[2], "conf"))
-		// 	mode = OTP_REGION_CONF;
-		// else if (!strcmp(argv[2], "strap"))
-		// 	mode = OTP_REGION_STRAP;
-		// else if (!strcmp(argv[2], "data"))
-		// 	mode = OTP_REGION_DATA;
-		// else if (!strcmp(argv[2], "all"))
-		// 	mode = OTP_REGION_ALL;
-		// else
-		// 	goto usage;
-
-		if (!strcmp(argv[2], "f"))
-			nconfirm = 1;
+		ret = otp_print_config(offset, count);
+	} else if (!strcmp(argv[1], "data")) {
 		writel(OTP_PASSWD, 0x1e6f2000); //password
-		addr = simple_strtoul(argv[2 + nconfirm], NULL, 16);
-		byte_size = simple_strtoul(argv[3 + nconfirm], NULL, 16);
-		return do_otp_prog(addr, byte_size, nconfirm);
-	} else if (!strcmp(cmd, "pb")) {
-		if (!strcmp(argv[2], "conf"))
-			mode = OTP_REGION_CONF;
-		else if (!strcmp(argv[2], "strap"))
-			mode = OTP_REGION_STRAP;
-		else if (!strcmp(argv[2], "data"))
-			mode = OTP_REGION_DATA;
-		else
-			goto usage;
-		if (!strcmp(argv[3], "f"))
-			nconfirm = 1;
-
-		if (mode == OTP_REGION_STRAP) {
-			bit_offset = simple_strtoul(argv[3 + nconfirm], NULL, 16);
-			value = simple_strtoul(argv[4 + nconfirm], NULL, 16);
-			protect = simple_strtoul(argv[5 + nconfirm], NULL, 16);
-			if (bit_offset >= 64)
-				return -1;
-		} else {
-			otp_addr = simple_strtoul(argv[3 + nconfirm], NULL, 16);
-			bit_offset = simple_strtoul(argv[4 + nconfirm], NULL, 16);
-			value = simple_strtoul(argv[5 + nconfirm], NULL, 16);
-			if (bit_offset >= 32)
-				return -1;
-		}
-		if (value != 0 && value != 1)
-			return -1;
-
+		ret = otp_print_data(offset, count);
+	} else if (!strcmp(argv[1], "strap")) {
 		writel(OTP_PASSWD, 0x1e6f2000); //password
-		return do_otp_prog_bit(mode, otp_addr, bit_offset, value, protect, nconfirm);
-	} else if (!strcmp(cmd, "comp")) {
-		writel(OTP_PASSWD, 0x1e6f2000); //password
-		addr = simple_strtoul(argv[2], NULL, 16);
-		otp_addr = simple_strtoul(argv[3], NULL, 16);
-		if (otp_compare(otp_addr, addr) >= 0) {
-			printf("Compare pass\n");
-		} else {
-			printf("Compare fail\n");
-		}
+		ret = otp_print_strap(offset, count);
 	} else {
-		goto usage;
+		return CMD_RET_USAGE;
 	}
 
+	if (ret == OTP_SUCCESS)
+		return CMD_RET_SUCCESS;
+	else
+		return CMD_RET_USAGE;
 
-	return 0;
 }
 
+static int do_otpprog(cmd_tbl_t *cmdtp, int flag, int argc, char *const argv[])
+{
+	phys_addr_t addr;
+	uint32_t byte_size;
+	int ret;
+
+	if (argc == 4) {
+		if (strcmp(argv[1], "f"))
+			return CMD_RET_USAGE;
+		addr = simple_strtoul(argv[2], NULL, 16);
+		byte_size = simple_strtoul(argv[3], NULL, 16);
+		writel(OTP_PASSWD, 0x1e6f2000); //password
+		ret = do_otp_prog(addr, byte_size, 1);
+	} else if (argc == 3) {
+		addr = simple_strtoul(argv[1], NULL, 16);
+		byte_size = simple_strtoul(argv[2], NULL, 16);
+		writel(OTP_PASSWD, 0x1e6f2000); //password
+		ret = do_otp_prog(addr, byte_size, 0);
+	} else {
+		return CMD_RET_USAGE;
+	}
+
+	if (ret == OTP_SUCCESS)
+		return CMD_RET_SUCCESS;
+	else if (ret == OTP_FAILURE)
+		return CMD_RET_FAILURE;
+	else
+		return CMD_RET_USAGE;
+}
+
+static int do_otppb(cmd_tbl_t *cmdtp, int flag, int argc, char *const argv[])
+{
+	int mode = 0;
+	int nconfirm = 0;
+	int otp_addr = 0;
+	int bit_offset;
+	int value;
+	int ret;
+
+	if (argc != 4 && argc != 5 && argc != 6)
+		return CMD_RET_USAGE;
+
+	/* Drop the pb cmd */
+	argc--;
+	argv++;
+
+	if (!strcmp(argv[0], "conf"))
+		mode = OTP_REGION_CONF;
+	else if (!strcmp(argv[0], "strap"))
+		mode = OTP_REGION_STRAP;
+	else if (!strcmp(argv[0], "data"))
+		mode = OTP_REGION_DATA;
+	else
+		return CMD_RET_USAGE;
+
+	/* Drop the region cmd */
+	argc--;
+	argv++;
+
+	if (!strcmp(argv[0], "f")) {
+		nconfirm = 1;
+		/* Drop the force option */
+		argc--;
+		argv++;
+	}
+
+	if (mode == OTP_REGION_STRAP) {
+		bit_offset = simple_strtoul(argv[0], NULL, 16);
+		value = simple_strtoul(argv[1], NULL, 16);
+		if (bit_offset >= 64)
+			return CMD_RET_USAGE;
+	} else {
+		otp_addr = simple_strtoul(argv[0], NULL, 16);
+		bit_offset = simple_strtoul(argv[1], NULL, 16);
+		value = simple_strtoul(argv[2], NULL, 16);
+		if (bit_offset >= 32)
+			return CMD_RET_USAGE;
+	}
+	if (value != 0 && value != 1)
+		return CMD_RET_USAGE;
+
+	writel(OTP_PASSWD, 0x1e6f2000); //password
+	ret = do_otp_prog_bit(mode, otp_addr, bit_offset, value, nconfirm);
+
+	if (ret == OTP_SUCCESS)
+		return CMD_RET_SUCCESS;
+	else if (ret == OTP_FAILURE)
+		return CMD_RET_FAILURE;
+	else
+		return CMD_RET_USAGE;
+}
+
+static int do_otpcmp(cmd_tbl_t *cmdtp, int flag, int argc, char *const argv[])
+{
+	phys_addr_t addr;
+	int otp_addr = 0;
+
+	if (argc != 3)
+		return CMD_RET_USAGE;
+
+	writel(OTP_PASSWD, 0x1e6f2000); //password
+	addr = simple_strtoul(argv[1], NULL, 16);
+	otp_addr = simple_strtoul(argv[2], NULL, 16);
+	if (otp_compare(otp_addr, addr) == 0) {
+		printf("Compare pass\n");
+		return CMD_RET_SUCCESS;
+	} else {
+		printf("Compare fail\n");
+		return CMD_RET_FAILURE;
+	}
+}
+
+static cmd_tbl_t cmd_otp[] = {
+	U_BOOT_CMD_MKENT(read, 4, 0, do_otpread, "", ""),
+	U_BOOT_CMD_MKENT(prog, 4, 0, do_otpprog, "", ""),
+	U_BOOT_CMD_MKENT(pb, 6, 0, do_otppb, "", ""),
+	U_BOOT_CMD_MKENT(cmp, 3, 0, do_otpcmp, "", ""),
+
+};
+
+static int do_ast_otp(cmd_tbl_t *cmdtp, int flag, int argc, char *const argv[])
+{
+	cmd_tbl_t *cp;
+
+	cp = find_cmd_tbl(argv[1], cmd_otp, ARRAY_SIZE(cmd_otp));
+
+	/* Drop the mmc command */
+	argc--;
+	argv++;
+
+	if (cp == NULL || argc > cp->maxargs)
+		return CMD_RET_USAGE;
+	if (flag == CMD_FLAG_REPEAT && !cmd_is_repeatable(cp))
+		return CMD_RET_SUCCESS;
+
+	return cp->cmd(cmdtp, flag, argc, argv);
+}
 
 U_BOOT_CMD(
 	otp, 7, 0,  do_ast_otp,
 	"ASPEED One-Time-Programmable sub-system",
-	"read conf|strap|data <otp_dw_offset> <dw_count>\n"
+	"read conf|data <otp_dw_offset> <dw_count>\n"
+	"otp read strap <strap_bit_offset> <bit_count>\n"
+	"otp info conf|strap|data <otp_dw_offset> <dw_count>\n"
 	"otp prog [f] <addr> <byte_size>\n"
 	"otp pb conf|data [f] <otp_dw_offset> <bit_offset> <value>\n"
 	"otp pb strap [f] <bit_offset> <value> <protect>\n"
-	"otp comp <addr> <otp_dw_offset>\n"
+	"otp cmp <addr> <otp_dw_offset>\n"
 );
