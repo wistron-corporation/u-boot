@@ -494,16 +494,18 @@ typedef struct {
 	uint32_t CheckBuf_MBSize               ;
 	uint32_t timeout_th;	/* time out threshold (varies with run-speed) */
 
+	uint32_t loop_max;
 	uint32_t loop_of_cnt;
 	uint32_t loop_cnt;
 	uint32_t speed_idx;
 	int                  NCSI_RxTimeOutScale           ;
 
-	int                  LOOP_MAX                      ;
 	uint8_t speed_cfg[3];
 	uint8_t speed_sel[3];
 
-	int8_t                 tm_tx_only                      ;//test_mode
+	/* test mode */
+	uint8_t delay_margin;
+	uint8_t tm_tx_only;
 	int8_t                 TM_IEEE                       ;//test_mode
 	int8_t                 TM_IOTiming                   ;//test_mode
 	int8_t                 TM_IOStrength                 ;//test_mode
@@ -513,7 +515,6 @@ typedef struct {
 	int8_t                 TM_DefaultPHY                 ;//test_mode
 	int8_t                 TM_NCSI_DiSChannel            ;//test_mode
 
-	uint8_t                 delay_margin;
 	int8_t                 IO_MrgChk                     ;
 
 
