@@ -37,8 +37,8 @@ struct aspeed_h2x_reg {
 	u32 h2x_reg7C;
 	u32 h2x_reg80;
 	u32 h2x_reg84;
-	u32 h2x_reg88;
-	u32 h2x_reg8C;
+	u32 h2x_rc_l_isr;
+	u32 h2x_rc_l_rdata;
 	u32 h2x_reg90;
 	u32 h2x_reg94;
 	u32 h2x_reg98;
@@ -53,8 +53,8 @@ struct aspeed_h2x_reg {
 	u32 h2x_regBC;
 	u32 h2x_regC0;
 	u32 h2x_regC4;
-	u32 h2x_regC8;
-	u32 h2x_regCC;
+	u32 h2x_rc_h_isr;
+	u32 h2x_rc_h_rdata;
 	u32 h2x_regD0;
 	u32 h2x_regD4;
 	u32 h2x_regD8;

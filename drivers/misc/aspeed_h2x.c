@@ -14,6 +14,16 @@
 
 #include <asm/arch/h2x_ast2600.h>
 
+/* reg 0x24 */
+#define PCIE_TX_IDLE			BIT(31)
+
+#define PCIE_STATUS_OF_TX		GENMASK(25, 24)
+#define	PCIE_RC_TX_COMPLETE		0
+#define	PCIE_RC_L_TX_COMPLETE	BIT(24)		
+#define	PCIE_RC_H_TX_COMPLETE	BIT(25)
+
+#define PCIE_TRIGGER_TX			BIT(0)
+
 /* reg 0x80, 0xC0 */
 #define PCIE_RX_TAG_MASK		GENMASK(23, 16)
 #define PCIE_RX_LINEAR			BIT(8)
@@ -26,6 +36,20 @@
 #define PCIE_RC_L_RX			BIT(1)
 #define PCIE_RC_L				BIT(0)
 
+/* reg 0x88, 0xC8 : RC ISR */
+
+#define PCIE_RC_CPLCA_ISR		BIT(6)
+#define PCIE_RC_CPLUR_ISR		BIT(5)
+#define PCIE_RC_RX_DONE_ISR		BIT(4)
+
+#define PCIE_RC_INTD_ISR		BIT(3)
+#define PCIE_RC_INTC_ISR		BIT(2)
+#define PCIE_RC_INTB_ISR		BIT(1)
+#define PCIE_RC_INTA_ISR		BIT(0)
+
+
+
+
 struct aspeed_h2x_priv {
 	struct aspeed_h2x_reg *h2x;
 };
@@ -37,7 +61,11 @@ extern void aspeed_pcie_cfg_read(struct aspeed_h2x_reg *h2x, pci_dev_t bdf, uint
 	u32 timeout = 0;
 	u32 bdf_offset;
 	u32 type = 0;
-	int i = 0;
+//	int i = 0;
+
+	//H2X80[4] (unlock) is write-only.
+	//Driver may set H2X80[4]=1 before triggering next TX config.
+	writel(BIT(4) | readl(&h2x->h2x_reg80), &h2x->h2x_reg80);
 
 	if(PCI_BUS(bdf) == 0)
 		type = 0;
@@ -58,22 +86,29 @@ extern void aspeed_pcie_cfg_read(struct aspeed_h2x_reg *h2x, pci_dev_t bdf, uint
 	writel(0x00000000, &h2x->h2x_tx_desc0);
 
 	//trigger tx
-	writel(1, &h2x->h2x_reg24);	
+	writel(PCIE_TRIGGER_TX, &h2x->h2x_reg24);	
 
 	//wait tx idle
-	while(!(readl(&h2x->h2x_reg24) & BIT(31))) {
+	while(!(readl(&h2x->h2x_reg24) & PCIE_TX_IDLE)) {
 		timeout++;
 		if(timeout > 10000) {
 			printf("time out b : %d, d : %d, f: %d \n", PCI_BUS(bdf), PCI_DEV(bdf), PCI_FUNC(bdf));
 			*valuep = 0xffffffff;
 ///
-#if 1
+#if 0
 			printf("=======0x1e770000========\n");
-			for (i = 0; i < 0x40; i++)
-				printf("%x : %08x \n",(i * 4), readl(0x1e770000 + (i * 4)));
-			printf("=======0x1e6ed000========\n");
-			for (i = 0; i < 0x40; i++)
-				printf("%x : %08x \n",(i * 4), readl(0x1e6ed000 + (i * 4)));
+			for (i = 0; i < 0x40; i++) {
+				if((i % 4) == 0)
+					printf("\n %2x : ", (i * 4));
+				
+				printf("%08x ", readl(0x1e770000 + (i * 4)));
+			}
+			printf("\n =======0x1e6ed000========\n");
+			for (i = 0; i < 0x40; i++) {
+				if((i % 4) == 0)
+					printf("\n %2x : ", (i * 4));
+				printf(" %08x ", readl(0x1e6ed000 + (i * 4)));
+			}
 			printf("===============\n");			
 #endif
 ///
@@ -84,12 +119,27 @@ extern void aspeed_pcie_cfg_read(struct aspeed_h2x_reg *h2x, pci_dev_t bdf, uint
 
 	//write clr tx idle
 	writel(1, &h2x->h2x_reg08);
-	
-	//read 
-	*valuep = readl(&h2x->h2x_rdata);
+
+	//check tx status 
+	switch(readl(&h2x->h2x_reg24) & PCIE_STATUS_OF_TX) {
+		case PCIE_RC_L_TX_COMPLETE:
+			while(!(readl(&h2x->h2x_rc_l_isr) & PCIE_RC_RX_DONE_ISR));
+			writel(PCIE_RC_RX_DONE_ISR, &h2x->h2x_rc_l_isr);
+			*valuep = readl(&h2x->h2x_rc_l_rdata);
+			break;
+		case PCIE_RC_H_TX_COMPLETE:
+			while(!(readl(&h2x->h2x_rc_h_isr) & PCIE_RC_RX_DONE_ISR));
+			writel(PCIE_RC_RX_DONE_ISR, &h2x->h2x_rc_h_isr);
+			*valuep = readl(&h2x->h2x_rc_h_rdata);
+			break;
+		default:	//read rc data
+			*valuep = readl(&h2x->h2x_rdata);
+			break;
+	}
 
 out:
 	txTag++;
+
 }
 
 extern void aspeed_pcie_cfg_write(struct aspeed_h2x_reg *h2x, pci_dev_t bdf, uint offset, ulong value, enum pci_size_t size)
@@ -98,6 +148,8 @@ extern void aspeed_pcie_cfg_write(struct aspeed_h2x_reg *h2x, pci_dev_t bdf, uin
 	u32 type = 0;
 	u32 bdf_offset;
 	u8 byte_en = 0;
+
+	writel(BIT(4) | readl(&h2x->h2x_reg80), &h2x->h2x_reg80);
 
 	switch (size) {
 	case PCI_SIZE_8:
@@ -140,7 +192,7 @@ extern void aspeed_pcie_cfg_write(struct aspeed_h2x_reg *h2x, pci_dev_t bdf, uin
 					(PCI_DEV(bdf) << 19) |
 					(PCI_FUNC(bdf) << 16) |
 					(offset & ~3);
-	
+
 	txTag %= 0x7;
 
 	writel(0x44000001 | (type << 24), &h2x->h2x_tx_desc3);
@@ -167,10 +219,23 @@ extern void aspeed_pcie_cfg_write(struct aspeed_h2x_reg *h2x, pci_dev_t bdf, uin
 	//write clr tx idle
 	writel(1, &h2x->h2x_reg08);
 
-	//clr rx done int
-	writel(0x10, &h2x->h2x_reg88);
+	//check tx status and clr rx done int
+	switch(readl(&h2x->h2x_reg24) & PCIE_STATUS_OF_TX) {
+		case PCIE_RC_L_TX_COMPLETE:
+			while(!(readl(&h2x->h2x_rc_l_isr) & PCIE_RC_RX_DONE_ISR));
+			writel(PCIE_RC_RX_DONE_ISR, &h2x->h2x_rc_l_isr);
+			
+			break;
+		case PCIE_RC_H_TX_COMPLETE:
+			while(!(readl(&h2x->h2x_rc_h_isr) & PCIE_RC_RX_DONE_ISR));
+			writel(PCIE_RC_RX_DONE_ISR, &h2x->h2x_rc_h_isr);
+			
+			break;
+	}
+
 out:
 	txTag++;	
+
 }
 
 static int aspeed_h2x_probe(struct udevice *dev)
@@ -203,9 +268,8 @@ static int aspeed_h2x_probe(struct udevice *dev)
 	writel(0x0, &priv->h2x->h2x_reg64);
 	writel(0xFFFFFFFF, &priv->h2x->h2x_reg68);
 	
-	writel( PCIE_RX_LINEAR |
-	PCIE_RX_MSI_SEL | PCIE_RX_MSI_EN |
-	PCIE_Wait_RX_TLP_CLR | PCIE_RC_L_RX | PCIE_RC_L,
+	writel( PCIE_RX_LINEAR | PCIE_RX_MSI_SEL | PCIE_RX_MSI_EN |
+			PCIE_Wait_RX_TLP_CLR | PCIE_RC_L_RX | PCIE_RC_L,
 	&priv->h2x->h2x_reg80);
 
 	//assign debug tx tag
