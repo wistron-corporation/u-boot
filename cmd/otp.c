@@ -34,6 +34,8 @@ DECLARE_GLOBAL_DATA_PTR;
 #define OTP_FAILURE			-2
 #define OTP_SUCCESS			0
 
+#define OTP_PROG_SKIP			1
+
 #define DISABLE_SECREG_PROG		BIT(0)
 #define ENABLE_SEC_BOOT			BIT(1)
 #define INIT_PROG_DONE			BIT(2)
@@ -137,7 +139,7 @@ static int otp_print_config(uint32_t offset, int dw_count)
 		return OTP_USAGE;
 	for (i = offset; i < offset + dw_count; i ++) {
 		otp_read_config(i, ret);
-		printf("OTPCFG%d: %08X\n", i, ret[0]);
+		printf("OTPCFG%X: %08X\n", i, ret[0]);
 	}
 	printf("\n");
 	return OTP_SUCCESS;
@@ -810,9 +812,9 @@ static int otp_prog_conf(uint32_t *buf)
 			continue;
 		} else {
 			printf("Input image can't program into OTP, please check.\n");
-			printf("OTPCFG[%d] = %x\n", i, data[i]);
-			printf("Input [%d] = %x\n", i, buf[i]);
-			printf("Mask  [%x] = %x\n", i, ~buf_keep[i]);
+			printf("OTPCFG[%X] = %x\n", i, data[i]);
+			printf("Input [%X] = %x\n", i, buf[i]);
+			printf("Mask  [%X] = %x\n", i, ~buf_keep[i]);
 			return OTP_FAILURE;
 		}
 	}
@@ -916,6 +918,7 @@ static int otp_strap_parse(uint32_t *buf)
 	uint32_t *strap_protect = buf + 4;
 	int bit, pbit, kbit;
 	int fail = 0;
+	int skip = -1;
 	struct otpstrap otpstrap[64];
 
 	otp_strp_status(otpstrap);
@@ -933,11 +936,15 @@ static int otp_strap_parse(uint32_t *buf)
 		if (kbit == 1) {
 			continue;
 		} else {
-			printf("OTPSTRAP[%d]:\n", i);
+			printf("OTPSTRAP[%X]:\n", i);
 		}
 		if (bit == otpstrap[i].value) {
 			printf("    The value is same as before, skip it.\n");
+			if (skip == -1)
+				skip = 1;
 			continue;
+		} else {
+			skip = 0;
 		}
 		if (otpstrap[i].protected == 1) {
 			printf("    This bit is protected and is not writable\n");
@@ -945,19 +952,19 @@ static int otp_strap_parse(uint32_t *buf)
 			continue;
 		}
 		if (otpstrap[i].remain_times == 0) {
-			printf("    This bit is no remaining number of times to write.\n");
+			printf("    This bit is no remaining times to write.\n");
 			fail = 1;
 			continue;
 		}
 		if (pbit == 1) {
 			printf("    This bit will be protected and become non-writable.\n");
 		}
-		printf("    Write 1 to OTPSTRAP[%d] OPTION[%d], that value becomes from %d to %d.\n", i, otpstrap[i].writeable_option + 1, otpstrap[i].value, otpstrap[i].value ^ 1);
+		printf("    Write 1 to OTPSTRAP[%X] OPTION[%X], that value becomes from %d to %d.\n", i, otpstrap[i].writeable_option + 1, otpstrap[i].value, otpstrap[i].value ^ 1);
 	}
 	if (fail == 1)
-		return -1;
-	else
-		return 0;
+		return OTP_FAILURE;
+	else if (skip == 1)
+		return OTP_PROG_SKIP;
 }
 
 static int otp_print_strap(int start, int count)
@@ -974,21 +981,21 @@ static int otp_print_strap(int start, int count)
 	otp_strp_status(otpstrap);
 
 	for (i = start; i < start + count; i++) {
-		printf("OTPSTRAP[%d]:\n", i);
+		printf("OTPSTRAP[%X]:\n", i);
 		printf("  OTP Option value: ");
 		for (j = 1; j <= 7; j++)
-			printf("[%d]:%d ", j, otpstrap[i].option_array[j - 1]);
+			printf("[%X]:%X ", j, otpstrap[i].option_array[j - 1]);
 		printf("\n");
-		printf("  OTP Value: %d\n", otpstrap[i].value);
+		printf("  OTP Value: %X\n", otpstrap[i].value);
 		printf("  Status:\n");
 		if (otpstrap[i].protected == 1) {
-			printf("    OTPSTRAP[%d] is protected and is not writable\n", i);
+			printf("    OTPSTRAP[%X] is protected and is not writable\n", i);
 		} else {
-			printf("    OTPSTRAP[%d] is not protected ", i);
+			printf("    OTPSTRAP[%X] is not protected ", i);
 			if (otpstrap[i].remain_times == 0) {
-				printf("and no remaining number of times to write.\n");
+				printf("and no remaining times to write.\n");
 			} else {
-				printf("and still can write %d number of times\n", otpstrap[i].remain_times);
+				printf("and still can write %d times\n", otpstrap[i].remain_times);
 			}
 		}
 	}
@@ -1295,16 +1302,20 @@ static int do_otp_prog(int addr, int byte_size, int nconfirm)
 				return OTP_FAILURE;
 			}
 		} else if (mode == OTP_REGION_STRAP) {
-			if (otp_strap_parse(strap_region) < 0) {
+			ret = otp_strap_parse(strap_region);
+			if (ret == OTP_FAILURE) {
 				printf("OTP strap error, please check.\n");
 				return OTP_FAILURE;
+			} else if (ret == OTP_PROG_SKIP) {
+				printf("OTP strap skip all\n");
+				return OTP_SUCCESS;
 			}
 		} else if (mode == OTP_REGION_ALL) {
 			if (otp_conf_parse(conf_region) < 0) {
 				printf("OTP config error, please check.\n");
 				return OTP_FAILURE;
 			}
-			if (otp_strap_parse(strap_region) < 0) {
+			if (otp_strap_parse(strap_region) == OTP_FAILURE) {
 				printf("OTP strap error, please check.\n");
 				return OTP_FAILURE;
 			}
@@ -1357,54 +1368,55 @@ static int do_otp_prog(int addr, int byte_size, int nconfirm)
 
 static int do_otp_prog_bit(int mode, int otp_dw_offset, int bit_offset, int value, int nconfirm)
 {
-	uint32_t ret[2];
+	uint32_t read[2];
 	uint32_t strap_buf[6];
 	uint32_t prog_address = 0;
 	struct otpstrap otpstrap[64];
 	int otp_bit;
 	int i;
 	int pass;
+	int ret;
 
 	switch (mode) {
 	case OTP_REGION_CONF:
-		otp_read_config(otp_dw_offset, ret);
+		otp_read_config(otp_dw_offset, read);
 		prog_address = 0x800;
 		prog_address |= (otp_dw_offset / 8) * 0x200;
 		prog_address |= (otp_dw_offset % 8) * 0x2;
-		otp_bit = (ret[0] >> bit_offset) & 0x1;
+		otp_bit = (read[0] >> bit_offset) & 0x1;
 		if (otp_bit == value) {
-			printf("OTPCFG%X[%d] = %d\n", otp_dw_offset, bit_offset, value);
+			printf("OTPCFG%X[%X] = %d\n", otp_dw_offset, bit_offset, value);
 			printf("No need to program\n");
 			return OTP_SUCCESS;
 		}
 		if (otp_bit == 1 && value == 0) {
-			printf("OTPCFG%X[%d] = 1\n", otp_dw_offset, bit_offset);
+			printf("OTPCFG%X[%X] = 1\n", otp_dw_offset, bit_offset);
 			printf("OTP is programed, which can't be clean\n");
 			return OTP_FAILURE;
 		}
-		printf("Program OTPCFG%X[%d] to 1\n", otp_dw_offset, bit_offset);
+		printf("Program OTPCFG%X[%X] to 1\n", otp_dw_offset, bit_offset);
 		break;
 	case OTP_REGION_DATA:
 		prog_address = otp_dw_offset;
 
 		if (otp_dw_offset % 2 == 0) {
-			otp_read_data(otp_dw_offset, ret);
-			otp_bit = (ret[0] >> bit_offset) & 0x1;
+			otp_read_data(otp_dw_offset, read);
+			otp_bit = (read[0] >> bit_offset) & 0x1;
 		} else {
-			otp_read_data(otp_dw_offset - 1, ret);
-			otp_bit = (ret[1] >> bit_offset) & 0x1;
+			otp_read_data(otp_dw_offset - 1, read);
+			otp_bit = (read[1] >> bit_offset) & 0x1;
 		}
 		if (otp_bit == value) {
-			printf("OTPDATA%X[%d] = %d\n", otp_dw_offset, bit_offset, value);
+			printf("OTPDATA%X[%X] = %d\n", otp_dw_offset, bit_offset, value);
 			printf("No need to program\n");
 			return OTP_SUCCESS;
 		}
 		if (otp_bit == 1 && value == 0) {
-			printf("OTPDATA%X[%d] = 1\n", otp_dw_offset, bit_offset);
+			printf("OTPDATA%X[%X] = 1\n", otp_dw_offset, bit_offset);
 			printf("OTP is programed, which can't be clean\n");
 			return OTP_FAILURE;
 		}
-		printf("Program OTPDATA%X[%d] to 1\n", otp_dw_offset, bit_offset);
+		printf("Program OTPDATA%X[%X] to 1\n", otp_dw_offset, bit_offset);
 		break;
 	case OTP_REGION_STRAP:
 		otp_strp_status(otpstrap);
@@ -1428,8 +1440,12 @@ static int do_otp_prog_bit(int mode, int otp_dw_offset, int bit_offset, int valu
 			// else
 			// 	strap_buf[5] = 0;
 		}
-		if (otp_strap_parse(strap_buf) < 0)
+		ret = otp_strap_parse(strap_buf);
+		if (ret == OTP_FAILURE)
 			return OTP_FAILURE;
+		else if (ret == OTP_PROG_SKIP)
+			return OTP_SUCCESS;
+
 		break;
 	}
 
