@@ -80,14 +80,7 @@
 #define  DEF_GPHY_ADR                            0
 #define  DEF_GTESTMODE                           0              //[0]0: no burst mode, 1: 0xff, 2: 0x55, 3: random, 4: ARP, 5: ARP, 6: IO timing, 7: IO timing+IO Strength
 #define  DEF_GLOOP_MAX                           1
-#define  DEF_MAC_LOOP_BACK                       0              //ctrl bit6
-#define  DEF_SKIP_CHECK_PHY                      0              //ctrl bit5
-#define  DEF_INTERNAL_LOOP_PHY                   0              //ctrl bit4
-#define  DEF_INIT_PHY                            1              //ctrl bit3
-#define  DEF_DIS_RECOVPHY                        0              //ctrl bit2
-
-
-#define  DEF_GCTRL                               (( DEF_MAC_LOOP_BACK << 6 ) | ( DEF_SKIP_CHECK_PHY << 5 ) | ( DEF_INTERNAL_LOOP_PHY << 4 ) | ( DEF_INIT_PHY << 3 ) | ( DEF_DIS_RECOVPHY << 2 ))
+#define  DEF_GCTRL                               0
 
 #define  SET_1GBPS                               BIT(0)
 #define  SET_100MBPS                             BIT(1)
@@ -441,20 +434,22 @@ typedef struct {
 typedef union {
 	uint32_t w;
 	struct {
-		uint32_t single_packet	: 1;	/* bit[0] */
-		uint32_t inv_rgmii_rxclk: 1;	/* bit[1] */
-		uint32_t phy_recov_dis	: 1;	/* bit[2] */
-		uint32_t phy_init	: 1;	/* bit[3] */
+		uint32_t phy_skip_init	: 1;	/* bit[0] */
+		uint32_t phy_skip_deinit: 1;	/* bit[1] */
+		uint32_t phy_skip_check	: 1;	/* bit[2] */
+		uint32_t reserved_0	: 1;	/* bit[3] */
 		uint32_t phy_int_loopback : 1;	/* bit[4] */
-		uint32_t phy_skip_check	: 1;	/* bit[5] */
-		uint32_t full_range	: 1;	/* bit[6] */
-		uint32_t mac_int_loopback : 1;	/* bit[7] */
+		uint32_t mac_int_loopback : 1;	/* bit[5] */
+		uint32_t reserved_1	: 2;	/* bit[7:6] */
 		uint32_t rmii_50m_out	: 1;	/* bit[8] */
 		uint32_t rmii_phy_in	: 1;	/* bit[9] */
-		uint32_t reserved_0	: 2;	/* bit[11:10] */
-		uint32_t print_ncsi	: 1;	/* bit[12] */
-		uint32_t skip_rx_err	: 1;	/* bit[13] */
-		uint32_t reserved_1	: 18;	/* bit[31:14] */
+		uint32_t inv_rgmii_rxclk: 1;	/* bit[10] */
+		uint32_t reserved_2	: 1;	/* bit[11] */
+		uint32_t single_packet	: 1;	/* bit[12] */
+		uint32_t full_range	: 1;	/* bit[13] */
+		uint32_t reserved_3	: 2;	/* bit[15:14] */
+		uint32_t print_ncsi	: 1;	/* bit[16] */
+		uint32_t skip_rx_err	: 1;	/* bit[17] */
 	} b;
 } mac_arg_ctrl_t;
 typedef struct {
@@ -499,16 +494,18 @@ typedef struct {
 	uint32_t CheckBuf_MBSize               ;
 	uint32_t timeout_th;	/* time out threshold (varies with run-speed) */
 
+	uint32_t loop_max;
 	uint32_t loop_of_cnt;
 	uint32_t loop_cnt;
 	uint32_t speed_idx;
 	int                  NCSI_RxTimeOutScale           ;
 
-	int                  LOOP_MAX                      ;
 	uint8_t speed_cfg[3];
 	uint8_t speed_sel[3];
 
-	int8_t                 tm_tx_only                      ;//test_mode
+	/* test mode */
+	uint8_t delay_margin;
+	uint8_t tm_tx_only;
 	int8_t                 TM_IEEE                       ;//test_mode
 	int8_t                 TM_IOTiming                   ;//test_mode
 	int8_t                 TM_IOStrength                 ;//test_mode
@@ -518,7 +515,6 @@ typedef struct {
 	int8_t                 TM_DefaultPHY                 ;//test_mode
 	int8_t                 TM_NCSI_DiSChannel            ;//test_mode
 
-	uint8_t                 delay_margin;
 	int8_t                 IO_MrgChk                     ;
 
 
@@ -715,8 +711,8 @@ typedef struct {
 	uint8_t                 Dly_in_selval                 ;
 	uint8_t                 Dly_out                       ;
 	uint8_t                 Dly_out_selval                ;
-	int8_t                 result                    ;
-	int8_t                 result_history[128][64]                ;
+	int8_t result;
+	int8_t result_history[128][64];
 	uint32_t init_done;
 } MAC_IO;
 typedef struct {

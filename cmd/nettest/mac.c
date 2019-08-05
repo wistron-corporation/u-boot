@@ -2209,8 +2209,8 @@ char TestingLoop (MAC_ENGINE *eng, uint32_t loop_checknum)
 	}
 
 
-	while ( ( eng->run.loop_cnt < eng->run.LOOP_MAX ) || eng->arg.loop_inf ) {
-		looplast = !eng->arg.loop_inf && ( eng->run.loop_cnt == eng->run.LOOP_MAX - 1 );
+	while ( ( eng->run.loop_cnt < eng->run.loop_max ) || eng->arg.loop_inf ) {
+		looplast = !eng->arg.loop_inf && ( eng->run.loop_cnt == eng->run.loop_max - 1 );
 
 #ifdef CheckRxBuf
 		if (!eng->run.tm_tx_only)
@@ -2222,7 +2222,7 @@ char TestingLoop (MAC_ENGINE *eng, uint32_t loop_checknum)
 			printf("for start ======> [%d]%d/%d(%d) looplast:%d "
 			       "checkprd:%d checken:%d\n",
 			       eng->run.loop_of_cnt, eng->run.loop_cnt,
-			       eng->run.LOOP_MAX, eng->arg.loop_inf,
+			       eng->run.loop_max, eng->arg.loop_inf,
 			       looplast, checkprd, checken);
 			debug_pause();
 		}
@@ -2240,7 +2240,7 @@ char TestingLoop (MAC_ENGINE *eng, uint32_t loop_checknum)
 			if ( checkprd )
 				check_buf( eng, loop_checknum );
 			else
-				check_buf( eng, ( eng->run.LOOP_MAX % loop_checknum ) );
+				check_buf( eng, ( eng->run.loop_max % loop_checknum ) );
 			eng->dat.Des_Num = eng->dat.Des_Num_Org;
 #endif
 
@@ -2265,12 +2265,12 @@ char TestingLoop (MAC_ENGINE *eng, uint32_t loop_checknum)
 			}
 			else {
 #ifdef Enable_ShowBW  
-				printf("[run loop:%3d] BandWidth: %7.2f Mbps, %6.2f sec\n", (eng->run.LOOP_MAX % loop_checknum), ((double)(eng->run.LOOP_MAX % loop_checknum) * (double)eng->dat.Total_frame_len * 8.0) / ((double)eng->timeused * 1000000.0), eng->timeused);
-				PRINTF( FP_LOG, "[run loop:%3d] BandWidth: %7.2f Mbps, %6.2f sec\n", (eng->run.LOOP_MAX % loop_checknum), ((double)(eng->run.LOOP_MAX % loop_checknum) * (double)eng->dat.Total_frame_len * 8.0) / ((double)eng->timeused * 1000000.0), eng->timeused );  
+				printf("[run loop:%3d] BandWidth: %7.2f Mbps, %6.2f sec\n", (eng->run.loop_max % loop_checknum), ((double)(eng->run.loop_max % loop_checknum) * (double)eng->dat.Total_frame_len * 8.0) / ((double)eng->timeused * 1000000.0), eng->timeused);
+				PRINTF( FP_LOG, "[run loop:%3d] BandWidth: %7.2f Mbps, %6.2f sec\n", (eng->run.loop_max % loop_checknum), ((double)(eng->run.loop_max % loop_checknum) * (double)eng->dat.Total_frame_len * 8.0) / ((double)eng->timeused * 1000000.0), eng->timeused );  
 #endif
 
 #ifdef CheckRxBuf
-				if ( check_buf( eng, ( eng->run.LOOP_MAX % loop_checknum ) ) )
+				if ( check_buf( eng, ( eng->run.loop_max % loop_checknum ) ) )
 					return(1);
 #endif
 			} // End if ( checkprd )
@@ -2300,7 +2300,7 @@ char TestingLoop (MAC_ENGINE *eng, uint32_t loop_checknum)
 		if (DbgPrn_BufAdr) {
 			printf("for end   ======> [%d]%d/%d(%d)\n",
 			       eng->run.loop_of_cnt, eng->run.loop_cnt,
-			       eng->run.LOOP_MAX, eng->arg.loop_inf);
+			       eng->run.loop_max, eng->arg.loop_inf);
 			debug_pause();
 		}
 
@@ -2310,7 +2310,7 @@ char TestingLoop (MAC_ENGINE *eng, uint32_t loop_checknum)
 			eng->run.loop_of_cnt++;
 		} else
 			eng->run.loop_cnt++;
-	} // End while ( ( eng->run.loop_cnt < eng->run.LOOP_MAX ) || eng->arg.loop_inf )
+	} // End while ( ( eng->run.loop_cnt < eng->run.loop_max ) || eng->arg.loop_inf )
 
 	eng->flg.all_fail = 0;
 	return(0);

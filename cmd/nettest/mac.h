@@ -65,7 +65,8 @@
 #define   SelectWOLDA_DatH                       0x206a
 #define   SelectWOLDA_DatL                       0x8a374d9b
 
-#define MOVE_DATA_MB_SEC                       800            // MByte per second to move data
+/* MByte per second to move data */
+#define MOVE_DATA_MB_SEC			800
 
 //---------------------------------------------------------
 // Frame size
