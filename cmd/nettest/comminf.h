@@ -443,7 +443,7 @@ typedef union {
 	struct {
 		uint32_t single_packet	: 1;	/* bit[0] */
 		uint32_t inv_rgmii_rxclk: 1;	/* bit[1] */
-		uint32_t phy_recov_dis	: 1;	/* bit[2] */
+		uint32_t phy_skip_deinit: 1;	/* bit[2] */
 		uint32_t phy_init	: 1;	/* bit[3] */
 		uint32_t phy_int_loopback : 1;	/* bit[4] */
 		uint32_t phy_skip_check	: 1;	/* bit[5] */
@@ -715,8 +715,8 @@ typedef struct {
 	uint8_t                 Dly_in_selval                 ;
 	uint8_t                 Dly_out                       ;
 	uint8_t                 Dly_out_selval                ;
-	int8_t                 result                    ;
-	int8_t                 result_history[128][64]                ;
+	int8_t result;
+	int8_t result_history[128][64];
 	uint32_t init_done;
 } MAC_IO;
 typedef struct {

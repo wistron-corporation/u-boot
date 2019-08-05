@@ -273,9 +273,59 @@ static void print_usage(MAC_ENGINE *p_eng)
 	}
 }
 
+static void push_reg(MAC_ENGINE *p_eng)
+{
+	/* SCU delay settings */
+	p_eng->io.mac12_1g_delay.value.w = readl(p_eng->io.mac12_1g_delay.addr);
+	p_eng->io.mac12_100m_delay.value.w = readl(p_eng->io.mac12_100m_delay.addr);
+	p_eng->io.mac12_10m_delay.value.w = readl(p_eng->io.mac12_10m_delay.addr);
+		
+#ifdef CONFIG_ASPEED_AST2600
+	p_eng->io.mac34_1g_delay.value.w = readl(p_eng->io.mac34_1g_delay.addr);
+	p_eng->io.mac34_100m_delay.value.w = readl(p_eng->io.mac34_100m_delay.addr);
+	p_eng->io.mac34_10m_delay.value.w = readl(p_eng->io.mac34_10m_delay.addr);
+	
+	p_eng->io.mac34_drv_reg.value.w = readl(p_eng->io.mac34_drv_reg.addr);
+#else
+	p_eng->io.mac12_drv_reg.value.w = readl(p_eng->io.mac12_drv_reg.addr);
+#endif
+
+	/* MAC registers */
+	p_eng->reg.maccr.w = mac_reg_read(p_eng, 0x50);
+
+	p_eng->reg.mac_madr = mac_reg_read(p_eng, 0x08);
+	p_eng->reg.mac_ladr = mac_reg_read(p_eng, 0x0c);
+	p_eng->reg.mac_fear = mac_reg_read(p_eng, 0x40);
+}
+
+static void pop_reg(MAC_ENGINE *p_eng)
+{
+	/* SCU delay settings */
+	writel(p_eng->io.mac12_1g_delay.value.w, p_eng->io.mac12_1g_delay.addr);
+	writel(p_eng->io.mac12_100m_delay.value.w, p_eng->io.mac12_100m_delay.addr);
+	writel(p_eng->io.mac12_10m_delay.value.w, p_eng->io.mac12_10m_delay.addr);	
+
+#ifdef CONFIG_ASPEED_AST2600	
+	writel(p_eng->io.mac34_1g_delay.value.w, p_eng->io.mac34_1g_delay.addr);
+	writel(p_eng->io.mac34_100m_delay.value.w, p_eng->io.mac34_100m_delay.addr);
+	writel(p_eng->io.mac34_10m_delay.value.w, p_eng->io.mac34_10m_delay.addr);
+	
+	writel(p_eng->io.mac34_drv_reg.value.w, p_eng->io.mac34_drv_reg.addr);
+#else
+	writel(p_eng->io.mac12_drv_reg.value.w, p_eng->io.mac12_drv_reg.addr);
+#endif
+
+	/* MAC registers */
+	mac_reg_write(p_eng, 0x50, p_eng->reg.maccr.w);
+	mac_reg_write(p_eng, 0x08, p_eng->reg.mac_madr);
+	mac_reg_write(p_eng, 0x0c, p_eng->reg.mac_ladr);
+	mac_reg_write(p_eng, 0x40, p_eng->reg.mac_fear);
+}
+
 static void finish_close(MAC_ENGINE *p_eng) 
 {
 	nt_log_func_name();		
+	pop_reg(p_eng);
 }
 
 char finish_check(MAC_ENGINE *p_eng, int value) 
@@ -925,54 +975,6 @@ static uint32_t setup_env(MAC_ENGINE *p_eng)
 	return 0;
 }
 
-static void push_reg(MAC_ENGINE *p_eng)
-{
-	/* SCU delay settings */
-	p_eng->io.mac12_1g_delay.value.w = readl(p_eng->io.mac12_1g_delay.addr);
-	p_eng->io.mac12_100m_delay.value.w = readl(p_eng->io.mac12_100m_delay.addr);
-	p_eng->io.mac12_10m_delay.value.w = readl(p_eng->io.mac12_10m_delay.addr);
-		
-#ifdef CONFIG_ASPEED_AST2600
-	p_eng->io.mac34_1g_delay.value.w = readl(p_eng->io.mac34_1g_delay.addr);
-	p_eng->io.mac34_100m_delay.value.w = readl(p_eng->io.mac34_100m_delay.addr);
-	p_eng->io.mac34_10m_delay.value.w = readl(p_eng->io.mac34_10m_delay.addr);
-	
-	p_eng->io.mac34_drv_reg.value.w = readl(p_eng->io.mac34_drv_reg.addr);
-#else
-	p_eng->io.mac12_drv_reg.value.w = readl(p_eng->io.mac12_drv_reg.addr);
-#endif
-
-	/* MAC registers */
-	p_eng->reg.maccr.w = mac_reg_read(p_eng, 0x50);
-
-	p_eng->reg.mac_madr = mac_reg_read(p_eng, 0x08);
-	p_eng->reg.mac_ladr = mac_reg_read(p_eng, 0x0c);
-	p_eng->reg.mac_fear = mac_reg_read(p_eng, 0x40);
-}
-
-static void pop_reg(MAC_ENGINE *p_eng)
-{
-	/* SCU delay settings */
-	writel(p_eng->io.mac12_1g_delay.value.w, p_eng->io.mac12_1g_delay.addr);
-	writel(p_eng->io.mac12_100m_delay.value.w, p_eng->io.mac12_100m_delay.addr);
-	writel(p_eng->io.mac12_10m_delay.value.w, p_eng->io.mac12_10m_delay.addr);	
-
-#ifdef CONFIG_ASPEED_AST2600	
-	writel(p_eng->io.mac34_1g_delay.value.w, p_eng->io.mac34_1g_delay.addr);
-	writel(p_eng->io.mac34_100m_delay.value.w, p_eng->io.mac34_100m_delay.addr);
-	writel(p_eng->io.mac34_10m_delay.value.w, p_eng->io.mac34_10m_delay.addr);
-	
-	writel(p_eng->io.mac34_drv_reg.value.w, p_eng->io.mac34_drv_reg.addr);
-#else
-	writel(p_eng->io.mac12_drv_reg.value.w, p_eng->io.mac12_drv_reg.addr);
-#endif
-
-	/* MAC registers */
-	mac_reg_write(p_eng, 0x50, p_eng->reg.maccr.w);
-	mac_reg_write(p_eng, 0x08, p_eng->reg.mac_madr);
-	mac_reg_write(p_eng, 0x0c, p_eng->reg.mac_ladr);
-	mac_reg_write(p_eng, 0x40, p_eng->reg.mac_fear);
-}
 static uint32_t init_mac_engine(MAC_ENGINE *p_eng, uint32_t mode)
 {
 	memset(p_eng, 0, sizeof(MAC_ENGINE));
@@ -1465,7 +1467,6 @@ int mac_test(int argc, char * const argv[], uint32_t mode)
 	// [Start] The loop of different speed
 	//------------------------------
 	test_start(&mac_eng, &phy_eng);
-	pop_reg(&mac_eng);
 
 	return(finish_check(&mac_eng, 0));
 }
