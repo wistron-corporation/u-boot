@@ -123,6 +123,10 @@ static struct aspeed_sig_desc emmc_link[] = {
 #endif	
 };
 
+static struct aspeed_sig_desc fmcquad_link[] = {
+	{ 0x438, GENMASK(5, 4), 0 },
+};
+
 static const struct aspeed_group_config ast2600_groups[] = {
 	{ "MAC1LINK", ARRAY_SIZE(mac1_link), mac1_link },
 	{ "MAC2LINK", ARRAY_SIZE(mac2_link), mac2_link },
@@ -136,6 +140,7 @@ static const struct aspeed_group_config ast2600_groups[] = {
 	{ "SD1_8bits", ARRAY_SIZE(sdio1_8bit_link), sdio1_8bit_link },
 	{ "SD2", ARRAY_SIZE(sdio2_link), sdio2_link },
 	{ "EMMC", ARRAY_SIZE(emmc_link), emmc_link },
+	{ "FMCQUAD", ARRAY_SIZE(fmcquad_link), fmcquad_link },
 };
 
 static int ast2600_pinctrl_get_groups_count(struct udevice *dev)

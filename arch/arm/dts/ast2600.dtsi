@@ -884,6 +884,11 @@
 };
 
 &pinctrl {
+	pinctrl_fmcquad_default: fmcquad_default {
+		function = "FMCQUAD";
+		groups = "FMCQUAD";
+	};
+
 	pinctrl_acpi_default: acpi_default {
 		function = "ACPI";
 		groups = "ACPI";
