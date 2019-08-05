@@ -2225,7 +2225,7 @@ uint32_t phy_find_addr (MAC_ENGINE *eng)
 	} else if (eng->arg.ctrl.b.phy_skip_check) {
 		PHY_val = phy_read(eng, PHY_REG_BMCR);
 
-		if ((PHY_val & BIT(15)) && eng->arg.ctrl.b.phy_init) {
+		if ((PHY_val & BIT(15)) && (0 == eng->arg.ctrl.b.phy_skip_init)) {
 		} else {
 			ret = 1;
 		}
@@ -2245,7 +2245,7 @@ uint32_t phy_find_addr (MAC_ENGINE *eng)
 		eng->phy.Adr = eng->arg.phy_addr;
 #endif
 
-	if (eng->arg.ctrl.b.phy_init) {
+	if (0 == eng->arg.ctrl.b.phy_skip_init) {
 		if (ret == 1) {
 			if (PHY_ADR_org != eng->phy.Adr) {
 				phy_id(eng, STD_OUT);
@@ -2264,14 +2264,14 @@ uint32_t phy_find_addr (MAC_ENGINE *eng)
 	if ((eng->phy.PHY_ID2 == 0xffff) && (eng->phy.PHY_ID3 == 0xffff) &&
 	    !eng->arg.ctrl.b.phy_skip_check) {
 		sprintf((char *)eng->phy.phy_name, "--");
-		if (eng->arg.ctrl.b.phy_init)
+		if (0 == eng->arg.ctrl.b.phy_skip_init)
 			FindErr(eng, Err_Flag_PHY_Type);
 	}
 #ifdef ENABLE_CHK_ZERO_PHY_ID
 	else if ((eng->phy.PHY_ID2 == 0x0000) && (eng->phy.PHY_ID3 == 0x0000) &&
 		 !eng->arg.ctrl.b.phy_skip_check) {
                 sprintf((char *)eng->phy.phy_name, "--");
-                if ( eng->arg.ctrl.b.phy_init )
+                if (0 == eng->arg.ctrl.b.phy_skip_init)
                         FindErr( eng, Err_Flag_PHY_Type );
         }
 #endif
@@ -2356,11 +2356,10 @@ void phy_sel (MAC_ENGINE *eng, PHY_ENGINE *phyeng)
 		}
 	}
 
-	if (eng->arg.ctrl.b.phy_init) {
-		if (eng->arg.ctrl.b.phy_skip_deinit)
-			phyeng->fp_clr = NULL;
-	} else {
+	if (eng->arg.ctrl.b.phy_skip_init) {
 		phyeng->fp_set = NULL;
+		phyeng->fp_clr = NULL;
+	} else if (eng->arg.ctrl.b.phy_skip_deinit) {
 		phyeng->fp_clr = NULL;
 	}
 }

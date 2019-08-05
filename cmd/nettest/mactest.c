@@ -201,15 +201,24 @@ static void print_arg_ctrl(MAC_ENGINE *p_eng)
 {
 	uint8_t item[32] = "ctrl[hex]";
 
-	printf("%20s| default: 0x%02x\n", item, DEF_GCTRL);
-	printf("%20s| bit0  : 1->single packet\n", "");
-	printf("%20s| bit1  : 1->inverse RGMII RXCLK\n", "");
-	printf("%20s| bit2  : 1->Disable recovering PHY status\n", "");
-	printf("%20s| bit3  : 1->Enable PHY init\n", "");
-	printf("%20s| bit4  : 1->PHY internal loopback\n", "");
-	printf("%20s| bit5  : 1->Ignore PHY ID\n", "");	
-	printf("%20s| bit6  : 1->full range scan\n", "");
-	printf("%20s| bit7  : 1->Enable MAC int-loop\n", "");	
+	printf("%20s| default  : 0x%03x\n", item, DEF_GCTRL);
+	printf("%20s| bit0     : skip PHY init/deinit\n", "");
+	printf("%20s| bit1     : skip PHY deinit\n", "");
+	printf("%20s| bit2     : skip PHY ID check\n", "");
+	printf("%20s| bit3     : reserved\n", "");
+	printf("%20s| bit4     : PHY internal loopback\n", "");
+	printf("%20s| bit5     : MAC internal loopback\n", "");	
+	printf("%20s| bit7~6   : reserved\n", "");
+	printf("%20s| bit8     : RMII 50MHz Output enable\n", "");
+	printf("%20s| bit9     : RMII REFCLK pin input enable\n", "");
+	printf("%20s| bit10    : inverse RGMII RXCLK\n", "");
+	printf("%20s| bit11    : reserved\n", "");
+	printf("%20s| bit12    : TX single packet for each test point\n", "");
+	printf("%20s| bit13    : full range scan\n", "");
+	printf("%20s| bit15~14 : reserved\n", "");
+	printf("%20s| bit16    : NCSI verbose log\n", "");
+	printf("%20s| bit17    : NCSI skip RX error\n", "");
+	printf("%20s| bit31~18 : reserved\n", "");
 }
 
 static void print_arg_speed(MAC_ENGINE *p_eng) 
