@@ -36,14 +36,14 @@ DECLARE_GLOBAL_DATA_PTR;
 
 #define OTP_PROG_SKIP			1
 
-#define DISABLE_SECREG_PROG		BIT(0)
-#define ENABLE_SEC_BOOT			BIT(1)
-#define INIT_PROG_DONE			BIT(2)
-#define ENABLE_USERREG_ECC		BIT(3)
-#define ENABLE_SECREG_ECC		BIT(4)
-#define DISABLE_LOW_SEC_KEY		BIT(5)
-#define IGNORE_SEC_BOOT_HWSTRAP		BIT(6)
-#define SEC_BOOT_MDOES(x)		(x >> 7)
+#define DISABLE_SECREG_PROG(x)		(x & 0x1)
+#define ENABLE_SEC_BOOT(x)		((x >> 1) & 0x1)
+#define INIT_PROG_DONE(x)		((x >> 2) & 0x1)
+#define ENABLE_USERREG_ECC(x)		((x >> 3) & 0x1)
+#define ENABLE_SECREG_ECC(x)		((x >> 4) & 0x1)
+#define DISABLE_LOW_SEC_KEY(x)		((x >> 5) & 0x1)
+#define IGNORE_SEC_BOOT_HWSTRAP(x)	((x >> 6) & 0x1)
+#define SEC_BOOT_MDOES(x)		((x >> 7) & 0x1)
 #define   SEC_MODE1			0x0
 #define   SEC_MODE2			0x1
 #define OTP_BIT_CELL_MODES(x)		((x >> 8) & 0x3)
@@ -61,15 +61,15 @@ DECLARE_GLOBAL_DATA_PTR;
 #define   HASH_SAH384			0x2
 #define   HASH_SAH512			0x3
 #define SECREG_SIZE(x)			((x >> 16) & 0x3f)
-#define WRITE_PROTECT_SECREG		BIT(22)
-#define WRITE_PROTECT_USERREG		BIT(23)
-#define WRITE_PROTECT_CONFREG		BIT(24)
-#define WRITE_PROTECT_STRAPREG		BIT(25)
-#define ENABLE_COPY_TO_SRAM		BIT(26)
-#define ENABLE_IMAGE_ENC		BIT(27)
-#define WRITE_PROTECT_KEY_RETIRE	BIT(29)
-#define ENABLE_SIPROM_RED		BIT(30)
-#define ENABLE_SIPROM_MLOCK		BIT(31)
+#define WRITE_PROTECT_SECREG(x)		((x >> 22) & 0x1)
+#define WRITE_PROTECT_USERREG(x)	((x >> 23) & 0x1)
+#define WRITE_PROTECT_CONFREG(x)	((x >> 24) & 0x1)
+#define WRITE_PROTECT_STRAPREG(x)	((x >> 25) & 0x1)
+#define ENABLE_COPY_TO_SRAM(x)		((x >> 26) & 0x1)
+#define ENABLE_IMAGE_ENC(x)		((x >> 27) & 0x1)
+#define WRITE_PROTECT_KEY_RETIRE(x)	((x >> 29) & 0x1)
+#define ENABLE_SIPROM_RED(x)		((x >> 30) & 0x1)
+#define ENABLE_SIPROM_MLOCK(x)		((x >> 31) & 0x1)
 
 #define VENDER_ID(x) 			(x & 0xFFFF)
 #define KEY_REVISION(x)			((x >> 16) & 0xFFFF)
@@ -99,12 +99,21 @@ void printProgress(int numerator, int denominator, char *format, ...)
 		printf("\n");
 }
 
-struct otpstrap {
+struct otpstrap_status {
 	int value;
 	int option_array[7];
 	int remain_times;
 	int writeable_option;
 	int protected;
+};
+
+struct otpconf_parse {
+	int dw_offset;
+	int bit;
+	int length;
+	int value;
+	int keep;
+	char status[80];
 };
 
 static void otp_read_data(uint32_t offset, uint32_t *data)
@@ -313,278 +322,443 @@ static void otp_prog_dw(uint32_t value, uint32_t keep, uint32_t prog_address)
 	}
 }
 
-static int otp_conf_parse(uint32_t *OTPCFG)
+static int otp_conf_parse(uint32_t *OTPCFG, struct otpconf_parse *conf_parse)
 {
 	int tmp, i;
+	int k = 0;
 	int pass = 0;
 	uint32_t *OTPCFG_KEEP = &OTPCFG[12];
 
-	if (OTPCFG_KEEP[0] & DISABLE_SECREG_PROG) {
-		printf("OTPCFG0-D[0]\n");
-		printf("  Skip\n");
+	conf_parse[k].dw_offset = 0;
+	conf_parse[k].bit = 0;
+	conf_parse[k].length = 1;
+	conf_parse[k].value = DISABLE_SECREG_PROG(OTPCFG[0]);
+	if (DISABLE_SECREG_PROG(OTPCFG_KEEP[0])) {
+		conf_parse[k].keep = 1;
+		strcpy(conf_parse[k].status, "Skip");
 	} else {
-		printf("OTPCFG0-D[0]\n");
-		if (OTPCFG[0] & DISABLE_SECREG_PROG)
-			printf("  Disable Secure Region programming\n");
+		if (DISABLE_SECREG_PROG(OTPCFG[0]))
+			strcpy(conf_parse[k].status,
+			       "Disable Secure Region programming");
 		else
-			printf("  Enable Secure Region programming\n");
+			strcpy(conf_parse[k].status,
+			       "Enable Secure Region programming");
 	}
 
-	if (OTPCFG_KEEP[0] & ENABLE_SEC_BOOT) {
-		printf("OTPCFG0-D[1]\n");
-		printf("  Skip\n");
+	k++;
+	conf_parse[k].dw_offset = 0;
+	conf_parse[k].bit = 1;
+	conf_parse[k].length = 1;
+	conf_parse[k].value = ENABLE_SEC_BOOT(OTPCFG[0]);
+	if (ENABLE_SEC_BOOT(OTPCFG_KEEP[0])) {
+		conf_parse[k].keep = 1;
+		strcpy(conf_parse[k].status, "Skip");
 	} else {
-
-		printf("OTPCFG0-D[1]\n");
-		if (OTPCFG[0] & ENABLE_SEC_BOOT)
-			printf("  Enable Secure Boot\n");
+		if (ENABLE_SEC_BOOT(OTPCFG[0]))
+			strcpy(conf_parse[k].status,
+			       "Enable Secure Boot");
 		else
-			printf("  Disable Secure Boot\n");
+			strcpy(conf_parse[k].status,
+			       "Disable Secure Boot");
 	}
 
-	if (OTPCFG_KEEP[0] & ENABLE_USERREG_ECC) {
-		printf("OTPCFG0-D[3]\n");
-		printf("  Skip\n");
+	k++;
+	conf_parse[k].dw_offset = 0;
+	conf_parse[k].bit = 3;
+	conf_parse[k].length = 1;
+	conf_parse[k].value = ENABLE_USERREG_ECC(OTPCFG[0]);
+	if (ENABLE_USERREG_ECC(OTPCFG_KEEP[0])) {
+		conf_parse[k].keep = 1;
+		strcpy(conf_parse[k].status, "Skip");
 	} else {
-		printf("OTPCFG0-D[3]\n");
-		if (OTPCFG[0] & ENABLE_USERREG_ECC)
-			printf("  User region ECC enable\n");
+		if (ENABLE_USERREG_ECC(OTPCFG[0]))
+			strcpy(conf_parse[k].status,
+			       "User region ECC enable");
 		else
-			printf("  User region ECC disable\n");
+			strcpy(conf_parse[k].status,
+			       "User region ECC disable");
 	}
 
-	if (OTPCFG_KEEP[0] & ENABLE_SECREG_ECC) {
-		printf("OTPCFG0-D[4]\n");
-		printf("  Skip\n");
+	k++;
+	conf_parse[k].dw_offset = 0;
+	conf_parse[k].bit = 4;
+	conf_parse[k].length = 1;
+	conf_parse[k].value = ENABLE_SECREG_ECC(OTPCFG[0]);
+	if (ENABLE_SECREG_ECC(OTPCFG_KEEP[0])) {
+		conf_parse[k].keep = 1;
+		strcpy(conf_parse[k].status, "Skip");
 	} else {
-		printf("OTPCFG0-D[4]\n");
-		if (OTPCFG[0] & ENABLE_SECREG_ECC)
-			printf("  Secure Region ECC enable\n");
+		if (ENABLE_SECREG_ECC(OTPCFG[0]))
+			strcpy(conf_parse[k].status,
+			       "Secure Region ECC enable");
 		else
-			printf("  Secure Region ECC disable\n");
+			strcpy(conf_parse[k].status,
+			       "Secure Region ECC disable");
 	}
 
-	if (OTPCFG_KEEP[0] & DISABLE_LOW_SEC_KEY) {
-		printf("OTPCFG0-D[5]\n");
-		printf("  Skip\n");
+	k++;
+	conf_parse[k].dw_offset = 0;
+	conf_parse[k].bit = 5;
+	conf_parse[k].length = 1;
+	conf_parse[k].value = DISABLE_LOW_SEC_KEY(OTPCFG[0]);
+	if (DISABLE_LOW_SEC_KEY(OTPCFG_KEEP[0])) {
+		conf_parse[k].keep = 1;
+		strcpy(conf_parse[k].status, "Skip");
 	} else {
-		printf("OTPCFG0-D[5]\n");
-		if (OTPCFG[0] & DISABLE_LOW_SEC_KEY)
-			printf("  Disable low security key\n");
+		if (DISABLE_LOW_SEC_KEY(OTPCFG[0]))
+			strcpy(conf_parse[k].status,
+			       "Disable low security key");
 		else
-			printf("  Enable low security key\n");
+			strcpy(conf_parse[k].status,
+			       "Enable low security key");
 	}
 
-	if (OTPCFG_KEEP[0] & IGNORE_SEC_BOOT_HWSTRAP) {
-		printf("OTPCFG0-D[6]\n");
-		printf("  Skip\n");
+	k++;
+	conf_parse[k].dw_offset = 0;
+	conf_parse[k].bit = 6;
+	conf_parse[k].length = 1;
+	conf_parse[k].value = IGNORE_SEC_BOOT_HWSTRAP(OTPCFG[0]);
+	if (IGNORE_SEC_BOOT_HWSTRAP(OTPCFG_KEEP[0])) {
+		conf_parse[k].keep = 1;
+		strcpy(conf_parse[k].status, "Skip");
 	} else {
-		printf("OTPCFG0-D[6]\n");
-		if (OTPCFG[0] & IGNORE_SEC_BOOT_HWSTRAP)
-			printf("  Ignore Secure Boot hardware strap\n");
+		if (IGNORE_SEC_BOOT_HWSTRAP(OTPCFG[0]))
+			strcpy(conf_parse[k].status,
+			       "Ignore Secure Boot hardware strap");
 		else
-			printf("  Do not ignore Secure Boot hardware strap\n");
+			strcpy(conf_parse[k].status,
+			       "Do not ignore Secure Boot hardware strap");
 	}
 
-	if (SEC_BOOT_MDOES(OTPCFG_KEEP[0]) == 0x1) {
-		printf("OTPCFG0-D[7]\n");
-		printf("  Skip\n");
+	k++;
+	conf_parse[k].dw_offset = 0;
+	conf_parse[k].bit = 7;
+	conf_parse[k].length = 1;
+	conf_parse[k].value = SEC_BOOT_MDOES(OTPCFG[0]);
+	if (SEC_BOOT_MDOES(OTPCFG_KEEP[0])) {
+		conf_parse[k].keep = 1;
+		strcpy(conf_parse[k].status, "Skip");
 	} else {
-		printf("OTPCFG0-D[7]\n");
-		if (SEC_BOOT_MDOES(OTPCFG[0]) == SEC_MODE1)
-			printf("  Secure Boot Mode: 1\n");
+		if (SEC_BOOT_MDOES(OTPCFG[0]))
+			strcpy(conf_parse[k].status,
+			       "Secure Boot Mode: 1");
 		else
-			printf("  Secure Boot Mode: 2\n");
+			strcpy(conf_parse[k].status,
+			       "Secure Boot Mode: 2");
 	}
 
+	k++;
+	conf_parse[k].dw_offset = 0;
+	conf_parse[k].bit = 8;
+	conf_parse[k].length = 2;
+	conf_parse[k].value = OTP_BIT_CELL_MODES(OTPCFG[0]);
 	if (OTP_BIT_CELL_MODES(OTPCFG_KEEP[0]) == 0x3) {
-		printf("OTPCFG0-D[9:8]\n");
-		printf("  Skip\n");
-	} else {
-		printf("OTPCFG0-D[9:8]\n");
-		printf("  OTP bit cell mode : ");
-		tmp = OTP_BIT_CELL_MODES(OTPCFG[0]);
-		if (tmp == SINGLE_CELL_MODE) {
-			printf("Single cell mode (recommended)\n");
-		} else if (tmp == DIFFERENTIAL_MODE) {
-			printf("Differnetial mode\n");
-		} else if (tmp == DIFFERENTIAL_REDUDANT_MODE) {
-			printf("Differential-redundant mode\n");
+		conf_parse[k].keep = 1;
+		strcpy(conf_parse[k].status, "Skip");
+	} else if (OTP_BIT_CELL_MODES(OTPCFG_KEEP[0]) == 0) {
+		strcpy(conf_parse[k].status, "OTP bit cell mode : ");
+		if (conf_parse[k].value == SINGLE_CELL_MODE) {
+			strcat(conf_parse[k].status,
+			       "Single cell mode (recommended)");
+		} else if (conf_parse[k].value == DIFFERENTIAL_MODE) {
+			strcat(conf_parse[k].status,
+			       "Differnetial mode");
+		} else if (conf_parse[k].value == DIFFERENTIAL_REDUDANT_MODE) {
+			strcat(conf_parse[k].status,
+			       "Differential-redundant mode");
 		} else {
-			printf("Value error\n");
+			strcat(conf_parse[k].status,
+			       "Value error");
 			return -1;
 		}
+	} else {
+		strcpy(conf_parse[k].status, "Keep mask error!");
+		return -1;
 	}
+
+	k++;
+	conf_parse[k].dw_offset = 0;
+	conf_parse[k].bit = 10;
+	conf_parse[k].length = 2;
+	conf_parse[k].value = CRYPTO_MODES(OTPCFG[0]);
 	if (CRYPTO_MODES(OTPCFG_KEEP[0]) == 0x3) {
-		printf("OTPCFG0-D[11:10]\n");
-		printf("  Skip\n");
-	} else {
-		printf("OTPCFG0-D[11:10]\n");
-		printf("  RSA mode : ");
-		tmp = CRYPTO_MODES(OTPCFG[0]);
-		if (tmp == CRYPTO_RSA1024) {
-			printf("RSA1024\n");
-		} else if (tmp == CRYPTO_RSA2048) {
-			printf("RSA2048\n");
-		} else if (tmp == CRYPTO_RSA3072) {
-			printf("RSA3072\n");
+		conf_parse[k].keep = 1;
+		strcpy(conf_parse[k].status, "Skip");
+	} else if (CRYPTO_MODES(OTPCFG_KEEP[0]) == 0) {
+		strcpy(conf_parse[k].status, "RSA mode : ");
+		if (conf_parse[k].value == CRYPTO_RSA1024) {
+			strcat(conf_parse[k].status,
+			       "RSA1024");
+		} else if (conf_parse[k].value == CRYPTO_RSA2048) {
+			strcat(conf_parse[k].status,
+			       "RSA2048");
+		} else if (conf_parse[k].value == CRYPTO_RSA3072) {
+			strcat(conf_parse[k].status,
+			       "RSA3072");
 		} else {
-			printf("RSA4096\n");
+			strcat(conf_parse[k].status,
+			       "RSA4096");
 		}
+	} else {
+		strcpy(conf_parse[k].status, "Keep mask error!");
+		return -1;
 	}
+
+	k++;
+	conf_parse[k].dw_offset = 0;
+	conf_parse[k].bit = 12;
+	conf_parse[k].length = 2;
+	conf_parse[k].value = HASH_MODES(OTPCFG[0]);
 	if (HASH_MODES(OTPCFG_KEEP[0]) == 0x3) {
-		printf("OTPCFG0-D[13:12]\n");
-		printf("  Skip\n");
-	} else {
-		printf("OTPCFG0-D[13:12]\n");
-		printf("  SHA mode : ");
-		tmp = HASH_MODES(OTPCFG[0]);
-		if (tmp == HASH_SAH224) {
-			printf("SHA224\n");
-		} else if (tmp == HASH_SAH256) {
-			printf("SHA256\n");
-		} else if (tmp == HASH_SAH384) {
-			printf("SHA384\n");
+		conf_parse[k].keep = 1;
+		strcpy(conf_parse[k].status, "Skip");
+	} else if (HASH_MODES(OTPCFG_KEEP[0]) == 0) {
+		strcpy(conf_parse[k].status, "SHA mode : ");
+		if (conf_parse[k].value == HASH_SAH224) {
+			strcat(conf_parse[k].status,
+			       "SHA224");
+		} else if (conf_parse[k].value == HASH_SAH256) {
+			strcat(conf_parse[k].status,
+			       "SHA256");
+		} else if (conf_parse[k].value == HASH_SAH384) {
+			strcat(conf_parse[k].status,
+			       "SHA384");
 		} else {
-			printf("SHA512\n");
+			strcat(conf_parse[k].status,
+			       "SHA512");
 		}
+	} else {
+		strcpy(conf_parse[k].status, "Keep mask error!");
+		return -1;
 	}
 
+	k++;
+	conf_parse[k].dw_offset = 0;
+	conf_parse[k].bit = 16;
+	conf_parse[k].length = 6;
+	conf_parse[k].value = SECREG_SIZE(OTPCFG[0]);
 	if (SECREG_SIZE(OTPCFG_KEEP[0]) == 0x3f) {
-		printf("OTPCFG0-D[21:16]\n");
-		printf("  Skip\n");
+		conf_parse[k].keep = 1;
+		strcpy(conf_parse[k].status, "Skip");
+	} else if (SECREG_SIZE(OTPCFG_KEEP[0]) == 0) {
+		sprintf(conf_parse[k].status,
+			"Secure Region size (DW): 0x%x", SECREG_SIZE(OTPCFG[0]));
 	} else {
-		printf("OTPCFG0-D[21:16]\n");
-		printf("  Secure Region size (DW): %x\n", SECREG_SIZE(OTPCFG[0]));
+		strcpy(conf_parse[k].status, "Keep mask error!");
+		return -1;
 	}
 
-	if (OTPCFG_KEEP[0] & WRITE_PROTECT_SECREG) {
-		printf("OTPCFG0-D[22]\n");
-		printf("  Skip\n");
+	k++;
+	conf_parse[k].dw_offset = 0;
+	conf_parse[k].bit = 22;
+	conf_parse[k].length = 1;
+	conf_parse[k].value = WRITE_PROTECT_SECREG(OTPCFG[0]);
+	if (WRITE_PROTECT_SECREG(OTPCFG_KEEP[0])) {
+		conf_parse[k].keep = 1;
+		strcpy(conf_parse[k].status, "Skip");
 	} else {
-		printf("OTPCFG0-D[22]\n");
-		if (OTPCFG[0] & WRITE_PROTECT_SECREG)
-			printf("  Secure Region : Write Protect\n");
+		if (WRITE_PROTECT_SECREG(OTPCFG[0]))
+			strcpy(conf_parse[k].status,
+			       "Secure Region : Write Protect");
 		else
-			printf("  Secure Region : Writable\n");
+			strcpy(conf_parse[k].status,
+			       "Secure Region : Writable");
 	}
 
-	if (OTPCFG_KEEP[0] & WRITE_PROTECT_USERREG) {
-		printf("OTPCFG0-D[23]\n");
-		printf("  Skip\n");
+	k++;
+	conf_parse[k].dw_offset = 0;
+	conf_parse[k].bit = 23;
+	conf_parse[k].length = 1;
+	conf_parse[k].value = WRITE_PROTECT_USERREG(OTPCFG[0]);
+	if (WRITE_PROTECT_USERREG(OTPCFG_KEEP[0])) {
+		conf_parse[k].keep = 1;
+		strcpy(conf_parse[k].status, "Skip");
 	} else {
-		printf("OTPCFG0-D[23]\n");
-		if (OTPCFG[0] & WRITE_PROTECT_USERREG)
-			printf("  User Region : Write Protect\n");
+		if (WRITE_PROTECT_USERREG(OTPCFG[0]))
+			strcpy(conf_parse[k].status,
+			       "User Region : Write Protect");
 		else
-			printf("  User Region : Writable\n");
+			strcpy(conf_parse[k].status,
+			       "User Region : Writable");
 	}
 
-	if (OTPCFG_KEEP[0] & WRITE_PROTECT_CONFREG) {
-		printf("OTPCFG0-D[24]\n");
-		printf("  Skip\n");
+	k++;
+	conf_parse[k].dw_offset = 0;
+	conf_parse[k].bit = 24;
+	conf_parse[k].length = 1;
+	conf_parse[k].value = WRITE_PROTECT_CONFREG(OTPCFG[0]);
+	if (WRITE_PROTECT_CONFREG(OTPCFG_KEEP[0])) {
+		conf_parse[k].keep = 1;
+		strcpy(conf_parse[k].status, "Skip");
 	} else {
-		printf("OTPCFG0-D[24]\n");
-		if (OTPCFG[0] & WRITE_PROTECT_CONFREG)
-			printf("  Configure Region : Write Protect\n");
+		if (WRITE_PROTECT_CONFREG(OTPCFG[0]))
+			strcpy(conf_parse[k].status,
+			       "Configure Region : Write Protect");
 		else
-			printf("  Configure Region : Writable\n");
+			strcpy(conf_parse[k].status,
+			       "Configure Region : Writable");
 	}
 
-	if (OTPCFG_KEEP[0] & WRITE_PROTECT_STRAPREG) {
-		printf("OTPCFG0-D[25]\n");
-		printf("  Skip\n");
+	k++;
+	conf_parse[k].dw_offset = 0;
+	conf_parse[k].bit = 25;
+	conf_parse[k].length = 1;
+	conf_parse[k].value = WRITE_PROTECT_STRAPREG(OTPCFG[0]);
+	if (WRITE_PROTECT_STRAPREG(OTPCFG_KEEP[0])) {
+		conf_parse[k].keep = 1;
+		strcpy(conf_parse[k].status, "Skip");
 	} else {
-		printf("OTPCFG0-D[25]\n");
-		if (OTPCFG[0] & WRITE_PROTECT_STRAPREG)
-			printf("  OTP strap Region : Write Protect\n");
+		if (WRITE_PROTECT_STRAPREG(OTPCFG[0]))
+			strcpy(conf_parse[k].status,
+			       "OTP strap Region : Write Protect");
 		else
-			printf("  OTP strap Region : Writable\n");
+			strcpy(conf_parse[k].status,
+			       "OTP strap Region : Writable");
 	}
 
-	if (OTPCFG_KEEP[0] & ENABLE_COPY_TO_SRAM) {
-		printf("OTPCFG0-D[25]\n");
-		printf("  Skip\n");
+	k++;
+	conf_parse[k].dw_offset = 0;
+	conf_parse[k].bit = 26;
+	conf_parse[k].length = 1;
+	conf_parse[k].value = ENABLE_COPY_TO_SRAM(OTPCFG[0]);
+	if (ENABLE_COPY_TO_SRAM(OTPCFG_KEEP[0])) {
+		conf_parse[k].keep = 1;
+		strcpy(conf_parse[k].status, "Skip");
 	} else {
-		printf("OTPCFG0-D[26]\n");
-		if (OTPCFG[0] & ENABLE_COPY_TO_SRAM)
-			printf("  Copy Boot Image to Internal SRAM\n");
+		if (ENABLE_COPY_TO_SRAM(OTPCFG[0]))
+			strcpy(conf_parse[k].status,
+			       "Copy Boot Image to Internal SRAM");
 		else
-			printf("  Disable Copy Boot Image to Internal SRAM\n");
+			strcpy(conf_parse[k].status,
+			       "Disable Copy Boot Image to Internal SRAM");
 	}
-	if (OTPCFG_KEEP[0] & ENABLE_IMAGE_ENC) {
-		printf("OTPCFG0-D[27]\n");
-		printf("  Skip\n");
+
+	k++;
+	conf_parse[k].dw_offset = 0;
+	conf_parse[k].bit = 27;
+	conf_parse[k].length = 1;
+	conf_parse[k].value = ENABLE_IMAGE_ENC(OTPCFG[0]);
+	if (ENABLE_IMAGE_ENC(OTPCFG_KEEP[0])) {
+		conf_parse[k].keep = 1;
+		strcpy(conf_parse[k].status, "Skip");
 	} else {
-		printf("OTPCFG0-D[27]\n");
-		if (OTPCFG[0] & ENABLE_IMAGE_ENC)
-			printf("  Enable image encryption\n");
+		if (ENABLE_IMAGE_ENC(OTPCFG[0]))
+			strcpy(conf_parse[k].status,
+			       "Enable image encryption");
 		else
-			printf("  Disable image encryption\n");
+			strcpy(conf_parse[k].status,
+			       "Disable image encryption");
 	}
 
-	if (OTPCFG_KEEP[0] & WRITE_PROTECT_KEY_RETIRE) {
-		printf("OTPCFG0-D[29]\n");
-		printf("  Skip\n");
+	k++;
+	conf_parse[k].dw_offset = 0;
+	conf_parse[k].bit = 29;
+	conf_parse[k].length = 1;
+	conf_parse[k].value = WRITE_PROTECT_KEY_RETIRE(OTPCFG[0]);
+	if (WRITE_PROTECT_KEY_RETIRE(OTPCFG_KEEP[0])) {
+		conf_parse[k].keep = 1;
+		strcpy(conf_parse[k].status, "Skip");
 	} else {
-		printf("OTPCFG0-D[29]\n");
-		if (OTPCFG[0] & WRITE_PROTECT_KEY_RETIRE)
-			printf("  OTP key retire Region : Write Protect\n");
+		if (WRITE_PROTECT_KEY_RETIRE(OTPCFG[0]))
+			strcpy(conf_parse[k].status,
+			       "OTP key retire Region : Write Protect");
 		else
-			printf("  OTP key retire Region : Writable\n");
+			strcpy(conf_parse[k].status,
+			       "OTP key retire Region : Writable");
 	}
 
-	if (OTPCFG_KEEP[0] & ENABLE_SIPROM_RED) {
-		printf("OTPCFG0-D[30]\n");
-		printf("  Skip\n");
+	k++;
+	conf_parse[k].dw_offset = 0;
+	conf_parse[k].bit = 30;
+	conf_parse[k].length = 1;
+	conf_parse[k].value = ENABLE_SIPROM_RED(OTPCFG[0]);
+	if (ENABLE_SIPROM_RED(OTPCFG_KEEP[0])) {
+		conf_parse[k].keep = 1;
+		strcpy(conf_parse[k].status, "Skip");
 	} else {
-		printf("OTPCFG0-D[30]\n");
-		if (OTPCFG[0] & ENABLE_SIPROM_RED)
-			printf("  SIPROM RED_EN redundancy repair enable\n");
+		if (ENABLE_SIPROM_RED(OTPCFG[0]))
+			strcpy(conf_parse[k].status,
+			       "SIPROM RED_EN redundancy repair enable");
 		else
-			printf("  SIPROM RED_EN redundancy repair disable\n");
+			strcpy(conf_parse[k].status,
+			       "SIPROM RED_EN redundancy repair disable");
 	}
 
-	if (OTPCFG_KEEP[0] & ENABLE_SIPROM_MLOCK) {
-		printf("OTPCFG0-D[31]\n");
-		printf("  Skip\n");
+	k++;
+	conf_parse[k].dw_offset = 0;
+	conf_parse[k].bit = 31;
+	conf_parse[k].length = 1;
+	conf_parse[k].value = ENABLE_SIPROM_MLOCK(OTPCFG[0]);
+	if (ENABLE_SIPROM_MLOCK(OTPCFG_KEEP[0])) {
+		conf_parse[k].keep = 1;
+		strcpy(conf_parse[k].status, "Skip");
 	} else {
-		printf("OTPCFG0-D[31]\n");
-		if (OTPCFG[0] & ENABLE_SIPROM_MLOCK)
-			printf("  SIPROM Mlock memory lock enable\n");
+		if (ENABLE_SIPROM_MLOCK(OTPCFG[0]))
+			strcpy(conf_parse[k].status,
+			       "SIPROM Mlock memory lock enable");
 		else
-			printf("  SIPROM Mlock memory lock disable\n");
-	}
-	if (SECREG_SIZE(OTPCFG_KEEP[2]) == 0xFFFF) {
-		printf("OTPCFG2-D[15:0]\n");
-		printf("  Skip\n");
-	} else {
-		printf("OTPCFG2-D[15:0]\n");
-		printf("  Vender ID : %x\n", VENDER_ID(OTPCFG[2]));
+			strcpy(conf_parse[k].status,
+			       "SIPROM Mlock memory lock disable");
 	}
 
-	if (SECREG_SIZE(OTPCFG_KEEP[2]) == 0xFFFF) {
-		printf("OTPCFG2-D[31:16]\n");
-		printf("  Skip\n");
+	k++;
+	conf_parse[k].dw_offset = 2;
+	conf_parse[k].bit = 0;
+	conf_parse[k].length = 16;
+	conf_parse[k].value = VENDER_ID(OTPCFG[2]);
+	if (VENDER_ID(OTPCFG_KEEP[2]) == 0xffff) {
+		conf_parse[k].keep = 1;
+		strcpy(conf_parse[k].status, "Skip");
+	} else if (VENDER_ID(OTPCFG_KEEP[2]) == 0) {
+		sprintf(conf_parse[k].status,
+			"Vender ID : 0x%x", VENDER_ID(OTPCFG[2]));
 	} else {
-		printf("OTPCFG2-D[31:16]\n");
-		printf("  Key Revision : %x\n", KEY_REVISION(OTPCFG[2]));
+		strcpy(conf_parse[k].status, "Keep mask error!");
+		return -1;
 	}
 
-	if (SEC_BOOT_HEADER_OFFSET(OTPCFG_KEEP[3]) == 0xFFFF) {
-		printf("OTPCFG3-D[15:0]\n");
-		printf("  Skip\n");
+	k++;
+	conf_parse[k].dw_offset = 2;
+	conf_parse[k].bit = 16;
+	conf_parse[k].length = 16;
+	conf_parse[k].value = KEY_REVISION(OTPCFG[2]);
+	if (KEY_REVISION(OTPCFG_KEEP[2]) == 0xffff) {
+		conf_parse[k].keep = 1;
+		strcpy(conf_parse[k].status, "Skip");
+	} else if (KEY_REVISION(OTPCFG_KEEP[2]) == 0) {
+		sprintf(conf_parse[k].status,
+			"Key Revision : 0x%x", KEY_REVISION(OTPCFG[2]));
 	} else {
-		printf("OTPCFG3-D[15:0]\n");
-		printf("  Secure boot header offset : %x\n",
-		       SEC_BOOT_HEADER_OFFSET(OTPCFG[3]));
+		strcpy(conf_parse[k].status, "Keep mask error!");
+		return -1;
 	}
 
-	if (KEYS_VALID_BITS(OTPCFG_KEEP[4]) == 0xFF) {
-		printf("OTPCFG4-D[7:0]\n");
-		printf("  Skip\n");
+	k++;
+	conf_parse[k].dw_offset = 3;
+	conf_parse[k].bit = 0;
+	conf_parse[k].length = 16;
+	conf_parse[k].value = SEC_BOOT_HEADER_OFFSET(OTPCFG[3]);
+	if (SEC_BOOT_HEADER_OFFSET(OTPCFG_KEEP[3]) == 0xffff) {
+		conf_parse[k].keep = 1;
+		strcpy(conf_parse[k].status, "Skip");
+	} else if (SEC_BOOT_HEADER_OFFSET(OTPCFG_KEEP[3]) == 0) {
+		sprintf(conf_parse[k].status,
+			"Secure boot header offset : 0x%x",
+			SEC_BOOT_HEADER_OFFSET(OTPCFG[3]));
 	} else {
-		printf("OTPCFG4-D[7:0]\n");
+		strcpy(conf_parse[k].status, "Keep mask error!");
+		return -1;
+	}
+
+	k++;
+	conf_parse[k].dw_offset = 4;
+	conf_parse[k].bit = 0;
+	conf_parse[k].length = 8;
+	conf_parse[k].value = KEYS_VALID_BITS(OTPCFG[4]);
+	if (KEYS_VALID_BITS(OTPCFG_KEEP[4]) == 0xff) {
+		conf_parse[k].keep = 1;
+		strcpy(conf_parse[k].status, "Skip");
+	} else if (KEYS_VALID_BITS(OTPCFG_KEEP[4]) == 0) {
 		tmp = KEYS_VALID_BITS(OTPCFG[4]);
 		if (tmp != 0) {
 			for (i = 0; i < 7; i++) {
@@ -595,13 +769,22 @@ static int otp_conf_parse(uint32_t *OTPCFG)
 		} else {
 			pass = 0;
 		}
-		printf("  Keys valid  : %d\n", pass);
-	}
-	if (KEYS_RETIRE_BITS(OTPCFG_KEEP[4]) == 0xFF) {
-		printf("OTPCFG4-D[23:16]\n");
-		printf("  Skip\n");
+		sprintf(conf_parse[k].status,
+			"Keys valid  : %d", pass);
 	} else {
-		printf("OTPCFG4-D[23:16]\n");
+		strcpy(conf_parse[k].status, "Keep mask error!");
+		return -1;
+	}
+
+	k++;
+	conf_parse[k].dw_offset = 4;
+	conf_parse[k].bit = 16;
+	conf_parse[k].length = 8;
+	conf_parse[k].value = KEYS_RETIRE_BITS(OTPCFG[4]);
+	if (KEYS_RETIRE_BITS(OTPCFG_KEEP[4]) == 0xff) {
+		conf_parse[k].keep = 1;
+		strcpy(conf_parse[k].status, "Skip");
+	} else if (KEYS_RETIRE_BITS(OTPCFG_KEEP[4]) == 0) {
 		tmp = KEYS_RETIRE_BITS(OTPCFG[4]);
 		if (tmp != 0) {
 			for (i = 0; i < 7; i++) {
@@ -612,50 +795,138 @@ static int otp_conf_parse(uint32_t *OTPCFG)
 		} else {
 			pass = 0;
 		}
-		printf("  Keys Retire ID : %d\n", pass);
+		sprintf(conf_parse[k].status,
+			"Keys Retire ID  : %d", pass);
+	} else {
+		strcpy(conf_parse[k].status, "Keep mask error!");
+		return -1;
 	}
+
+	k++;
+	conf_parse[k].dw_offset = 5;
+	conf_parse[k].bit = 0;
+	conf_parse[k].length = 32;
+	conf_parse[k].value = OTPCFG[5];
 	if (OTPCFG_KEEP[5] == 0xFFFFFFFF) {
-		printf("OTPCFG5-D[31:0]\n");
-		printf("  Skip\n");
+		conf_parse[k].keep = 1;
+		strcpy(conf_parse[k].status, "Skip");
+	} else if (OTPCFG_KEEP[5] == 0) {
+		sprintf(conf_parse[k].status,
+			"User define data, random number low : 0x%x", OTPCFG[5]);
 	} else {
-		printf("OTPCFG5-D[31:0]\n");
-		printf("  User define data, random number low : %x\n", OTPCFG[5]);
+		strcpy(conf_parse[k].status, "Keep mask error!");
+		return -1;
 	}
 
+	k++;
+	conf_parse[k].dw_offset = 6;
+	conf_parse[k].bit = 0;
+	conf_parse[k].length = 32;
+	conf_parse[k].value = OTPCFG[6];
 	if (OTPCFG_KEEP[6] == 0xFFFFFFFF) {
-		printf("OTPCFG6-D[31:0]\n");
-		printf("  Skip\n");
+		conf_parse[k].keep = 1;
+		strcpy(conf_parse[k].status, "Skip");
+	} else if (OTPCFG_KEEP[6] == 0) {
+		sprintf(conf_parse[k].status,
+			"User define data, random number high : 0x%x", OTPCFG[6]);
 	} else {
-		printf("OTPCFG6-D[31:0]\n");
-		printf("  User define data, random number high : %x\n", OTPCFG[6]);
+		strcpy(conf_parse[k].status, "Keep mask error!");
+		return -1;
 	}
 
+	k++;
+	conf_parse[k].dw_offset = 8;
+	conf_parse[k].bit = 0;
+	conf_parse[k].length = 32;
+	conf_parse[k].value = OTPCFG[8];
 	if (OTPCFG_KEEP[8] == 0xFFFFFFFF) {
-		printf("OTPCFG8-D[31:0]\n");
-		printf("  Skip\n");
+		conf_parse[k].keep = 1;
+		strcpy(conf_parse[k].status, "Skip");
+	} else if (OTPCFG_KEEP[8] == 0) {
+		sprintf(conf_parse[k].status,
+			"Redundancy Repair : 0x%x", OTPCFG[8]);
 	} else {
-		printf("OTPCFG8-D[31:0]\n");
-		printf("  Redundancy Repair : %x\n", OTPCFG[8]);
+		strcpy(conf_parse[k].status, "Keep mask error!");
+		return -1;
 	}
 
+	k++;
+	conf_parse[k].dw_offset = 10;
+	conf_parse[k].bit = 0;
+	conf_parse[k].length = 32;
+	conf_parse[k].value = OTPCFG[10];
 	if (OTPCFG_KEEP[10] == 0xFFFFFFFF) {
-		printf("OTPCFG10-D[31:0]\n");
-		printf("  Skip\n");
+		conf_parse[k].keep = 1;
+		strcpy(conf_parse[k].status, "Skip");
+	} else if (OTPCFG_KEEP[10] == 0) {
+		sprintf(conf_parse[k].status,
+			"Manifest ID low : 0x%x", OTPCFG[10]);
 	} else {
-		printf("OTPCFG10-D[31:0]\n");
-		printf("  Manifest ID low : %x\n", OTPCFG[10]);
+		strcpy(conf_parse[k].status, "Keep mask error!");
+		return -1;
 	}
 
+	k++;
+	conf_parse[k].dw_offset = 11;
+	conf_parse[k].bit = 0;
+	conf_parse[k].length = 32;
+	conf_parse[k].value = OTPCFG[11];
 	if (OTPCFG_KEEP[11] == 0xFFFFFFFF) {
-		printf("OTPCFG11-D[31:0]\n");
-		printf("  Skip\n");
+		conf_parse[k].keep = 1;
+		strcpy(conf_parse[k].status, "Skip");
+	} else if (OTPCFG_KEEP[11] == 0) {
+		sprintf(conf_parse[k].status,
+			"Manifest ID high : 0x%x", OTPCFG[11]);
 	} else {
-		printf("OTPCFG11-D[31:0]\n");
-		printf("  Manifest ID high : %x\n", OTPCFG[11]);
+		strcpy(conf_parse[k].status, "Keep mask error!");
+		return -1;
 	}
 
-	return 0;
+	return k + 1;
 
+}
+
+
+static int otp_print_conf_info(uint32_t *OTPCFG)
+{
+	struct otpconf_parse conf_parse[60];
+	int length;
+	int i;
+
+	length = otp_conf_parse(OTPCFG, conf_parse);
+
+	if (length <= 0)
+		return OTP_FAILURE;
+
+	printf("DW  BIT     Value       Status\n");
+	printf("__________________________________________________________________________\n");
+	for (i = 0; i < length; i++) {
+		printf("%-4d", conf_parse[i].dw_offset);
+		if (conf_parse[i].length == 1) {
+			printf("%-8d", conf_parse[i].bit);
+		} else {
+			printf("%-2d:%-5d",
+			       conf_parse[i].bit + conf_parse[i].length - 1,
+			       conf_parse[i].bit);
+		}
+		printf("0x%-10x", conf_parse[i].value);
+		printf("%s\n", conf_parse[i].status);
+	}
+	return OTP_SUCCESS;
+}
+
+static void otp_info_config(void)
+{
+	uint32_t OTPCFG[24];
+	int i;
+
+	for (i = 0; i < 12; i++)
+		otp_read_config(i, &OTPCFG[i]);
+
+	for (i = 12; i < 24; i++)
+		OTPCFG[i] = 0;
+
+	otp_print_conf_info(OTPCFG);
 }
 
 static void buf_print(char *buf, int len)
@@ -862,7 +1133,7 @@ static int otp_prog_conf(uint32_t *buf)
 
 }
 
-static void otp_strp_status(struct otpstrap *otpstrap)
+static void otp_strp_status(struct otpstrap_status *otpstrap)
 {
 	uint32_t OTPSTRAP_RAW[2];
 	int i, j;
@@ -919,7 +1190,7 @@ static int otp_strap_parse(uint32_t *buf)
 	int bit, pbit, kbit;
 	int fail = 0;
 	int skip = -1;
-	struct otpstrap otpstrap[64];
+	struct otpstrap_status otpstrap[64];
 
 	otp_strp_status(otpstrap);
 	for (i = 0; i < 64; i++) {
@@ -972,7 +1243,7 @@ static int otp_strap_parse(uint32_t *buf)
 static int otp_print_strap(int start, int count)
 {
 	int i, j;
-	struct otpstrap otpstrap[64];
+	struct otpstrap_status otpstrap[64];
 
 	if (start < 0 || start > 64)
 		return OTP_USAGE;
@@ -1015,7 +1286,7 @@ static int otp_prog_strap(uint32_t *buf)
 	int fail = 0;
 	int pass = 0;
 	int soak = 0;
-	struct otpstrap otpstrap[64];
+	struct otpstrap_status otpstrap[64];
 
 	otp_strp_status(otpstrap);
 
@@ -1286,7 +1557,7 @@ static int do_otp_prog(int addr, int byte_size, int nconfirm)
 	}
 	if (!nconfirm) {
 		if (mode == OTP_REGION_CONF) {
-			if (otp_conf_parse(conf_region) < 0) {
+			if (otp_print_conf_info(conf_region) < 0) {
 				printf("OTP config error, please check.\n");
 				return OTP_FAILURE;
 			}
@@ -1305,7 +1576,7 @@ static int do_otp_prog(int addr, int byte_size, int nconfirm)
 				return OTP_SUCCESS;
 			}
 		} else if (mode == OTP_REGION_ALL) {
-			if (otp_conf_parse(conf_region) < 0) {
+			if (otp_print_conf_info(conf_region) < 0) {
 				printf("OTP config error, please check.\n");
 				return OTP_FAILURE;
 			}
@@ -1365,7 +1636,7 @@ static int do_otp_prog_bit(int mode, int otp_dw_offset, int bit_offset, int valu
 	uint32_t read[2];
 	uint32_t strap_buf[6];
 	uint32_t prog_address = 0;
-	struct otpstrap otpstrap[64];
+	struct otpstrap_status otpstrap[64];
 	int otp_bit;
 	int i;
 	int pass;
@@ -1621,11 +1892,35 @@ static int do_otpcmp(cmd_tbl_t *cmdtp, int flag, int argc, char *const argv[])
 	}
 }
 
+static int do_otpinfo(cmd_tbl_t *cmdtp, int flag, int argc, char *const argv[])
+{
+	uint32_t offset, count;
+	int ret;
+
+	if (argc != 2)
+		return CMD_RET_USAGE;
+
+
+	if (!strcmp(argv[1], "conf")) {
+		writel(OTP_PASSWD, 0x1e6f2000); //password
+		otp_info_config();
+	} else if (!strcmp(argv[1], "data")) {
+		writel(OTP_PASSWD, 0x1e6f2000); //password
+	} else if (!strcmp(argv[1], "strap")) {
+		writel(OTP_PASSWD, 0x1e6f2000); //password
+	} else {
+		return CMD_RET_USAGE;
+	}
+
+	return CMD_RET_SUCCESS;
+}
+
 static cmd_tbl_t cmd_otp[] = {
 	U_BOOT_CMD_MKENT(read, 4, 0, do_otpread, "", ""),
 	U_BOOT_CMD_MKENT(prog, 4, 0, do_otpprog, "", ""),
 	U_BOOT_CMD_MKENT(pb, 6, 0, do_otppb, "", ""),
 	U_BOOT_CMD_MKENT(cmp, 3, 0, do_otpcmp, "", ""),
+	U_BOOT_CMD_MKENT(info, 3, 0, do_otpinfo, "", ""),
 
 };
 
@@ -1652,7 +1947,7 @@ U_BOOT_CMD(
 	"ASPEED One-Time-Programmable sub-system",
 	"read conf|data <otp_dw_offset> <dw_count>\n"
 	"otp read strap <strap_bit_offset> <bit_count>\n"
-	"otp info conf|strap|data <otp_dw_offset> <dw_count>\n"
+	"otp info conf\n"
 	"otp prog [f] <addr> <byte_size>\n"
 	"otp pb conf|data [f] <otp_dw_offset> <bit_offset> <value>\n"
 	"otp pb strap [f] <bit_offset> <value> <protect>\n"
