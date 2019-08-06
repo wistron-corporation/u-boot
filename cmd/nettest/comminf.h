@@ -75,7 +75,7 @@
 //---------------------------------------------------------
 // Default argument
 //---------------------------------------------------------
-#define  DEF_GUSER_DEF_PACKET_VAL                0x66666666     //0xff00ff00, 0xf0f0f0f0, 0xcccccccc, 0x55aa55aa, 0x5a5a5a5a, 0x66666666
+#define  DEF_GUSER_DEF_PACKET_VAL                0xaaaaaaaa     //0xff00ff00, 0xf0f0f0f0, 0xcccccccc, 0x55aa55aa, 0x5a5a5a5a, 0x66666666
 #define  DEF_GIOTIMINGBUND                       2
 #define  DEF_GPHY_ADR                            0
 #define  DEF_GTESTMODE                           0              //[0]0: no burst mode, 1: 0xff, 2: 0x55, 3: random, 4: ARP, 5: ARP, 6: IO timing, 7: IO timing+IO Strength
