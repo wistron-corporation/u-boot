@@ -127,6 +127,42 @@ static struct aspeed_sig_desc fmcquad_link[] = {
 	{ 0x438, GENMASK(5, 4), 0 },
 };
 
+static struct aspeed_sig_desc spi1_link[] = {
+	{ 0x438, GENMASK(13, 11), 0 },
+};
+
+static struct aspeed_sig_desc spi1abr_link[] = {
+	{ 0x438, BIT(9), 0 },
+};
+
+static struct aspeed_sig_desc spi1cs1_link[] = {
+	{ 0x438, BIT(8), 0 },
+};
+
+static struct aspeed_sig_desc spi1wp_link[] = {
+	{ 0x438, BIT(10), 0 },
+};
+	
+static struct aspeed_sig_desc spi1quad_link[] = {
+	{ 0x438, GENMASK(15, 14), 0 },
+};
+
+static struct aspeed_sig_desc spi2_link[] = {
+	{ 0x434, GENMASK(29, 27) | BIT(24), 0 },
+};
+
+static struct aspeed_sig_desc spi2cs1_link[] = {
+	{ 0x434, BIT(25), 0 },
+};
+
+static struct aspeed_sig_desc spi2cs2_link[] = {
+	{ 0x434, BIT(26), 0 },
+};
+
+static struct aspeed_sig_desc spi2quad_link[] = {
+	{ 0x434, GENMASK(31, 30), 0 },
+};
+
 static const struct aspeed_group_config ast2600_groups[] = {
 	{ "MAC1LINK", ARRAY_SIZE(mac1_link), mac1_link },
 	{ "MAC2LINK", ARRAY_SIZE(mac2_link), mac2_link },
@@ -141,6 +177,15 @@ static const struct aspeed_group_config ast2600_groups[] = {
 	{ "SD2", ARRAY_SIZE(sdio2_link), sdio2_link },
 	{ "EMMC", ARRAY_SIZE(emmc_link), emmc_link },
 	{ "FMCQUAD", ARRAY_SIZE(fmcquad_link), fmcquad_link },
+	{ "SPI1", ARRAY_SIZE(spi1_link), spi1_link },
+	{ "SPI1ABR", ARRAY_SIZE(spi1abr_link), spi1abr_link },
+	{ "SPI1CS1", ARRAY_SIZE(spi1cs1_link), spi1cs1_link },
+	{ "SPI1WP", ARRAY_SIZE(spi1wp_link), spi1wp_link },
+	{ "SPI1QUAD", ARRAY_SIZE(spi1quad_link), spi1quad_link },
+	{ "SPI2", ARRAY_SIZE(spi2_link), spi2_link },
+	{ "SPI2CS1", ARRAY_SIZE(spi2cs1_link), spi2cs1_link },
+	{ "SPI2CS2", ARRAY_SIZE(spi2cs2_link), spi2cs2_link },
+	{ "SPI2QUAD", ARRAY_SIZE(spi2quad_link), spi2quad_link },
 };
 
 static int ast2600_pinctrl_get_groups_count(struct udevice *dev)
