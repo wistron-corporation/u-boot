@@ -79,6 +79,49 @@ DECLARE_GLOBAL_DATA_PTR;
 #define KEYS_VALID_BITS(x)		(x & 0xff)
 #define KEYS_RETIRE_BITS(x)		((x >> 16) & 0xff)
 
+#define ENABLE_SECURE_BOOT(x)			(x & 0x1)
+#define BOOT_FROM_EMMC(x)			((x >> 1) & 0x1)
+#define BOOT_FROM_DEBUG_SPI(x)			((x >> 2) & 0x1)
+#define DISABLE_ARM_CM3(x)			((x >> 3) & 0x1)
+#define VGA_EXPANSION_ROM(x)			((x >> 4) & 0x1)
+#define MAC1_RMII_MODE(x)			((x >> 5) & 0x1)
+#define MAC2_RMII_MODE(x)			((x >> 6) & 0x1)
+#define CPU_FREQUENCY(x)			((x >> 7) & 0x7)
+#define HCLK_RATIO(x)				((x >> 10) & 0x3)
+#define VGA_MEMORY_SIZE(x)			((x >> 12) & 0x3)
+#define VGA_CLASS_CODE(x)			((x >> 17) & 0x1)
+#define DISABLE_DEBUG0(x)			((x >> 18) & 0x1)
+#define BOOT_FROM_EMMC_SPEED_MDOE(x)		((x >> 19) & 0x1)
+#define DISABLE_PCIE_EHCI(x)			((x >> 20) & 0x1)
+#define DISABLE_VGA_XDMA(x)			((x >> 21) & 0x1)
+#define DISABLE_DEDICATED_BMC_FUNCTION(x)	((x >> 22) & 0x1)
+#define DEDICATE_ROOT_COMPLEX_RELAX(x)		((x >> 23) & 0x1)
+#define SELECT_DRAM_TYPES(x)			((x >> 24) & 0x1)
+#define MAC3_RMII_MODE(x)			(x & 0x1)
+#define MAC4_RMII_MODE(x)			((x >> 1) & 0x1)
+#define SIO_CONF_ADDR(x)			((x >> 2) & 0x1)
+#define DISABLE_SIO(x)				((x >> 3) & 0x1)
+#define DISABLE_DEBUG1(x)			((x >> 4) & 0x1)
+#define ENABLE_ACPI(x)				((x >> 5) & 0x1)
+#define SELECT_LPC(x)				((x >> 6) & 0x1)
+#define ENABLE_SAFS(x)				((x >> 7) & 0x1)
+#define ENABLE_SPI_3B4B_AUTO(x)			((x >> 10) & 0x1)
+#define ENABLE_BOOT_SPI_ABR(x)			((x >> 11) & 0x1)
+#define BOOT_SPI_ABR_MODE(x)			((x >> 12) & 0x1)
+#define BOOT_SPI_FLASH_SIZE(x)			((x >> 13) & 0x7)
+#define ENABLE_HOST_SPI_ABR(x)			((x >> 16) & 0x1)
+#define EBABLE_HOST_SPI_ABR_SEL_PIN(x)		((x >> 17) & 0x1)
+#define HOST_SPI_ABR_MODE(x)			((x >> 18) & 0x1)
+#define HOST_SPI_FLASH_SIZE(x)			((x >> 19) & 0x7)
+#define ENABLE_BOOT_SPI_AUX_CONTROL_PIN(x)	((x >> 22) & 0x1)
+#define BOOT_SPI_CRTM_SIZE(x)			((x >> 23) & 0x3)
+#define HOST_SPI_CRTM_SIZE(x)			((x >> 25) & 0x3)
+#define ENABLE_HOST_SPI_AUX_CONTROL_PIN(x)	((x >> 27) & 0x1)
+#define ENABLE_GPIO_PASS_THROUGH(x)		((x >> 28) & 0x1)
+#define DISABLE_LOW_SECURITY_KEY(x)		((x >> 29) & 0x1)
+#define ENABLE_DEDICATE_GPIO_STRAP(x)		((x >> 30) & 0x1)
+
+
 #define PBSTR "||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||"
 #define PBWIDTH 60
 
@@ -113,6 +156,15 @@ struct otpconf_parse {
 	int length;
 	int value;
 	int keep;
+	char status[80];
+};
+
+struct otpstrap_parse {
+	int bit;
+	int length;
+	int value;
+	int keep;
+	int protect;
 	char status[80];
 };
 
@@ -319,6 +371,56 @@ static void otp_prog_dw(uint32_t value, uint32_t keep, uint32_t prog_address)
 				prog_bit = 0x1 << j;
 		}
 		otp_prog(prog_address, prog_bit);
+	}
+}
+
+
+static void otp_strp_status(struct otpstrap_status *otpstrap)
+{
+	uint32_t OTPSTRAP_RAW[2];
+	int i, j;
+
+	for (j = 0; j < 64; j++) {
+		otpstrap[j].value = 0;
+		otpstrap[j].remain_times = 7;
+		otpstrap[j].writeable_option = -1;
+		otpstrap[j].protected = 0;
+	}
+
+	for (i = 16; i < 30; i += 2) {
+		int option = (i - 16) / 2;
+		otp_read_config(i, &OTPSTRAP_RAW[0]);
+		otp_read_config(i + 1, &OTPSTRAP_RAW[1]);
+		for (j = 0; j < 32; j++) {
+			char bit_value = ((OTPSTRAP_RAW[0] >> j) & 0x1);
+			if ((bit_value == 0) && (otpstrap[j].writeable_option == -1)) {
+				otpstrap[j].writeable_option = option;
+			}
+			if (bit_value == 1)
+				otpstrap[j].remain_times --;
+			otpstrap[j].value ^= bit_value;
+			otpstrap[j].option_array[option] = bit_value;
+		}
+		for (j = 32; j < 64; j++) {
+			char bit_value = ((OTPSTRAP_RAW[1] >> (j - 32)) & 0x1);
+			if ((bit_value == 0) && (otpstrap[j].writeable_option == -1)) {
+				otpstrap[j].writeable_option = option;
+			}
+			if (bit_value == 1)
+				otpstrap[j].remain_times --;
+			otpstrap[j].value ^= bit_value;
+			otpstrap[j].option_array[option] = bit_value;
+		}
+	}
+	otp_read_config(30, &OTPSTRAP_RAW[0]);
+	otp_read_config(31, &OTPSTRAP_RAW[1]);
+	for (j = 0; j < 32; j++) {
+		if (((OTPSTRAP_RAW[0] >> j) & 0x1) == 1)
+			otpstrap[j].protected = 1;
+	}
+	for (j = 32; j < 64; j++) {
+		if (((OTPSTRAP_RAW[1] >> (j - 32)) & 0x1) == 1)
+			otpstrap[j].protected = 1;
 	}
 }
 
@@ -886,6 +988,809 @@ static int otp_conf_parse(uint32_t *OTPCFG, struct otpconf_parse *conf_parse)
 
 }
 
+static int otp_strap_parse(uint32_t *OTPSTRAP,
+			   struct otpstrap_parse *strap_parse)
+{
+	int k = 0;
+	uint32_t *OTPSTRAP_KEEP = &OTPSTRAP[2];
+	uint32_t *OTPSTRAP_PRO = &OTPSTRAP[4];
+
+	strap_parse[k].bit = 0;
+	strap_parse[k].length = 1;
+	strap_parse[k].value = ENABLE_SECURE_BOOT(OTPSTRAP[0]);
+	strap_parse[k].protect = ENABLE_SECURE_BOOT(OTPSTRAP_PRO[0]);
+	if (ENABLE_SECURE_BOOT(OTPSTRAP_KEEP[0])) {
+		strap_parse[k].keep = 1;
+		strcpy(strap_parse[k].status, "Skip");
+	} else {
+		if (ENABLE_SECURE_BOOT(OTPSTRAP[0]))
+			strcpy(strap_parse[k].status,
+			       "Enable secure boot");
+		else
+			strcpy(strap_parse[k].status,
+			       "Disable secure boot");
+	}
+
+	k++;
+	strap_parse[k].bit = 1;
+	strap_parse[k].length = 1;
+	strap_parse[k].value = BOOT_FROM_EMMC(OTPSTRAP[0]);
+	strap_parse[k].protect = BOOT_FROM_EMMC(OTPSTRAP_PRO[0]);
+	if (BOOT_FROM_EMMC(OTPSTRAP_KEEP[0])) {
+		strap_parse[k].keep = 1;
+		strcpy(strap_parse[k].status, "Skip");
+	} else {
+		if (BOOT_FROM_EMMC(OTPSTRAP[0]))
+			strcpy(strap_parse[k].status,
+			       "Enable boot from eMMC");
+		else
+			strcpy(strap_parse[k].status,
+			       "Disable boot from eMMC");
+	}
+
+	k++;
+	strap_parse[k].bit = 2;
+	strap_parse[k].length = 1;
+	strap_parse[k].value = BOOT_FROM_DEBUG_SPI(OTPSTRAP[0]);
+	strap_parse[k].protect = BOOT_FROM_DEBUG_SPI(OTPSTRAP_PRO[0]);
+	if (BOOT_FROM_DEBUG_SPI(OTPSTRAP_KEEP[0])) {
+		strap_parse[k].keep = 1;
+		strcpy(strap_parse[k].status, "Skip");
+	} else {
+		if (BOOT_FROM_DEBUG_SPI(OTPSTRAP[0]))
+			strcpy(strap_parse[k].status,
+			       "Enable Boot from debug SPI");
+		else
+			strcpy(strap_parse[k].status,
+			       "Disable Boot from debug SPI");
+	}
+
+	k++;
+	strap_parse[k].bit = 3;
+	strap_parse[k].length = 1;
+	strap_parse[k].value = DISABLE_ARM_CM3(OTPSTRAP[0]);
+	strap_parse[k].protect = DISABLE_ARM_CM3(OTPSTRAP_PRO[0]);
+	if (DISABLE_ARM_CM3(OTPSTRAP_KEEP[0])) {
+		strap_parse[k].keep = 1;
+		strcpy(strap_parse[k].status, "Skip");
+	} else {
+		if (DISABLE_ARM_CM3(OTPSTRAP[0]))
+			strcpy(strap_parse[k].status,
+			       "Disable ARM CM3");
+		else
+			strcpy(strap_parse[k].status,
+			       "Enable ARM CM3");
+	}
+
+	k++;
+	strap_parse[k].bit = 4;
+	strap_parse[k].length = 1;
+	strap_parse[k].value = VGA_EXPANSION_ROM(OTPSTRAP[0]);
+	strap_parse[k].protect = VGA_EXPANSION_ROM(OTPSTRAP_PRO[0]);
+	if (VGA_EXPANSION_ROM(OTPSTRAP_KEEP[0])) {
+		strap_parse[k].keep = 1;
+		strcpy(strap_parse[k].status, "Skip");
+	} else {
+		if (VGA_EXPANSION_ROM(OTPSTRAP[0]))
+			strcpy(strap_parse[k].status,
+			       "Enable dedicated VGA BIOS ROM");
+		else
+			strcpy(strap_parse[k].status,
+			       "No VGA BISO ROM, VGA BIOS is merged in the system BIOS");
+	}
+
+	k++;
+	strap_parse[k].bit = 5;
+	strap_parse[k].length = 1;
+	strap_parse[k].value = MAC1_RMII_MODE(OTPSTRAP[0]);
+	strap_parse[k].protect = MAC1_RMII_MODE(OTPSTRAP_PRO[0]);
+	if (MAC1_RMII_MODE(OTPSTRAP_KEEP[0])) {
+		strap_parse[k].keep = 1;
+		strcpy(strap_parse[k].status, "Skip");
+	} else {
+		if (MAC1_RMII_MODE(OTPSTRAP[0]))
+			strcpy(strap_parse[k].status,
+			       "MAC 1 : RGMII");
+		else
+			strcpy(strap_parse[k].status,
+			       "MAC 1 : RMII/NCSI");
+	}
+
+	k++;
+	strap_parse[k].bit = 6;
+	strap_parse[k].length = 1;
+	strap_parse[k].value = MAC2_RMII_MODE(OTPSTRAP[0]);
+	strap_parse[k].protect = MAC2_RMII_MODE(OTPSTRAP_PRO[0]);
+	if (MAC2_RMII_MODE(OTPSTRAP_KEEP[0])) {
+		strap_parse[k].keep = 1;
+		strcpy(strap_parse[k].status, "Skip");
+	} else {
+		if (MAC2_RMII_MODE(OTPSTRAP[0]))
+			strcpy(strap_parse[k].status,
+			       "MAC 2 : RGMII");
+		else
+			strcpy(strap_parse[k].status,
+			       "MAC 2 : RMII/NCSI");
+	}
+
+	k++;
+	strap_parse[k].bit = 7;
+	strap_parse[k].length = 3;
+	strap_parse[k].value = CPU_FREQUENCY(OTPSTRAP[0]);
+	strap_parse[k].protect = CPU_FREQUENCY(OTPSTRAP_PRO[0]);
+	if (CPU_FREQUENCY(OTPSTRAP_KEEP[0]) == 0x7) {
+		strap_parse[k].keep = 1;
+		strcpy(strap_parse[k].status, "Skip");
+	} else if (CPU_FREQUENCY(OTPSTRAP_KEEP[0]) == 0) {
+		if (CPU_FREQUENCY(OTPSTRAP[0]) == 0) {
+			strcpy(strap_parse[k].status,
+			       "CPU Frequency : 1GHz");
+		} else if (CPU_FREQUENCY(OTPSTRAP[0]) == 1) {
+			strcpy(strap_parse[k].status,
+			       "CPU Frequency : 800MHz");
+		} else if (CPU_FREQUENCY(OTPSTRAP[0]) == 2) {
+			strcpy(strap_parse[k].status,
+			       "CPU Frequency : 1.2GHz");
+		} else if (CPU_FREQUENCY(OTPSTRAP[0]) == 3) {
+			strcpy(strap_parse[k].status,
+			       "CPU Frequency : 1.4GHz");
+		} else {
+			strcpy(strap_parse[k].status,
+			       "CPU Frequency : error");
+			return -1;
+		}
+	} else {
+		strcpy(strap_parse[k].status, "Keep mask error!");
+		return -1;
+	}
+
+	k++;
+	strap_parse[k].bit = 10;
+	strap_parse[k].length = 2;
+	strap_parse[k].value = HCLK_RATIO(OTPSTRAP[0]);
+	strap_parse[k].protect = HCLK_RATIO(OTPSTRAP_PRO[0]);
+	if (HCLK_RATIO(OTPSTRAP_KEEP[0]) == 0x3) {
+		strap_parse[k].keep = 1;
+		strcpy(strap_parse[k].status, "Skip");
+	} else if (HCLK_RATIO(OTPSTRAP_KEEP[0]) == 0) {
+		if (HCLK_RATIO(OTPSTRAP[0]) == 0) {
+			strcpy(strap_parse[k].status,
+			       "HCLK ratio AXI:AHB = 2:1");
+		} else if (HCLK_RATIO(OTPSTRAP[0]) == 1) {
+			strcpy(strap_parse[k].status,
+			       "HCLK ratio AXI:AHB = 2:1");
+		} else if (HCLK_RATIO(OTPSTRAP[0]) == 2) {
+			strcpy(strap_parse[k].status,
+			       "HCLK ratio AXI:AHB = 3:1");
+		} else if (HCLK_RATIO(OTPSTRAP[0]) == 3) {
+			strcpy(strap_parse[k].status,
+			       "HCLK ratio AXI:AHB = 4:1");
+		}
+	} else {
+		strcpy(strap_parse[k].status, "Keep mask error!");
+		return -1;
+	}
+
+	k++;
+	strap_parse[k].bit = 12;
+	strap_parse[k].length = 2;
+	strap_parse[k].value = VGA_MEMORY_SIZE(OTPSTRAP[0]);
+	strap_parse[k].protect = VGA_MEMORY_SIZE(OTPSTRAP_PRO[0]);
+	if (VGA_MEMORY_SIZE(OTPSTRAP_KEEP[0]) == 0x3) {
+		strap_parse[k].keep = 1;
+		strcpy(strap_parse[k].status, "Skip");
+	} else if (VGA_MEMORY_SIZE(OTPSTRAP_KEEP[0]) == 0) {
+		if (VGA_MEMORY_SIZE(OTPSTRAP[0]) == 0) {
+			strcpy(strap_parse[k].status,
+			       "VGA memory size : 8MB");
+		} else if (VGA_MEMORY_SIZE(OTPSTRAP[0]) == 1) {
+			strcpy(strap_parse[k].status,
+			       "VGA memory size : 16MB");
+		} else if (VGA_MEMORY_SIZE(OTPSTRAP[0]) == 2) {
+			strcpy(strap_parse[k].status,
+			       "VGA memory size : 32MB");
+		} else if (VGA_MEMORY_SIZE(OTPSTRAP[0]) == 3) {
+			strcpy(strap_parse[k].status,
+			       "VGA memory size : 64MB");
+		}
+	} else {
+		strcpy(strap_parse[k].status, "Keep mask error!");
+		return -1;
+	}
+
+	k++;
+	strap_parse[k].bit = 17;
+	strap_parse[k].length = 1;
+	strap_parse[k].value = VGA_CLASS_CODE(OTPSTRAP[0]);
+	strap_parse[k].protect = VGA_CLASS_CODE(OTPSTRAP_PRO[0]);
+	if (VGA_CLASS_CODE(OTPSTRAP_KEEP[0])) {
+		strap_parse[k].keep = 1;
+		strcpy(strap_parse[k].status, "Skip");
+	} else {
+		if (VGA_CLASS_CODE(OTPSTRAP[0]))
+			strcpy(strap_parse[k].status,
+			       "VGA class code : Class Code for VGA device");
+		else
+			strcpy(strap_parse[k].status,
+			       "VGA class code : Class Code for video device");
+	}
+
+	k++;
+	strap_parse[k].bit = 18;
+	strap_parse[k].length = 1;
+	strap_parse[k].value = DISABLE_DEBUG0(OTPSTRAP[0]);
+	strap_parse[k].protect = DISABLE_DEBUG0(OTPSTRAP_PRO[0]);
+	if (DISABLE_DEBUG0(OTPSTRAP_KEEP[0])) {
+		strap_parse[k].keep = 1;
+		strcpy(strap_parse[k].status, "Skip");
+	} else {
+		if (DISABLE_DEBUG0(OTPSTRAP[0]))
+			strcpy(strap_parse[k].status,
+			       "Disable debug interfaces 0");
+		else
+			strcpy(strap_parse[k].status,
+			       "Enable debug interfaces 0");
+	}
+
+	k++;
+	strap_parse[k].bit = 19;
+	strap_parse[k].length = 1;
+	strap_parse[k].value = BOOT_FROM_EMMC_SPEED_MDOE(OTPSTRAP[0]);
+	strap_parse[k].protect = BOOT_FROM_EMMC_SPEED_MDOE(OTPSTRAP_PRO[0]);
+	if (BOOT_FROM_EMMC_SPEED_MDOE(OTPSTRAP_KEEP[0])) {
+		strap_parse[k].keep = 1;
+		strcpy(strap_parse[k].status, "Skip");
+	} else {
+		if (BOOT_FROM_EMMC_SPEED_MDOE(OTPSTRAP[0]))
+			strcpy(strap_parse[k].status,
+			       "Boot from emmc mode : Normal eMMC speed");
+		else
+			strcpy(strap_parse[k].status,
+			       "Boot from emmc mode : High eMMC speed");
+	}
+
+	k++;
+	strap_parse[k].bit = 20;
+	strap_parse[k].length = 1;
+	strap_parse[k].value = DISABLE_PCIE_EHCI(OTPSTRAP[0]);
+	strap_parse[k].protect = DISABLE_PCIE_EHCI(OTPSTRAP_PRO[0]);
+	if (DISABLE_PCIE_EHCI(OTPSTRAP_KEEP[0])) {
+		strap_parse[k].keep = 1;
+		strcpy(strap_parse[k].status, "Skip");
+	} else {
+		if (DISABLE_PCIE_EHCI(OTPSTRAP[0]))
+			strcpy(strap_parse[k].status,
+			       "Disable Pcie EHCI device");
+		else
+			strcpy(strap_parse[k].status,
+			       "Enable Pcie EHCI device");
+	}
+
+	k++;
+	strap_parse[k].bit = 21;
+	strap_parse[k].length = 1;
+	strap_parse[k].value = DISABLE_VGA_XDMA(OTPSTRAP[0]);
+	strap_parse[k].protect = DISABLE_VGA_XDMA(OTPSTRAP_PRO[0]);
+	if (DISABLE_VGA_XDMA(OTPSTRAP_KEEP[0])) {
+		strap_parse[k].keep = 1;
+		strcpy(strap_parse[k].status, "Skip");
+	} else {
+		if (DISABLE_VGA_XDMA(OTPSTRAP[0]))
+			strcpy(strap_parse[k].status,
+			       "Disable VGA XDMA function");
+		else
+			strcpy(strap_parse[k].status,
+			       "Enable VGA XDMA function");
+	}
+
+	k++;
+	strap_parse[k].bit = 22;
+	strap_parse[k].length = 1;
+	strap_parse[k].value = DISABLE_DEDICATED_BMC_FUNCTION(OTPSTRAP[0]);
+	strap_parse[k].protect = DISABLE_DEDICATED_BMC_FUNCTION(OTPSTRAP_PRO[0]);
+	if (DISABLE_DEDICATED_BMC_FUNCTION(OTPSTRAP_KEEP[0])) {
+		strap_parse[k].keep = 1;
+		strcpy(strap_parse[k].status, "Skip");
+	} else {
+		if (DISABLE_DEDICATED_BMC_FUNCTION(OTPSTRAP[0]))
+			strcpy(strap_parse[k].status,
+			       "Disable dedicated BMC functions for non-BMC application");
+		else
+			strcpy(strap_parse[k].status,
+			       "Normal BMC mode");
+	}
+
+	k++;
+	strap_parse[k].bit = 23;
+	strap_parse[k].length = 1;
+	strap_parse[k].value = DEDICATE_ROOT_COMPLEX_RELAX(OTPSTRAP[0]);
+	strap_parse[k].protect = DEDICATE_ROOT_COMPLEX_RELAX(OTPSTRAP_PRO[0]);
+	if (DEDICATE_ROOT_COMPLEX_RELAX(OTPSTRAP_KEEP[0])) {
+		strap_parse[k].keep = 1;
+		strcpy(strap_parse[k].status, "Skip");
+	} else {
+		if (DEDICATE_ROOT_COMPLEX_RELAX(OTPSTRAP[0]))
+			strcpy(strap_parse[k].status,
+			       "SSPRST# pin is for PCIE root complex dedicated reset pin");
+		else
+			strcpy(strap_parse[k].status,
+			       "SSPRST# pin is for secondary processor dedicated reset pin");
+	}
+
+	k++;
+	strap_parse[k].bit = 24;
+	strap_parse[k].length = 1;
+	strap_parse[k].value = SELECT_DRAM_TYPES(OTPSTRAP[0]);
+	strap_parse[k].protect = SELECT_DRAM_TYPES(OTPSTRAP_PRO[0]);
+	if (SELECT_DRAM_TYPES(OTPSTRAP_KEEP[0])) {
+		strap_parse[k].keep = 1;
+		strcpy(strap_parse[k].status, "Skip");
+	} else {
+		if (SELECT_DRAM_TYPES(OTPSTRAP[0]))
+			strcpy(strap_parse[k].status,
+			       "DRAM types : DDR4");
+		else
+			strcpy(strap_parse[k].status,
+			       "DRAM types : DDR3");
+	}
+
+	k++;
+	strap_parse[k].bit = 32;
+	strap_parse[k].length = 1;
+	strap_parse[k].value = MAC3_RMII_MODE(OTPSTRAP[1]);
+	strap_parse[k].protect = MAC3_RMII_MODE(OTPSTRAP_PRO[1]);
+	if (MAC3_RMII_MODE(OTPSTRAP_KEEP[1])) {
+		strap_parse[k].keep = 1;
+		strcpy(strap_parse[k].status, "Skip");
+	} else {
+		if (MAC3_RMII_MODE(OTPSTRAP[1]))
+			strcpy(strap_parse[k].status,
+			       "MAC 3 : RGMII");
+		else
+			strcpy(strap_parse[k].status,
+			       "MAC 3 : RMII/NCSI");
+	}
+
+	k++;
+	strap_parse[k].bit = 33;
+	strap_parse[k].length = 1;
+	strap_parse[k].value = MAC4_RMII_MODE(OTPSTRAP[1]);
+	strap_parse[k].protect = MAC4_RMII_MODE(OTPSTRAP_PRO[1]);
+	if (MAC4_RMII_MODE(OTPSTRAP_KEEP[1])) {
+		strap_parse[k].keep = 1;
+		strcpy(strap_parse[k].status, "Skip");
+	} else {
+		if (MAC4_RMII_MODE(OTPSTRAP[1]))
+			strcpy(strap_parse[k].status,
+			       "MAC 4 : RGMII");
+		else
+			strcpy(strap_parse[k].status,
+			       "MAC 4 : RMII/NCSI");
+	}
+
+	k++;
+	strap_parse[k].bit = 34;
+	strap_parse[k].length = 1;
+	strap_parse[k].value = SIO_CONF_ADDR(OTPSTRAP[1]);
+	strap_parse[k].protect = SIO_CONF_ADDR(OTPSTRAP_PRO[1]);
+	if (SIO_CONF_ADDR(OTPSTRAP_KEEP[1])) {
+		strap_parse[k].keep = 1;
+		strcpy(strap_parse[k].status, "Skip");
+	} else {
+		if (SIO_CONF_ADDR(OTPSTRAP[1]))
+			strcpy(strap_parse[k].status,
+			       "SuperIO configuration address : 0x4E");
+		else
+			strcpy(strap_parse[k].status,
+			       "SuperIO configuration address : 0x2E");
+	}
+
+	k++;
+	strap_parse[k].bit = 35;
+	strap_parse[k].length = 1;
+	strap_parse[k].value = DISABLE_SIO(OTPSTRAP[1]);
+	strap_parse[k].protect = DISABLE_SIO(OTPSTRAP_PRO[1]);
+	if (DISABLE_SIO(OTPSTRAP_KEEP[1])) {
+		strap_parse[k].keep = 1;
+		strcpy(strap_parse[k].status, "Skip");
+	} else {
+		if (DISABLE_SIO(OTPSTRAP[1]))
+			strcpy(strap_parse[k].status,
+			       "Disable LPC to decode SuperIO");
+		else
+			strcpy(strap_parse[k].status,
+			       "Enable LPC to decode SuperIO");
+	}
+
+	k++;
+	strap_parse[k].bit = 36;
+	strap_parse[k].length = 1;
+	strap_parse[k].value = DISABLE_DEBUG1(OTPSTRAP[1]);
+	strap_parse[k].protect = DISABLE_DEBUG1(OTPSTRAP_PRO[1]);
+	if (DISABLE_DEBUG1(OTPSTRAP_KEEP[1])) {
+		strap_parse[k].keep = 1;
+		strcpy(strap_parse[k].status, "Skip");
+	} else {
+		if (DISABLE_DEBUG1(OTPSTRAP[1]))
+			strcpy(strap_parse[k].status,
+			       "Disable debug interfaces 1");
+		else
+			strcpy(strap_parse[k].status,
+			       "Enable debug interfaces 1");
+	}
+
+	k++;
+	strap_parse[k].bit = 37;
+	strap_parse[k].length = 1;
+	strap_parse[k].value = ENABLE_ACPI(OTPSTRAP[1]);
+	strap_parse[k].protect = ENABLE_ACPI(OTPSTRAP_PRO[1]);
+	if (ENABLE_ACPI(OTPSTRAP_KEEP[1])) {
+		strap_parse[k].keep = 1;
+		strcpy(strap_parse[k].status, "Skip");
+	} else {
+		if (ENABLE_ACPI(OTPSTRAP[1]))
+			strcpy(strap_parse[k].status,
+			       "Enable ACPI function");
+		else
+			strcpy(strap_parse[k].status,
+			       "Disable ACPI function");
+	}
+
+	k++;
+	strap_parse[k].bit = 38;
+	strap_parse[k].length = 1;
+	strap_parse[k].value = SELECT_LPC(OTPSTRAP[1]);
+	strap_parse[k].protect = SELECT_LPC(OTPSTRAP_PRO[1]);
+	if (SELECT_LPC(OTPSTRAP_KEEP[1])) {
+		strap_parse[k].keep = 1;
+		strcpy(strap_parse[k].status, "Skip");
+	} else {
+		if (SELECT_LPC(OTPSTRAP[1]))
+			strcpy(strap_parse[k].status,
+			       "Enable LPC mode");
+		else
+			strcpy(strap_parse[k].status,
+			       "Enable eSPI mode");
+	}
+
+	k++;
+	strap_parse[k].bit = 39;
+	strap_parse[k].length = 1;
+	strap_parse[k].value = ENABLE_SAFS(OTPSTRAP[1]);
+	strap_parse[k].protect = ENABLE_SAFS(OTPSTRAP_PRO[1]);
+	if (ENABLE_SAFS(OTPSTRAP_KEEP[1])) {
+		strap_parse[k].keep = 1;
+		strcpy(strap_parse[k].status, "Skip");
+	} else {
+		if (ENABLE_SAFS(OTPSTRAP[1]))
+			strcpy(strap_parse[k].status,
+			       "Enable SAFS mode");
+		else
+			strcpy(strap_parse[k].status,
+			       "Enable SAFS mode");
+	}
+
+	k++;
+	strap_parse[k].bit = 42;
+	strap_parse[k].length = 1;
+	strap_parse[k].value = ENABLE_SPI_3B4B_AUTO(OTPSTRAP[1]);
+	strap_parse[k].protect = ENABLE_SPI_3B4B_AUTO(OTPSTRAP_PRO[1]);
+	if (ENABLE_SPI_3B4B_AUTO(OTPSTRAP_KEEP[1])) {
+		strap_parse[k].keep = 1;
+		strcpy(strap_parse[k].status, "Skip");
+	} else {
+		if (ENABLE_SPI_3B4B_AUTO(OTPSTRAP[1]))
+			strcpy(strap_parse[k].status,
+			       "Enable boot SPI 3B/4B address mode auto detection");
+		else
+			strcpy(strap_parse[k].status,
+			       "Disable boot SPI 3B/4B address mode auto detection");
+	}
+
+	k++;
+	strap_parse[k].bit = 43;
+	strap_parse[k].length = 1;
+	strap_parse[k].value = ENABLE_BOOT_SPI_ABR(OTPSTRAP[1]);
+	strap_parse[k].protect = ENABLE_BOOT_SPI_ABR(OTPSTRAP_PRO[1]);
+	if (ENABLE_BOOT_SPI_ABR(OTPSTRAP_KEEP[1])) {
+		strap_parse[k].keep = 1;
+		strcpy(strap_parse[k].status, "Skip");
+	} else {
+		if (ENABLE_BOOT_SPI_ABR(OTPSTRAP[1]))
+			strcpy(strap_parse[k].status,
+			       "Enable boot SPI ABR");
+		else
+			strcpy(strap_parse[k].status,
+			       "Disable boot SPI ABR");
+	}
+
+	k++;
+	strap_parse[k].bit = 44;
+	strap_parse[k].length = 1;
+	strap_parse[k].value = BOOT_SPI_ABR_MODE(OTPSTRAP[1]);
+	strap_parse[k].protect = BOOT_SPI_ABR_MODE(OTPSTRAP_PRO[1]);
+	if (BOOT_SPI_ABR_MODE(OTPSTRAP_KEEP[1])) {
+		strap_parse[k].keep = 1;
+		strcpy(strap_parse[k].status, "Skip");
+	} else {
+		if (BOOT_SPI_ABR_MODE(OTPSTRAP[1]))
+			strcpy(strap_parse[k].status,
+			       "Boot SPI ABR mode : single SPI flash");
+		else
+			strcpy(strap_parse[k].status,
+			       "Boot SPI ABR mode : dual SPI flash");
+	}
+
+	k++;
+	strap_parse[k].bit = 45;
+	strap_parse[k].length = 3;
+	strap_parse[k].value = BOOT_SPI_FLASH_SIZE(OTPSTRAP[1]);
+	strap_parse[k].protect = BOOT_SPI_FLASH_SIZE(OTPSTRAP_PRO[1]);
+	if (BOOT_SPI_FLASH_SIZE(OTPSTRAP_KEEP[1]) == 0x7) {
+		strap_parse[k].keep = 1;
+		strcpy(strap_parse[k].status, "Skip");
+	} else if (BOOT_SPI_FLASH_SIZE(OTPSTRAP_KEEP[1]) == 0) {
+		if (BOOT_SPI_FLASH_SIZE(OTPSTRAP[1]) == 0) {
+			strcpy(strap_parse[k].status,
+			       "Boot SPI flash size : no define size");
+		} else if (BOOT_SPI_FLASH_SIZE(OTPSTRAP[1]) == 1) {
+			strcpy(strap_parse[k].status,
+			       "Boot SPI flash size : 2MB");
+		} else if (BOOT_SPI_FLASH_SIZE(OTPSTRAP[1]) == 2) {
+			strcpy(strap_parse[k].status,
+			       "Boot SPI flash size : 4MB");
+		} else if (BOOT_SPI_FLASH_SIZE(OTPSTRAP[1]) == 3) {
+			strcpy(strap_parse[k].status,
+			       "Boot SPI flash size : 8MB");
+		} else if (BOOT_SPI_FLASH_SIZE(OTPSTRAP[1]) == 4) {
+			strcpy(strap_parse[k].status,
+			       "Boot SPI flash size : 16MB");
+		} else if (BOOT_SPI_FLASH_SIZE(OTPSTRAP[1]) == 5) {
+			strcpy(strap_parse[k].status,
+			       "Boot SPI flash size : 32MB");
+		} else if (BOOT_SPI_FLASH_SIZE(OTPSTRAP[1]) == 6) {
+			strcpy(strap_parse[k].status,
+			       "Boot SPI flash size : 64MB");
+		} else if (BOOT_SPI_FLASH_SIZE(OTPSTRAP[1]) == 7) {
+			strcpy(strap_parse[k].status,
+			       "Boot SPI flash size : 128MB");
+		}
+	} else {
+		strcpy(strap_parse[k].status, "Keep mask error!");
+		return -1;
+	}
+
+	k++;
+	strap_parse[k].bit = 48;
+	strap_parse[k].length = 1;
+	strap_parse[k].value = ENABLE_HOST_SPI_ABR(OTPSTRAP[1]);
+	strap_parse[k].protect = ENABLE_HOST_SPI_ABR(OTPSTRAP_PRO[1]);
+	if (ENABLE_HOST_SPI_ABR(OTPSTRAP_KEEP[1])) {
+		strap_parse[k].keep = 1;
+		strcpy(strap_parse[k].status, "Skip");
+	} else {
+		if (ENABLE_HOST_SPI_ABR(OTPSTRAP[1]))
+			strcpy(strap_parse[k].status,
+			       "Enable host SPI ABR");
+		else
+			strcpy(strap_parse[k].status,
+			       "Disable host SPI ABR");
+	}
+
+	k++;
+	strap_parse[k].bit = 49;
+	strap_parse[k].length = 1;
+	strap_parse[k].value = EBABLE_HOST_SPI_ABR_SEL_PIN(OTPSTRAP[1]);
+	strap_parse[k].protect = EBABLE_HOST_SPI_ABR_SEL_PIN(OTPSTRAP_PRO[1]);
+	if (EBABLE_HOST_SPI_ABR_SEL_PIN(OTPSTRAP_KEEP[1])) {
+		strap_parse[k].keep = 1;
+		strcpy(strap_parse[k].status, "Skip");
+	} else {
+		if (EBABLE_HOST_SPI_ABR_SEL_PIN(OTPSTRAP[1]))
+			strcpy(strap_parse[k].status,
+			       "Enable host SPI ABR mode select pin");
+		else
+			strcpy(strap_parse[k].status,
+			       "Disable host SPI ABR mode select pin");
+	}
+
+	k++;
+	strap_parse[k].bit = 50;
+	strap_parse[k].length = 1;
+	strap_parse[k].value = HOST_SPI_ABR_MODE(OTPSTRAP[1]);
+	strap_parse[k].protect = HOST_SPI_ABR_MODE(OTPSTRAP_PRO[1]);
+	if (HOST_SPI_ABR_MODE(OTPSTRAP_KEEP[1])) {
+		strap_parse[k].keep = 1;
+		strcpy(strap_parse[k].status, "Skip");
+	} else {
+		if (HOST_SPI_ABR_MODE(OTPSTRAP[1]))
+			strcpy(strap_parse[k].status,
+			       "Host SPI ABR mode : single SPI flash");
+		else
+			strcpy(strap_parse[k].status,
+			       "Host SPI ABR mode : dual SPI flash");
+	}
+
+	k++;
+	strap_parse[k].bit = 51;
+	strap_parse[k].length = 3;
+	strap_parse[k].value = HOST_SPI_FLASH_SIZE(OTPSTRAP[1]);
+	strap_parse[k].protect = HOST_SPI_FLASH_SIZE(OTPSTRAP_PRO[1]);
+	if (HOST_SPI_FLASH_SIZE(OTPSTRAP_KEEP[1]) == 0x7) {
+		strap_parse[k].keep = 1;
+		strcpy(strap_parse[k].status, "Skip");
+	} else if (HOST_SPI_FLASH_SIZE(OTPSTRAP_KEEP[1]) == 0) {
+		if (HOST_SPI_FLASH_SIZE(OTPSTRAP[1]) == 0) {
+			strcpy(strap_parse[k].status,
+			       "Host SPI flash size : no define size");
+		} else if (HOST_SPI_FLASH_SIZE(OTPSTRAP[1]) == 1) {
+			strcpy(strap_parse[k].status,
+			       "Host SPI flash size : 2MB");
+		} else if (HOST_SPI_FLASH_SIZE(OTPSTRAP[1]) == 2) {
+			strcpy(strap_parse[k].status,
+			       "Host SPI flash size : 4MB");
+		} else if (HOST_SPI_FLASH_SIZE(OTPSTRAP[1]) == 3) {
+			strcpy(strap_parse[k].status,
+			       "Host SPI flash size : 8MB");
+		} else if (HOST_SPI_FLASH_SIZE(OTPSTRAP[1]) == 4) {
+			strcpy(strap_parse[k].status,
+			       "Host SPI flash size : 16MB");
+		} else if (HOST_SPI_FLASH_SIZE(OTPSTRAP[1]) == 5) {
+			strcpy(strap_parse[k].status,
+			       "Host SPI flash size : 32MB");
+		} else if (HOST_SPI_FLASH_SIZE(OTPSTRAP[1]) == 6) {
+			strcpy(strap_parse[k].status,
+			       "Host SPI flash size : 64MB");
+		} else if (HOST_SPI_FLASH_SIZE(OTPSTRAP[1]) == 7) {
+			strcpy(strap_parse[k].status,
+			       "Host SPI flash size : 128MB");
+		}
+	} else {
+		strcpy(strap_parse[k].status, "Keep mask error!");
+		return -1;
+	}
+
+	k++;
+	strap_parse[k].bit = 54;
+	strap_parse[k].length = 1;
+	strap_parse[k].value = ENABLE_BOOT_SPI_AUX_CONTROL_PIN(OTPSTRAP[1]);
+	strap_parse[k].protect = ENABLE_BOOT_SPI_AUX_CONTROL_PIN(OTPSTRAP_PRO[1]);
+	if (ENABLE_BOOT_SPI_AUX_CONTROL_PIN(OTPSTRAP_KEEP[1])) {
+		strap_parse[k].keep = 1;
+		strcpy(strap_parse[k].status, "Skip");
+	} else {
+		if (ENABLE_BOOT_SPI_AUX_CONTROL_PIN(OTPSTRAP[1]))
+			strcpy(strap_parse[k].status,
+			       "Enable boot SPI auxiliary control pins");
+		else
+			strcpy(strap_parse[k].status,
+			       "Disable boot SPI auxiliary control pins");
+	}
+
+	k++;
+	strap_parse[k].bit = 55;
+	strap_parse[k].length = 2;
+	strap_parse[k].value = BOOT_SPI_CRTM_SIZE(OTPSTRAP[1]);
+	strap_parse[k].protect = BOOT_SPI_CRTM_SIZE(OTPSTRAP_PRO[1]);
+	if (BOOT_SPI_CRTM_SIZE(OTPSTRAP_KEEP[0]) == 0x3) {
+		strap_parse[k].keep = 1;
+		strcpy(strap_parse[k].status, "Skip");
+	} else if (BOOT_SPI_CRTM_SIZE(OTPSTRAP_KEEP[0]) == 0) {
+		if (BOOT_SPI_CRTM_SIZE(OTPSTRAP[0]) == 0) {
+			strcpy(strap_parse[k].status,
+			       "Boot SPI CRTM size : disable CRTM");
+		} else if (BOOT_SPI_CRTM_SIZE(OTPSTRAP[0]) == 1) {
+			strcpy(strap_parse[k].status,
+			       "Boot SPI CRTM size : 256KB");
+		} else if (BOOT_SPI_CRTM_SIZE(OTPSTRAP[0]) == 2) {
+			strcpy(strap_parse[k].status,
+			       "Boot SPI CRTM size : 512KB");
+		} else if (BOOT_SPI_CRTM_SIZE(OTPSTRAP[0]) == 3) {
+			strcpy(strap_parse[k].status,
+			       "Boot SPI CRTM size : 1MB");
+		}
+	} else {
+		strcpy(strap_parse[k].status, "Keep mask error!");
+		return -1;
+	}
+
+	k++;
+	strap_parse[k].bit = 57;
+	strap_parse[k].length = 2;
+	strap_parse[k].value = HOST_SPI_CRTM_SIZE(OTPSTRAP[1]);
+	strap_parse[k].protect = HOST_SPI_CRTM_SIZE(OTPSTRAP_PRO[1]);
+	if (HOST_SPI_CRTM_SIZE(OTPSTRAP_KEEP[0]) == 0x3) {
+		strap_parse[k].keep = 1;
+		strcpy(strap_parse[k].status, "Skip");
+	} else if (HOST_SPI_CRTM_SIZE(OTPSTRAP_KEEP[0]) == 0) {
+		if (HOST_SPI_CRTM_SIZE(OTPSTRAP[0]) == 0) {
+			strcpy(strap_parse[k].status,
+			       "Host SPI CRTM size : disable CRTM");
+		} else if (HOST_SPI_CRTM_SIZE(OTPSTRAP[0]) == 1) {
+			strcpy(strap_parse[k].status,
+			       "Host SPI CRTM size : 256KB");
+		} else if (HOST_SPI_CRTM_SIZE(OTPSTRAP[0]) == 2) {
+			strcpy(strap_parse[k].status,
+			       "Host SPI CRTM size : 512KB");
+		} else if (HOST_SPI_CRTM_SIZE(OTPSTRAP[0]) == 3) {
+			strcpy(strap_parse[k].status,
+			       "Host SPI CRTM size : 1MB");
+		}
+	} else {
+		strcpy(strap_parse[k].status, "Keep mask error!");
+		return -1;
+	}
+
+	k++;
+	strap_parse[k].bit = 59;
+	strap_parse[k].length = 1;
+	strap_parse[k].value = ENABLE_HOST_SPI_AUX_CONTROL_PIN(OTPSTRAP[1]);
+	strap_parse[k].protect = ENABLE_HOST_SPI_AUX_CONTROL_PIN(OTPSTRAP_PRO[1]);
+	if (ENABLE_HOST_SPI_AUX_CONTROL_PIN(OTPSTRAP_KEEP[1])) {
+		strap_parse[k].keep = 1;
+		strcpy(strap_parse[k].status, "Skip");
+	} else {
+		if (ENABLE_HOST_SPI_AUX_CONTROL_PIN(OTPSTRAP[1]))
+			strcpy(strap_parse[k].status,
+			       "Enable host SPI auxiliary control pins");
+		else
+			strcpy(strap_parse[k].status,
+			       "Disable host SPI auxiliary control pins");
+	}
+
+	k++;
+	strap_parse[k].bit = 60;
+	strap_parse[k].length = 1;
+	strap_parse[k].value = ENABLE_GPIO_PASS_THROUGH(OTPSTRAP[1]);
+	strap_parse[k].protect = ENABLE_GPIO_PASS_THROUGH(OTPSTRAP_PRO[1]);
+	if (ENABLE_GPIO_PASS_THROUGH(OTPSTRAP_KEEP[1])) {
+		strap_parse[k].keep = 1;
+		strcpy(strap_parse[k].status, "Skip");
+	} else {
+		if (ENABLE_GPIO_PASS_THROUGH(OTPSTRAP[1]))
+			strcpy(strap_parse[k].status,
+			       "Enable GPIO pass through");
+		else
+			strcpy(strap_parse[k].status,
+			       "Disable GPIO pass through");
+	}
+
+	k++;
+	strap_parse[k].bit = 61;
+	strap_parse[k].length = 1;
+	strap_parse[k].value = DISABLE_LOW_SECURITY_KEY(OTPSTRAP[1]);
+	strap_parse[k].protect = DISABLE_LOW_SECURITY_KEY(OTPSTRAP_PRO[1]);
+	if (DISABLE_LOW_SECURITY_KEY(OTPSTRAP_KEEP[1])) {
+		strap_parse[k].keep = 1;
+		strcpy(strap_parse[k].status, "Skip");
+	} else {
+		if (DISABLE_LOW_SECURITY_KEY(OTPSTRAP[1]))
+			strcpy(strap_parse[k].status,
+			       "Disable low security secure boot key");
+		else
+			strcpy(strap_parse[k].status,
+			       "Enable low security secure boot key");
+	}
+
+	k++;
+	strap_parse[k].bit = 62;
+	strap_parse[k].length = 1;
+	strap_parse[k].value = ENABLE_DEDICATE_GPIO_STRAP(OTPSTRAP[1]);
+	strap_parse[k].protect = ENABLE_DEDICATE_GPIO_STRAP(OTPSTRAP_PRO[1]);
+	if (ENABLE_DEDICATE_GPIO_STRAP(OTPSTRAP_KEEP[1])) {
+		strap_parse[k].keep = 1;
+		strcpy(strap_parse[k].status, "Skip");
+	} else {
+		if (ENABLE_DEDICATE_GPIO_STRAP(OTPSTRAP[1]))
+			strcpy(strap_parse[k].status,
+			       "Enable dedicate GPIO strap pins");
+		else
+			strcpy(strap_parse[k].status,
+			       "Disable dedicate GPIO strap pins");
+	}
+
+	return k + 1;
+}
 
 static int otp_print_conf_info(uint32_t *OTPCFG)
 {
@@ -927,6 +1832,57 @@ static void otp_info_config(void)
 		OTPCFG[i] = 0;
 
 	otp_print_conf_info(OTPCFG);
+}
+
+static int otp_print_strap_info(uint32_t *OTPSTRAP)
+{
+	struct otpstrap_parse strap_parse[60];
+	int length;
+	int i;
+
+	length = otp_strap_parse(OTPSTRAP, strap_parse);
+
+	if (length <= 0)
+		return OTP_FAILURE;
+
+	printf("BIT     Value       Protect     Status\n");
+	printf("__________________________________________________________________________________________\n");
+	for (i = 0; i < length; i++) {
+		if (strap_parse[i].length == 1) {
+			printf("%-8d", strap_parse[i].bit);
+		} else {
+			printf("%-2d:%-5d",
+			       strap_parse[i].bit + strap_parse[i].length - 1,
+			       strap_parse[i].bit);
+		}
+		printf("0x%-10x", strap_parse[i].value);
+		printf("0x%-10x", strap_parse[i].protect);
+		printf("%s\n", strap_parse[i].status);
+	}
+	return OTP_SUCCESS;
+}
+
+static void otp_info_strap(void)
+{
+	struct otpstrap_status strap_status[64];
+	uint32_t OTPSTRAP[6];
+	int i;
+
+
+	otp_strp_status(strap_status);
+
+	for (i = 0; i < 6; i++)
+		OTPSTRAP[i] = 0;
+	for (i = 0; i < 32; i++) {
+		OTPSTRAP[0] |= (strap_status[i].value & 0x1) << i;
+		OTPSTRAP[4] |= (strap_status[i].protected & 0x1) << i;
+	}
+	for (i = 0; i < 32; i++) {
+		OTPSTRAP[1] |= (strap_status[i + 32].value & 0x1) << i;
+		OTPSTRAP[5] |= (strap_status[i + 32].protected & 0x1) << i;
+	}
+
+	otp_print_strap_info(OTPSTRAP);
 }
 
 static void buf_print(char *buf, int len)
@@ -1133,56 +2089,8 @@ static int otp_prog_conf(uint32_t *buf)
 
 }
 
-static void otp_strp_status(struct otpstrap_status *otpstrap)
-{
-	uint32_t OTPSTRAP_RAW[2];
-	int i, j;
 
-	for (j = 0; j < 64; j++) {
-		otpstrap[j].value = 0;
-		otpstrap[j].remain_times = 7;
-		otpstrap[j].writeable_option = -1;
-		otpstrap[j].protected = 0;
-	}
-
-	for (i = 16; i < 30; i += 2) {
-		int option = (i - 16) / 2;
-		otp_read_config(i, &OTPSTRAP_RAW[0]);
-		otp_read_config(i + 1, &OTPSTRAP_RAW[1]);
-		for (j = 0; j < 32; j++) {
-			char bit_value = ((OTPSTRAP_RAW[0] >> j) & 0x1);
-			if ((bit_value == 0) && (otpstrap[j].writeable_option == -1)) {
-				otpstrap[j].writeable_option = option;
-			}
-			if (bit_value == 1)
-				otpstrap[j].remain_times --;
-			otpstrap[j].value ^= bit_value;
-			otpstrap[j].option_array[option] = bit_value;
-		}
-		for (j = 32; j < 64; j++) {
-			char bit_value = ((OTPSTRAP_RAW[1] >> (j - 32)) & 0x1);
-			if ((bit_value == 0) && (otpstrap[j].writeable_option == -1)) {
-				otpstrap[j].writeable_option = option;
-			}
-			if (bit_value == 1)
-				otpstrap[j].remain_times --;
-			otpstrap[j].value ^= bit_value;
-			otpstrap[j].option_array[option] = bit_value;
-		}
-	}
-	otp_read_config(30, &OTPSTRAP_RAW[0]);
-	otp_read_config(31, &OTPSTRAP_RAW[1]);
-	for (j = 0; j < 32; j++) {
-		if (((OTPSTRAP_RAW[0] >> j) & 0x1) == 1)
-			otpstrap[j].protected = 1;
-	}
-	for (j = 32; j < 64; j++) {
-		if (((OTPSTRAP_RAW[1] >> (j - 32)) & 0x1) == 1)
-			otpstrap[j].protected = 1;
-	}
-}
-
-static int otp_strap_parse(uint32_t *buf)
+static int otp_strap_image_confirm(uint32_t *buf)
 {
 	int i;
 	uint32_t *strap_keep = buf + 2;
@@ -1567,7 +2475,7 @@ static int do_otp_prog(int addr, int byte_size, int nconfirm)
 				return OTP_FAILURE;
 			}
 		} else if (mode == OTP_REGION_STRAP) {
-			ret = otp_strap_parse(strap_region);
+			ret = otp_strap_image_confirm(strap_region);
 			if (ret == OTP_FAILURE) {
 				printf("OTP strap error, please check.\n");
 				return OTP_FAILURE;
@@ -1580,7 +2488,7 @@ static int do_otp_prog(int addr, int byte_size, int nconfirm)
 				printf("OTP config error, please check.\n");
 				return OTP_FAILURE;
 			}
-			if (otp_strap_parse(strap_region) == OTP_FAILURE) {
+			if (otp_strap_image_confirm(strap_region) == OTP_FAILURE) {
 				printf("OTP strap error, please check.\n");
 				return OTP_FAILURE;
 			}
@@ -1705,7 +2613,7 @@ static int do_otp_prog_bit(int mode, int otp_dw_offset, int bit_offset, int valu
 			// else
 			// 	strap_buf[5] = 0;
 		}
-		ret = otp_strap_parse(strap_buf);
+		ret = otp_strap_image_confirm(strap_buf);
 		if (ret == OTP_FAILURE)
 			return OTP_FAILURE;
 		else if (ret == OTP_PROG_SKIP)
@@ -1894,9 +2802,6 @@ static int do_otpcmp(cmd_tbl_t *cmdtp, int flag, int argc, char *const argv[])
 
 static int do_otpinfo(cmd_tbl_t *cmdtp, int flag, int argc, char *const argv[])
 {
-	uint32_t offset, count;
-	int ret;
-
 	if (argc != 2)
 		return CMD_RET_USAGE;
 
@@ -1904,10 +2809,9 @@ static int do_otpinfo(cmd_tbl_t *cmdtp, int flag, int argc, char *const argv[])
 	if (!strcmp(argv[1], "conf")) {
 		writel(OTP_PASSWD, 0x1e6f2000); //password
 		otp_info_config();
-	} else if (!strcmp(argv[1], "data")) {
-		writel(OTP_PASSWD, 0x1e6f2000); //password
 	} else if (!strcmp(argv[1], "strap")) {
 		writel(OTP_PASSWD, 0x1e6f2000); //password
+		otp_info_strap();
 	} else {
 		return CMD_RET_USAGE;
 	}
@@ -1947,7 +2851,7 @@ U_BOOT_CMD(
 	"ASPEED One-Time-Programmable sub-system",
 	"read conf|data <otp_dw_offset> <dw_count>\n"
 	"otp read strap <strap_bit_offset> <bit_count>\n"
-	"otp info conf\n"
+	"otp info conf|strap\n"
 	"otp prog [f] <addr> <byte_size>\n"
 	"otp pb conf|data [f] <otp_dw_offset> <bit_offset> <value>\n"
 	"otp pb strap [f] <bit_offset> <value> <protect>\n"
