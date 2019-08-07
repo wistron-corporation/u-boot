@@ -154,33 +154,46 @@ extern u32 ast2600_get_apll_rate(struct ast2600_scu *scu)
 }
 
 static u32 ast2600_a0_axi_ahb_div_table[] = {
-	2, 2, 3, 5,
+	2, 2, 3, 4,
 };
 
-static u32 ast2600_a1_axi_ahb_div_table[] = {
-	4, 6, 2, 4,
+static u32 ast2600_a1_axi_ahb_div0_table[] = {
+	3, 2, 3, 4,
+};
+
+static u32 ast2600_a1_axi_ahb_div1_table[] = {
+	3, 4, 6, 8,
+};
+
+static u32 ast2600_a1_axi_ahb_default_table[] = {
+	3, 4, 3, 4, 2, 2, 2, 2,
 };
 
 static u32 ast2600_get_hclk(struct ast2600_scu *scu)
 {
 	u32 hw_rev = readl(&scu->chip_id0);
-	u32 hwstrap1 = readl(&scu->hwstrap1);
+	u32 hwstrap1 = readl(&scu->hwstrap1.hwstrap);
 	u32 axi_div = 1;
 	u32 ahb_div = 0;
 	u32 rate = 0;
-	
-	if(hwstrap1 & BIT(16))
-		axi_div = 1;
-	else
-		axi_div = 2;
-	
-	if (hw_rev & BIT(16))
-		ahb_div = ast2600_a1_axi_ahb_div_table[(hwstrap1 >> 11) & 0x3];
-	else
-		ahb_div = ast2600_a0_axi_ahb_div_table[(hwstrap1 >> 11) & 0x3];
-	
-	rate = ast2600_get_pll_rate(scu, ASPEED_CLK_HPLL);
 
+	if (hw_rev & BIT(16)) {
+		if(hwstrap1 & BIT(16)) {
+			ast2600_a1_axi_ahb_div1_table[0] = ast2600_a1_axi_ahb_default_table[(hwstrap1 >> 8) & 0x3];
+			axi_div = 1;
+			ahb_div = ast2600_a1_axi_ahb_div1_table[(hwstrap1 >> 11) & 0x3];
+		} else {
+			ast2600_a1_axi_ahb_div0_table[0] = ast2600_a1_axi_ahb_default_table[(hwstrap1 >> 8) & 0x3];
+			axi_div = 2;
+			ahb_div = ast2600_a1_axi_ahb_div0_table[(hwstrap1 >> 11) & 0x3];
+		}
+	} else {
+		//a0 : fix axi = hpll / 2		
+		axi_div = 2;
+		ahb_div = ast2600_a0_axi_ahb_div_table[(hwstrap1 >> 11) & 0x3];
+	}
+
+	rate = ast2600_get_pll_rate(scu, ASPEED_CLK_HPLL);
 	return (rate / axi_div / ahb_div);
 }
 
