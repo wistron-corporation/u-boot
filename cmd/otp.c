@@ -1803,7 +1803,7 @@ static int otp_print_conf_info(uint32_t *OTPCFG)
 	if (length <= 0)
 		return OTP_FAILURE;
 
-	printf("DW  BIT     Value       Status\n");
+	printf("DW  BIT     Value       Description\n");
 	printf("__________________________________________________________________________\n");
 	for (i = 0; i < length; i++) {
 		printf("%-4d", conf_parse[i].dw_offset);
@@ -1845,7 +1845,7 @@ static int otp_print_strap_info(uint32_t *OTPSTRAP)
 	if (length <= 0)
 		return OTP_FAILURE;
 
-	printf("BIT     Value       Protect     Status\n");
+	printf("BIT     Value       Protect     Description\n");
 	printf("__________________________________________________________________________________________\n");
 	for (i = 0; i < length; i++) {
 		if (strap_parse[i].length == 1) {
@@ -2161,24 +2161,26 @@ static int otp_print_strap(int start, int count)
 
 	otp_strp_status(otpstrap);
 
+	printf("BIT  Value  Avaliable        Status\n");
+	printf("______________________________________________________________________\n");
+
 	for (i = start; i < start + count; i++) {
-		printf("OTPSTRAP[%X]:\n", i);
-		printf("  OTP Option value: ");
-		for (j = 1; j <= 7; j++)
-			printf("[%X]:%X ", j, otpstrap[i].option_array[j - 1]);
-		printf("\n");
-		printf("  OTP Value: %X\n", otpstrap[i].value);
-		printf("  Status:\n");
+		printf("%-5d", i);
+		printf("%-7d", otpstrap[i].value);
+		for (j = 0; j < 7; j++)
+			printf("%d ", otpstrap[i].option_array[j]);
+		printf("   ");
 		if (otpstrap[i].protected == 1) {
-			printf("    OTPSTRAP[%X] is protected and is not writable\n", i);
+			printf("protected and not writable");
 		} else {
-			printf("    OTPSTRAP[%X] is not protected ", i);
+			printf("not protected ");
 			if (otpstrap[i].remain_times == 0) {
-				printf("and no remaining times to write.\n");
+				printf("and no remaining times to write.");
 			} else {
-				printf("and still can write %d times\n", otpstrap[i].remain_times);
+				printf("and still can write %d times", otpstrap[i].remain_times);
 			}
 		}
+		printf("\n");
 	}
 
 	return OTP_SUCCESS;
@@ -2819,13 +2821,68 @@ static int do_otpinfo(cmd_tbl_t *cmdtp, int flag, int argc, char *const argv[])
 	return CMD_RET_SUCCESS;
 }
 
+static int do_otpprotect(cmd_tbl_t *cmdtp, int flag, int argc, char *const argv[])
+{
+	int input;
+	int bit_offset;
+	int prog_address;
+	int pass;
+	int i;
+	if (argc != 3 && argc != 2)
+		return CMD_RET_USAGE;
+
+	if (!strcmp(argv[0], "f")) {
+		input = simple_strtoul(argv[2], NULL, 16);
+	} else {
+		input = simple_strtoul(argv[1], NULL, 16);
+		printf("OTPSTRAP[%d] will be protected\n", input);
+		printf("type \"YES\" (no quotes) to continue:\n");
+		if (!confirm_yesno()) {
+			printf(" Aborting\n");
+			return CMD_RET_FAILURE;
+		}
+	}
+
+	prog_address = 0x800;
+	if (input < 32) {
+		bit_offset = input;
+		prog_address |= 0x60c;
+	} else if (input < 64) {
+		bit_offset = input - 32;
+		prog_address |= 0x60e;
+	} else {
+		return CMD_RET_USAGE;
+	}
+
+	if (verify_bit(prog_address, bit_offset, 1) == 0) {
+		printf("OTPSTRAP[%d] already protected\n", input);
+	}
+	otp_prog_bit(1, prog_address, bit_offset, 0);
+	pass = -1;
+	for (i = 0; i < RETRY; i++) {
+		if (verify_bit(prog_address, bit_offset, 1) != 0) {
+			otp_prog_bit(1, prog_address, bit_offset, 1);
+		} else {
+			pass = 0;
+			break;
+		}
+	}
+	if (pass == 0) {
+		printf("OTPSTRAP[%d] is protected\n", input);
+		return CMD_RET_SUCCESS;
+	}
+
+	printf("Protect OTPSTRAP[%d] fail\n", input);
+	return CMD_RET_FAILURE;
+
+}
 static cmd_tbl_t cmd_otp[] = {
 	U_BOOT_CMD_MKENT(read, 4, 0, do_otpread, "", ""),
+	U_BOOT_CMD_MKENT(info, 2, 0, do_otpinfo, "", ""),
 	U_BOOT_CMD_MKENT(prog, 4, 0, do_otpprog, "", ""),
 	U_BOOT_CMD_MKENT(pb, 6, 0, do_otppb, "", ""),
+	U_BOOT_CMD_MKENT(protect, 3, 0, do_otpprotect, "", ""),
 	U_BOOT_CMD_MKENT(cmp, 3, 0, do_otpcmp, "", ""),
-	U_BOOT_CMD_MKENT(info, 3, 0, do_otpinfo, "", ""),
-
 };
 
 static int do_ast_otp(cmd_tbl_t *cmdtp, int flag, int argc, char *const argv[])
@@ -2834,7 +2891,7 @@ static int do_ast_otp(cmd_tbl_t *cmdtp, int flag, int argc, char *const argv[])
 
 	cp = find_cmd_tbl(argv[1], cmd_otp, ARRAY_SIZE(cmd_otp));
 
-	/* Drop the mmc command */
+	/* Drop the otp command */
 	argc--;
 	argv++;
 
@@ -2854,6 +2911,7 @@ U_BOOT_CMD(
 	"otp info conf|strap\n"
 	"otp prog [f] <addr> <byte_size>\n"
 	"otp pb conf|data [f] <otp_dw_offset> <bit_offset> <value>\n"
-	"otp pb strap [f] <bit_offset> <value> <protect>\n"
+	"otp pb strap [f] <bit_offset> <value>\n"
+	"otp protect [f] <bit_offset>\n"
 	"otp cmp <addr> <otp_dw_offset>\n"
 );
