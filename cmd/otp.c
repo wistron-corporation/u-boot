@@ -1900,7 +1900,7 @@ static void buf_print(char *buf, int len)
 	}
 }
 
-static int otp_data_parse(uint32_t *buf)
+static int otp_print_data_info(uint32_t *buf)
 {
 	int key_id, key_offset, last, key_type, key_length, exp_length;
 	char *byte_buf;
@@ -1913,7 +1913,7 @@ static int otp_data_parse(uint32_t *buf)
 		key_type = (buf[i] >> 14) & 0xf;
 		key_length = (buf[i] >> 18) & 0x3;
 		exp_length = (buf[i] >> 20) & 0xfff;
-		printf("Key[%d]:\n", i);
+		printf("\nKey[%d]:\n", i);
 		printf("Key Type: ");
 		switch (key_type) {
 		case 0:
@@ -2198,10 +2198,16 @@ static int otp_prog_strap(uint32_t *buf)
 	int soak = 0;
 	struct otpstrap_status otpstrap[64];
 
+	printf("Read OTP Strap Region:\n");
 	otp_strp_status(otpstrap);
 
-	otp_soak(0);
+	printf("Check writable...\n");
+	if (otp_strap_image_confirm(buf) == OTP_FAILURE) {
+		printf("Input image can't program into OTP, please check.\n");
+		return OTP_FAILURE;
+	}
 
+	otp_soak(0);
 	for (i = 0; i < 64; i++) {
 		printProgress(i + 1, 64, "");
 		prog_address = 0x800;
@@ -2467,34 +2473,36 @@ static int do_otp_prog(int addr, int byte_size, int nconfirm)
 	}
 	if (!nconfirm) {
 		if (mode == OTP_REGION_CONF) {
+			printf("\nOTP configuration region :\n");
 			if (otp_print_conf_info(conf_region) < 0) {
 				printf("OTP config error, please check.\n");
 				return OTP_FAILURE;
 			}
 		} else if (mode == OTP_REGION_DATA) {
-			if (otp_data_parse(data_region) < 0) {
+			printf("\nOTP data region :\n");
+			if (otp_print_data_info(data_region) < 0) {
 				printf("OTP data error, please check.\n");
 				return OTP_FAILURE;
 			}
 		} else if (mode == OTP_REGION_STRAP) {
-			ret = otp_strap_image_confirm(strap_region);
-			if (ret == OTP_FAILURE) {
+			printf("\nOTP strap region :\n");
+			if (otp_print_strap_info(strap_region) < 0) {
 				printf("OTP strap error, please check.\n");
 				return OTP_FAILURE;
-			} else if (ret == OTP_PROG_SKIP) {
-				printf("OTP strap skip all\n");
-				return OTP_SUCCESS;
 			}
 		} else if (mode == OTP_REGION_ALL) {
+			printf("\nOTP configuration region :\n");
 			if (otp_print_conf_info(conf_region) < 0) {
 				printf("OTP config error, please check.\n");
 				return OTP_FAILURE;
 			}
-			if (otp_strap_image_confirm(strap_region) == OTP_FAILURE) {
+			printf("\nOTP strap region :\n");
+			if (otp_print_strap_info(strap_region) < 0) {
 				printf("OTP strap error, please check.\n");
 				return OTP_FAILURE;
 			}
-			if (otp_data_parse(data_region) < 0) {
+			printf("\nOTP data region :\n");
+			if (otp_print_data_info(data_region) < 0) {
 				printf("OTP data error, please check.\n");
 				return OTP_FAILURE;
 			}
