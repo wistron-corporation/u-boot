@@ -68,6 +68,7 @@ struct aspeed_spi_regs {
 
 /* CEx Control Register */
 #define CE_CTRL_IO_MODE_MASK		GENMASK(31, 28)
+#define CE_CTRL_IO_QPI_DATA			BIT(31)
 #define CE_CTRL_IO_DUAL_DATA		BIT(29)
 #define CE_CTRL_IO_DUAL_ADDR_DATA	(BIT(29) | BIT(28))
 #define CE_CTRL_IO_QUAD_DATA		BIT(30)
@@ -123,10 +124,15 @@ struct aspeed_spi_regs {
 #define DMA_CTRL_DELAY_SHIFT		8
 #define DMA_CTRL_DELAY_MASK		0xf
 #define DMA_CTRL_FREQ_SHIFT		4
+#define G6_DMA_CTRL_FREQ_SHIFT		16
+
 #define DMA_CTRL_FREQ_MASK		0xf
 #define TIMING_MASK(div, delay)					   \
 	(((delay & DMA_CTRL_DELAY_MASK) << DMA_CTRL_DELAY_SHIFT) | \
 	 ((div & DMA_CTRL_FREQ_MASK) << DMA_CTRL_FREQ_SHIFT))
+#define G6_TIMING_MASK(div, delay)					   \
+	(((delay & DMA_CTRL_DELAY_MASK) << DMA_CTRL_DELAY_SHIFT) | \
+	 ((div & DMA_CTRL_FREQ_MASK) << G6_DMA_CTRL_FREQ_SHIFT))
 #define DMA_CTRL_CALIB			BIT(3)
 #define DMA_CTRL_CKSUM			BIT(2)
 #define DMA_CTRL_WRITE			BIT(1)
@@ -189,26 +195,25 @@ static u32 aspeed_g6_spi_hclk_divisor(struct aspeed_spi_priv *priv, u32 max_hz)
 		15, 7, 14, 6, 13, 5, 12, 4, 11, 3, 10, 2, 9, 1, 8, 0
 	};
 	u8 base_div = 0;
-//	int done = 0;
-	u32 i, j;
+	int done = 0;
+	u32 i, j = 0;
 	u32 hclk_div_setting = 0;
 
-	//for ast2600 spi freq = hclk / (([27:24] * 16) + [11:8])
-	for (j = 0; j < ARRAY_SIZE(hclk_masks); i++) {
+	for (j = 0; j < 0xf; i++) {
 		for (i = 0; i < ARRAY_SIZE(hclk_masks); i++) {
-			if (max_hz >= (hclk_rate / ((i + 1) + (j * 16)))) {
-				base_div = j * 16;
-//					done = 1;
+			base_div = j * 16;
+			if (max_hz >= (hclk_rate / ((i + 1) + base_div))) {
+				
+				done = 1;
 				break;
 			}
 		}
-//			if (done)
-//				break;
-		if( j == 0) break;	// todo check
+			if (done)
+				break;
 	}
 
-	debug("hclk=%d required=%d base_div is %d (mask %x, base_div %x) speed=%d\n",
-		  hclk_rate, max_hz, i + 1, hclk_masks[i], base_div, hclk_rate / ((i + 1) + base_div));
+	debug("hclk=%d required=%d h_div %d, divisor is %d (mask %x) speed=%d\n",
+		  hclk_rate, max_hz, j, i + 1, hclk_masks[i], hclk_rate / (i + 1 + base_div));
 
 	hclk_div_setting = ((j << 4) | hclk_masks[i]);
 
@@ -257,8 +262,12 @@ static u32 aspeed_spi_fmc_checksum(struct aspeed_spi_priv *priv, u8 div,
 	 * Control Register and the data input delay cycles in the
 	 * Read Timing Compensation Register are replaced by bit[11:4].
 	 */
-	dma_ctrl = DMA_CTRL_ENABLE | DMA_CTRL_CKSUM | DMA_CTRL_CALIB |
-		TIMING_MASK(div, delay);
+	if(priv->new_ver)
+		dma_ctrl = DMA_CTRL_ENABLE | DMA_CTRL_CKSUM | DMA_CTRL_CALIB |
+			G6_TIMING_MASK(div, delay);
+	else		
+		dma_ctrl = DMA_CTRL_ENABLE | DMA_CTRL_CKSUM | DMA_CTRL_CALIB |
+			TIMING_MASK(div, delay);
 	writel(dma_ctrl, &priv->regs->dma_ctrl);
 
 	while (!(readl(&priv->regs->intr_ctrl) & INTR_CTRL_DMA_STATUS))
@@ -296,7 +305,7 @@ static int aspeed_spi_timing_calibration(struct aspeed_spi_priv *priv)
 	const u8 hclk_masks[] = { 13, 6, 14, 7, 15 };
 	u32 timing_reg = 0;
 	u32 checksum, gold_checksum;
-	int i, hcycle;
+	int i, hcycle, delay_ns;
 
 	debug("Read timing calibration :\n");
 
@@ -314,47 +323,77 @@ static int aspeed_spi_timing_calibration(struct aspeed_spi_priv *priv)
 	if (priv->new_ver) {
 		for (i = 0; i < ARRAY_SIZE(hclk_masks) - 1; i++) {
 			u32 hdiv = 5 - i;
-			u32 hshift = (hdiv - 1) << 2;
+			u32 hshift = (hdiv - 2) * 8;
 			bool pass = false;
 			u8 delay;
-
+			u16 first_delay = 0;
+			u16 end_delay = 0;
+			u32 cal_tmp;
+			debug(" hdiv %d, hshift %d \n", hdiv, hshift);
 			if (priv->hclk_rate / hdiv > priv->max_hz) {
 				debug("skipping freq %ld\n", priv->hclk_rate / hdiv);
 				continue;
 			}
 
+			/* Try without the 4ns DI delay */
+			hcycle = delay = 0;
+			debug("** Dealy Disable ** \n");
+			checksum = aspeed_spi_read_checksum(priv, hclk_masks[i], delay);
+			pass = (checksum == gold_checksum);
+			debug(" HCLK/%d,  no DI delay, %d HCLK cycle : %s\n",
+				  hdiv, hcycle, pass ? "PASS" : "FAIL");
+
+			/* All good for this freq  */
+			if (pass)
+				goto next_div;
+
 			/* Increase HCLK cycles until read succeeds */
 			for (hcycle = 0; hcycle <= TIMING_DELAY_HCYCLE_MAX; hcycle++) {
 				/* Try first with a 4ns DI delay */
 				delay = TIMING_DELAY_DI_4NS | hcycle;
-				checksum = aspeed_spi_read_checksum(priv, hclk_masks[i],
-								    delay);
-				pass = (checksum == gold_checksum);
-				debug(" HCLK/%d, 4ns DI delay, %d HCLK cycle : %s\n",
-				      hdiv, hcycle, pass ? "PASS" : "FAIL");
+				debug("** Delay Enable : hcycle %x ** \n", hcycle);
+				for (delay_ns = 0; delay_ns < 0xf; delay_ns++) {
+					delay |= (delay_ns << 4);
+					checksum = aspeed_spi_read_checksum(priv, hclk_masks[i],
+									    delay);
+					pass = (checksum == gold_checksum);
+					debug(" HCLK/%d, 4ns DI delay, %d HCLK cycle, %d delay_ns : %s\n",
+					      hdiv, hcycle, delay_ns, pass ? "PASS" : "FAIL");
 
-				/* Try again with more HCLK cycles */
-				if (!pass)
-					continue;
-
-				/* Try without the 4ns DI delay */
-				delay = hcycle;
-				checksum = aspeed_spi_read_checksum(priv, hclk_masks[i],
-								    delay);
-				pass = (checksum == gold_checksum);
-				debug(" HCLK/%d,  no DI delay, %d HCLK cycle : %s\n",
-				      hdiv, hcycle, pass ? "PASS" : "FAIL");
-
-				/* All good for this freq  */
-				if (pass)
+					/* Try again with more HCLK cycles */
+					if (!pass) {
+						if (!first_delay)
+							continue;
+						else {
+							end_delay = (hcycle << 4) | (delay_ns);
+							end_delay = end_delay - 1;
+							pass = 1;
+							debug("find end_delay %x %d %d\n", end_delay, hcycle, delay_ns);
+							break;
+						}
+					} else {
+						if (!first_delay) {
+							first_delay = (hcycle << 4) | delay_ns;
+							debug("find first_delay %x %d %d\n", first_delay, hcycle, delay_ns);
+						}
+						if (!end_delay)
+							pass = 0;
+					}
+				}
+				
+				if (pass) {
+					cal_tmp = (first_delay + end_delay) / 2;
+					delay = TIMING_DELAY_DI_4NS | ((cal_tmp & 0xf) << 4) | (cal_tmp >> 4);
 					break;
+				}
 			}
-
+next_div:
 			if (pass) {
 				timing_reg &= ~(0xfu << hshift);
 				timing_reg |= delay << hshift;
+				debug("timing_reg %x, delay %x, hshift bit %d\n",timing_reg, delay, hshift);
 			}
-		}		
+		}
 	} else {
 		for (i = 0; i < ARRAY_SIZE(hclk_masks); i++) {
 			u32 hdiv = 5 - i;
@@ -451,7 +490,7 @@ static int aspeed_spi_controller_init(struct aspeed_spi_priv *priv)
 					break;
 				case 2:
 					flash->ahb_base = priv->flashes[0].ahb_base + 0xc000000;	//cs0 + 196Mb
-					printf("cs2 mem-map : %x \n", (u32)flash->ahb_base);
+					debug("cs2 mem-map : %x \n", (u32)flash->ahb_base);
 					break;
 			}
 			flash->cs = cs;
@@ -623,8 +662,16 @@ static ssize_t aspeed_spi_write_user(struct aspeed_spi_priv *priv,
 {
 	aspeed_spi_start_user(priv, flash);
 
-	/* cmd buffer = cmd + addr */
+	if(flash->iomode == CE_CTRL_IO_QPI_DATA)
+		writel(flash->ce_ctrl_user | flash->iomode, &priv->regs->ce_ctrl[flash->cs]);
+	
+	/* cmd buffer = cmd + addr : normally cmd is use signle mode*/
 	aspeed_spi_send_cmd_addr(priv, flash, cmdbuf, cmdlen);
+
+	/* data will use io mode */
+	if(flash->iomode == CE_CTRL_IO_QUAD_DATA)
+		writel(flash->ce_ctrl_user | flash->iomode, &priv->regs->ce_ctrl[flash->cs]);
+	
 	aspeed_spi_write_to_ahb(flash->ahb_base, write_buf, len);
 
 	aspeed_spi_stop_user(priv, flash);
@@ -897,8 +944,10 @@ static int aspeed_spi_set_mode(struct udevice *bus, uint mode)
 	debug("%s: setting mode to %x\n", bus->name, mode);
 
 	if (mode & (SPI_RX_QUAD | SPI_TX_QUAD)) {
+#ifndef CONFIG_ASPEED_AST2600
 		pr_err("%s invalid QUAD IO mode\n", bus->name);
 		return -EINVAL;
+#endif
 	}
 
 	/* The CE Control Register is set in claim_bus() */
@@ -982,7 +1031,7 @@ static int aspeed_spi_probe(struct udevice *bus)
 	}
 
 	if (device_is_compatible(bus, "aspeed,ast2600-fmc") || 
-			device_is_compatible(bus, "aspeed,ast2600-fmc")) {
+			device_is_compatible(bus, "aspeed,ast2600-spi")) {
 		priv->new_ver = 1;
 	}
 

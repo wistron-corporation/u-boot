@@ -93,12 +93,21 @@
 
 &fmc {
 	status = "okay";
+#if 0
+	pinctrl-names = "default";
+	pinctrl-0 = <&pinctrl_fmcquad_default>;
+#endif
 	flash@0 {
 		compatible = "spi-flash", "sst,w25q256";
 		status = "okay";
 		spi-max-frequency = <50000000>;
+#if 0		
+		spi-tx-bus-width = <4>;
+		spi-rx-bus-width = <4>;
+#else
 		spi-tx-bus-width = <2>;
 		spi-rx-bus-width = <2>;
+#endif
 	};
 
 	flash@1 {

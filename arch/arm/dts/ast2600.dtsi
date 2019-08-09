@@ -123,6 +123,7 @@
 			status = "disabled";
 			interrupts = <19>;
 			clocks = <&scu ASPEED_CLK_AHB>;
+			num-cs = <3>;
 			flash@0 {
 				reg = < 0 >;
 				compatible = "jedec,spi-nor";
@@ -147,6 +148,7 @@
 			#size-cells = <0>;
 			compatible = "aspeed,ast2600-spi";
 			clocks = <&scu ASPEED_CLK_AHB>;
+			num-cs = <2>;
 			status = "disabled";
 			flash@0 {
 				reg = < 0 >;
@@ -162,11 +164,12 @@
 
 		spi2: flash-controller@1e631000 {
 			reg = < 0x1e631000 0xc4
-				0x38000000 0x08000000 >;
+				0x50000000 0x08000000 >;
 			#address-cells = <1>;
 			#size-cells = <0>;
 			compatible = "aspeed,ast2600-spi";
 			clocks = <&scu ASPEED_CLK_AHB>;
+			num-cs = <3>;
 			status = "disabled";
 			flash@0 {
 				reg = < 0 >;
@@ -178,6 +181,11 @@
 				compatible = "jedec,spi-nor";
 				status = "disabled";
 			};
+			flash@2 {
+                reg = < 1 >;
+                compatible = "jedec,spi-nor";
+                status = "disabled";
+            };
 		};
 
 		edac: sdram@1e6e0000 {
@@ -884,6 +892,56 @@
 };
 
 &pinctrl {
+	pinctrl_fmcquad_default: fmcquad_default {
+		function = "FMCQUAD";
+		groups = "FMCQUAD";
+	};
+
+	pinctrl_spi1_default: spi1_default {
+		function = "SPI1";
+		groups = "SPI1";
+	};
+
+	pinctrl_spi1abr_default: spi1abr_default {
+		function = "SPI1ABR";
+		groups = "SPI1ABR";
+	};
+
+	pinctrl_spi1cs1_default: spi1cs1_default {
+		function = "SPI1CS1";
+		groups = "SPI1CS1";
+	};
+
+	pinctrl_spi1wp_default: spi1wp_default {
+		function = "SPI1WP";
+		groups = "SPI1WP";
+	};
+
+	pinctrl_spi1quad_default: spi1quad_default {
+		function = "SPI1QUAD";
+		groups = "SPI1QUAD";
+	};
+
+	pinctrl_spi2_default: spi2_default {
+		function = "SPI2";
+		groups = "SPI2";
+	};
+
+	pinctrl_spi2cs1_default: spi2cs1_default {
+		function = "SPI2CS1";
+		groups = "SPI2CS1";
+	};
+
+	pinctrl_spi2cs2_default: spi2cs2_default {
+		function = "SPI2CS2";
+		groups = "SPI2CS2";
+	};
+
+	pinctrl_spi2quad_default: spi2quad_default {
+		function = "SPI2QUAD";
+		groups = "SPI2QUAD";
+	};
+
 	pinctrl_acpi_default: acpi_default {
 		function = "ACPI";
 		groups = "ACPI";
