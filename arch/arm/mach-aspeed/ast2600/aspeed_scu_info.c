@@ -255,7 +255,7 @@ extern void
 aspeed_spi_strap_mode(void)
 {
 	if(readl(ASPEED_HW_STRAP2) & BIT(10))
-		printf("SPI 3/4 byte mode address strap auto detection \n");
+		printf("SPI : 3/4 byte mode auto detection \n");
 }
 
 extern void
