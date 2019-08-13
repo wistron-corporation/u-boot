@@ -763,7 +763,7 @@ static int otp_print_conf_image(uint32_t *OTPCFG)
 	return OTP_SUCCESS;
 }
 
-static int otp_print_conf_info(int view)
+static int otp_print_conf_info(int input_offset)
 {
 	uint32_t OTPCFG[12];
 	uint32_t mask;
@@ -780,6 +780,8 @@ static int otp_print_conf_info(int view)
 	printf("DW    BIT        Value       Description\n");
 	printf("__________________________________________________________________________\n");
 	for (i = 0; i < ARRAY_SIZE(a0_conf_info); i++) {
+		if (input_offset != -1 && input_offset != a0_conf_info[i].dw_offset)
+			continue;
 		dw_offset = a0_conf_info[i].dw_offset;
 		bit_offset = a0_conf_info[i].bit_offset;
 		mask = BIT(a0_conf_info[i].length) - 1;
@@ -1920,43 +1922,34 @@ static int do_otpcmp(cmd_tbl_t *cmdtp, int flag, int argc, char *const argv[])
 
 static int do_otpinfo(cmd_tbl_t *cmdtp, int flag, int argc, char *const argv[])
 {
-	int mode = 0;
 	int view = 0;
+	int input;
 
 	if (argc != 2 && argc != 3)
 		return CMD_RET_USAGE;
 
-	/* Drop the info cmd */
-	argc--;
-	argv++;
+	if (!strcmp(argv[1], "conf")) {
 
-	if (!strcmp(argv[0], "conf"))
-		mode = OTP_REGION_CONF;
-	else if (!strcmp(argv[0], "strap"))
-		mode = OTP_REGION_STRAP;
-	else
-		return CMD_RET_USAGE;
-
-	/* Drop the region cmd */
-	argc--;
-	argv++;
-
-	if (!strcmp(argv[0], "v")) {
-		view = 1;
-		/* Drop the view option */
-		argc--;
-		argv++;
-	}
-
-	if (mode == OTP_REGION_CONF) {
 		writel(OTP_PASSWD, 0x1e6f2000); //password
-		otp_print_conf_info(view);
-	} else if (mode == OTP_REGION_STRAP) {
+		if (argc == 3) {
+			input = simple_strtoul(argv[2], NULL, 16);
+			otp_print_conf_info(input);
+		} else {
+			otp_print_conf_info(-1);
+		}
+	} else if (!strcmp(argv[1], "strap")) {
+		if (!strcmp(argv[2], "v")) {
+			view = 1;
+			/* Drop the view option */
+			argc--;
+			argv++;
+		}
 		writel(OTP_PASSWD, 0x1e6f2000); //password
 		otp_print_strap_info(view);
 	} else {
 		return CMD_RET_USAGE;
 	}
+
 	return CMD_RET_SUCCESS;
 }
 
@@ -2047,7 +2040,8 @@ U_BOOT_CMD(
 	"ASPEED One-Time-Programmable sub-system",
 	"read conf|data <otp_dw_offset> <dw_count>\n"
 	"otp read strap <strap_bit_offset> <bit_count>\n"
-	"otp info conf|strap [v]\n"
+	"otp info strap [v]\n"
+	"otp info conf [otp_dw_offset]\n"
 	"otp prog [f] <addr> <byte_size>\n"
 	"otp pb conf|data [f] <otp_dw_offset> <bit_offset> <value>\n"
 	"otp pb strap [f] <bit_offset> <value>\n"
