@@ -241,8 +241,14 @@ aspeed_who_init_dram(void)
 extern void
 aspeed_2nd_wdt_mode(void)
 {
-	if(readl(ASPEED_HW_STRAP2) & BIT(11))
-		printf("2nd Boot : Enable\n");
+	if(readl(ASPEED_HW_STRAP2) & BIT(11)) {
+		printf("2nd Boot : Enable, ");
+		if(readl(ASPEED_HW_STRAP2) & BIT(12))
+			printf("Single SPI ");
+		else
+			printf("Dual SPI ");
+		printf("= %s \n", readl(0x1e620064) & BIT(4) ? "Alternate":"Primary");
+	}
 }
 
 extern void
