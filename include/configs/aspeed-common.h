@@ -55,6 +55,8 @@
 #define CONFIG_BOOTCOMMAND		"bootm 200a0000"
 #define CONFIG_ENV_OVERWRITE
 
+#define CONFIG_SYS_BOOTM_LEN 		(0x800000 * 2)
+
 #define CONFIG_EXTRA_ENV_SETTINGS \
 	"verify=yes\0"	\
 	"spi_dma=no\0" \
