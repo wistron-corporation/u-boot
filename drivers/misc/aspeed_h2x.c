@@ -33,8 +33,8 @@
 #define PCIE_UNLOCK_RX_BUFF		BIT(4)
 #define PCIE_RX_TLP_TAG_MATCH	BIT(3)
 #define PCIE_Wait_RX_TLP_CLR	BIT(2)
-#define PCIE_RC_L_RX			BIT(1)
-#define PCIE_RC_L				BIT(0)
+#define PCIE_RC_RX_ENABLE		BIT(1)
+#define PCIE_RC_ENABLE			BIT(0)
 
 /* reg 0x88, 0xC8 : RC ISR */
 
@@ -46,8 +46,6 @@
 #define PCIE_RC_INTC_ISR		BIT(2)
 #define PCIE_RC_INTB_ISR		BIT(1)
 #define PCIE_RC_INTA_ISR		BIT(0)
-
-
 
 
 struct aspeed_h2x_priv {
@@ -78,8 +76,7 @@ extern void aspeed_pcie_cfg_read(struct aspeed_h2x_reg *h2x, pci_dev_t bdf, uint
 					(offset & ~3);
 
 	txTag %= 0x7;
-//	printf("type = %d, busfunc = %x \n",type, bdf_offset);
-	
+
 	writel(0x04000001 | (type << 24), &h2x->h2x_tx_desc3);
 	writel(0x0000200f | (txTag << 8), &h2x->h2x_tx_desc2);
 	writel(bdf_offset, &h2x->h2x_tx_desc1);
@@ -94,13 +91,13 @@ extern void aspeed_pcie_cfg_read(struct aspeed_h2x_reg *h2x, pci_dev_t bdf, uint
 		if(timeout > 10000) {
 			printf("time out b : %d, d : %d, f: %d \n", PCI_BUS(bdf), PCI_DEV(bdf), PCI_FUNC(bdf));
 			*valuep = 0xffffffff;
-///
+
 #if 0
 			printf("=======0x1e770000========\n");
 			for (i = 0; i < 0x40; i++) {
 				if((i % 4) == 0)
 					printf("\n %2x : ", (i * 4));
-				
+
 				printf("%08x ", readl(0x1e770000 + (i * 4)));
 			}
 			printf("\n =======0x1e6ed000========\n");
@@ -111,8 +108,6 @@ extern void aspeed_pcie_cfg_read(struct aspeed_h2x_reg *h2x, pci_dev_t bdf, uint
 			}
 			printf("===============\n");			
 #endif
-///
-			
 			goto out;
 		}
 	};
@@ -124,13 +119,20 @@ extern void aspeed_pcie_cfg_read(struct aspeed_h2x_reg *h2x, pci_dev_t bdf, uint
 	switch(readl(&h2x->h2x_reg24) & PCIE_STATUS_OF_TX) {
 		case PCIE_RC_L_TX_COMPLETE:
 			while(!(readl(&h2x->h2x_rc_l_isr) & PCIE_RC_RX_DONE_ISR));
-			writel(PCIE_RC_RX_DONE_ISR, &h2x->h2x_rc_l_isr);
-			*valuep = readl(&h2x->h2x_rc_l_rdata);
+			if(readl(&h2x->h2x_rc_l_isr) & (PCIE_RC_CPLCA_ISR | PCIE_RC_CPLUR_ISR)) {
+				printf("return ffffffff \n");
+				*valuep = 0xffffffff;
+			} else
+				*valuep = readl(&h2x->h2x_rc_l_rdata);
+			writel(readl(&h2x->h2x_rc_l_isr), &h2x->h2x_rc_l_isr);
 			break;
 		case PCIE_RC_H_TX_COMPLETE:
 			while(!(readl(&h2x->h2x_rc_h_isr) & PCIE_RC_RX_DONE_ISR));
-			writel(PCIE_RC_RX_DONE_ISR, &h2x->h2x_rc_h_isr);
-			*valuep = readl(&h2x->h2x_rc_h_rdata);
+			if(readl(&h2x->h2x_rc_h_isr) & (PCIE_RC_CPLCA_ISR | PCIE_RC_CPLUR_ISR))
+				*valuep = 0xffffffff;
+			else
+				*valuep = readl(&h2x->h2x_rc_h_rdata);
+			writel(readl(&h2x->h2x_rc_h_isr), &h2x->h2x_rc_h_isr);
 			break;
 		default:	//read rc data
 			*valuep = readl(&h2x->h2x_rdata);
@@ -169,7 +171,7 @@ extern void aspeed_pcie_cfg_write(struct aspeed_h2x_reg *h2x, pci_dev_t bdf, uin
 		}
 		break;
 	case PCI_SIZE_16:
-		switch(offset % 2) {
+		switch((offset >> 1) % 2 ) {
 			case 0:
 				byte_en = 0x3;
 				break;
@@ -224,17 +226,15 @@ extern void aspeed_pcie_cfg_write(struct aspeed_h2x_reg *h2x, pci_dev_t bdf, uin
 		case PCIE_RC_L_TX_COMPLETE:
 			while(!(readl(&h2x->h2x_rc_l_isr) & PCIE_RC_RX_DONE_ISR));
 			writel(PCIE_RC_RX_DONE_ISR, &h2x->h2x_rc_l_isr);
-			
 			break;
 		case PCIE_RC_H_TX_COMPLETE:
 			while(!(readl(&h2x->h2x_rc_h_isr) & PCIE_RC_RX_DONE_ISR));
 			writel(PCIE_RC_RX_DONE_ISR, &h2x->h2x_rc_h_isr);
-			
 			break;
 	}
 
 out:
-	txTag++;	
+	txTag++;
 
 }
 
@@ -264,14 +264,23 @@ static int aspeed_h2x_probe(struct udevice *dev)
 	writel(0x1, &priv->h2x->h2x_reg00);
 
 	//ahb to pcie rc 
-	writel(0xf0003000, &priv->h2x->h2x_reg60);
+	writel(0xe0006000, &priv->h2x->h2x_reg60);
 	writel(0x0, &priv->h2x->h2x_reg64);
 	writel(0xFFFFFFFF, &priv->h2x->h2x_reg68);
-	
-	writel( PCIE_RX_LINEAR | PCIE_RX_MSI_SEL | PCIE_RX_MSI_EN |
-			PCIE_Wait_RX_TLP_CLR | PCIE_RC_L_RX | PCIE_RC_L,
-	&priv->h2x->h2x_reg80);
 
+//	writel( PCIE_RX_LINEAR | PCIE_RX_MSI_SEL | PCIE_RX_MSI_EN |
+//			PCIE_Wait_RX_TLP_CLR | PCIE_RC_RX_ENABLE | PCIE_RC_L,
+#if 1
+	//rc_l
+	writel( PCIE_RX_LINEAR | PCIE_RX_MSI_EN |
+			PCIE_Wait_RX_TLP_CLR | PCIE_RC_RX_ENABLE | PCIE_RC_ENABLE,
+	&priv->h2x->h2x_reg80);
+#else
+	//rc_h
+	writel( PCIE_RX_LINEAR | PCIE_RX_MSI_EN |
+			PCIE_Wait_RX_TLP_CLR | PCIE_RC_RX_ENABLE | PCIE_RC_ENABLE,
+	&priv->h2x->h2x_regC0);
+#endif
 	//assign debug tx tag
 	writel(0x28, &priv->h2x->h2x_regBC);
 
