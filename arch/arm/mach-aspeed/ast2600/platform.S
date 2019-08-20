@@ -101,6 +101,15 @@ ENDPROC(ast_bootmode)
     mcr     p15, 0, r0, c14, c0, 0
 .endm
 
+.macro scu_unlock
+    movw  r0, #0xA8A8
+    movt  r0, #0x1688           @; magic key to unlock SCU
+
+    ldr   r1, =AST_SCU_PROT_KEY1
+    str   r0, [r1]
+    ldr   r1, =AST_SCU_PROT_KEY2
+    str   r0, [r1]
+.endm
 
 .globl lowlevel_init
 
@@ -110,6 +119,14 @@ lowlevel_init:
 #else
     /* setup timer frequency for ARM generic timer */
     timer_init
+
+    /* unlock SCU */
+    scu_unlock
+
+    /* reset SMP mailbox as early as possible */
+    mov   r0, #0x0
+    ldr   r1, =AST_SMP_MBOX_FIELD_READY
+    str   r0, [r1]
 
     /* set ACTLR.SMP to enable cache use */
     mrc   p15, 0, r0, c1, c0, 1
@@ -122,7 +139,8 @@ lowlevel_init:
      */
     mrc   p15, 0, r0, c0, c0, 5             @; Read CPU ID register
     ands  r0, r0, #0xFF                     @; Mask off, leaving the CPU ID field
-    ldr   r2, =0xABBAAB00
+    movw  r2, #0xAB00
+    movt  r2, #0xABBA
     orr   r2, r2, r0
 
     beq   do_primary_core_setup
@@ -132,7 +150,8 @@ poll_mailbox_ready:
     wfe
     ldr   r0, =AST_SMP_MBOX_FIELD_READY
     ldr   r0, [r0]
-    ldr   r1, =0xBABECAFE
+    movw  r1, #0xCAFE
+    movt  r1, #0xBABE
     cmp   r1, r0
     bne   poll_mailbox_ready
 
@@ -144,13 +163,6 @@ poll_mailbox_ready:
     ldr   pc, =AST_SMP_MBOX_FIELD_POLLINSN
 
 do_primary_core_setup:
-    /* unlock SCU */
-    ldr   r0, =0x1688A8A8                   @; magic key to unlock SCU
-    ldr   r1, =AST_SCU_PROT_KEY1
-    str   r0, [r1]
-    ldr   r1, =AST_SCU_PROT_KEY2
-    str   r0, [r1]
-
     /* disable FMC WDT for SPI address mode detection */
     mov   r0, #0
     ldr   r1, =AST_FMC_WDT1_CTRL_MODE
@@ -170,10 +182,16 @@ relocate_mailbox_insn:
     cmp   r0, r1
     bne   relocate_mailbox_insn
 
+    /* reset SMP go sign */
+    mov   r0, #0
+    ldr   r1, =AST_SMP_MBOX_FIELD_GOSIGN
+    str   r0, [r1]
+
     /* notify cpuN mailbox is ready */
-    ldr   r0, =AST_SMP_MBOX_FIELD_READY
-    ldr   r1, =0xBABECAFE
-    str   r1, [r0]
+    movw  r0, #0xCAFE
+    movt  r0, #0xBABE
+    ldr   r1, =AST_SMP_MBOX_FIELD_READY
+    str   r0, [r1]
     sev
 
     /* back to arch calling code */
