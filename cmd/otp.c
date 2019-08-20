@@ -425,6 +425,54 @@ struct otpconf_info a0_conf_info[] = {
 	}, {
 		6, 0, 32, OTP_REG_VALUE, "User define data, random number high : 0x%x"
 	}, {
+		7, 0, 1, 0, "Force enable PCI bus to AHB bus bridge"
+	}, {
+		7, 0, 1, 1, "Force disable PCI bus to AHB bus bridge"
+	}, {
+		7, 1, 1, 0, "Force enable UART5 debug port function"
+	}, {
+		7, 1, 1, 1, "Force disable UART5 debug port function"
+	}, {
+		7, 2, 1, 0, "Force enable XDMA function"
+	}, {
+		7, 2, 1, 1, "Force disable XDMA function"
+	}, {
+		7, 3, 1, 0, "Force enable APB to PCIE device bridge"
+	}, {
+		7, 3, 1, 1, "Force disable APB to PCIE device bridge"
+	}, {
+		7, 4, 1, 0, "Force enable APB to PCIE bridge config access"
+	}, {
+		7, 4, 1, 1, "Force disable APB to PCIE bridge config access"
+	}, {
+		7, 5, 1, 0, "Force enable PCIE bus trace buffer"
+	}, {
+		7, 5, 1, 1, "Force disable PCIE bus trace buffer"
+	}, {
+		7, 6, 1, 0, "Force enable the capability for PCIE device port as a Root Complex"
+	}, {
+		7, 6, 1, 1, "Force disable the capability for PCIE device port as a Root Complex"
+	}, {
+		7, 16, 1, 0, "Force enable ESPI bus to AHB bus bridge"
+	}, {
+		7, 16, 1, 1, "Force disable ESPI bus to AHB bus bridge"
+	}, {
+		7, 17, 1, 0, "Force enable LPC bus to AHB bus bridge1"
+	}, {
+		7, 17, 1, 1, "Force disable LPC bus to AHB bus bridge1"
+	}, {
+		7, 18, 1, 0, "Force enable LPC bus to AHB bus bridge2"
+	}, {
+		7, 18, 1, 1, "Force disable LPC bus to AHB bus bridge2"
+	}, {
+		7, 19, 1, 0, "Force enable UART1 debug port function"
+	}, {
+		7, 19, 1, 1, "Force disable UART1 debug port function"
+	}, {
+		7, 31, 1, 0, "Disable chip security setting"
+	}, {
+		7, 31, 1, 1, "Enable chip security setting"
+	}, {
 		8, 0, 32, OTP_REG_VALUE, "Redundancy Repair : 0x%x"
 	}, {
 		10, 0, 32, OTP_REG_VALUE, "Manifest ID low : 0x%x"
@@ -763,7 +811,7 @@ static int otp_print_conf_image(uint32_t *OTPCFG)
 	return OTP_SUCCESS;
 }
 
-static int otp_print_conf_info(int view)
+static int otp_print_conf_info(int input_offset)
 {
 	uint32_t OTPCFG[12];
 	uint32_t mask;
@@ -780,6 +828,8 @@ static int otp_print_conf_info(int view)
 	printf("DW    BIT        Value       Description\n");
 	printf("__________________________________________________________________________\n");
 	for (i = 0; i < ARRAY_SIZE(a0_conf_info); i++) {
+		if (input_offset != -1 && input_offset != a0_conf_info[i].dw_offset)
+			continue;
 		dw_offset = a0_conf_info[i].dw_offset;
 		bit_offset = a0_conf_info[i].bit_offset;
 		mask = BIT(a0_conf_info[i].length) - 1;
@@ -894,7 +944,7 @@ static int otp_print_strap_image(uint32_t *OTPSTRAP)
 static int otp_print_strap_info(int view)
 {
 	struct otpstrap_status strap_status[64];
-	int i, j, k;
+	int i, j;
 	int fail = 0;
 	uint32_t bit_offset;
 	uint32_t length;
@@ -904,9 +954,10 @@ static int otp_print_strap_info(int view)
 	otp_strp_status(strap_status);
 
 	if (view) {
-		printf("BIT(hex) Value  Option         Protect   Description\n");
-		printf("                0 1 2 3 4 5 6\n");
-		printf("_________________________________________________________________________________________________________\n");
+		// printf("BIT(hex) Value  Option         Protect   Description\n");
+		// printf("                0 1 2 3 4 5 6\n");
+		printf("BIT(hex) Value  Remains  Protect   Description\n");
+		printf("___________________________________________________________________________________________________\n");
 	} else {
 		printf("BIT(hex)   Value       Description\n");
 		printf("________________________________________________________________________________\n");
@@ -916,8 +967,8 @@ static int otp_print_strap_info(int view)
 		bit_offset = a0_strap_info[i].bit_offset;
 		length = a0_strap_info[i].length;
 		for (j = 0; j < length; j++) {
-			otp_value |= strap_status[bit_offset].value << j;
-			otp_protect |= strap_status[bit_offset].protected << j;
+			otp_value |= strap_status[bit_offset + j].value << j;
+			otp_protect |= strap_status[bit_offset + j].protected << j;
 		}
 		if ((otp_value != a0_strap_info[i].value) &&
 		    a0_strap_info[i].value != OTP_REG_RESERVED)
@@ -926,10 +977,7 @@ static int otp_print_strap_info(int view)
 			for (j = 0; j < length; j++) {
 				printf("0x%-7X", a0_strap_info[i].bit_offset + j);
 				printf("0x%-5X", strap_status[bit_offset + j].value);
-				for (k = 0; k < 7; k++) {
-					printf("%X ", strap_status[bit_offset + j].option_array[k]);
-				}
-				printf(" ");
+				printf("%-9d", strap_status[bit_offset + j].remain_times);
 				printf("0x%-7X", strap_status[bit_offset].protected);
 				if (a0_strap_info[i].value == OTP_REG_RESERVED) {
 					printf(" Reserved\n");
@@ -948,7 +996,7 @@ static int otp_print_strap_info(int view)
 					printf("| \"\n");
 			}
 		} else {
-			if (a0_strap_info[i].length == 1) {
+			if (length == 1) {
 				printf("0x%-9X", a0_strap_info[i].bit_offset);
 			} else {
 				printf("0x%-2X:0x%-4X",
@@ -969,29 +1017,6 @@ static int otp_print_strap_info(int view)
 
 	return OTP_SUCCESS;
 }
-
-// static void otp_info_strap(int view)
-// {
-// 	struct otpstrap_status strap_status[64];
-// 	uint32_t OTPSTRAP[6];
-// 	int i;
-
-
-// 	otp_strp_status(strap_status);
-
-// 	for (i = 0; i < 6; i++)
-// 		OTPSTRAP[i] = 0;
-// 	for (i = 0; i < 32; i++) {
-// 		OTPSTRAP[0] |= (strap_status[i].value & 0x1) << i;
-// 		OTPSTRAP[4] |= (strap_status[i].protected & 0x1) << i;
-// 	}
-// 	for (i = 0; i < 32; i++) {
-// 		OTPSTRAP[1] |= (strap_status[i + 32].value & 0x1) << i;
-// 		OTPSTRAP[5] |= (strap_status[i + 32].protected & 0x1) << i;
-// 	}
-
-// 	otp_print_strap_info(OTPSTRAP, view);
-// }
 
 static void buf_print(char *buf, int len)
 {
@@ -1269,11 +1294,11 @@ static int otp_print_strap(int start, int count)
 
 	otp_strp_status(otpstrap);
 
-	printf("BIT(hex)  Value  Avaliable        Status\n");
+	printf("BIT(hex)  Value  Option           Status\n");
 	printf("___________________________________________________________________________\n");
 
 	for (i = start; i < start + count; i++) {
-		printf("%-10X", i);
+		printf("0x%-8X", i);
 		printf("%-7d", otpstrap[i].value);
 		for (j = 0; j < 7; j++)
 			printf("%d ", otpstrap[i].option_array[j]);
@@ -1920,43 +1945,34 @@ static int do_otpcmp(cmd_tbl_t *cmdtp, int flag, int argc, char *const argv[])
 
 static int do_otpinfo(cmd_tbl_t *cmdtp, int flag, int argc, char *const argv[])
 {
-	int mode = 0;
 	int view = 0;
+	int input;
 
 	if (argc != 2 && argc != 3)
 		return CMD_RET_USAGE;
 
-	/* Drop the info cmd */
-	argc--;
-	argv++;
+	if (!strcmp(argv[1], "conf")) {
 
-	if (!strcmp(argv[0], "conf"))
-		mode = OTP_REGION_CONF;
-	else if (!strcmp(argv[0], "strap"))
-		mode = OTP_REGION_STRAP;
-	else
-		return CMD_RET_USAGE;
-
-	/* Drop the region cmd */
-	argc--;
-	argv++;
-
-	if (!strcmp(argv[0], "v")) {
-		view = 1;
-		/* Drop the view option */
-		argc--;
-		argv++;
-	}
-
-	if (mode == OTP_REGION_CONF) {
 		writel(OTP_PASSWD, 0x1e6f2000); //password
-		otp_print_conf_info(view);
-	} else if (mode == OTP_REGION_STRAP) {
+		if (argc == 3) {
+			input = simple_strtoul(argv[2], NULL, 16);
+			otp_print_conf_info(input);
+		} else {
+			otp_print_conf_info(-1);
+		}
+	} else if (!strcmp(argv[1], "strap")) {
+		if (!strcmp(argv[2], "v")) {
+			view = 1;
+			/* Drop the view option */
+			argc--;
+			argv++;
+		}
 		writel(OTP_PASSWD, 0x1e6f2000); //password
 		otp_print_strap_info(view);
 	} else {
 		return CMD_RET_USAGE;
 	}
+
 	return CMD_RET_SUCCESS;
 }
 
@@ -2047,7 +2063,8 @@ U_BOOT_CMD(
 	"ASPEED One-Time-Programmable sub-system",
 	"read conf|data <otp_dw_offset> <dw_count>\n"
 	"otp read strap <strap_bit_offset> <bit_count>\n"
-	"otp info conf|strap [v]\n"
+	"otp info strap [v]\n"
+	"otp info conf [otp_dw_offset]\n"
 	"otp prog [f] <addr> <byte_size>\n"
 	"otp pb conf|data [f] <otp_dw_offset> <bit_offset> <value>\n"
 	"otp pb strap [f] <bit_offset> <value>\n"
