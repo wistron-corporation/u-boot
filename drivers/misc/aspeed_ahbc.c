@@ -11,13 +11,16 @@
 #include <asm/io.h>
 #include <asm/arch/ahbc_aspeed.h>
 
+#define AHBC_UNLOCK	0xaeed1a03
 struct aspeed_ahbc_priv {
 	struct aspeed_ahbc_reg *ahbc;
 };
 
 extern void aspeed_ahbc_remap_enable(struct aspeed_ahbc_reg *ahbc)
 {
+	writel(AHBC_UNLOCK, &ahbc->protection_key);
 	writel(0x20, &ahbc->addr_remap);
+	writel(0x1, &ahbc->protection_key);
 }
 
 static int aspeed_ahbc_probe(struct udevice *dev)

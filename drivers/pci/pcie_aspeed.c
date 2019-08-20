@@ -1,8 +1,4 @@
 // SPDX-License-Identifier: GPL-2.0+
-/*
- *
- */
-
 #include <common.h>
 #include <dm.h>
 #include <pci.h>
@@ -49,30 +45,24 @@ struct pcie_aspeed {
 	struct pci_region mem;
 };
 
-static int pcie_addr_valid(pci_dev_t d, int first_busno)
-{
-#if 0
-	if ((PCI_BUS(d) == first_busno) && (PCI_DEV(d) > 0))
-		return 0;
-	if ((PCI_BUS(d) == first_busno + 1) && (PCI_DEV(d) > 0))
-		return 0;
-#endif
-	return 1;
-}
-
 static int pcie_aspeed_read_config(struct udevice *bus, pci_dev_t bdf,
 				     uint offset, ulong *valuep,
 				     enum pci_size_t size)
 {
 	struct pcie_aspeed *pcie = dev_get_priv(bus);
-	
+
 	debug("PCIE CFG read:  (b,d,f)=(%2d,%2d,%2d) ",
 	      PCI_BUS(bdf), PCI_DEV(bdf), PCI_FUNC(bdf));
 
-	if (!pcie_addr_valid(bdf, pcie->first_busno)) {
-		printf("- out of range\n");
-		*valuep = pci_get_ff(size);
-		return 0;
+	/* Only allow one other device besides the local one on the local bus */
+	if (PCI_BUS(bdf) == 1 && PCI_DEV(bdf) != 0) {
+			debug("- out of range\n");
+			/*
+			 * If local dev is 0, the first other dev can
+			 * only be 1
+			 */
+			*valuep = pci_get_ff(size);
+			return 0;
 	}
 
 	aspeed_pcie_cfg_read(pcie->h2x_pt, bdf, offset, valuep);
@@ -93,11 +83,6 @@ static int pcie_aspeed_write_config(struct udevice *bus, pci_dev_t bdf,
 	      PCI_BUS(bdf), PCI_DEV(bdf), PCI_FUNC(bdf));
 	debug("(addr,val)=(0x%04x, 0x%08lx)\n", offset, value);
 
-	if (!pcie_addr_valid(bdf, pcie->first_busno)) {
-		debug("- out of range\n");
-		return 0;
-	}
-
 	aspeed_pcie_cfg_write(pcie->h2x_pt, bdf, offset, value, size);
 
 	return 0;
@@ -110,6 +95,11 @@ static int pcie_aspeed_probe(struct udevice *dev)
 	struct pci_controller *hose = dev_get_uclass_priv(ctlr);
 	struct udevice *ahbc_dev, *h2x_dev;
 	int ret = 0;
+
+	//0x040 - RC_L reset
+	writel(BIT(21), 0x1e6e2040);
+	writel(BIT(20), 0x1e6e2044);
+	//0x080 - reset ?? 
 
 	ret = uclass_get_device_by_driver(UCLASS_MISC, DM_GET_DRIVER(aspeed_ahbc),
 										  &ahbc_dev);
@@ -131,14 +121,15 @@ static int pcie_aspeed_probe(struct udevice *dev)
 
 	//plda enable 
 	writel(PCIE_UNLOCK, pcie->ctrl_base + ASPEED_PCIE_LOCK);
-	writel(PCIE_CFG_CLASS_CODE(0x60000) | PCIE_CFG_REV_ID(4), pcie->ctrl_base + ASPEED_PCIE_CLASS_CODE);
+//	writel(PCIE_CFG_CLASS_CODE(0x60000) | PCIE_CFG_REV_ID(4), pcie->ctrl_base + ASPEED_PCIE_CLASS_CODE);
 	writel(ROOT_COMPLEX_ID(0x3), pcie->ctrl_base + ASPEED_PCIE_GLOBAL);
-#if 0	
+#if 0
 	//fpga 
 	writel(0x500460ff, pcie->ctrl_base + 0x2c);
 #endif
 
 	pcie->first_busno = dev->seq;
+	mdelay(100);
 
 	/* Don't register host if link is down */
 	if (readl(pcie->ctrl_base + ASPEED_PCIE_LINK) & PCIE_LINK_STS) {
@@ -147,14 +138,16 @@ static int pcie_aspeed_probe(struct udevice *dev)
 		printf("PCIE-%d: Link down\n", dev->seq);
 	}
 
-	/* Store the IO and MEM windows settings for future use by the ATU */
-	pcie->io.phys_start = hose->regions[0].phys_start; /* IO base */
-	pcie->io.bus_start  = hose->regions[0].bus_start;  /* IO_bus_addr */
-	pcie->io.size	    = hose->regions[0].size;	   /* IO size */
+	/* PCI memory space */
+	pci_set_region(hose->regions + 0, 0x60000000,
+			   0x60000000, 0x10000000, PCI_REGION_MEM);
 
-	pcie->mem.phys_start = hose->regions[1].phys_start; /* MEM base */
-	pcie->mem.bus_start  = hose->regions[1].bus_start;  /* MEM_bus_addr */
-	pcie->mem.size	     = hose->regions[1].size;	    /* MEM size */
+	pci_set_region(hose->regions + 1,
+			   0, 0,
+			   gd->ram_size,
+			   PCI_REGION_MEM | PCI_REGION_SYS_MEMORY);
+
+	hose->region_count = 2;
 
 	return 0;
 }
