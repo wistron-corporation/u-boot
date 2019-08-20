@@ -1,8 +1,4 @@
 // SPDX-License-Identifier: GPL-2.0+
-/*
- *
- */
-
 #include <common.h>
 #include <dm.h>
 #include <pci.h>
@@ -100,6 +96,11 @@ static int pcie_aspeed_probe(struct udevice *dev)
 	struct udevice *ahbc_dev, *h2x_dev;
 	int ret = 0;
 
+	//0x040 - RC_L reset
+	writel(BIT(21), 0x1e6e2040);
+	writel(BIT(20), 0x1e6e2044);
+	//0x080 - reset ?? 
+
 	ret = uclass_get_device_by_driver(UCLASS_MISC, DM_GET_DRIVER(aspeed_ahbc),
 										  &ahbc_dev);
 	if (ret) {
@@ -128,6 +129,7 @@ static int pcie_aspeed_probe(struct udevice *dev)
 #endif
 
 	pcie->first_busno = dev->seq;
+	mdelay(100);
 
 	/* Don't register host if link is down */
 	if (readl(pcie->ctrl_base + ASPEED_PCIE_LINK) & PCIE_LINK_STS) {
