@@ -967,8 +967,8 @@ static int otp_print_strap_info(int view)
 		bit_offset = a0_strap_info[i].bit_offset;
 		length = a0_strap_info[i].length;
 		for (j = 0; j < length; j++) {
-			otp_value |= strap_status[bit_offset].value << j;
-			otp_protect |= strap_status[bit_offset].protected << j;
+			otp_value |= strap_status[bit_offset + j].value << j;
+			otp_protect |= strap_status[bit_offset + j].protected << j;
 		}
 		if ((otp_value != a0_strap_info[i].value) &&
 		    a0_strap_info[i].value != OTP_REG_RESERVED)
@@ -978,9 +978,6 @@ static int otp_print_strap_info(int view)
 				printf("0x%-7X", a0_strap_info[i].bit_offset + j);
 				printf("0x%-5X", strap_status[bit_offset + j].value);
 				printf("%-9d", strap_status[bit_offset + j].remain_times);
-				// for (k = 0; k < 7; k++) {
-				// 	printf("%X ", strap_status[bit_offset + j].option_array[k]);
-				// }
 				printf("0x%-7X", strap_status[bit_offset].protected);
 				if (a0_strap_info[i].value == OTP_REG_RESERVED) {
 					printf(" Reserved\n");
@@ -999,7 +996,7 @@ static int otp_print_strap_info(int view)
 					printf("| \"\n");
 			}
 		} else {
-			if (a0_strap_info[i].length == 1) {
+			if (length == 1) {
 				printf("0x%-9X", a0_strap_info[i].bit_offset);
 			} else {
 				printf("0x%-2X:0x%-4X",
@@ -1020,29 +1017,6 @@ static int otp_print_strap_info(int view)
 
 	return OTP_SUCCESS;
 }
-
-// static void otp_info_strap(int view)
-// {
-// 	struct otpstrap_status strap_status[64];
-// 	uint32_t OTPSTRAP[6];
-// 	int i;
-
-
-// 	otp_strp_status(strap_status);
-
-// 	for (i = 0; i < 6; i++)
-// 		OTPSTRAP[i] = 0;
-// 	for (i = 0; i < 32; i++) {
-// 		OTPSTRAP[0] |= (strap_status[i].value & 0x1) << i;
-// 		OTPSTRAP[4] |= (strap_status[i].protected & 0x1) << i;
-// 	}
-// 	for (i = 0; i < 32; i++) {
-// 		OTPSTRAP[1] |= (strap_status[i + 32].value & 0x1) << i;
-// 		OTPSTRAP[5] |= (strap_status[i + 32].protected & 0x1) << i;
-// 	}
-
-// 	otp_print_strap_info(OTPSTRAP, view);
-// }
 
 static void buf_print(char *buf, int len)
 {
