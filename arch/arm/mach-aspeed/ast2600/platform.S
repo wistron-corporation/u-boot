@@ -1,33 +1,7 @@
+// SPDX-License-Identifier: GPL-2.0
 /*
- *  This program is distributed in the hope that it will be useful,
- *  but WITHOUT ANY WARRANTY; without even the implied warranty of
- *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- *  GNU General Public License for more details.
+ * Copyright (C) ASPEED Technology Inc.
  *
- *  You should have received a copy of the GNU General Public License
- *  along with this program; if not, write to the Free Software
- *  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
- */
-/*
- * Board specific setup info
- *
- ******************************************************************************
- * ASPEED Technology Inc.
- *
- * Version     : 2
- * Release date: 2019.02.19
- *
- * Priority of fix item:
- * [P1] = critical
- * [P2] = nice to have
- * [P3] = minor
- *
- * Change List :
- * V0 |2018.03.28 : 1.[P1] Initial release for simulation
- *
- * Optional define variable
- *
- ******************************************************************************
  */
 
 #include <config.h>
@@ -52,132 +26,149 @@
  * +----------------------+ AST_SMP_MAILBOX_BASE
  */
 
-#define AST_SMP_MAILBOX_BASE            0x1E6E2180
-#define AST_SMP_MBOX_FIELD_ENTRY        (AST_SMP_MAILBOX_BASE + 0x0)
-#define AST_SMP_MBOX_FIELD_GOSIGN       (AST_SMP_MAILBOX_BASE + 0x4)
-#define AST_SMP_MBOX_FIELD_READY        (AST_SMP_MAILBOX_BASE + 0x8)
-#define AST_SMP_MBOX_FIELD_POLLINSN     (AST_SMP_MAILBOX_BASE + 0xc)
+#define AST_SMP_MAILBOX_BASE		0x1E6E2180
+#define AST_SMP_MBOX_FIELD_ENTRY	(AST_SMP_MAILBOX_BASE + 0x0)
+#define AST_SMP_MBOX_FIELD_GOSIGN	(AST_SMP_MAILBOX_BASE + 0x4)
+#define AST_SMP_MBOX_FIELD_READY	(AST_SMP_MAILBOX_BASE + 0x8)
+#define AST_SMP_MBOX_FIELD_POLLINSN	(AST_SMP_MAILBOX_BASE + 0xc)
 
 /* AST2600 HW registers */
-#define AST_SCU_BASE            0x1E6E2000
-#define AST_SCU_PROT_KEY1       (AST_SCU_BASE)
-#define AST_SCU_PROT_KEY2       (AST_SCU_BASE + 0x010)
-#define AST_SCU_REV_ID          (AST_SCU_BASE + 0x014)
-#define AST_SCU_HW_STRAP1       (AST_SCU_BASE + 0x500)
+#define AST_SCU_BASE		0x1E6E2000
+#define AST_SCU_PROT_KEY1	(AST_SCU_BASE)
+#define AST_SCU_PROT_KEY2	(AST_SCU_BASE + 0x010)
+#define AST_SCU_REV_ID		(AST_SCU_BASE + 0x014)
+#define AST_SCU_HW_STRAP1	(AST_SCU_BASE + 0x500)
 
-#define AST_FMC_BASE            0x1E620000
-#define AST_FMC_WDT1_CTRL_MODE  (AST_FMC_BASE + 0x060)
-#define AST_FMC_WDT2_CTRL_MODE  (AST_FMC_BASE + 0x064)
+#define AST_FMC_BASE		0x1E620000
+#define AST_FMC_WDT1_CTRL_MODE	(AST_FMC_BASE + 0x060)
+#define AST_FMC_WDT2_CTRL_MODE	(AST_FMC_BASE + 0x064)
 
 /* Revision ID */
-#define REV_ID_AST2600A0    0x05000303
+#define REV_ID_AST2600A0	0x05000303
 
 ENTRY(ast_bootmode)
-    ldr     r1, =AST_SCU_HW_STRAP1
-    ldr     r0, [r1]
-    tst     r0, #0x4
-    moveq   r0, #0x0            @; AST_BOOTMODE_SPI
-    movne   r0, #0x1            @; AST_BOOTMODE_EMMC
-    mov     pc, lr
+	ldr	r1, =AST_SCU_HW_STRAP1
+	ldr	r0, [r1]
+	tst	r0, #0x4
+	moveq	r0, #0x0	@; AST_BOOTMODE_SPI
+	movne	r0, #0x1	@; AST_BOOTMODE_EMMC
+	mov	pc, lr
 ENDPROC(ast_bootmode)
 
 .macro timer_init
 #ifdef CONFIG_FPGA_ASPEED
-    movw    r0, #0x7840
-    movt    r0, #0x17D
+	movw	r0, #0x7840
+	movt	r0, #0x17D
 #else
-    ldr     r0, =AST_SCU_REV_ID
-    ldr     r0, [r0]
+	ldr	r0, =AST_SCU_REV_ID
+	ldr	r0, [r0]
 
-    ldr     r1, =REV_ID_AST2600A0
-    cmp     r0, r1
+	ldr	r1, =REV_ID_AST2600A0
+	cmp	r0, r1
 
-    movweq  r0, #0x0800
-    movteq  r0, #0x2FAF         @; 800MHz for A0
-    movwne  r0, #0x8C00
-    movtne  r0, #0x4786         @; 1.2GHz for A1
+	movweq  r0, #0x0800
+	movteq  r0, #0x2FAF	@; 800MHz for A0
+	movwne  r0, #0x8C00
+	movtne  r0, #0x4786	@; 1.2GHz for A1
 #endif
-    /* write CNTFRQ */
-    mcr     p15, 0, r0, c14, c0, 0
+	mcr	p15, 0, r0, c14, c0, 0	@; update CNTFRQ
 .endm
 
+.macro scu_unlock
+	movw	r0, #0xA8A8
+	movt	r0, #0x1688	@; magic key to unlock SCU
+
+	ldr	r1, =AST_SCU_PROT_KEY1
+	str	r0, [r1]
+	ldr	r1, =AST_SCU_PROT_KEY2
+	str	r0, [r1]
+.endm
 
 .globl lowlevel_init
 
 lowlevel_init:
 #if defined(CONFIG_SPL) && !defined(CONFIG_SPL_BUILD)
-    mov   pc, lr
+	mov	pc, lr
 #else
-    /* setup timer frequency for ARM generic timer */
-    timer_init
+	/* setup timer frequency for ARM generic timer */
+	timer_init
 
-    /* set ACTLR.SMP to enable cache use */
-    mrc   p15, 0, r0, c1, c0, 1
-    orr   r0, r0, #0x40
-    mcr   p15, 0, r0, c1, c0, 1
+	/* unlock SCU */
+	scu_unlock
 
-    /*
-     * we treat cpu0 as the primary core and
-     * put secondary core (cpuN) to sleep
-     */
-    mrc   p15, 0, r0, c0, c0, 5             @; Read CPU ID register
-    ands  r0, r0, #0xFF                     @; Mask off, leaving the CPU ID field
-    ldr   r2, =0xABBAAB00
-    orr   r2, r2, r0
+	/* reset SMP mailbox as early as possible */
+	mov	r0, #0x0
+	ldr	r1, =AST_SMP_MBOX_FIELD_READY
+	str	r0, [r1]
 
-    beq   do_primary_core_setup
+	/* set ACTLR.SMP to enable cache use */
+	mrc	p15, 0, r0, c1, c0, 1
+	orr	r0, r0, #0x40
+	mcr	p15, 0, r0, c1, c0, 1
 
-    /* hold cpuN until mailbox is ready */
+	/*
+	 * we treat cpu0 as the primary core and
+	 * put secondary core (cpuN) to sleep
+	 */
+	mrc   p15, 0, r0, c0, c0, 5	@; Read CPU ID register
+	ands  r0, r0, #0xFF		@; Mask off, leaving the CPU ID field
+	movw  r2, #0xAB00
+	movt  r2, #0xABBA
+	orr   r2, r2, r0
+
+	beq   do_primary_core_setup
+
+	/* hold cpuN until mailbox is ready */
 poll_mailbox_ready:
-    wfe
-    ldr   r0, =AST_SMP_MBOX_FIELD_READY
-    ldr   r0, [r0]
-    ldr   r1, =0xBABECAFE
-    cmp   r1, r0
-    bne   poll_mailbox_ready
+	wfe
+	ldr	r0, =AST_SMP_MBOX_FIELD_READY
+	ldr	r0, [r0]
+	movw	r1, #0xCAFE
+	movt	r1, #0xBABE
+	cmp	r1, r0
+	bne	poll_mailbox_ready
 
-    /* parameters for relocated SMP go polling insn. */
-    ldr   r0, =AST_SMP_MBOX_FIELD_GOSIGN
-    ldr   r1, =AST_SMP_MBOX_FIELD_ENTRY
+	/* parameters for relocated SMP go polling insn. */
+	ldr	r0, =AST_SMP_MBOX_FIELD_GOSIGN
+	ldr	r1, =AST_SMP_MBOX_FIELD_ENTRY
 
-    /* no return */
-    ldr   pc, =AST_SMP_MBOX_FIELD_POLLINSN
+	/* no return */
+	ldr	pc, =AST_SMP_MBOX_FIELD_POLLINSN
 
 do_primary_core_setup:
-    /* unlock SCU */
-    ldr   r0, =0x1688A8A8                   @; magic key to unlock SCU
-    ldr   r1, =AST_SCU_PROT_KEY1
-    str   r0, [r1]
-    ldr   r1, =AST_SCU_PROT_KEY2
-    str   r0, [r1]
+	/* disable FMC WDT for SPI address mode detection */
+	mov	r0, #0
+	ldr	r1, =AST_FMC_WDT1_CTRL_MODE
+	str	r0, [r1]
+	ldr	r1, =AST_FMC_WDT2_CTRL_MODE
+	str	r0, [r1]
 
-    /* disable FMC WDT for SPI address mode detection */
-    mov   r0, #0
-    ldr   r1, =AST_FMC_WDT1_CTRL_MODE
-    str   r0, [r1]
-    ldr   r1, =AST_FMC_WDT2_CTRL_MODE
-    str   r0, [r1]
+	/* relocate mailbox insn. for cpuN polling SMP go signal */
+	adrl	r0, mailbox_insn
+	adrl	r1, mailbox_insn_end
 
-    /* relocate mailbox insn. for cpuN polling SMP go signal */
-    adrl  r0, mailbox_insn
-    adrl  r1, mailbox_insn_end
-
-    ldr   r2, =#AST_SMP_MBOX_FIELD_POLLINSN
+	ldr	r2, =#AST_SMP_MBOX_FIELD_POLLINSN
 
 relocate_mailbox_insn:
-    ldr   r3, [r0], #0x4
-    str   r3, [r2], #0x4
-    cmp   r0, r1
-    bne   relocate_mailbox_insn
+	ldr	r3, [r0], #0x4
+	str	r3, [r2], #0x4
+	cmp	r0, r1
+	bne	relocate_mailbox_insn
 
-    /* notify cpuN mailbox is ready */
-    ldr   r0, =AST_SMP_MBOX_FIELD_READY
-    ldr   r1, =0xBABECAFE
-    str   r1, [r0]
-    sev
+	/* reset SMP go sign */
+	mov	r0, #0
+	ldr	r1, =AST_SMP_MBOX_FIELD_GOSIGN
+	str	r0, [r1]
 
-    /* back to arch calling code */
-    mov   pc, lr
+	/* notify cpuN mailbox is ready */
+	movw	r0, #0xCAFE
+	movt	r0, #0xBABE
+	ldr	r1, =AST_SMP_MBOX_FIELD_READY
+	str	r0, [r1]
+	sev
+
+	/* back to arch calling code */
+	mov	pc, lr
 
 /*
  * insn. inside mailbox to poll SMP go signal.
@@ -186,24 +177,24 @@ relocate_mailbox_insn:
  * pc-relative assembly should NOT be used.
  */
 mailbox_insn:
-    /*
-     * r0 ~ r3 are parameters:
-     *   r0 = AST_SMP_MBOX_FIELD_GOSIGN
-     *   r1 = AST_SMP_MBOX_FIELD_ENTRY
-     *   r2 = per-cpu go sign value
-     *   r3 = no used now
-     */
+	/*
+	 * r0 ~ r3 are parameters:
+	 *  r0 = AST_SMP_MBOX_FIELD_GOSIGN
+	 *  r1 = AST_SMP_MBOX_FIELD_ENTRY
+	 *  r2 = per-cpu go sign value
+	 *  r3 = no used now
+	 */
 poll_mailbox_smp_go:
-    wfe
-    ldr   r4, [r0]
-    cmp   r2, r4
-    bne   poll_mailbox_smp_go
+	wfe
+	ldr	r4, [r0]
+	cmp	r2, r4
+	bne	poll_mailbox_smp_go
 
-    /* SMP GO signal confirmed, release cpuN */
-    ldr   pc, [r1]
+	/* SMP GO signal confirmed, release cpuN */
+	ldr	pc, [r1]
 
 mailbox_insn_end:
-    /* should never reach */
-    b .
+	/* should never reach */
+	b	.
 
 #endif
