@@ -12,23 +12,9 @@
 extern int
 aspeed_get_mac_phy_interface(u8 num)
 {
-#if 1
-	u32 strap1;
-	u32 strap2;
-	/* force MAC1/2/3/4 run on RGMII mode */
-	writel(GENMASK(7, 6), ASPEED_HW_STRAP1);
-	writel(GENMASK(1, 0), ASPEED_HW_STRAP2);
-	
-	strap1 = readl(ASPEED_HW_STRAP1);
-#ifdef ASPEED_HW_STRAP2
-	strap2 = readl(ASPEED_HW_STRAP2);
-#endif
-#else	
 	u32 strap1 = readl(ASPEED_HW_STRAP1);
 #ifdef ASPEED_HW_STRAP2
 	u32 strap2 = readl(ASPEED_HW_STRAP2);
-#endif
-
 #endif
 	switch(num) {
 		case 0:
