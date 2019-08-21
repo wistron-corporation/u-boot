@@ -233,8 +233,15 @@ aspeed_2nd_wdt_mode(void)
 			printf("Single SPI ");
 		else
 			printf("Dual SPI ");
-		printf("= %s \n", readl(0x1e620064) & BIT(4) ? "Alternate":"Primary");
+		printf(": %s", readl(0x1e620064) & BIT(4) ? "Alternate":"Primary");
+
+		if(readl(ASPEED_HW_STRAP2) & GENMASK(15, 13)) {
+			printf(", bspi_size : %ld MB\n", BIT((readl(ASPEED_HW_STRAP2) >> 13) & 0x7));
+		} else
+			printf("\n");
+		
 	}
+	
 }
 
 extern void
