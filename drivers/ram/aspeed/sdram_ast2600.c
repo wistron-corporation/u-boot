@@ -35,7 +35,6 @@
 /* bit-field of AST_SCU_HW_STRAP */
 #define SCU_HWSTRAP_VGAMEM_SHIFT	13
 #define SCU_HWSTRAP_VGAMEM_MASK		GENMASK(14, 13)
-#define SCU_HWSTRAP_DDR3		BIT(25)
 
 
 /* bit-field of AST_SCU_HANDSHAKE */
@@ -631,8 +630,8 @@ static void ast2600_sdrammc_calc_size(struct dram_info *info)
 			 << SDRAM_AC_TRFC_SHIFT));
 
 	info->info.base = CONFIG_SYS_SDRAM_BASE;
-	info->info.size = ram_size - ast2600_sdrammc_get_vga_mem_size(info);
-
+	info->info.size = ram_size - (48 * SDRAM_SIZE_1MB) -
+			  ast2600_sdrammc_get_vga_mem_size(info);
 	clrsetbits_le32(
 	    &info->regs->config, SDRAM_CONF_CAP_MASK,
 	    ((cap_param << SDRAM_CONF_CAP_SHIFT) & SDRAM_CONF_CAP_MASK));
@@ -765,6 +764,31 @@ static void ast2600_sdrammc_common_init(struct ast2600_sdrammc_regs *regs)
 	writel(DDR4_MR6_MODE, &regs->mr6_mode_setting);
 }
 
+#ifdef CONFIG_ASPEED_ECC
+static void ast2600_sdrammc_ecc_enable(struct dram_info *info)
+{
+	struct ast2600_sdrammc_regs *regs = info->regs;
+	u32 reg;
+
+	writel((info->info.size >> 20) << 20, &regs->ecc_range_ctrl);
+	reg = readl(&regs->config) |
+	      (SDRAM_CONF_ECC_EN | SDRAM_CONF_ECC_AUTO_SCRUBBING);
+	writel(reg, &regs->config);
+	
+
+        writel(0, &regs->test_init_val);
+        writel(0, &regs->test_addr);
+        writel(0x221, &regs->ecc_test_ctrl);
+        while (0 == (readl(&regs->ecc_test_ctrl) & BIT(12)));
+        writel(0, &regs->ecc_test_ctrl);
+        writel(BIT(31), &regs->intr_ctrl);
+        writel(0, &regs->intr_ctrl);	
+
+	/* reported size is updated */
+	info->info.size = (info->info.size / 9) * 8;
+}
+#endif
+
 static int ast2600_sdrammc_probe(struct udevice *dev)
 {
 	struct dram_info *priv = (struct dram_info *)dev_get_priv(dev);
@@ -830,13 +854,8 @@ static int ast2600_sdrammc_probe(struct udevice *dev)
 
 	ast2600_sdrammc_unlock(priv);
 	ast2600_sdrammc_common_init(regs);
-	
-	if (readl(priv->scu + AST_SCU_HW_STRAP) & SCU_HWSTRAP_DDR3) {
-		debug("Unsupported SDRAM type: DDR3\n");
-		return -EINVAL;
-	} else {
-		ast2600_sdrammc_init_ddr4(priv);
-	}
+		
+	ast2600_sdrammc_init_ddr4(priv);
 
 #if defined(CONFIG_FPGA_ASPEED) || defined(CONFIG_ASPEED_PALLADIUM)
         ast2600_sdrammc_search_read_window(priv);
@@ -854,6 +873,10 @@ static int ast2600_sdrammc_probe(struct udevice *dev)
 		printf("%s: DDR4 init fail\n", __func__);
 		return -EINVAL;
 	}
+
+#ifdef CONFIG_ASPEED_ECC
+	ast2600_sdrammc_ecc_enable(priv);
+#endif	
 
 	writel(readl(priv->scu + AST_SCU_HANDSHAKE) | SCU_SDRAM_INIT_READY_MASK,
 	       priv->scu + AST_SCU_HANDSHAKE);
