@@ -228,4 +228,7 @@
 &pcie_bridge {
 	status = "okay";
 };
+&h2x {
+	status = "okay";
+};
 #endif
