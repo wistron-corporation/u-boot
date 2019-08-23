@@ -307,6 +307,7 @@
 			pcie_bridge: pcie_bridge@0x1e6ed000 {
 				compatible = "aspeed,ast2600-pcie";
 				reg = <0x1e6ed000 0x100>, <0x60000000 0x20000000>;
+				status = "disabled";
 			};
 
 			sdhci: sdhci@1e740000 {
@@ -369,6 +370,7 @@
 				reg = <0x1e770000 0x100>;
 				interrupts = <GIC_SPI 29 IRQ_TYPE_LEVEL_HIGH>;
 				resets = <&rst ASPEED_RESET_H2X>;
+				status = "disabled";
 			};
 
 			gpio0: gpio@1e780000 {
