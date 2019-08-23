@@ -770,19 +770,19 @@ static void ast2600_sdrammc_ecc_enable(struct dram_info *info)
 	struct ast2600_sdrammc_regs *regs = info->regs;
 	u32 reg;
 
-	writel((info->info.size >> 20) << 20, &regs->ecc_range_ctrl);
+	writel(((info->info.size >> 20) - 1) << 20, &regs->ecc_range_ctrl);
 	reg = readl(&regs->config) |
 	      (SDRAM_CONF_ECC_EN | SDRAM_CONF_ECC_AUTO_SCRUBBING);
 	writel(reg, &regs->config);
-	
 
-        writel(0, &regs->test_init_val);
-        writel(0, &regs->test_addr);
-        writel(0x221, &regs->ecc_test_ctrl);
-        while (0 == (readl(&regs->ecc_test_ctrl) & BIT(12)));
-        writel(0, &regs->ecc_test_ctrl);
-        writel(BIT(31), &regs->intr_ctrl);
-        writel(0, &regs->intr_ctrl);	
+	writel(0, &regs->test_init_val);
+	writel(0, &regs->test_addr);
+	writel(0x221, &regs->ecc_test_ctrl);
+	while (0 == (readl(&regs->ecc_test_ctrl) & BIT(12)))
+		;
+	writel(0, &regs->ecc_test_ctrl);
+	writel(BIT(31), &regs->intr_ctrl);
+	writel(0, &regs->intr_ctrl);
 
 	/* reported size is updated */
 	info->info.size = (info->info.size / 9) * 8;
@@ -814,6 +814,7 @@ static int ast2600_sdrammc_probe(struct udevice *dev)
 	if (readl(priv->scu + AST_SCU_HANDSHAKE) & SCU_SDRAM_INIT_READY_MASK) {
 		debug("%s(): DDR SDRAM had been initialized\n", __func__);
 		ast2600_sdrammc_calc_size(priv);
+		ast2600_sdrammc_ecc_enable(priv);
 		return 0;
 	}
 
