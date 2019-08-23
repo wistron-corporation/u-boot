@@ -14,6 +14,8 @@
 
 	aliases {
 		spi0 = &fmc;
+		spi1 = &spi1;
+		spi2 = &spi2;
 		ethernet1 = &mac1;
 		ethernet2 = &mac2;
 		ethernet3 = &mac3;
@@ -101,22 +103,89 @@
 		compatible = "spi-flash", "sst,w25q256";
 		status = "okay";
 		spi-max-frequency = <50000000>;
-#if 0		
-		spi-tx-bus-width = <4>;
-		spi-rx-bus-width = <4>;
-#else
 		spi-tx-bus-width = <2>;
 		spi-rx-bus-width = <2>;
-#endif
 	};
 
 	flash@1 {
-                compatible = "spi-flash", "sst,w25q256";
-                status = "okay";
-                spi-max-frequency = <50000000>;
-                spi-tx-bus-width = <2>;
-                spi-rx-bus-width = <2>;
-        };
+		compatible = "spi-flash", "sst,w25q256";
+		status = "okay";
+		spi-max-frequency = <50000000>;
+		spi-tx-bus-width = <2>;
+		spi-rx-bus-width = <2>;
+    };
+
+	flash@2 {
+        compatible = "spi-flash", "sst,w25q256";
+        status = "okay";
+        spi-max-frequency = <50000000>;
+        spi-tx-bus-width = <2>;
+        spi-rx-bus-width = <2>;
+	};
+};
+
+&spi1 {
+	status = "okay";
+
+	pinctrl-names = "default";
+	pinctrl-0 = <&pinctrl_spi1_default &pinctrl_spi1abr_default
+			&pinctrl_spi1cs1_default &pinctrl_spi1wp_default
+			&pinctrl_spi1wp_default>;
+
+	flash@0 {
+		compatible = "spi-flash", "sst,w25q256";
+		status = "okay";
+		spi-max-frequency = <50000000>;
+		spi-tx-bus-width = <2>;
+		spi-rx-bus-width = <2>;
+	};
+
+	flash@1 {
+		compatible = "spi-flash", "sst,w25q256";
+		status = "okay";
+		spi-max-frequency = <50000000>;
+		spi-tx-bus-width = <2>;
+		spi-rx-bus-width = <2>;
+	};
+};
+
+&spi2 {
+	status = "okay";
+
+	pinctrl-names = "default";
+	pinctrl-0 = <&pinctrl_spi2_default &pinctrl_spi2cs1_default
+			&pinctrl_spi2cs2_default &pinctrl_spi2quad_default>;
+
+	flash@0 {
+		compatible = "spi-flash", "sst,w25q256";
+		status = "okay";
+		spi-max-frequency = <50000000>;
+		spi-tx-bus-width = <2>;
+		spi-rx-bus-width = <2>;
+	};
+
+	flash@1 {
+		compatible = "spi-flash", "sst,w25q256";
+		status = "okay";
+		spi-max-frequency = <50000000>;
+		spi-tx-bus-width = <2>;
+		spi-rx-bus-width = <2>;
+	};
+
+	flash@2 {
+		compatible = "spi-flash", "sst,w25q256";
+		status = "okay";
+		spi-max-frequency = <50000000>;
+		spi-tx-bus-width = <2>;
+		spi-rx-bus-width = <2>;
+	};
+};
+
+&emmc_slot0 {
+	status = "okay";
+	bus-width = <4>;
+	pinctrl-names = "default";
+	pinctrl-0 = <&pinctrl_emmc_default>;
 };
 
 #if 0
@@ -139,32 +208,24 @@
 };
 #endif
 
-&emmc_slot0 {
-	status = "okay";
-	bus-width = <4>;
-	pinctrl-names = "default";
-	pinctrl-0 = <&pinctrl_emmc_default>;
-};
-
 &i2c0 {
-        status = "okay";
+	status = "okay";
 };
 
 &i2c3 {
-        status = "okay";
+	status = "okay";
 
 };
 
 &i2c7 {
-        status = "okay";
-
+	status = "okay";
 };
 
 &h2x {
 	status = "okay";
 };
-
+#if 0
 &pcie_bridge {
 	status = "okay";
 };
-
+#endif
