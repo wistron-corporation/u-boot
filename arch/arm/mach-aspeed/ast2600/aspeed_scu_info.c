@@ -239,9 +239,17 @@ aspeed_2nd_wdt_mode(void)
 			printf(", bspi_size : %ld MB\n", BIT((readl(ASPEED_HW_STRAP2) >> 13) & 0x7));
 		} else
 			printf("\n");
-		
 	}
-	
+
+	if(readl(ASPEED_HW_STRAP2) & BIT(22)) {
+		printf("SPI aux control : Enable");
+		//gpioY6 : BSPI_ABR 
+		if (readl(0x1e7801e0) & BIT(6))
+			printf(", Force Alt boot ");
+
+		//gpioY7 : BSPI_WP_N
+		printf(", BSPI_WP : %s \n", readl(0x1e7801e0) & BIT(7) ? "Disable":"Enable");
+	}
 }
 
 extern void
