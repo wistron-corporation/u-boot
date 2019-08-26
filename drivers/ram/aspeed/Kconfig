@@ -44,6 +44,6 @@ config ASPEED_ECC
         depends on DM && OF_CONTROL && ARCH_ASPEED
         select RAM
         select SPL_RAM if SPL
-        default y
+        default n
         help
                 enable SDRAM ECC function
