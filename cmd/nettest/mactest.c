@@ -780,12 +780,13 @@ static uint32_t setup_running(MAC_ENGINE *p_eng)
 	} else {
 		p_eng->run.ieee_sel = 0;			
 		p_eng->run.delay_margin = p_eng->arg.delay_scan_range;
-
+#if 0
 		if (p_eng->run.delay_margin == 0) {
 			printf("Error IO margin!!!\n");
 			print_arg_delay_scan_range(p_eng);
 			return(1);
-		}						
+		}
+#endif								
 	}
 
 	if (!p_eng->env.is_1g_valid[p_eng->run.mac_idx])
