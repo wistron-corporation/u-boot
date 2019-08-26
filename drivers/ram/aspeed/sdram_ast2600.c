@@ -786,6 +786,7 @@ static void ast2600_sdrammc_ecc_enable(struct dram_info *info)
 
 	/* reported size is updated */
 	info->info.size = (info->info.size / 9) * 8;
+	printf("ECC enable, ");
 }
 #endif
 
@@ -812,7 +813,7 @@ static int ast2600_sdrammc_probe(struct udevice *dev)
 	}
 
 	if (readl(priv->scu + AST_SCU_HANDSHAKE) & SCU_SDRAM_INIT_READY_MASK) {
-		debug("%s(): DDR SDRAM had been initialized\n", __func__);
+		printf("already initialized, ");
 		ast2600_sdrammc_calc_size(priv);
 #ifdef CONFIG_ASPEED_ECC		
 		ast2600_sdrammc_ecc_enable(priv);
