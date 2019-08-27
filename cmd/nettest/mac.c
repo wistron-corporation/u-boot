@@ -1417,29 +1417,28 @@ void setup_arp (MAC_ENGINE *eng)
 //------------------------------------------------------------
 void setup_buf (MAC_ENGINE *eng) 
 {
-	int32_t       des_num_max;
-	int32_t       des_num;
-	int        i;
-	uint32_t      adr;
-	uint32_t      adr_srt;
-	uint32_t      adr_end;
-	uint32_t      Current_framelen;
-	uint32_t      gdata = 0;
+	int32_t des_num_max;
+	int32_t des_num;
+	int i;
+	uint32_t adr;
+	uint32_t adr_srt;
+	uint32_t adr_end;
+	uint32_t Current_framelen;
+	uint32_t gdata = 0;
 #ifdef SelectSimpleDA	
-	int        cnt;
-	uint32_t      len;
+	int cnt;
+	uint32_t len;
 #endif	
-
 
 	nt_log_func_name();
 
 	// It need be multiple of 4
-	eng->dat.DMA_Base_Setup = GET_DMA_BASE_SETUP & 0xfffffffc;
-	adr_srt = eng->dat.DMA_Base_Setup;//base for read/write
+	eng->dat.DMA_Base_Setup = DMA_BASE & 0xfffffffc;
+	adr_srt = eng->dat.DMA_Base_Setup;
 
-	if ( eng->run.tm_tx_only ) {
-		if ( eng->run.TM_IEEE ) {
-			for ( des_num = 0; des_num < eng->dat.Des_Num; des_num++ ) {
+	if (eng->run.tm_tx_only) {
+		if (eng->run.TM_IEEE) {
+			for (des_num = 0; des_num < eng->dat.Des_Num; des_num++) {
 				if ( DbgPrn_BufAdr )
 					printf("[loop[%d]:%4d][des:%4d][setup_buf  ] %08x\n", eng->run.loop_of_cnt, eng->run.loop_cnt, des_num, adr_srt);
 #ifdef ENABLE_DASA
@@ -1481,15 +1480,14 @@ void setup_buf (MAC_ENGINE *eng)
 				adr_srt += DMA_PakSize;
 			} // End for (des_num = 0; des_num < eng->dat.Des_Num; des_num++)
 		} // End if ( eng->run.TM_IEEE )
-	}
-	else {
+	} else {
 		if ( eng->arg.ctrl.b.single_packet )
 			des_num_max = 1;
 		else
 			des_num_max = eng->dat.Des_Num;
 
-		for ( des_num = 0; des_num < des_num_max; des_num++ ) {
-			if ( DbgPrn_BufAdr )
+		for (des_num = 0; des_num < des_num_max; des_num++) {
+			if (DbgPrn_BufAdr)
 				printf("[loop[%d]:%4d][des:%4d][setup_buf  ] %08x\n", eng->run.loop_of_cnt, eng->run.loop_cnt, des_num, adr_srt);
   #ifdef SelectSimpleData
     #ifdef SimpleData_Fix
@@ -1630,9 +1628,9 @@ char check_Data (MAC_ENGINE *eng, uint32_t datbase, int32_t number)
 			wp = wp & wp_lst_cur;
 
 		if ( ( rdata & wp ) != ( gdata & wp ) ) {
-			PRINTF( FP_LOG, "\nError: Adr:%08x[%3d] (%08x) (%08x:%08x) [Des:%d][loop[%d]:%d]\n", adr, ( adr - adr_srt ) / 4, rdata, gdata, wp, number, eng->run.loop_of_cnt, eng->run.loop_cnt );
+			printf("\nError: Adr:%08x[%3d] (%08x) (%08x:%08x) [Des:%d][loop[%d]:%d]\n", adr, ( adr - adr_srt ) / 4, rdata, gdata, wp, number, eng->run.loop_of_cnt, eng->run.loop_cnt );
 			for ( index = 0; index < 6; index++ )
-				PRINTF( FP_LOG, "Rep  : Adr:%08x      (%08x) (%08x:%08x) [Des:%d][loop[%d]:%d]\n", adr, Read_Mem_Dat_DD( adr ), gdata, wp, number, eng->run.loop_of_cnt, eng->run.loop_cnt );
+				printf("Rep  : Adr:%08x      (%08x) (%08x:%08x) [Des:%d][loop[%d]:%d]\n", adr, Read_Mem_Dat_DD( adr ), gdata, wp, number, eng->run.loop_of_cnt, eng->run.loop_cnt );
 
 			if (DbgPrn_DumpMACCnt)
 				dump_mac_ROreg(eng);
@@ -1666,22 +1664,23 @@ char check_buf (MAC_ENGINE *eng, int loopcnt) {
 
 	nt_log_func_name();
 
-	desadr = eng->run.rdes_base + ( 16 * eng->dat.Des_Num ) - 4;//base for read/write
-	for ( des_num = eng->dat.Des_Num - 1; des_num >= 0; des_num-- ) {
-		datbase = AT_BUF_MEMRW( Read_Mem_Des_DD( desadr ) & 0xfffffffc);//base for read/write
-		if ( check_Data( eng, datbase, des_num ) ) {
-			check_int ( eng, "" );
-			return(1);
+	desadr = eng->run.rdes_base + (16 * eng->dat.Des_Num) - 4;
+	for (des_num = eng->dat.Des_Num - 1; des_num >= 0; des_num--) {
+		datbase = AT_BUF_MEMRW(Read_Mem_Des_DD(desadr) & 0xfffffffc);
+		if (check_Data(eng, datbase, des_num)) {
+			check_int(eng, "");
+			return (1);
 		}
-		desadr-= 16;
+		desadr -= 16;
 	}
-	if ( check_int ( eng, "" ) )
-		return(1);
+	if (check_int(eng, ""))
+		return (1);
 
 #if defined(Delay_CheckData_LoopNum) && defined(Delay_CheckData)
-	if ( ( loopcnt % Delay_CheckData_LoopNum ) == 0 ) DELAY( Delay_CheckData );
+	if ((loopcnt % Delay_CheckData_LoopNum) == 0)
+		DELAY(Delay_CheckData);
 #endif
-	return(0);
+	return (0);
 } // End char check_buf (MAC_ENGINE *eng, int loopcnt)
 
 //------------------------------------------------------------
@@ -1728,6 +1727,7 @@ void setup_txdes (MAC_ENGINE *eng, uint32_t desadr, uint32_t bufbase)
 			desadr += 16;
 			bufadr += bufadrgap;
 		}
+		barrier();
 		Write_Mem_Des_DD(desadr - 0x10, desval | EOR_IniVal);
 	} else {
 		Write_Mem_Des_DD(desadr, 0);
@@ -1757,6 +1757,7 @@ void setup_rxdes (MAC_ENGINE *eng, uint32_t desadr, uint32_t bufbase) {
 			desadr += 16;
 			bufadr += DMA_PakSize;
 		}
+		barrier();
 		Write_Mem_Des_DD( desadr - 0x10, desval | EOR_IniVal );
 	}
 	else {
@@ -1776,7 +1777,7 @@ void setup_des (MAC_ENGINE *eng, uint32_t bufnum)
 
 	eng->dat.DMA_Base_Tx =
 	    ZeroCopy_OFFSET + eng->dat.DMA_Base_Setup;
-	eng->dat.DMA_Base_Rx = ZeroCopy_OFFSET + GET_DMA_BASE(0);	
+	eng->dat.DMA_Base_Rx = ZeroCopy_OFFSET + GET_DMA_BASE(eng, 0);	
 
 	setup_txdes(eng, eng->run.tdes_base,
 		    AT_MEMRW_BUF(eng->dat.DMA_Base_Tx));
@@ -1797,55 +1798,65 @@ void setup_des_loop (MAC_ENGINE *eng, uint32_t bufnum)
 
 	nt_log_func_name();
 
-	if ( eng->run.TM_RxDataEn ) {
-		H_rx_bufadr = AT_MEMRW_BUF( eng->dat.DMA_Base_Rx );//base of the descriptor
-		H_rx_desadr = eng->run.rdes_base;//base for read/write
-		for ( des_num = 0; des_num < eng->dat.Des_Num - 1; des_num++ ) {
-			Write_Mem_Des_DD( H_rx_desadr + 0x0C, H_rx_bufadr );
-			Write_Mem_Des_DD( H_rx_desadr       , RDES_IniVal );
-			if ( DbgPrn_BufAdr )
-				printf("[loop[%d]:%4d][des:%4d][setup_rxdes] %08x [%08x]\n", eng->run.loop_of_cnt, eng->run.loop_cnt, des_num, H_rx_desadr, H_rx_bufadr);
+	if (eng->run.TM_RxDataEn) {
+		H_rx_bufadr = AT_MEMRW_BUF(eng->dat.DMA_Base_Rx);
+		H_rx_desadr = eng->run.rdes_base;
+		for (des_num = 0; des_num < eng->dat.Des_Num - 1; des_num++) {
+			Write_Mem_Des_DD(H_rx_desadr + 0x0C, H_rx_bufadr);
+			Write_Mem_Des_DD(H_rx_desadr, RDES_IniVal);
+			if (DbgPrn_BufAdr)
+				printf("[loop[%d]:%4d][des:%4d][setup_rxdes] "
+				       "%08x [%08x]\n",
+				       eng->run.loop_of_cnt, eng->run.loop_cnt,
+				       des_num, H_rx_desadr, H_rx_bufadr);
 
 			H_rx_bufadr += DMA_PakSize;
 			H_rx_desadr += 16;
 		}
-		Write_Mem_Des_DD( H_rx_desadr + 0x0C, H_rx_bufadr );
-		Write_Mem_Des_DD( H_rx_desadr       , RDES_IniVal | EOR_IniVal );
-		if ( DbgPrn_BufAdr )
-			printf("[loop[%d]:%4d][des:%4d][setup_rxdes] %08x [%08x]\n", eng->run.loop_of_cnt, eng->run.loop_cnt, des_num, H_rx_desadr, H_rx_bufadr);
+		Write_Mem_Des_DD(H_rx_desadr + 0x0C, H_rx_bufadr);
+		Write_Mem_Des_DD(H_rx_desadr, RDES_IniVal | EOR_IniVal);
+		if (DbgPrn_BufAdr)
+			printf("[loop[%d]:%4d][des:%4d][setup_rxdes] %08x "
+			       "[%08x]\n",
+			       eng->run.loop_of_cnt, eng->run.loop_cnt, des_num,
+			       H_rx_desadr, H_rx_bufadr);
 	}
-//	mac_reg_write( eng, 0x1c, 0x00000000 ); // Rx Poll
 
-	if ( eng->run.TM_TxDataEn ) {
-		H_tx_bufadr = AT_MEMRW_BUF( eng->dat.DMA_Base_Tx );//base of the descriptor
-		H_tx_desadr = eng->run.tdes_base;//base for read/write
-		for ( des_num = 0; des_num < eng->dat.Des_Num - 1; des_num++ ) {
-			eng->dat.FRAME_LEN_Cur = eng->dat.FRAME_LEN[ des_num ];
-			Write_Mem_Des_DD( H_tx_desadr + 0x0C, H_tx_bufadr );
-			Write_Mem_Des_DD( H_tx_desadr       , TDES_IniVal );
-			if ( DbgPrn_BufAdr )
-				printf("[loop[%d]:%4d][des:%4d][setup_txdes] %08x [%08x]\n", eng->run.loop_of_cnt, eng->run.loop_cnt, des_num, H_tx_desadr, H_tx_bufadr);
+	if (eng->run.TM_TxDataEn) {
+		H_tx_bufadr = AT_MEMRW_BUF(eng->dat.DMA_Base_Tx);
+		H_tx_desadr = eng->run.tdes_base;
+		for (des_num = 0; des_num < eng->dat.Des_Num - 1; des_num++) {
+			eng->dat.FRAME_LEN_Cur = eng->dat.FRAME_LEN[des_num];
+			Write_Mem_Des_DD(H_tx_desadr + 0x0C, H_tx_bufadr);
+			Write_Mem_Des_DD(H_tx_desadr, TDES_IniVal);
+			if (DbgPrn_BufAdr)
+				printf("[loop[%d]:%4d][des:%4d][setup_txdes] "
+				       "%08x [%08x]\n",
+				       eng->run.loop_of_cnt, eng->run.loop_cnt,
+				       des_num, H_tx_desadr, H_tx_bufadr);
 
 			H_tx_bufadr += DMA_PakSize;
 			H_tx_desadr += 16;
 		}
-		eng->dat.FRAME_LEN_Cur = eng->dat.FRAME_LEN[ des_num ];
-		Write_Mem_Des_DD( H_tx_desadr + 0x0C, H_tx_bufadr );
-		Write_Mem_Des_DD( H_tx_desadr       , TDES_IniVal | EOR_IniVal );
-		if ( DbgPrn_BufAdr )
-			printf("[loop[%d]:%4d][des:%4d][setup_txdes] %08x [%08x]\n", eng->run.loop_of_cnt, eng->run.loop_cnt, des_num, H_tx_desadr, H_tx_bufadr);
+		eng->dat.FRAME_LEN_Cur = eng->dat.FRAME_LEN[des_num];
+		Write_Mem_Des_DD(H_tx_desadr + 0x0C, H_tx_bufadr);
+		Write_Mem_Des_DD(H_tx_desadr, TDES_IniVal | EOR_IniVal);
+		if (DbgPrn_BufAdr)
+			printf("[loop[%d]:%4d][des:%4d][setup_txdes] %08x "
+			       "[%08x]\n",
+			       eng->run.loop_of_cnt, eng->run.loop_cnt, des_num,
+			       H_tx_desadr, H_tx_bufadr);
 	}
-//	mac_reg_write( eng, 0x18, 0x00000000 ); // Tx Poll
 } // End void setup_des_loop (uint32_t bufnum)
 
 //------------------------------------------------------------
 char check_des_header_Tx (MAC_ENGINE *eng, char *type, uint32_t adr, int32_t desnum) 
 {
-	int        timeout = 0;
+	int timeout = 0;
 
-	eng->dat.TxDes0DW = Read_Mem_Des_DD( adr );
+	eng->dat.TxDes0DW = Read_Mem_Des_DD(adr);
 
-	while ( HWOwnTx( eng->dat.TxDes0DW ) ) {
+	while (HWOwnTx(eng->dat.TxDes0DW)) {
 		// we will run again, if transfer has not been completed.
 		if ((eng->run.tm_tx_only || eng->run.TM_RxDataEn) &&
 		    (++timeout > eng->run.timeout_th)) {
@@ -1856,40 +1867,39 @@ char check_des_header_Tx (MAC_ENGINE *eng, char *type, uint32_t adr, int32_t des
 			       eng->run.loop_of_cnt, eng->run.loop_cnt);
 			return (FindErr_Des(eng, Des_Flag_TxOwnTimeOut));
 		}
-		//		mac_reg_write( eng, 0x1c, 0x00000000 );//Rx Poll
-		//		mac_reg_write( eng, 0x18, 0x00000000 );//Tx Poll
 
 #ifdef Delay_ChkTxOwn
-		DELAY( Delay_ChkTxOwn );
+		DELAY(Delay_ChkTxOwn);
 #endif
-		eng->dat.TxDes0DW = Read_Mem_Des_DD( adr );
+		eng->dat.TxDes0DW = Read_Mem_Des_DD(adr);
 	}
 
 	return(0);
 } // End char check_des_header_Tx (MAC_ENGINE *eng, char *type, uint32_t adr, int32_t desnum)
 
 //------------------------------------------------------------
-char check_des_header_Rx (MAC_ENGINE *eng, char *type, uint32_t adr, int32_t desnum) {
+char check_des_header_Rx (MAC_ENGINE *eng, char *type, uint32_t adr, int32_t desnum) 
+{
 #ifdef CheckRxOwn
-	int        timeout = 0;
+	int timeout = 0;
 
-	eng->dat.RxDes0DW = Read_Mem_Des_DD( adr );
+	eng->dat.RxDes0DW = Read_Mem_Des_DD(adr);
 
-	while ( HWOwnRx( eng->dat.RxDes0DW ) ) {
+	while (HWOwnRx(eng->dat.RxDes0DW)) {
 		// we will run again, if transfer has not been completed.
-		if ( eng->run.TM_TxDataEn && ( ++timeout > eng->run.timeout_th ) ) {
-			PRINTF( FP_LOG, "[%sRxDesOwn] Address %08x = %08x [Des:%d][loop[%d]:%d]\n", type, adr, eng->dat.RxDes0DW, desnum, eng->run.loop_of_cnt, eng->run.loop_cnt );
-			return( FindErr_Des( eng, Des_Flag_RxOwnTimeOut ) );
+		if (eng->run.TM_TxDataEn && (++timeout > eng->run.timeout_th)) {
+			printf("[%sRxDesOwn] Address %08x = %08x "
+			       "[Des:%d][loop[%d]:%d]\n",
+			       type, adr, eng->dat.RxDes0DW, desnum,
+			       eng->run.loop_of_cnt, eng->run.loop_cnt);
+			return (FindErr_Des(eng, Des_Flag_RxOwnTimeOut));
 		}
-//		mac_reg_write( eng, 0x1c, 0x00000000 );//Rx Poll
-//		mac_reg_write( eng, 0x18, 0x00000000 );//Tx Poll
 
   #ifdef Delay_ChkRxOwn
-		DELAY( Delay_ChkRxOwn );
+		DELAY(Delay_ChkRxOwn);
   #endif
-		eng->dat.RxDes0DW = Read_Mem_Des_DD( adr );
+		eng->dat.RxDes0DW = Read_Mem_Des_DD(adr);
 	};
-
 
   #ifdef CheckRxLen
 	if ( DbgPrn_FRAME_LEN )
@@ -2022,15 +2032,21 @@ char check_des (MAC_ENGINE *eng, uint32_t bufnum, int checkpoint) {
 #endif // End Delay_DesGap
 
 		//[Check Owner Bit]--------------------
-		eng->dat.FRAME_LEN_Cur = eng->dat.FRAME_LEN[ desnum ];
-		if ( DbgPrn_FRAME_LEN )
-			PRINTF( FP_LOG, "[check_des      ] FRAME_LEN_Cur:%08x[Des:%d][loop[%d]:%d]%d\n", eng->dat.FRAME_LEN_Cur, desnum, eng->run.loop_of_cnt, eng->run.loop_cnt, checkpoint );
+		eng->dat.FRAME_LEN_Cur = eng->dat.FRAME_LEN[desnum];
+		if (DbgPrn_FRAME_LEN)
+			PRINTF(FP_LOG,
+			       "[check_des      ] "
+			       "FRAME_LEN_Cur:%08x[Des:%d][loop[%d]:%d]%d\n",
+			       eng->dat.FRAME_LEN_Cur, desnum,
+			       eng->run.loop_of_cnt, eng->run.loop_cnt,
+			       checkpoint);
 
 		// Check the description of Tx and Rx
-		if ( eng->run.TM_TxDataEn && check_des_header_Tx( eng, "", H_tx_desadr, desnum ) ) {
+		if (eng->run.TM_TxDataEn &&
+		    check_des_header_Tx(eng, "", H_tx_desadr, desnum)) {
 			eng->flg.CheckDesFail_DesNum = desnum;
 
-			return(1);
+			return (1);
 		}
 		if ( eng->run.TM_RxDataEn && check_des_header_Rx( eng, "", H_rx_desadr, desnum ) ) {
 			eng->flg.CheckDesFail_DesNum = desnum;
@@ -2047,6 +2063,8 @@ char check_des (MAC_ENGINE *eng, uint32_t bufnum, int checkpoint) {
 					Write_Mem_Des_DD( H_rx_desadr, RDES_IniVal | EOR_IniVal );
 				else
 					Write_Mem_Des_DD( H_rx_desadr, RDES_IniVal );
+
+				readl(H_rx_desadr);
 				mac_reg_write( eng, 0x1c, 0x00000000 ); //Rx Poll
 				H_rx_bufadr += DMA_PakSize;
 			}
@@ -2056,6 +2074,8 @@ char check_des (MAC_ENGINE *eng, uint32_t bufnum, int checkpoint) {
 					Write_Mem_Des_DD( H_tx_desadr, TDES_IniVal | EOR_IniVal );
 				else
 					Write_Mem_Des_DD( H_tx_desadr, TDES_IniVal );
+				
+				readl(H_tx_desadr);
 				mac_reg_write( eng, 0x18, 0x00000000 ); //Tx Poll
 				H_tx_bufadr += DMA_PakSize;
 			}
@@ -2228,10 +2248,11 @@ char TestingLoop (MAC_ENGINE *eng, uint32_t loop_checknum)
 		}
 
 
-		if ( eng->run.TM_RxDataEn )
+		if (eng->run.TM_RxDataEn)
 			eng->dat.DMA_Base_Tx = eng->dat.DMA_Base_Rx;
 
-		eng->dat.DMA_Base_Rx = ZeroCopy_OFFSET + GET_DMA_BASE( eng->run.loop_cnt + 1 );
+		eng->dat.DMA_Base_Rx =
+		    ZeroCopy_OFFSET + GET_DMA_BASE(eng, eng->run.loop_cnt + 1);
 		//[Check DES]--------------------
 		if (check_des(eng, eng->run.loop_cnt, checken)) {
 			//descriptor error
@@ -2304,8 +2325,8 @@ char TestingLoop (MAC_ENGINE *eng, uint32_t loop_checknum)
 			debug_pause();
 		}
 
-		if (eng->run.loop_cnt >= LOOP_OVERFLOW_TH) {
-			printf("loop counter overflow\n");
+		if (eng->run.loop_cnt >= 0x7fffffff) {	
+			debug("loop counter wrapped around\n");
 			eng->run.loop_cnt = 0;
 			eng->run.loop_of_cnt++;
 		} else

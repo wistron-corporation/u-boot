@@ -158,7 +158,7 @@
 
 #define TDES_IniVal (0xb0000000 + eng->dat.FRAME_LEN_Cur)
 #define RDES_IniVal (0x00000fff)
-#define EOR_IniVal (0x40008000)
+#define EOR_IniVal (0x40000000)
 #define HWOwnTx(dat) (dat & 0x80000000)
 #define HWOwnRx(dat) ((dat & 0x80000000) == 0)
 #define HWEOR(dat) (dat & 0x40000000)
@@ -229,9 +229,9 @@
 // DMA Buffer information
 //---------------------------------------------------------
 #define DMA_BUF_SIZE				(56 * 1024 * 1024)
+extern uint8_t dma_buf[DMA_BUF_SIZE];
 
 #define DMA_BASE				((uint32_t)(&dma_buf[0]))
-extern uint8_t __attribute__ ((aligned (1024*1024))) dma_buf[DMA_BUF_SIZE];
 /* The size of one LAN packet */
 #define DMA_PakSize 				(2 * 1024)
 
@@ -241,10 +241,11 @@ extern uint8_t __attribute__ ((aligned (1024*1024))) dma_buf[DMA_BUF_SIZE];
 #define DMA_BufSize                                                            \
 	(4 + ((((p_eng->dat.Des_Num + 15) * DMA_PakSize) >> 2) << 2))
 #endif
-#define DMA_BufNum                               ( DMA_BUF_SIZE / ( p_eng->dat.DMABuf_Size ) )                //vary by eng->dat.Des_Num
-#define GET_DMA_BASE_SETUP                       ((uint32_t)(&dma_buf[0]))
-#define GET_DMA_BASE(x)                          (GET_DMA_BASE_SETUP + ( ( ( ( x ) % eng->dat.DMABuf_Num ) + 1 ) * eng->dat.DMABuf_Size ) + ( ( ( x ) % 7 ) * DMA_PakSize ) )
-//#define GET_DMA_BASE(x)                          ( DMA_BASE + ( ( ( ( x ) % eng->dat.DMABuf_Num ) + 1 ) * eng->dat.DMABuf_Size ) )//vary by eng->dat.Des_Num
+#define DMA_BufNum (DMA_BUF_SIZE / (p_eng->dat.DMABuf_Size))
+
+/* get DMA buffer address according to the loop counter */
+#define GET_DMA_BASE(p_eng, x)                                                 \
+	(DMA_BASE + ((((x) % p_eng->dat.DMABuf_Num)) * p_eng->dat.DMABuf_Size))
 
 #define SEED_START                               8
 #define DATA_SEED(seed)                          ( ( seed ) | (( seed + 1 ) << 16 ) )
@@ -283,11 +284,6 @@ extern uint8_t __attribute__ ((aligned (1024*1024))) dma_buf[DMA_BUF_SIZE];
 #define TIME_OUT_NCSI                        100000    //40000
 #define TIME_OUT_PHY_RW                      2000000   //100000
 #define TIME_OUT_PHY_Rst                     20000     //1000
-
-//---------------------------------------------------------
-// loop counter overflow threshold
-//---------------------------------------------------------
-#define LOOP_OVERFLOW_TH                            0x7fffffff
 
 //---------------------------------------------------------
 // Chip memory MAP
