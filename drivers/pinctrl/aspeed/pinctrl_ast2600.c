@@ -45,6 +45,81 @@ static int ast2600_pinctrl_probe(struct udevice *dev)
 	return 0;
 }
 
+static struct aspeed_sig_desc i2c1_link[] = {
+	{ 0x418, GENMASK(9, 8), 1 },
+	{ 0x4B8, GENMASK(9, 8), 0 },
+};
+
+static struct aspeed_sig_desc i2c2_link[] = {
+	{ 0x418, GENMASK(11, 10), 1 },
+	{ 0x4B8, GENMASK(11, 10), 0 },
+};
+
+static struct aspeed_sig_desc i2c3_link[] = {
+	{ 0x418, GENMASK(13, 12), 1 },
+	{ 0x4B8, GENMASK(13, 12), 0 },
+};
+
+static struct aspeed_sig_desc i2c4_link[] = {
+	{ 0x418, GENMASK(15, 14), 1 },
+	{ 0x4B8, GENMASK(15, 14), 0 },
+};
+
+static struct aspeed_sig_desc i2c5_link[] = {
+	{ 0x418, GENMASK(17, 16), 0 },
+};
+
+static struct aspeed_sig_desc i2c6_link[] = {
+	{ 0x418, GENMASK(19, 18), 0 },
+};
+
+static struct aspeed_sig_desc i2c7_link[] = {
+	{ 0x418, GENMASK(21, 20), 0 },
+};
+
+static struct aspeed_sig_desc i2c8_link[] = {
+	{ 0x418, GENMASK(23, 22), 0 },
+};
+
+static struct aspeed_sig_desc i2c9_link[] = {
+	{ 0x418, GENMASK(25, 24), 0 },
+};
+
+static struct aspeed_sig_desc i2c10_link[] = {
+	{ 0x418, GENMASK(27, 26), 0 },
+};
+	
+static struct aspeed_sig_desc i2c11_link[] = {
+	{ 0x410, GENMASK(1, 0), 1 },
+	{ 0x4B0, GENMASK(1, 0), 0 },
+};
+
+static struct aspeed_sig_desc i2c12_link[] = {
+	{ 0x410, GENMASK(3, 2), 1 },
+	{ 0x4B0, GENMASK(3, 2), 0 },
+};
+
+static struct aspeed_sig_desc i2c13_link[] = {
+	{ 0x410, GENMASK(5, 4), 1 },
+	{ 0x4B0, GENMASK(5, 4), 0 },
+};
+
+static struct aspeed_sig_desc i2c14_link[] = {
+	{ 0x410, GENMASK(7, 6), 1 },
+	{ 0x4B0, GENMASK(7, 6), 0 },
+};
+
+static struct aspeed_sig_desc i2c15_link[] = {
+	{ 0x414, GENMASK(29, 28), 1 },
+	{ 0x4B4, GENMASK(29, 28), 1 },
+};
+
+static struct aspeed_sig_desc i2c16_link[] = {
+	{ 0x414, GENMASK(31, 30), 1 },
+	{ 0x4B4, GENMASK(31, 30), 1 },
+};
+
+
 static struct aspeed_sig_desc mac1_link[] = {
 #ifdef CONFIG_FPGA_ASPEED
 	{ 0x410, BIT(4), 0 },
@@ -186,6 +261,22 @@ static const struct aspeed_group_config ast2600_groups[] = {
 	{ "SPI2CS1", ARRAY_SIZE(spi2cs1_link), spi2cs1_link },
 	{ "SPI2CS2", ARRAY_SIZE(spi2cs2_link), spi2cs2_link },
 	{ "SPI2QUAD", ARRAY_SIZE(spi2quad_link), spi2quad_link },
+	{ "I2C1", ARRAY_SIZE(i2c1_link), i2c1_link },
+	{ "I2C2", ARRAY_SIZE(i2c2_link), i2c2_link },
+	{ "I2C3", ARRAY_SIZE(i2c3_link), i2c3_link },
+	{ "I2C4", ARRAY_SIZE(i2c4_link), i2c4_link },
+	{ "I2C5", ARRAY_SIZE(i2c5_link), i2c5_link },
+	{ "I2C6", ARRAY_SIZE(i2c6_link), i2c6_link },
+	{ "I2C7", ARRAY_SIZE(i2c7_link), i2c7_link },
+	{ "I2C8", ARRAY_SIZE(i2c8_link), i2c8_link },
+	{ "I2C9", ARRAY_SIZE(i2c9_link), i2c9_link },
+	{ "I2C10", ARRAY_SIZE(i2c10_link), i2c10_link },
+	{ "I2C11", ARRAY_SIZE(i2c11_link), i2c11_link },
+	{ "I2C12", ARRAY_SIZE(i2c12_link), i2c12_link },
+	{ "I2C13", ARRAY_SIZE(i2c13_link), i2c13_link },
+	{ "I2C14", ARRAY_SIZE(i2c14_link), i2c14_link },
+	{ "I2C15", ARRAY_SIZE(i2c15_link), i2c15_link },
+	{ "I2C16", ARRAY_SIZE(i2c16_link), i2c16_link },
 };
 
 static int ast2600_pinctrl_get_groups_count(struct udevice *dev)
