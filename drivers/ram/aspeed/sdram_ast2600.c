@@ -630,8 +630,7 @@ static void ast2600_sdrammc_calc_size(struct dram_info *info)
 			 << SDRAM_AC_TRFC_SHIFT));
 
 	info->info.base = CONFIG_SYS_SDRAM_BASE;
-	info->info.size = ram_size - (48 * SDRAM_SIZE_1MB) -
-			  ast2600_sdrammc_get_vga_mem_size(info);
+	info->info.size = ram_size - ast2600_sdrammc_get_vga_mem_size(info);
 	clrsetbits_le32(
 	    &info->regs->config, SDRAM_CONF_CAP_MASK,
 	    ((cap_param << SDRAM_CONF_CAP_SHIFT) & SDRAM_CONF_CAP_MASK));
@@ -785,6 +784,8 @@ static void ast2600_sdrammc_ecc_enable(struct dram_info *info)
 	writel(0, &regs->intr_ctrl);
 
 	/* reported size is updated */
+	info->info.size -= (CONFIG_ASPEED_VIDEO_SIZE + CONFIG_ASPEED_CRT_SIZE) *
+			   SDRAM_SIZE_1MB;
 	info->info.size = (info->info.size / 9) * 8;
 	printf("ECC enable, ");
 }
