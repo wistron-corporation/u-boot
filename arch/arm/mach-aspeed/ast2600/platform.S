@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0
 /*
  * Copyright (C) ASPEED Technology Inc.
+ * Chia-Wei Wang <chiawei_wang@aspeedtech.com>
  *
  */
 
@@ -37,6 +38,8 @@
 #define AST_SCU_PROT_KEY1	(AST_SCU_BASE)
 #define AST_SCU_PROT_KEY2	(AST_SCU_BASE + 0x010)
 #define AST_SCU_REV_ID		(AST_SCU_BASE + 0x014)
+#define AST_SCU_HPLL_PARAM	(AST_SCU_BASE + 0x200)
+#define AST_SCU_HPLL_PARAM_EXT	(AST_SCU_BASE + 0x204)
 #define AST_SCU_HW_STRAP1	(AST_SCU_BASE + 0x500)
 
 #define AST_FMC_BASE		0x1E620000
@@ -55,25 +58,6 @@ ENTRY(ast_bootmode)
 	mov	pc, lr
 ENDPROC(ast_bootmode)
 
-.macro timer_init
-#ifdef CONFIG_FPGA_ASPEED
-	movw	r0, #0x7840
-	movt	r0, #0x17D
-#else
-	ldr	r0, =AST_SCU_REV_ID
-	ldr	r0, [r0]
-
-	ldr	r1, =REV_ID_AST2600A0
-	cmp	r0, r1
-
-	movweq  r0, #0x0800
-	movteq  r0, #0x2FAF	@; 800MHz for A0
-	movwne  r0, #0x8C00
-	movtne  r0, #0x4786	@; 1.2GHz for A1
-#endif
-	mcr	p15, 0, r0, c14, c0, 0	@; update CNTFRQ
-.endm
-
 .macro scu_unlock
 	movw	r0, #0xA8A8
 	movt	r0, #0x1688	@; magic key to unlock SCU
@@ -84,17 +68,60 @@ ENDPROC(ast_bootmode)
 	str	r0, [r1]
 .endm
 
+.macro clock_init
+	ldr	r0, =AST_SCU_REV_ID
+	ldr	r0, [r0]
+
+	ldr	r1, =REV_ID_AST2600A0
+	cmp	r0, r1
+
+	bne	0f
+
+	/* setup CPU clocks */
+	ldr	r1, =AST_SCU_HW_STRAP1
+	ldr	r2, [r1]
+	bic	r2, #0x1800
+	orr	r2, #0x1000
+	str	r2, [r1]
+
+	ldr	r1, =AST_SCU_HPLL_PARAM
+	movw	r2, #0x408F
+	movt	r2, #0x1000
+	str	r2, [r1]
+
+	ldr	r1, =AST_SCU_HPLL_PARAM_EXT
+	mov	r2, #0x47
+	str	r2, [r1]
+
+wait_lock:
+	ldr	r2, [r1]
+	tst	r2, #0x80000000
+	beq	wait_lock
+
+0:
+	/* setup timer clocks*/
+#ifdef CONFIG_FPGA_ASPEED
+	movw	r0, #0x7840
+	movt	r0, #0x17D
+#else
+	movw 	r0, #0x8C00
+	movt	r0, #0x4786
+#endif
+	mcr	p15, 0, r0, c14, c0, 0	@; update CNTFRQ
+.endm
+
+
 .globl lowlevel_init
 
 lowlevel_init:
 #if defined(CONFIG_SPL) && !defined(CONFIG_SPL_BUILD)
 	mov	pc, lr
 #else
-	/* setup timer frequency for ARM generic timer */
-	timer_init
-
 	/* unlock SCU */
 	scu_unlock
+
+	/* setup platform-dependent clock frequency */
+	clock_init
 
 	/* reset SMP mailbox as early as possible */
 	mov	r0, #0x0
@@ -103,7 +130,7 @@ lowlevel_init:
 
 	/* set ACTLR.SMP to enable cache use */
 	mrc	p15, 0, r0, c1, c0, 1
-	orr	r0, r0, #0x40
+	orr	r0, #0x40
 	mcr	p15, 0, r0, c1, c0, 1
 
 	/*
@@ -111,10 +138,10 @@ lowlevel_init:
 	 * put secondary core (cpuN) to sleep
 	 */
 	mrc   p15, 0, r0, c0, c0, 5	@; Read CPU ID register
-	ands  r0, r0, #0xFF		@; Mask off, leaving the CPU ID field
+	ands  r0, #0xFF			@; Mask off, leaving the CPU ID field
 	movw  r2, #0xAB00
 	movt  r2, #0xABBA
-	orr   r2, r2, r0
+	orr   r2, r0
 
 	beq   do_primary_core_setup
 
