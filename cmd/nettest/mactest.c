@@ -952,6 +952,9 @@ static uint32_t setup_chip_compatibility(MAC_ENGINE *p_eng)
 	id = (SCU_RD(reg_addr) & GENMASK(31, 24)) >> 24;
 	version = (SCU_RD(reg_addr) & GENMASK(23, 16)) >> 16;
 
+#if defined(CONFIG_FPGA_ASPEED) && defined(CONFIG_ASPEED_AST2600)
+	id = 0x5;
+#endif
 	if (id == 0x5) {
 		printf("chip: AST2600 A%d\n", version);
 		p_eng->env.ast2600 = 1;
