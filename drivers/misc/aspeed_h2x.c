@@ -47,6 +47,7 @@
 #define PCIE_RC_INTB_ISR		BIT(1)
 #define PCIE_RC_INTA_ISR		BIT(0)
 
+//#define PCIE_RC_L
 
 struct aspeed_h2x_priv {
 	struct aspeed_h2x_reg *h2x;
@@ -62,8 +63,12 @@ extern void aspeed_pcie_cfg_read(struct aspeed_h2x_reg *h2x, pci_dev_t bdf, uint
 //	int i = 0;
 
 	//H2X80[4] (unlock) is write-only.
-	//Driver may set H2X80[4]=1 before triggering next TX config.
+	//Driver may set H2X80/H2XC0[4]=1 before triggering next TX config.
+#ifdef PCIE_RC_L
 	writel(BIT(4) | readl(&h2x->h2x_reg80), &h2x->h2x_reg80);
+#else
+	writel(BIT(4) | readl(&h2x->h2x_regC0), &h2x->h2x_regC0);
+#endif
 
 	if(PCI_BUS(bdf) == 0)
 		type = 0;
@@ -151,7 +156,11 @@ extern void aspeed_pcie_cfg_write(struct aspeed_h2x_reg *h2x, pci_dev_t bdf, uin
 	u32 bdf_offset;
 	u8 byte_en = 0;
 
+#ifdef PCIE_RC_L
 	writel(BIT(4) | readl(&h2x->h2x_reg80), &h2x->h2x_reg80);
+#else
+	writel(BIT(4) | readl(&h2x->h2x_regC0), &h2x->h2x_regC0);
+#endif
 
 	switch (size) {
 	case PCI_SIZE_8:
@@ -268,21 +277,22 @@ static int aspeed_h2x_probe(struct udevice *dev)
 	writel(0x0, &priv->h2x->h2x_reg64);
 	writel(0xFFFFFFFF, &priv->h2x->h2x_reg68);
 
-//	writel( PCIE_RX_LINEAR | PCIE_RX_MSI_SEL | PCIE_RX_MSI_EN |
-//			PCIE_Wait_RX_TLP_CLR | PCIE_RC_RX_ENABLE | PCIE_RC_L,
-#if 1
+#ifdef PCIE_RC_L
 	//rc_l
 	writel( PCIE_RX_LINEAR | PCIE_RX_MSI_EN |
 			PCIE_Wait_RX_TLP_CLR | PCIE_RC_RX_ENABLE | PCIE_RC_ENABLE,
 	&priv->h2x->h2x_reg80);
-#else
-	//rc_h
-	writel( PCIE_RX_LINEAR | PCIE_RX_MSI_EN |
-			PCIE_Wait_RX_TLP_CLR | PCIE_RC_RX_ENABLE | PCIE_RC_ENABLE,
-	&priv->h2x->h2x_regC0);
-#endif
 	//assign debug tx tag
 	writel(0x28, &priv->h2x->h2x_regBC);
+#else
+	//rc_h
+	writel( PCIE_RX_LINEAR | PCIE_RX_MSI_SEL | PCIE_RX_MSI_EN |
+			PCIE_Wait_RX_TLP_CLR | PCIE_RC_RX_ENABLE | PCIE_RC_ENABLE,
+	&priv->h2x->h2x_regC0);
+
+	//assign debug tx tag
+	writel(0x28, &priv->h2x->h2x_regFC);
+#endif
 
 	return 0;
 }
