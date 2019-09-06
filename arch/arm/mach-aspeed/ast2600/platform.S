@@ -41,6 +41,8 @@
 #define AST_SCU_HPLL_PARAM	(AST_SCU_BASE + 0x200)
 #define AST_SCU_HPLL_PARAM_EXT	(AST_SCU_BASE + 0x204)
 #define AST_SCU_HW_STRAP1	(AST_SCU_BASE + 0x500)
+#define AST_SCU_CA7_PARITY_CHK	(AST_SCU_BASE + 0x820)
+#define AST_SCU_CA7_PARITY_CLR	(AST_SCU_BASE + 0x824)
 
 #define AST_FMC_BASE		0x1E620000
 #define AST_FMC_WDT1_CTRL_MODE	(AST_FMC_BASE + 0x060)
@@ -163,6 +165,15 @@ poll_mailbox_ready:
 	ldr	pc, =AST_SMP_MBOX_FIELD_POLLINSN
 
 do_primary_core_setup:
+	/* enable cache & SRAM parity check */
+	mov	r0, #0
+	ldr	r1, =AST_SCU_CA7_PARITY_CLR
+	str	r0, [r1]
+
+	mov	r0, #0x11
+	ldr	r1, =AST_SCU_CA7_PARITY_CHK
+	str	r0, [r1]
+
 	/* disable FMC WDT for SPI address mode detection */
 	mov	r0, #0
 	ldr	r1, =AST_FMC_WDT1_CTRL_MODE
