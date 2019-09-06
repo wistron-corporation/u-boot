@@ -153,6 +153,8 @@ struct dram_info {
 	ulong clock_rate;
 };
 
+static ast2600_phy_retrain = 0;
+
 static void ast2600_sdramphy_kick_training(struct dram_info *info)
 {
 #if !defined(CONFIG_FPGA_ASPEED) && !defined(CONFIG_ASPEED_PALLADIUM)
@@ -201,9 +203,10 @@ static void ast2600_sdramphy_init(u32 *p_tbl, struct dram_info *info)
         int i = 1;
 
 	writel(0, &info->regs->phy_ctrl[0]);
-	udelay(5);
+	udelay(10);
+	//writel(SDRAM_PHYCTRL0_NRST, &regs->phy_ctrl[0]);
 
-        debug("%s:reg base = 0x%08x, 1st addr = 0x%08x\n", __func__, reg_base,
+	debug("%s:reg base = 0x%08x, 1st addr = 0x%08x\n", __func__, reg_base,
                addr);
 
         /* load PHY configuration table into PHY-setting registers */
@@ -296,12 +299,17 @@ static void ast2600_sdramphy_show_status(struct dram_info *info)
 
         /* gate train */
 	value = readl(reg_base + 0x50);
-	debug("rO_DDRPHY_reg offset 0x50 = 0x%08x\n", value);
-	debug("  gate training pass window\n");
+	printf("rO_DDRPHY_reg offset 0x50 = 0x%08x\n", value);
+	printf("  gate training pass window\n");
 	tmp = (((value & GENMASK(7, 0)) >> 0) * 100) / 255;
-	debug("    module 0: %d.%03d\n", (value >> 8) & 0xff, tmp);        
+	printf("    module 0: %d.%03d\n", (value >> 8) & 0xff, tmp);        
         tmp = (((value & GENMASK(23, 16)) >> 0) * 100) / 255;
-	debug("    module 1: %d.%03d\n", (value >> 24) & 0xff, tmp);                
+	printf("    module 1: %d.%03d\n", (value >> 24) & 0xff, tmp);                
+
+	if (((value >> 24) & 0xff) < 3)
+		ast2600_phy_retrain = 1;
+	else
+		ast2600_phy_retrain = 0;		
 #endif              
 }
 
@@ -842,7 +850,7 @@ static int ast2600_sdrammc_probe(struct udevice *dev)
 
 	ast2600_sdrammc_unlock(priv);
 	ast2600_sdrammc_common_init(regs);
-		
+L_ast2600_sdramphy_train:		
 	ast2600_sdrammc_init_ddr4(priv);
 
 #if defined(CONFIG_FPGA_ASPEED) || defined(CONFIG_ASPEED_PALLADIUM)
@@ -855,6 +863,10 @@ static int ast2600_sdrammc_probe(struct udevice *dev)
 #endif
 
 	ast2600_sdramphy_show_status(priv);
+
+	if (ast2600_phy_retrain)
+		goto L_ast2600_sdramphy_train;
+
 	ast2600_sdrammc_calc_size(priv);
 
         if (0 != ast2600_sdrammc_test(priv)) {
