@@ -47,3 +47,17 @@ config ASPEED_ECC
         default n
         help
                 enable SDRAM ECC function
+
+config ASPEED_VIDEO_SIZE
+	int "Video memory reserved size"
+	depends on ASPEED_ECC
+	default 40
+	help
+		reserved size for Video engine. The unit is in Megabytes.
+
+config ASPEED_CRT_SIZE
+	int "CRT memory reserved size"
+	depends on ASPEED_ECC
+	default 8
+	help
+		reserved size for CRT engine. The unit is in Megabytes.
