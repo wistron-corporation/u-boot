@@ -53,14 +53,18 @@
 //#define SCU_MPLL_EXT_400M		0x0000003F
 #define SCU_MPLL_FREQ_200M		0x0078007F
 #define SCU_MPLL_EXT_200M		0x0000003F
-
+#define SCU_MPLL_FREQ_100M		0x0078003F
+#define SCU_MPLL_EXT_100M		0x0000001F
 /* MPLL configuration */
-#if defined(CONFIG_ASPEED_DDR4_800)
-#define SCU_MPLL_FREQ_CFG		SCU_MPLL_FREQ_200M
-#define SCU_MPLL_EXT_CFG		SCU_MPLL_EXT_200M
-#elif defined(CONFIG_ASPEED_DDR4_1600)
+#if defined(CONFIG_ASPEED_DDR4_1600)
 #define SCU_MPLL_FREQ_CFG		SCU_MPLL_FREQ_400M
 #define SCU_MPLL_EXT_CFG		SCU_MPLL_EXT_400M
+#elif defined(CONFIG_ASPEED_DDR4_800)
+#define SCU_MPLL_FREQ_CFG		SCU_MPLL_FREQ_200M
+#define SCU_MPLL_EXT_CFG		SCU_MPLL_EXT_200M
+#elif defined(CONFIG_ASPEED_DDR4_400)
+#define SCU_MPLL_FREQ_CFG		SCU_MPLL_FREQ_100M
+#define SCU_MPLL_EXT_CFG		SCU_MPLL_EXT_100M
 #else
 #error "undefined DDR4 target rate\n"
 #endif
@@ -88,6 +92,7 @@
 #define DDR4_MR6_MODE           0x00000400
 #define DDR4_TRFC_1600		0x467299f1
 #define DDR4_TRFC_800		0x23394c78
+#define DDR4_TRFC_400		0x111c263c
 #endif /* end of "#if defined(CONFIG_FPGA_ASPEED) ||                           \
 	  defined(CONFIG_ASPEED_PALLADIUM)" */
 
@@ -101,6 +106,9 @@
 #elif defined(CONFIG_ASPEED_DDR4_800)
 #define DDR4_TRFC			DDR4_TRFC_800
 #define DDR4_PHY_TRAIN_TRFC		0x618
+#elif defined(CONFIG_ASPEED_DDR4_400)
+#define DDR4_TRFC			DDR4_TRFC_400
+#define DDR4_PHY_TRAIN_TRFC		0x30c
 #else
 #error "undefined tRFC setting"
 #endif	/* end of "#if (SCU_MPLL_FREQ_CFG == SCU_MPLL_FREQ_400M)" */

@@ -2,6 +2,14 @@ choice
 	prompt "DDR4 target data rate"
 	default ASPEED_DDR4_1600
 
+config ASPEED_DDR4_400
+        bool "DDR4 targets at 400Mbps"
+        depends on DM && OF_CONTROL && ARCH_ASPEED
+        select RAM
+        select SPL_RAM if SPL
+        help
+                select DDR4 target data rate at 400M
+
 config ASPEED_DDR4_800
         bool "DDR4 targets at 800Mbps"
         depends on DM && OF_CONTROL && ARCH_ASPEED
