@@ -304,9 +304,25 @@
 				reg-io-width = <4>;
 			};
 
-			pcie_bridge: pcie_bridge@0x1e6ed000 {
+			pcie_bridge0: pcie_bridge@0x1e6ed000 {
 				compatible = "aspeed,ast2600-pcie";
-				reg = <0x1e6ed000 0x100>, <0x60000000 0x20000000>;
+				reg = <0x1e6ed000 0x100>;
+				ranges = <0x60000000 0 0 0x60000000 0x1 0 1 0>;
+				bus-range = <0x00 0xff>;
+				resets = <&rst ASPEED_RESET_PCIE_DEV_OEN>, <&rst ASPEED_RESET_PCIE_DEV_O>;
+
+				status = "disabled";
+			};
+
+			pcie_bridge1: pcie_bridge@0x1e6ed200 {
+				compatible = "aspeed,ast2600-pcie";
+				reg = <0x1e6ed200 0x100>;
+				ranges = <0x70000000 0 0 0x70000000 0x1 0 1 0>;
+				bus-range = <0x00 0xff>;
+				resets = <&rst ASPEED_RESET_PCIE_RC_OEN>, <&rst ASPEED_RESET_PCIE_RC_O>;
+				pinctrl-names = "default";
+				pinctrl-0 = <&pinctrl_pcierc_default>;
+
 				status = "disabled";
 			};
 
@@ -1807,4 +1823,9 @@
 		function = "WDTRST2";
 		groups = "WDTRST2";
 	};
+
+	pinctrl_pcierc_default: pcierc_default {
+		function = "PCIERC";
+		groups = "PCIERC";
+        };
 };

@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: GPL-2.0+
 #include <common.h>
 #include <dm.h>
+#include <reset.h>
+#include <fdtdec.h>
 #include <pci.h>
 #include <asm/io.h>
 #include <asm/arch/h2x_ast2600.h>
@@ -10,12 +12,11 @@ DECLARE_GLOBAL_DATA_PTR;
 
 /* PCI Host Controller registers */
 
-#define ASPEED_PCIE_CLASS_CODE		0x04	
+#define ASPEED_PCIE_CLASS_CODE		0x04
 #define ASPEED_PCIE_GLOBAL			0x30
 #define ASPEED_PCIE_CFG_DIN			0x50
 #define ASPEED_PCIE_CFG3			0x58
 #define ASPEED_PCIE_LOCK			0x7C
-	
 #define ASPEED_PCIE_LINK			0xC0
 #define ASPEED_PCIE_INT				0xC4
 
@@ -39,10 +40,6 @@ struct pcie_aspeed {
 	fdt_size_t cfg_size;
 	
 	int first_busno;
-
-	/* IO and MEM PCI regions */
-	struct pci_region io;
-	struct pci_region mem;
 };
 
 static int pcie_aspeed_read_config(struct udevice *bus, pci_dev_t bdf,
@@ -51,7 +48,7 @@ static int pcie_aspeed_read_config(struct udevice *bus, pci_dev_t bdf,
 {
 	struct pcie_aspeed *pcie = dev_get_priv(bus);
 
-	debug("PCIE CFG read:  (b,d,f)=(%2d,%2d,%2d) ",
+	debug("PCIE CFG read:  (b,d,f)=(%2d,%2d,%2d) \n",
 	      PCI_BUS(bdf), PCI_DEV(bdf), PCI_FUNC(bdf));
 
 	/* Only allow one other device besides the local one on the local bus */
@@ -90,16 +87,29 @@ static int pcie_aspeed_write_config(struct udevice *bus, pci_dev_t bdf,
 
 static int pcie_aspeed_probe(struct udevice *dev)
 {
+	struct reset_ctl reset_ctl0, reset_ctl1;
 	struct pcie_aspeed *pcie = dev_get_priv(dev);
 	struct udevice *ctlr = pci_get_controller(dev);
 	struct pci_controller *hose = dev_get_uclass_priv(ctlr);
 	struct udevice *ahbc_dev, *h2x_dev;
 	int ret = 0;
 
-	//0x040 - RC_L reset
-	writel(BIT(21), 0x1e6e2040);
-	writel(BIT(20), 0x1e6e2044);
-	//0x080 - reset ?? 
+	ret = reset_get_by_index(dev, 0, &reset_ctl0);
+	if (ret) {
+		printf("%s(): Failed to get reset signal\n", __func__);
+		return ret;
+	}
+
+	ret = reset_get_by_index(dev, 1, &reset_ctl1);
+	if (ret) {
+		printf("%s(): Failed to get reset signal\n", __func__);
+		return ret;
+	}
+
+	reset_assert(&reset_ctl0);
+	reset_assert(&reset_ctl1);
+	mdelay(100);
+	reset_deassert(&reset_ctl0);
 
 	ret = uclass_get_device_by_driver(UCLASS_MISC, DM_GET_DRIVER(aspeed_ahbc),
 										  &ahbc_dev);
@@ -138,6 +148,7 @@ static int pcie_aspeed_probe(struct udevice *dev)
 		printf("PCIE-%d: Link down\n", dev->seq);
 	}
 
+	//todo use range 
 	/* PCI memory space */
 	pci_set_region(hose->regions + 0, 0x60000000,
 			   0x60000000, 0x10000000, PCI_REGION_MEM);
