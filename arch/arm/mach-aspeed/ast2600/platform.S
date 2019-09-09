@@ -74,8 +74,8 @@ ENDPROC(ast_bootmode)
 	movw	r0, #0x7840
 	movt	r0, #0x17D
 #else
-	movw 	r0, #0x8C00
-	movt	r0, #0x4786
+	movw 	r0, #0x2340
+	movt	r0, #0x430E
 #endif
 	mcr	p15, 0, r0, c14, c0, 0	@; update CNTFRQ
 .endm
