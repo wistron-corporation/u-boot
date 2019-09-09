@@ -150,7 +150,7 @@ do_primary_core_setup:
 	str	r1, [r0]
 
 	ldr	r0, =AST_SCU_HPLL_PARAM
-	movw	r1, #0x408F
+	movw	r1, #0x4087
 	movt	r1, #0x1000
 	str	r1, [r0]
 
