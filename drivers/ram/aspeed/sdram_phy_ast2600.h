@@ -162,7 +162,7 @@ u32 ast2600_sdramphy_config[165] = {
 	0xaeeddeea,	// change address
 	0x1e6e027c,	// new address
 	0x4e400000,	// phyr17c
-	0x40404040,	// phyr180
+	0x59595959,	// phyr180
 	0x40404040,	// phyr184
 	0xaeeddeea,	// change address
 	0x1e6e02f4,	// new address
@@ -330,7 +330,7 @@ u32 ast2600_sdramphy_config[165] = {
 	0xaeeddeea,	// change address
 	0x1e6e027c,	// new address
 	0x4e400000,	// phyr17c
-	0x40404040,	// phyr180
+	0x59595959,	// phyr180
 	0x40404040,	// phyr184
 	0xaeeddeea,	// change address
 	0x1e6e02f4,	// new address
