@@ -201,6 +201,9 @@ static void ast2600_sdramphy_init(u32 *p_tbl, struct dram_info *info)
         u32 data;
         int i = 1;
 
+	writel(0, &info->regs->phy_ctrl[0]);
+	udelay(5);
+
         debug("%s:reg base = 0x%08x, 1st addr = 0x%08x\n", __func__, reg_base,
                addr);
 
