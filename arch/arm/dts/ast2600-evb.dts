@@ -244,14 +244,11 @@
 };
 
 #if 0
-&pcie_bridge0 {
-	status = "okay";
-};
-#else
 &pcie_bridge1 {
 	status = "okay";
 };
-#endif
+
 &h2x {
 	status = "okay";
 };
+#endif

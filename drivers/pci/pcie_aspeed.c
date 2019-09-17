@@ -38,7 +38,7 @@ struct pcie_aspeed {
 	void *h2x_pt;
 	void *cfg_base;
 	fdt_size_t cfg_size;
-	
+	int link_sts;
 	int first_busno;
 };
 
@@ -60,6 +60,11 @@ static int pcie_aspeed_read_config(struct udevice *bus, pci_dev_t bdf,
 			 */
 			*valuep = pci_get_ff(size);
 			return 0;
+	}
+
+	if (PCI_BUS(bdf) == 1 && (!pcie->link_sts)) {
+		*valuep = pci_get_ff(size);
+		return 0;
 	}
 
 	aspeed_pcie_cfg_read(pcie->h2x_pt, bdf, offset, valuep);
@@ -144,8 +149,10 @@ static int pcie_aspeed_probe(struct udevice *dev)
 	/* Don't register host if link is down */
 	if (readl(pcie->ctrl_base + ASPEED_PCIE_LINK) & PCIE_LINK_STS) {
 		printf("PCIE-%d: Link up\n", dev->seq);
+		pcie->link_sts = 1;
 	} else {
 		printf("PCIE-%d: Link down\n", dev->seq);
+		pcie->link_sts = 0;
 	}
 
 	//todo use range 
