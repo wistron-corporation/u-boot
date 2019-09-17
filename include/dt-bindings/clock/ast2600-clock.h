@@ -60,3 +60,4 @@
 #define ASPEED_CLK_24M			51
 #define ASPEED_CLK_EMMC			52
 #define ASPEED_CLK_UARTX		53
+#define ASPEED_CLK_UARTUX		54
