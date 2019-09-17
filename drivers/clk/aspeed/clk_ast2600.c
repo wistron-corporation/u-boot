@@ -223,10 +223,10 @@ static u32 ast2600_get_pclk2(struct ast2600_scu *scu)
 	return (rate / apb_div);
 }
 
-static u32 ast2600_get_uxclk_rate(struct ast2600_scu *scu)
+static u32 ast2600_get_uxclk_in_rate(struct ast2600_scu *scu)
 {
 	u32 clk_in = 0;
-	u32 uxclk_sel = readl(&scu->clk_sel4);
+	u32 uxclk_sel = readl(&scu->clk_sel5);
 
 	uxclk_sel &= 0x3;
 	switch(uxclk_sel) {
@@ -247,10 +247,10 @@ static u32 ast2600_get_uxclk_rate(struct ast2600_scu *scu)
 	return clk_in;
 }
 
-static u32 ast2600_get_huxclk_rate(struct ast2600_scu *scu)
+static u32 ast2600_get_huxclk_in_rate(struct ast2600_scu *scu)
 {
 	u32 clk_in = 0;
-	u32 huclk_sel = readl(&scu->clk_sel4);
+	u32 huclk_sel = readl(&scu->clk_sel5);
 
 	huclk_sel = ((huclk_sel >> 3) & 0x3);
 	switch(huclk_sel) {
@@ -271,23 +271,23 @@ static u32 ast2600_get_huxclk_rate(struct ast2600_scu *scu)
 	return clk_in;
 }
 
-static u32 ast2600_get_uart_from_uxclk_rate(struct ast2600_scu *scu)
+static u32 ast2600_get_uart_uxclk_rate(struct ast2600_scu *scu)
 {
-	u32 clk_in = ast2600_get_uxclk_rate(scu);
+	u32 clk_in = ast2600_get_uxclk_in_rate(scu);
 	u32 div_reg = readl(&scu->uart_24m_ref_uxclk);
 	unsigned int mult, div;
 
 	u32 n = (div_reg >> 8) & 0x3ff;
 	u32 r = div_reg & 0xff;
-	
+
 	mult = r;
-	div = (n * 4);
+	div = (n * 2);
 	return (clk_in * mult)/div;
 }
 
-static u32 ast2600_get_uart_from_huxclk_rate(struct ast2600_scu *scu)
+static u32 ast2600_get_uart_huxclk_rate(struct ast2600_scu *scu)
 {
-	u32 clk_in = ast2600_get_huxclk_rate(scu);
+	u32 clk_in = ast2600_get_huxclk_in_rate(scu);
 	u32 div_reg = readl(&scu->uart_24m_ref_huxclk);
 
 	unsigned int mult, div;
@@ -296,7 +296,7 @@ static u32 ast2600_get_uart_from_huxclk_rate(struct ast2600_scu *scu)
 	u32 r = div_reg & 0xff;
 	
 	mult = r;
-	div = (n * 4);
+	div = (n * 2);
 	return (clk_in * mult)/div;
 }
 
@@ -340,9 +340,9 @@ static u32 ast2600_get_uart_clk_rate(struct ast2600_scu *scu, int uart_idx)
 		case 4:
 		case 6:
 			if(uart_sel & BIT(uart_idx - 1))
-				uart_clk = ast2600_get_uart_from_uxclk_rate(scu)/13 ;
+				uart_clk = ast2600_get_uart_huxclk_rate(scu) ;
 			else
-				uart_clk = ast2600_get_uart_from_huxclk_rate(scu)/13 ;
+				uart_clk = ast2600_get_uart_uxclk_rate(scu) ;
 			break;
 		case 5: //24mhz is come form usb phy 48Mhz
 			{
@@ -380,9 +380,9 @@ static u32 ast2600_get_uart_clk_rate(struct ast2600_scu *scu, int uart_idx)
 		case 12:
 		case 13:			
 			if(uart_sel5 & BIT(uart_idx - 1))
-				uart_clk = ast2600_get_uart_from_uxclk_rate(scu)/13 ;
+				uart_clk = ast2600_get_uart_huxclk_rate(scu);
 			else
-				uart_clk = ast2600_get_uart_from_huxclk_rate(scu)/13 ;
+				uart_clk = ast2600_get_uart_uxclk_rate(scu);
 			break;
 	}
 
@@ -433,6 +433,12 @@ static ulong ast2600_clk_get_rate(struct clk *clk)
 		break;
 	case ASPEED_CLK_EMMC:
 		rate = ast2600_get_emmc_clk_rate(priv->scu);
+		break;
+	case ASPEED_CLK_UARTX:
+		rate = ast2600_get_uart_uxclk_rate(priv->scu);
+		break;
+	case ASPEED_CLK_UARTUX:
+		rate = ast2600_get_uart_huxclk_rate(priv->scu);
 		break;
 	default:
 		pr_debug("can't get clk rate \n");
@@ -1044,7 +1050,9 @@ static struct aspeed_clks aspeed_clk_names[] = {
 	{ ASPEED_CLK_DPLL, "dpll" },
 	{ ASPEED_CLK_AHB, "hclk" },
 	{ ASPEED_CLK_APB1, "pclk1" },
-	{ ASPEED_CLK_APB2, "pclk2" },	
+	{ ASPEED_CLK_APB2, "pclk2" },
+	{ ASPEED_CLK_UARTX, "uxclk" },
+	{ ASPEED_CLK_UARTUX, "huxclk" },
 };
 
 int soc_clk_dump(void)
