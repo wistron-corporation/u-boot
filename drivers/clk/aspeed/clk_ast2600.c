@@ -361,7 +361,7 @@ static u32 ast2600_get_uart_clk_rate(struct ast2600_scu *scu, int uart_idx)
 					uart_clk = 24000000;
 					break;
 				case 1:
-					uart_clk = 0;
+					uart_clk = 192000000;
 					break;
 				case 2:
 					uart_clk = 24000000/13;
@@ -1052,7 +1052,7 @@ static struct aspeed_clks aspeed_clk_names[] = {
 	{ ASPEED_CLK_APB1, "pclk1" },
 	{ ASPEED_CLK_APB2, "pclk2" },
 	{ ASPEED_CLK_UARTX, "uxclk" },
-	{ ASPEED_CLK_UARTUX, "huxclk" },
+	{ ASPEED_CLK_HUARTX, "huxclk" },
 };
 
 int soc_clk_dump(void)
