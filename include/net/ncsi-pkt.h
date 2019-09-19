@@ -15,7 +15,7 @@ struct ncsi_pkt_hdr {
 	unsigned char channel;      /* Network controller ID    */
 	__be16        length;       /* Payload length           */
 	__be32        reserved1[2]; /* Reserved                 */
-};
+} __attribute__((packed));;
 
 struct ncsi_cmd_pkt_hdr {
 	struct ncsi_pkt_hdr common; /* Common NCSI packet header */
@@ -25,26 +25,26 @@ struct ncsi_rsp_pkt_hdr {
 	struct ncsi_pkt_hdr common; /* Common NCSI packet header */
 	__be16              code;   /* Response code             */
 	__be16              reason; /* Response reason           */
-};
+} __attribute__((packed));
 
 struct ncsi_aen_pkt_hdr {
 	struct ncsi_pkt_hdr common;       /* Common NCSI packet header */
 	unsigned char       reserved2[3]; /* Reserved                  */
 	unsigned char       type;         /* AEN packet type           */
-};
+} __attribute__((packed));
 
 /* NCSI common command packet */
 struct ncsi_cmd_pkt {
 	struct ncsi_cmd_pkt_hdr cmd;      /* Command header */
 	__be32                  checksum; /* Checksum       */
 	unsigned char           pad[26];
-};
+} __attribute__((packed));
 
 struct ncsi_rsp_pkt {
 	struct ncsi_rsp_pkt_hdr rsp;      /* Response header */
 	__be32                  checksum; /* Checksum        */
 	unsigned char           pad[22];
-};
+} __attribute__((packed));
 
 /* Select Package */
 struct ncsi_cmd_sp_pkt {
@@ -53,7 +53,7 @@ struct ncsi_cmd_sp_pkt {
 	unsigned char           hw_arbitration; /* HW arbitration */
 	__be32                  checksum;       /* Checksum       */
 	unsigned char           pad[22];
-};
+} __attribute__((packed));
 
 /* Disable Channel */
 struct ncsi_cmd_dc_pkt {
@@ -62,7 +62,7 @@ struct ncsi_cmd_dc_pkt {
 	unsigned char           ald;         /* Allow link down */
 	__be32                  checksum;    /* Checksum        */
 	unsigned char           pad[22];
-};
+} __attribute__((packed));
 
 /* Reset Channel */
 struct ncsi_cmd_rc_pkt {
@@ -70,7 +70,7 @@ struct ncsi_cmd_rc_pkt {
 	__be32                  reserved; /* Reserved       */
 	__be32                  checksum; /* Checksum       */
 	unsigned char           pad[22];
-};
+} __attribute__((packed));
 
 /* AEN Enable */
 struct ncsi_cmd_ae_pkt {
@@ -80,7 +80,7 @@ struct ncsi_cmd_ae_pkt {
 	__be32                  mode;        /* AEN working mode */
 	__be32                  checksum;    /* Checksum         */
 	unsigned char           pad[18];
-};
+} __attribute__((packed));
 
 /* Set Link */
 struct ncsi_cmd_sl_pkt {
@@ -89,7 +89,7 @@ struct ncsi_cmd_sl_pkt {
 	__be32                  oem_mode; /* OEM link mode     */
 	__be32                  checksum; /* Checksum          */
 	unsigned char           pad[18];
-};
+} __attribute__((packed));
 
 /* Set VLAN Filter */
 struct ncsi_cmd_svf_pkt {
@@ -101,7 +101,7 @@ struct ncsi_cmd_svf_pkt {
 	unsigned char           enable;    /* Enable or disable */
 	__be32                  checksum;  /* Checksum          */
 	unsigned char           pad[18];
-};
+} __attribute__((packed));
 
 /* Enable VLAN */
 struct ncsi_cmd_ev_pkt {
@@ -110,7 +110,7 @@ struct ncsi_cmd_ev_pkt {
 	unsigned char           mode;        /* VLAN filter mode */
 	__be32                  checksum;    /* Checksum         */
 	unsigned char           pad[22];
-};
+} __attribute__((packed));
 
 /* Set MAC Address */
 struct ncsi_cmd_sma_pkt {
@@ -120,7 +120,7 @@ struct ncsi_cmd_sma_pkt {
 	unsigned char           at_e;     /* Addr type and operation */
 	__be32                  checksum; /* Checksum                */
 	unsigned char           pad[18];
-};
+} __attribute__((packed));
 
 /* Enable Broadcast Filter */
 struct ncsi_cmd_ebf_pkt {
@@ -128,7 +128,7 @@ struct ncsi_cmd_ebf_pkt {
 	__be32                  mode;     /* Filter mode    */
 	__be32                  checksum; /* Checksum       */
 	unsigned char           pad[22];
-};
+} __attribute__((packed));
 
 /* Enable Global Multicast Filter */
 struct ncsi_cmd_egmf_pkt {
@@ -136,7 +136,7 @@ struct ncsi_cmd_egmf_pkt {
 	__be32                  mode;     /* Global MC mode */
 	__be32                  checksum; /* Checksum       */
 	unsigned char           pad[22];
-};
+} __attribute__((packed));
 
 /* Set NCSI Flow Control */
 struct ncsi_cmd_snfc_pkt {
@@ -145,21 +145,21 @@ struct ncsi_cmd_snfc_pkt {
 	unsigned char           mode;        /* Flow control mode */
 	__be32                  checksum;    /* Checksum          */
 	unsigned char           pad[22];
-};
+} __attribute__((packed));
 
 /* OEM Request Command as per NCSI Specification */
 struct ncsi_cmd_oem_pkt {
 	struct ncsi_cmd_pkt_hdr cmd;         /* Command header    */
 	__be32                  mfr_id;      /* Manufacture ID    */
 	unsigned char           data[];      /* OEM Payload Data  */
-};
+} __attribute__((packed));
 
 /* OEM Response Packet as per NCSI Specification */
 struct ncsi_rsp_oem_pkt {
 	struct ncsi_rsp_pkt_hdr rsp;         /* Command header    */
 	__be32                  mfr_id;      /* Manufacture ID    */
 	unsigned char           data[];      /* Payload data      */
-};
+} __attribute__((packed));
 
 /* Mellanox Response Data */
 struct ncsi_rsp_oem_mlx_pkt {
@@ -168,7 +168,7 @@ struct ncsi_rsp_oem_mlx_pkt {
 	unsigned char           param;       /* Parameter         */
 	unsigned char           optional;    /* Optional data     */
 	unsigned char           data[];      /* Data              */
-};
+} __attribute__((packed));
 
 /* Broadcom Response Data */
 struct ncsi_rsp_oem_bcm_pkt {
@@ -176,7 +176,7 @@ struct ncsi_rsp_oem_bcm_pkt {
 	unsigned char           type;        /* OEM Command type  */
 	__be16                  len;         /* Payload Length    */
 	unsigned char           data[];      /* Cmd specific Data */
-};
+} __attribute__((packed));
 
 /* Get Link Status */
 struct ncsi_rsp_gls_pkt {
@@ -186,7 +186,7 @@ struct ncsi_rsp_gls_pkt {
 	__be32                  oem_status; /* OEM link status   */
 	__be32                  checksum;
 	unsigned char           pad[10];
-};
+} __attribute__((packed));
 
 /* Get Version ID */
 struct ncsi_rsp_gvi_pkt {
@@ -199,7 +199,7 @@ struct ncsi_rsp_gvi_pkt {
 	__be16                  pci_ids[4];   /* PCI IDs         */
 	__be32                  mf_id;        /* Manufacture ID  */
 	__be32                  checksum;
-};
+} __attribute__((packed));
 
 /* Get Capabilities */
 struct ncsi_rsp_gc_pkt {
@@ -217,7 +217,7 @@ struct ncsi_rsp_gc_pkt {
 	unsigned char           vlan_mode;   /* VLAN mode         */
 	unsigned char           channel_cnt; /* Channel count     */
 	__be32                  checksum;    /* Checksum          */
-};
+} __attribute__((packed));
 
 /* Get Parameters */
 struct ncsi_rsp_gp_pkt {
@@ -238,7 +238,7 @@ struct ncsi_rsp_gp_pkt {
 	unsigned char           mac[6];       /* Supported MAC addr    */
 	__be16                  vlan;         /* Supported VLAN tags   */
 	__be32                  checksum;     /* Checksum              */
-};
+} __attribute__((packed));
 
 /* Get Controller Packet Statistics */
 struct ncsi_rsp_gcps_pkt {
@@ -285,7 +285,7 @@ struct ncsi_rsp_gcps_pkt {
 	__be32                  rx_runt_pkts;   /* Rx error runt packets      */
 	__be32                  rx_jabber_pkts; /* Rx error jabber packets    */
 	__be32                  checksum;       /* Checksum                   */
-};
+} __attribute__((packed));
 
 /* Get NCSI Statistics */
 struct ncsi_rsp_gns_pkt {
@@ -298,7 +298,7 @@ struct ncsi_rsp_gns_pkt {
 	__be32                  tx_pkts;       /* Tx NCSI packets         */
 	__be32                  tx_aen_pkts;   /* Tx AEN packets          */
 	__be32                  checksum;      /* Checksum                */
-};
+} __attribute__((packed));
 
 /* Get NCSI Pass-through Statistics */
 struct ncsi_rsp_gnpts_pkt {
@@ -313,21 +313,21 @@ struct ncsi_rsp_gnpts_pkt {
 	__be32                  rx_us_err;      /* Rx undersize errors */
 	__be32                  rx_os_err;      /* Rx oversize errors  */
 	__be32                  checksum;       /* Checksum            */
-};
+} __attribute__((packed));
 
 /* Get package status */
 struct ncsi_rsp_gps_pkt {
 	struct ncsi_rsp_pkt_hdr rsp;      /* Response header             */
 	__be32                  status;   /* Hardware arbitration status */
 	__be32                  checksum;
-};
+} __attribute__((packed));
 
 /* Get package UUID */
 struct ncsi_rsp_gpuuid_pkt {
 	struct ncsi_rsp_pkt_hdr rsp;      /* Response header */
 	unsigned char           uuid[16]; /* UUID            */
 	__be32                  checksum;
-};
+} __attribute__((packed));
 
 /* AEN: Link State Change */
 struct ncsi_aen_lsc_pkt {
@@ -336,14 +336,14 @@ struct ncsi_aen_lsc_pkt {
 	__be32                  oem_status; /* OEM link status */
 	__be32                  checksum;   /* Checksum        */
 	unsigned char           pad[14];
-};
+} __attribute__((packed));
 
 /* AEN: Configuration Required */
 struct ncsi_aen_cr_pkt {
 	struct ncsi_aen_pkt_hdr aen;      /* AEN header */
 	__be32                  checksum; /* Checksum   */
 	unsigned char           pad[22];
-};
+} __attribute__((packed));
 
 /* AEN: Host Network Controller Driver Status Change */
 struct ncsi_aen_hncdsc_pkt {
@@ -351,7 +351,7 @@ struct ncsi_aen_hncdsc_pkt {
 	__be32                  status;   /* Status     */
 	__be32                  checksum; /* Checksum   */
 	unsigned char           pad[18];
-};
+} __attribute__((packed));
 
 /* NCSI packet revision */
 #define NCSI_PKT_REVISION	0x01
