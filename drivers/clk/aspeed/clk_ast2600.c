@@ -437,7 +437,7 @@ static ulong ast2600_clk_get_rate(struct clk *clk)
 	case ASPEED_CLK_UARTX:
 		rate = ast2600_get_uart_uxclk_rate(priv->scu);
 		break;
-	case ASPEED_CLK_UARTUX:
+	case ASPEED_CLK_HUARTX:
 		rate = ast2600_get_uart_huxclk_rate(priv->scu);
 		break;
 	default:
