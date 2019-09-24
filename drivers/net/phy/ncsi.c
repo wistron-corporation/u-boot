@@ -5,6 +5,8 @@
  * Copyright (C) 2019, IBM Corporation.
  */
 
+#define DEBUG 1
+
 #include <common.h>
 #include <malloc.h>
 #include <phy.h>
@@ -393,6 +395,8 @@ static void ncsi_rsp_dp(struct ncsi_rsp_pkt *pkt)
 	struct ncsi_rsp_pkt_hdr *rsp = (struct ncsi_rsp_pkt_hdr *)pkt;
 	unsigned int np;
 
+	printf("%s\n", __func__);
+
 	/* No action needed */
 
 	np = NCSI_PACKAGE_INDEX(rsp->common.channel);
@@ -404,6 +408,8 @@ static void ncsi_rsp_sp(struct ncsi_rsp_pkt *pkt)
 {
 	struct ncsi_rsp_pkt_hdr *rsp = (struct ncsi_rsp_pkt_hdr *)pkt;
 	unsigned int np;
+
+	printf("%s\n", __func__);
 
 	np = NCSI_PACKAGE_INDEX(rsp->common.channel);
 
@@ -714,6 +720,8 @@ static void ncsi_send_sp(unsigned int np)
 {
 	uchar payload[4] = {0};
 
+	printf("%s\n", __func__);
+
 	ncsi_send_command(np, NCSI_RESERVED_CHANNEL, NCSI_PKT_CMD_SP,
 			  (unsigned char *)&payload,
 			  cmd_payload(NCSI_PKT_CMD_SP), true);
@@ -793,18 +801,27 @@ void ncsi_probe_packages(void)
 	case NCSI_PROBE_PACKAGE_SP:
 		if (ncsi_priv->current_package == NCSI_PACKAGE_MAX)
 			ncsi_priv->current_package = 0;
+		printf("%s: NCSI_PROBE_PACKAGE_SP current_package %d\n",
+				__func__, ncsi_priv->current_package);
 		ncsi_send_sp(ncsi_priv->current_package);
 		break;
 	case NCSI_PROBE_PACKAGE_DP:
+		printf("%s: NCSI_PROBE_PACKAGE_DP current_package %d\n",
+				__func__, ncsi_priv->current_package);
 		ncsi_send_dp(ncsi_priv->current_package);
 		break;
 	case NCSI_PROBE_CHANNEL_SP:
+		printf("%s: NCSI_PROBE_CHANNEL_SP\n", __func__);
 		if (ncsi_priv->n_packages > 0)
 			ncsi_send_sp(ncsi_priv->current_package);
 		else
 			printf("NCSI: no packages discovered, configuration not possible\n");
 		break;
 	case NCSI_PROBE_CHANNEL:
+		printf("%s NCSI_PROBE_CHANNEL package %d channel %d\n",
+				__func__,
+				ncsi_priv->current_package,
+				ncsi_priv->current_channel);
 		/* Kicks off chain of channel discovery */
 		ncsi_send_cis(ncsi_priv->current_package,
 			      ncsi_priv->current_channel);
