@@ -177,8 +177,10 @@ wait_lock:
 	mov	r0, #0
 	ldr	r1, =AST_FMC_WDT1_CTRL_MODE
 	str	r0, [r1]
+#if 0
 	ldr	r1, =AST_FMC_WDT2_CTRL_MODE
 	str	r0, [r1]
+#endif
 
 	/* relocate mailbox insn. for cpuN polling SMP go signal */
 	adrl	r0, mailbox_insn
