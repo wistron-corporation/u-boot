@@ -25,10 +25,9 @@ DECLARE_GLOBAL_DATA_PTR;
 
 #define OTP_PASSWD			0x349fe38a
 #define RETRY				3
-#define OTP_REGION_STRAP		1
-#define OTP_REGION_CONF			2
-#define OTP_REGION_DATA			3
-#define OTP_REGION_ALL			4
+#define OTP_REGION_STRAP		BIT(0)
+#define OTP_REGION_CONF			BIT(1)
+#define OTP_REGION_DATA			BIT(2)
 
 #define OTP_USAGE			-1
 #define OTP_FAILURE			-2
@@ -176,9 +175,9 @@ struct otpstrap_info a0_strap_info[] = {
 	}, {
 		23, 1, 1, "SSPRST# pin is for PCIE root complex dedicated reset pin"
 	}, {
-		24, 1, 0, "DRAM types : DDR3"
+		24, 1, 0, "DRAM types : DDR4"
 	}, {
-		24, 1, 1, "DRAM types : DDR4"
+		24, 1, 1, "DRAM types : DDR3"
 	}, {
 		25, 5, OTP_REG_RESERVED, ""
 	}, {
@@ -343,9 +342,9 @@ struct otpconf_info a0_conf_info[] = {
 	}, {
 		0, 6, 1, 1, "Ignore Secure Boot hardware strap"
 	}, {
-		0, 7, 1, 0, "Secure Boot Mode: 2"
+		0, 7, 1, 0, "Secure Boot Mode: 1"
 	}, {
-		0, 7, 1, 1, "Secure Boot Mode: 1"
+		0, 7, 1, 1, "Secure Boot Mode: 2"
 	}, {
 		0, 8, 2, 0, "Single cell mode (recommended)"
 	}, {
@@ -1573,7 +1572,7 @@ static int otp_prog_data(uint32_t *buf)
 static int do_otp_prog(int addr, int byte_size, int nconfirm)
 {
 	int ret;
-	int mode;
+	int mode = 0;
 	uint32_t *buf;
 	uint32_t *data_region = NULL;
 	uint32_t *conf_region = NULL;
@@ -1585,75 +1584,51 @@ static int do_otp_prog(int addr, int byte_size, int nconfirm)
 		return OTP_FAILURE;
 	}
 
-	if (((buf[0] >> 29) & 0x7) == 0x7) {
-		mode = OTP_REGION_ALL;
-		conf_region = &buf[1];
-		strap_region = &buf[25];
-		data_region = &buf[31];
-	} else {
-		if (buf[0] & BIT(29)) {
-			mode = OTP_REGION_DATA;
-			data_region = &buf[31];
-		}
-		if (buf[0] & BIT(30)) {
-			mode = OTP_REGION_CONF;
-			strap_region = &buf[25];
-		}
-		if (buf[0] & BIT(31)) {
-			mode = OTP_REGION_STRAP;
-			conf_region = &buf[1];
-		}
+	if (buf[0] & BIT(29)) {
+		mode |= OTP_REGION_DATA;
+		data_region = &buf[36];
 	}
+	if (buf[0] & BIT(30)) {
+		mode |= OTP_REGION_CONF;
+		conf_region = &buf[12];
+	}
+	if (buf[0] & BIT(31)) {
+		mode |= OTP_REGION_STRAP;
+		strap_region = &buf[4];
+	}
+
 	if (!nconfirm) {
-		if (mode == OTP_REGION_CONF) {
-			printf("\nOTP configuration region :\n");
-			if (otp_print_conf_image(conf_region) < 0) {
-				printf("OTP config error, please check.\n");
-				return OTP_FAILURE;
-			}
-		} else if (mode == OTP_REGION_DATA) {
-			printf("\nOTP data region :\n");
-			if (otp_print_data_info(data_region) < 0) {
-				printf("OTP data error, please check.\n");
-				return OTP_FAILURE;
-			}
-		} else if (mode == OTP_REGION_STRAP) {
-			printf("\nOTP strap region :\n");
-			if (otp_print_strap_image(strap_region) < 0) {
-				printf("OTP strap error, please check.\n");
-				return OTP_FAILURE;
-			}
-		} else if (mode == OTP_REGION_ALL) {
-			printf("\nOTP configuration region :\n");
-			if (otp_print_conf_image(conf_region) < 0) {
-				printf("OTP config error, please check.\n");
-				return OTP_FAILURE;
-			}
-			printf("\nOTP strap region :\n");
-			if (otp_print_strap_image(strap_region) < 0) {
-				printf("OTP strap error, please check.\n");
-				return OTP_FAILURE;
-			}
+		if (mode & OTP_REGION_DATA) {
 			printf("\nOTP data region :\n");
 			if (otp_print_data_info(data_region) < 0) {
 				printf("OTP data error, please check.\n");
 				return OTP_FAILURE;
 			}
 		}
+		if (mode & OTP_REGION_STRAP) {
+			printf("\nOTP strap region :\n");
+			if (otp_print_strap_image(strap_region) < 0) {
+				printf("OTP strap error, please check.\n");
+				return OTP_FAILURE;
+			}
+		}
+		if (mode & OTP_REGION_CONF) {
+			printf("\nOTP configuration region :\n");
+			if (otp_print_conf_image(conf_region) < 0) {
+				printf("OTP config error, please check.\n");
+				return OTP_FAILURE;
+			}
+		}
+
 		printf("type \"YES\" (no quotes) to continue:\n");
 		if (!confirm_yesno()) {
 			printf(" Aborting\n");
 			return OTP_FAILURE;
 		}
 	}
-	if (mode == OTP_REGION_CONF) {
-		return otp_prog_conf(conf_region);
-	} else if (mode == OTP_REGION_STRAP) {
-		return otp_prog_strap(strap_region);
-	} else if (mode == OTP_REGION_DATA) {
-		return otp_prog_data(data_region);
-	} else if (mode == OTP_REGION_ALL) {
-		printf("programing data region ... ");
+
+	if (mode & OTP_REGION_DATA) {
+		printf("programing data region ...\n");
 		ret = otp_prog_data(data_region);
 		if (ret != 0) {
 			printf("Error\n");
@@ -1661,7 +1636,9 @@ static int do_otp_prog(int addr, int byte_size, int nconfirm)
 		} else {
 			printf("Done\n");
 		}
-		printf("programing strap region ... ");
+	}
+	if (mode & OTP_REGION_STRAP) {
+		printf("programing strap region ...\n");
 		ret = otp_prog_strap(strap_region);
 		if (ret != 0) {
 			printf("Error\n");
@@ -1669,17 +1646,18 @@ static int do_otp_prog(int addr, int byte_size, int nconfirm)
 		} else {
 			printf("Done\n");
 		}
-		printf("programing configuration region ... ");
+	}
+	if (mode & OTP_REGION_CONF) {
+		printf("programing configuration region ...\n");
 		ret = otp_prog_conf(conf_region);
 		if (ret != 0) {
 			printf("Error\n");
 			return ret;
 		}
 		printf("Done\n");
-		return OTP_SUCCESS;
 	}
 
-	return OTP_USAGE;
+	return OTP_SUCCESS;
 }
 
 static int do_otp_prog_bit(int mode, int otp_dw_offset, int bit_offset, int value, int nconfirm)
