@@ -167,7 +167,8 @@ do_ast_dramtest(cmd_tbl_t *cmdtp, int flag, int argc, char *const argv[])
 	ret = 1;
 	writel(0xFC600309, 0x1E6E0000);
 	while ((Testcounter > PassCnt) || (Testcounter == 0)) {
-		writel((block << 26) | (length << 4), 0x1E6E0074);
+		clrsetbits_le32(0x1E6E0074, GENMASK(30, 4),
+				(block << 26) | (length << 4));
 		if (!MMCTest()) {
 			printf("FAIL %d/%ld (fail DQ 0x%08x)\n", PassCnt,
 			       Testcounter, readl(0x1E6E0078));
