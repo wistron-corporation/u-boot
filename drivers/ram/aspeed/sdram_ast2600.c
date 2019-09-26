@@ -310,7 +310,6 @@ static u32 as2600_sdrammc_test_pattern[MC_TEST_PATTERN_N] = {
     0xcc33cc33, 0xff00ff00, 0xaa55aa55, 0x88778877,
     0x92cc4d6e, 0x543d3cde, 0xf1e843c7, 0x7c61d253};
 
-#define DRAM_MapAdr	81000000
 #define TIMEOUT_DRAM	5000000
 int ast2600_sdrammc_dg_test(struct dram_info *info, unsigned int datagen, u32 mode)
 {
@@ -349,7 +348,7 @@ int ast2600_sdrammc_cbr_test(struct dram_info *info)
 	struct ast2600_sdrammc_regs *regs = info->regs;
 	u32 i;
 
-	writel((DRAM_MapAdr | 0x7fffff), &regs->test_addr);
+	clrsetbits_le32(&regs->test_addr, GENMASK(30, 4), 0x7ffff0);
 
 	/* single */
 	for (i=0; i<8; i++) {
