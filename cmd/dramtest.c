@@ -117,8 +117,8 @@ static void print_usage(void)
 	printf("Usage: dramtest <count> <block> <length>\n\n");
 	printf("count:  how many iterations to run (mandatory, in decimal)\n");
 	printf("        0: infinite loop.\n");
-	printf("block:  index of the address block to test \
-					(optional, in decimal, default: 0)\n");
+	printf("block:  index of the address block to test "
+			"(optional, in decimal, default: 0)\n");
 	printf("        0: [8000_0000, 8400_0000)\n");
 	printf("        1: [8400_0000, 8800_0000)\n");
 	printf("        2: [8800_0000, 8C00_0000)\n");
