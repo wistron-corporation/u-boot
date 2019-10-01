@@ -37,6 +37,8 @@
 #define AST_SCU_PROT_KEY1	(AST_SCU_BASE)
 #define AST_SCU_PROT_KEY2	(AST_SCU_BASE + 0x010)
 #define AST_SCU_REV_ID		(AST_SCU_BASE + 0x014)
+#define AST_SCU_SYSRST_CTRL	(AST_SCU_BASE + 0x040)
+#define AST_SCU_SYSRST_CTRL_CLR	(AST_SCU_BASE + 0x044)
 #define AST_SCU_HPLL_PARAM	(AST_SCU_BASE + 0x200)
 #define AST_SCU_HPLL_PARAM_EXT	(AST_SCU_BASE + 0x204)
 #define AST_SCU_HW_STRAP1	(AST_SCU_BASE + 0x500)
@@ -181,6 +183,12 @@ wait_lock:
 	ldr	r1, =AST_FMC_WDT2_CTRL_MODE
 	str	r0, [r1]
 #endif
+
+	/* release display port reset */
+	ldr	r0, =AST_SCU_SYSRST_CTRL_CLR
+	movw	r1, #0x0000
+	movt	r1, #0x3000
+	str	r1, [r0]
 
 	/* relocate mailbox insn. for cpuN polling SMP go signal */
 	adrl	r0, mailbox_insn
