@@ -124,19 +124,27 @@ extern void aspeed_pcie_cfg_read(struct aspeed_h2x_reg *h2x, pci_dev_t bdf, uint
 	switch(readl(&h2x->h2x_reg24) & PCIE_STATUS_OF_TX) {
 		case PCIE_RC_L_TX_COMPLETE:
 			while(!(readl(&h2x->h2x_rc_l_isr) & PCIE_RC_RX_DONE_ISR));
+#if 0
 			if(readl(&h2x->h2x_rc_l_isr) & (PCIE_RC_CPLCA_ISR | PCIE_RC_CPLUR_ISR)) {
 				printf("return ffffffff \n");
 				*valuep = 0xffffffff;
 			} else
 				*valuep = readl(&h2x->h2x_rc_l_rdata);
+#else
+			*valuep = readl(&h2x->h2x_rc_l_rdata);
+#endif
 			writel(readl(&h2x->h2x_rc_l_isr), &h2x->h2x_rc_l_isr);
 			break;
 		case PCIE_RC_H_TX_COMPLETE:
 			while(!(readl(&h2x->h2x_rc_h_isr) & PCIE_RC_RX_DONE_ISR));
+#if 0
 			if(readl(&h2x->h2x_rc_h_isr) & (PCIE_RC_CPLCA_ISR | PCIE_RC_CPLUR_ISR))
 				*valuep = 0xffffffff;
 			else
 				*valuep = readl(&h2x->h2x_rc_h_rdata);
+#else
+			*valuep = readl(&h2x->h2x_rc_h_rdata);
+#endif
 			writel(readl(&h2x->h2x_rc_h_isr), &h2x->h2x_rc_h_isr);
 			break;
 		default:	//read rc data
