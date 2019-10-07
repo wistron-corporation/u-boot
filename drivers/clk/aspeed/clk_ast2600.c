@@ -956,11 +956,23 @@ static ulong ast2600_enable_extemmcclk(struct ast2600_scu *scu)
 {
 	u32 clk_sel = readl(&scu->clk_sel1);
 	u32 enableclk_bit;
+	u32 rate = 0;
+	u32 div = 0;
+	int i = 0;
 
 	enableclk_bit = BIT(SCU_CLKSTOP_EXTEMMC);
 
-	clk_sel &= ~SCU_CLK_SD_MASK;
-	clk_sel |= SCU_CLK_SD_DIV(1);
+	//ast2600 eMMC controller max clk is 200Mhz
+	rate = ast2600_get_pll_rate(scu, ASPEED_CLK_HPLL);
+
+	for(i = 0; i < 8; i++) {
+		div = (i + 1) * 4;
+		if ((rate / div) <= 200000000)
+			break;
+	}
+
+	clk_sel &= ~SCU_CLK_EMMC_MASK;
+	clk_sel |= SCU_CLK_EMMC_DIV(i);
 	writel(clk_sel, &scu->clk_sel1);
 
 	//enable clk 
