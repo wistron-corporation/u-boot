@@ -88,6 +88,7 @@
 	pinctrl-names = "default";
 	pinctrl-0 = <&pinctrl_rmii3_default>;
 };
+#endif
 
 &mac3 {
 	status = "okay";
