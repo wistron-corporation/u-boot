@@ -348,11 +348,11 @@ void get_dummy_delay(MAC_ENGINE *p_eng, int32_t *p_rx_d, int32_t *p_tx_d)
 typedef void (*pfn_get_delay) (MAC_ENGINE *, int32_t *, int32_t *);
 pfn_get_delay get_delay_func_tbl[2][4][3] = {
 	{
-		{get_mac1_rmii_delay, get_dummy_delay, get_dummy_delay},
-		{get_mac2_rmii_delay, get_dummy_delay, get_dummy_delay},
+		{get_dummy_delay, get_mac1_rmii_delay, get_mac1_rmii_delay},
+		{get_dummy_delay, get_mac2_rmii_delay, get_mac2_rmii_delay},
 #if defined(CONFIG_ASPEED_AST2600)
-		{get_mac3_rmii_delay, get_dummy_delay, get_dummy_delay},
-		{get_mac4_rmii_delay, get_dummy_delay, get_dummy_delay},
+		{get_dummy_delay, get_mac3_rmii_delay, get_mac3_rmii_delay},
+		{get_dummy_delay, get_mac4_rmii_delay, get_mac4_rmii_delay},
 #else
 		{get_dummy_delay, get_dummy_delay, get_dummy_delay},
 		{get_dummy_delay, get_dummy_delay, get_dummy_delay},
@@ -628,11 +628,11 @@ void set_dummy_delay(MAC_ENGINE *p_eng, int32_t rx_d, int32_t tx_d)
 typedef void (*pfn_set_delay) (MAC_ENGINE *, int32_t, int32_t);
 pfn_set_delay set_delay_func_tbl[2][4][3] = {
 	{
-		{set_mac1_rmii_delay, set_dummy_delay, set_dummy_delay},
-		{set_mac2_rmii_delay, set_dummy_delay, set_dummy_delay},
+		{set_dummy_delay, set_mac1_rmii_delay, set_mac1_rmii_delay},
+		{set_dummy_delay, set_mac2_rmii_delay, set_mac2_rmii_delay},
 #if defined(CONFIG_ASPEED_AST2600)
-		{set_mac3_rmii_delay, set_dummy_delay, set_dummy_delay},
-		{set_mac4_rmii_delay, set_dummy_delay, set_dummy_delay},
+		{set_dummy_delay, set_mac3_rmii_delay, set_mac3_rmii_delay},
+		{set_dummy_delay, set_mac4_rmii_delay, set_mac4_rmii_delay},
 #else
 		{set_dummy_delay, set_dummy_delay, set_dummy_delay},
 		{set_dummy_delay, set_dummy_delay, set_dummy_delay},
