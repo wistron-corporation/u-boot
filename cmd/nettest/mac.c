@@ -348,11 +348,11 @@ void get_dummy_delay(MAC_ENGINE *p_eng, int32_t *p_rx_d, int32_t *p_tx_d)
 typedef void (*pfn_get_delay) (MAC_ENGINE *, int32_t *, int32_t *);
 pfn_get_delay get_delay_func_tbl[2][4][3] = {
 	{
-		{get_dummy_delay, get_mac1_rmii_delay, get_mac1_rmii_delay},
-		{get_dummy_delay, get_mac2_rmii_delay, get_mac2_rmii_delay},
+		{get_mac1_rmii_delay, get_mac1_rmii_delay, get_mac1_rmii_delay},
+		{get_mac2_rmii_delay, get_mac2_rmii_delay, get_mac2_rmii_delay},
 #if defined(CONFIG_ASPEED_AST2600)
-		{get_dummy_delay, get_mac3_rmii_delay, get_mac3_rmii_delay},
-		{get_dummy_delay, get_mac4_rmii_delay, get_mac4_rmii_delay},
+		{get_mac3_rmii_delay, get_mac3_rmii_delay, get_mac3_rmii_delay},
+		{get_mac4_rmii_delay, get_mac4_rmii_delay, get_mac4_rmii_delay},
 #else
 		{get_dummy_delay, get_dummy_delay, get_dummy_delay},
 		{get_dummy_delay, get_dummy_delay, get_dummy_delay},
@@ -628,11 +628,11 @@ void set_dummy_delay(MAC_ENGINE *p_eng, int32_t rx_d, int32_t tx_d)
 typedef void (*pfn_set_delay) (MAC_ENGINE *, int32_t, int32_t);
 pfn_set_delay set_delay_func_tbl[2][4][3] = {
 	{
-		{set_dummy_delay, set_mac1_rmii_delay, set_mac1_rmii_delay},
-		{set_dummy_delay, set_mac2_rmii_delay, set_mac2_rmii_delay},
+		{set_mac1_rmii_delay, set_mac1_rmii_delay, set_mac1_rmii_delay},
+		{set_mac2_rmii_delay, set_mac2_rmii_delay, set_mac2_rmii_delay},
 #if defined(CONFIG_ASPEED_AST2600)
-		{set_dummy_delay, set_mac3_rmii_delay, set_mac3_rmii_delay},
-		{set_dummy_delay, set_mac4_rmii_delay, set_mac4_rmii_delay},
+		{set_mac3_rmii_delay, set_mac3_rmii_delay, set_mac3_rmii_delay},
+		{set_mac4_rmii_delay, set_mac4_rmii_delay, set_mac4_rmii_delay},
 #else
 		{set_dummy_delay, set_dummy_delay, set_dummy_delay},
 		{set_dummy_delay, set_dummy_delay, set_dummy_delay},
@@ -1628,9 +1628,9 @@ char check_Data (MAC_ENGINE *eng, uint32_t datbase, int32_t number)
 			wp = wp & wp_lst_cur;
 
 		if ( ( rdata & wp ) != ( gdata & wp ) ) {
-			printf("\nError: Adr:%08x[%3d] (%08x) (%08x:%08x) [Des:%d][loop[%d]:%d]\n", adr, ( adr - adr_srt ) / 4, rdata, gdata, wp, number, eng->run.loop_of_cnt, eng->run.loop_cnt );
+			PRINTF( FP_LOG, "\nError: Adr:%08x[%3d] (%08x) (%08x:%08x) [Des:%d][loop[%d]:%d]\n", adr, ( adr - adr_srt ) / 4, rdata, gdata, wp, number, eng->run.loop_of_cnt, eng->run.loop_cnt );
 			for ( index = 0; index < 6; index++ )
-				printf("Rep  : Adr:%08x      (%08x) (%08x:%08x) [Des:%d][loop[%d]:%d]\n", adr, Read_Mem_Dat_DD( adr ), gdata, wp, number, eng->run.loop_of_cnt, eng->run.loop_cnt );
+				PRINTF( FP_LOG, "Rep  : Adr:%08x      (%08x) (%08x:%08x) [Des:%d][loop[%d]:%d]\n", adr, Read_Mem_Dat_DD( adr ), gdata, wp, number, eng->run.loop_of_cnt, eng->run.loop_cnt );
 
 			if (DbgPrn_DumpMACCnt)
 				dump_mac_ROreg(eng);
