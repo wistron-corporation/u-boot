@@ -46,6 +46,7 @@
 #define AST_SCU_CA7_PARITY_CLR	(AST_SCU_BASE + 0x824)
 
 #define AST_FMC_BASE		(0x1E620000)
+#define AST_FMC_CE0_CTRL	(AST_FMC_BASE + 0x010)
 #define AST_FMC_WDT1_CTRL_MODE	(AST_FMC_BASE + 0x060)
 #define AST_FMC_WDT2_CTRL_MODE	(AST_FMC_BASE + 0x064)
 
@@ -174,6 +175,11 @@ wait_lock:
 	ldr	r1, =AST_FMC_WDT2_CTRL_MODE
 	str	r0, [r1]
 #endif
+	/* tune up SPI clock */
+	movw	r0, #0x0600
+	movt	r0, #0x0000
+	ldr	r1, =AST_FMC_CE0_CTRL
+	str	r1, [r0]
 
 	/* release display port reset */
 	ldr	r0, =AST_SCU_SYSRST_CTRL_CLR
