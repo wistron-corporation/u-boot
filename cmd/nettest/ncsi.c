@@ -143,17 +143,21 @@ void NCSI_PrintCommandType2File (MAC_ENGINE *eng, unsigned char command, unsigne
 }
 
 //------------------------------------------------------------
-void NCSI_Struct_Initialize_SLT (MAC_ENGINE *eng) {
-	int        i;
-	uint32_t      NCSI_RxDatBase;
+void NCSI_Struct_Initialize_SLT (MAC_ENGINE *eng)
+{
+	int i;
+	uint32_t NCSI_RxDatBase;
 
 	eng->run.NCSI_RxTimeOutScale = 1;
 
 	for (i = 0; i < 6; i++) {
-		eng->ncsi_req.DA[ i ] = 0xFF;
-		eng->ncsi_req.SA[ i ] = eng->inf.SA[ i ];
+		eng->ncsi_req.DA[i] = 0xFF;
+		eng->ncsi_req.SA[i] = eng->inf.SA[i];
 	}
-	eng->ncsi_req.EtherType       = SWAP_2B_BEDN( 0x88F8 ); // EtherType = 0x88F8 (DMTF DSP0222 NC-SI spec), ethernet frame header format, table 8
+
+	/* EtherType = 0x88F8 (DMTF DSP0222 NC-SI spec)
+	ethernet frame header format, table 8 */
+	eng->ncsi_req.EtherType = SWAP_2B_BEDN(0x88F8);
 
 	eng->ncsi_req.MC_ID           = 0;
 	eng->ncsi_req.Header_Revision = 0x01;
@@ -778,22 +782,23 @@ void Get_Controller_Packet_Statistics_SLT (MAC_ENGINE *eng) {//Command:0x18
 }
 
 //------------------------------------------------------------
-char phy_ncsi (MAC_ENGINE *eng) {
-	uint32_t      pkg_idx;
-	uint32_t      chl_idx;
-	uint32_t      select_flag[ MAX_PACKAGE_NUM ];
-	uint32_t      Re_Send;
-	uint32_t      Link_Status;
+char phy_ncsi (MAC_ENGINE *eng) 
+{
+	uint32_t pkg_idx;
+	uint32_t chl_idx;
+	uint32_t select_flag[MAX_PACKAGE_NUM];
+	uint32_t Re_Send;
+	uint32_t Link_Status;
 
-	eng->dat.NCSI_RxEr  = 0;
+	eng->dat.NCSI_RxEr = 0;
 	eng->dat.number_chl = 0;
 	eng->dat.number_pak = 0;
 	eng->ncsi_cap.Package_ID = 0;
 	eng->ncsi_cap.Channel_ID = 0x1F;
-	eng->ncsi_cap.All_ID     = 0x1F;
-	PRINTF( FP_LOG, "\n\n======> Start:\n" );
+	eng->ncsi_cap.All_ID = 0x1F;
+	PRINTF(FP_LOG, "\n\n======> Start:\n");
 
-	NCSI_Struct_Initialize_SLT( eng );
+	NCSI_Struct_Initialize_SLT(eng);
 
 #ifdef NCSI_Skip_Phase1_DeSelectPackage
 #else

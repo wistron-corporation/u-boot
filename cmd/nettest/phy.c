@@ -845,7 +845,7 @@ void phy_realtek0 (MAC_ENGINE *eng) {//RTL8201E
         if ( DbgPrn_PHYName )
                 printf("--->(%04x %04x)[Realtek] %s\n", eng->phy.PHY_ID2, eng->phy.PHY_ID3, eng->phy.phy_name);
 
-        eng->phy.RMIICK_IOMode = eng->phy.RMIICK_IOMode | PHY_Flag_RMIICK_IOMode_RTL8201E;
+        eng->phy.RMIICK_IOMode |= PHY_Flag_RMIICK_IOMode_RTL8201E;
 
         phy_Reset( eng );
 
@@ -1510,7 +1510,7 @@ void phy_realtek4 (MAC_ENGINE *eng) {//RTL8201F
         if ( DbgPrn_PHYName )
                 printf("--->(%04x %04x)[Realtek] %s\n", eng->phy.PHY_ID2, eng->phy.PHY_ID3, eng->phy.phy_name);
 
-        eng->phy.RMIICK_IOMode = eng->phy.RMIICK_IOMode | PHY_Flag_RMIICK_IOMode_RTL8201F;
+        eng->phy.RMIICK_IOMode |= PHY_Flag_RMIICK_IOMode_RTL8201F;
 
         phy_write( eng, 31, 0x0007 );
         eng->phy.PHY_10h = phy_read( eng, 16 );

@@ -987,7 +987,8 @@ void FPri_RegValue (MAC_ENGINE *eng, uint8_t option)
 void FPri_End (MAC_ENGINE *eng, uint8_t option) 
 {
 	nt_log_func_name();
-	if ((0 == eng->run.is_rgmii) && ( eng->phy.RMIICK_IOMode != 0 ) && eng->run.IO_MrgChk && eng->flg.all_fail ) {
+	if ((0 == eng->run.is_rgmii) && (eng->phy.RMIICK_IOMode != 0) &&
+	    eng->run.IO_MrgChk && eng->flg.all_fail) {
 		if ( eng->arg.ctrl.b.rmii_phy_in == 0 ) {
 			PRINTF( option, "\n\n\n\n\n\n[Info] The PHY's RMII reference clock pin is setting to the OUTPUT mode now.\n" );
 			PRINTF( option, "       Maybe you can run the INPUT mode command \"mactest  %d %d %d %d %d %d %d\".\n\n\n\n", eng->arg.mac_idx, eng->arg.run_speed, (eng->arg.ctrl.w | 0x80), eng->arg.loop_max, eng->arg.test_mode, eng->arg.phy_addr, eng->arg.delay_scan_range );
@@ -996,7 +997,7 @@ void FPri_End (MAC_ENGINE *eng, uint8_t option)
 			PRINTF( option, "\n\n\n\n\n\n[Info] The PHY's RMII reference clock pin is setting to the INPUT mode now.\n" );
 			PRINTF( option, "       Maybe you can run the OUTPUT mode command \"mactest  %d %d %d %d %d %d %d\".\n\n\n\n", eng->arg.mac_idx, eng->arg.run_speed, (eng->arg.ctrl.w & 0x7f), eng->arg.loop_max, eng->arg.test_mode, eng->arg.phy_addr, eng->arg.delay_scan_range );
 		}
-	} // End if ( eng->env.MAC_RMII && ( eng->phy.RMIICK_IOMode != 0 ) && eng->run.IO_MrgChk && eng->flg.all_fail )
+	}
 
 	if (!eng->run.TM_RxDataEn) {
 	} else if (eng->flg.Err_Flag) {
@@ -1088,10 +1089,7 @@ void FPri_End (MAC_ENGINE *eng, uint8_t option)
 	}
 	else {
 		PRINTF( option, "[PHY] Adr:%d ID2:%04x ID3:%04x (%s)\n", eng->phy.Adr, eng->phy.PHY_ID2, eng->phy.PHY_ID3, eng->phy.phy_name);
-	} // End if ( eng->arg.run_mode == MODE_NCSI )
-
-
-	PRINTF( option, "[Ver II] %s\n", version_name );
+	} // End if ( eng->arg.run_mode == MODE_NCSI )	
 } // End void FPri_End (MAC_ENGINE *eng, uint8_t option)
 
 //------------------------------------------------------------
