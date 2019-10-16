@@ -59,7 +59,6 @@
 
 #define CONFIG_EXTRA_ENV_SETTINGS \
 	"verify=yes\0"	\
-	"spi_dma=no\0" \
 	""
 
 /*
