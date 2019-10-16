@@ -553,9 +553,6 @@ void * memmove(void * dest,const void *src,size_t count)
 	if (dest == src)
 	    return dest;
 
-	if (env_get_yesno("spi_dma") != 1)
-		goto cpu_memmove;
-
 	if (
 	   ((u32)src >= ASPEED_FMC_CS0_BASE)
 	&& ((u32)src < (ASPEED_FMC_CS0_BASE + 0x10000000))) {
@@ -563,8 +560,6 @@ void * memmove(void * dest,const void *src,size_t count)
 		aspeed_spi_fastcpy((u32)dest, (u32)src, count);
 		return dest;
 	}
-
-cpu_memmove:
 #endif
 	if (dest <= src) {
 		memcpy(dest, src, count);
