@@ -280,7 +280,6 @@ static void print_usage(MAC_ENGINE *p_eng)
 		printf("ncsitest <idx> <packet num> <channel num> <test mode>"
 		       "<margin> <ctrl> <ARP num>\n");
 		print_arg_mac_idx(p_eng);
-		print_arg_mdio_idx(p_eng);
 		print_arg_package_num(p_eng);
 		print_arg_channel_num(p_eng);
 		print_arg_test_mode(p_eng);
