@@ -1910,45 +1910,45 @@ char check_des_header_Rx (MAC_ENGINE *eng, char *type, uint32_t adr, int32_t des
 	}
   #endif // End CheckRxLen
 
-	if ( eng->dat.RxDes0DW & Check_ErrMask_ALL ) {
+	if ( eng->dat.RxDes0DW & RXDES_EM_ALL ) {
 		eng->dat.RxDes3DW = Read_Mem_Des_DD( adr + 12 );
   #ifdef CheckRxErr
-		if ( eng->dat.RxDes0DW & Check_ErrMask_RxErr ) {
+		if ( eng->dat.RxDes0DW & RXDES_EM_RXERR ) {
 			PRINTF( FP_LOG, "[%sRxDes] Error RxErr        %08x:%08x %08x            [Des:%d][loop[%d]:%d]\n", type, adr, eng->dat.RxDes0DW, eng->dat.RxDes3DW, desnum, eng->run.loop_of_cnt, eng->run.loop_cnt );
 			FindErr_Des( eng, Des_Flag_RxErr );
 		}
   #endif // End CheckRxErr
 
   #ifdef CheckCRC
-		if ( eng->dat.RxDes0DW & Check_ErrMask_CRC ) {
+		if ( eng->dat.RxDes0DW & RXDES_EM_CRC ) {
 			PRINTF( FP_LOG, "[%sRxDes] Error CRC          %08x:%08x %08x            [Des:%d][loop[%d]:%d]\n", type, adr, eng->dat.RxDes0DW, eng->dat.RxDes3DW, desnum, eng->run.loop_of_cnt, eng->run.loop_cnt );
 			FindErr_Des( eng, Des_Flag_CRC );
 		}
   #endif // End CheckCRC
 
   #ifdef CheckFTL
-		if ( eng->dat.RxDes0DW & Check_ErrMask_FTL ) {
+		if ( eng->dat.RxDes0DW & RXDES_EM_FTL ) {
 			PRINTF( FP_LOG, "[%sRxDes] Error FTL          %08x:%08x %08x            [Des:%d][loop[%d]:%d]\n", type, adr, eng->dat.RxDes0DW, eng->dat.RxDes3DW, desnum, eng->run.loop_of_cnt, eng->run.loop_cnt );
 			FindErr_Des( eng, Des_Flag_FTL );
 		}
   #endif // End CheckFTL
 
   #ifdef CheckRunt
-		if ( eng->dat.RxDes0DW & Check_ErrMask_Runt) {
+		if ( eng->dat.RxDes0DW & RXDES_EM_RUNT) {
 			PRINTF( FP_LOG, "[%sRxDes] Error Runt         %08x:%08x %08x            [Des:%d][loop[%d]:%d]\n", type, adr, eng->dat.RxDes0DW, eng->dat.RxDes3DW, desnum, eng->run.loop_of_cnt, eng->run.loop_cnt );
 			FindErr_Des( eng, Des_Flag_Runt );
 		}
   #endif // End CheckRunt
 
   #ifdef CheckOddNibble
-		if ( eng->dat.RxDes0DW & Check_ErrMask_OddNibble ) {
+		if ( eng->dat.RxDes0DW & RXDES_EM_ODD_NB ) {
 			PRINTF( FP_LOG, "[%sRxDes] Odd Nibble         %08x:%08x %08x            [Des:%d][loop[%d]:%d]\n", type, adr, eng->dat.RxDes0DW, eng->dat.RxDes3DW, desnum, eng->run.loop_of_cnt, eng->run.loop_cnt );
 			FindErr_Des( eng, Des_Flag_OddNibble );
 		}
   #endif // End CheckOddNibble
 
   #ifdef CheckRxFIFOFull
-		if ( eng->dat.RxDes0DW & Check_ErrMask_RxFIFOFull ) {
+		if ( eng->dat.RxDes0DW & RXDES_EM_FIFO_FULL ) {
 			PRINTF( FP_LOG, "[%sRxDes] Error Rx FIFO Full %08x:%08x %08x            [Des:%d][loop[%d]:%d]\n", type, adr, eng->dat.RxDes0DW, eng->dat.RxDes3DW, desnum, eng->run.loop_of_cnt, eng->run.loop_cnt );
 			FindErr_Des( eng, Des_Flag_RxFIFOFull );
 		}
