@@ -2128,18 +2128,18 @@ void PrintIO_Header (MAC_ENGINE *eng, uint8_t option)
 
 		PRINTF(option, "\n    ");
 		for (rx_d = eng->io.rx_delay_scan.begin; rx_d <= eng->io.rx_delay_scan.end; rx_d += step) {
-			tmp = abs(rx_d) / 10;
+			tmp = (abs(rx_d) >> 4) & 0xf;
 			if (tmp == 0) {
 				PRINTF(option, "0" );
 			} else {
-				PRINTF(option, "%1d", tmp);
+				PRINTF(option, "%1x", tmp);
 			}
 		}
 
 		PRINTF(option, "\n    ");
 		for (rx_d = eng->io.rx_delay_scan.begin;
 		     rx_d <= eng->io.rx_delay_scan.end; rx_d += step) {
-			PRINTF(option, "%1d", (uint32_t)abs(rx_d) % 10);
+			PRINTF(option, "%1x", (uint32_t)abs(rx_d) & 0xf);
 		}
 
 		PRINTF(option, "\n    ");
@@ -2158,9 +2158,9 @@ void PrintIO_Header (MAC_ENGINE *eng, uint8_t option)
 void PrintIO_LineS(MAC_ENGINE *p_eng, uint8_t option)
 {
 	if (p_eng->io.tx_delay_scan.orig == p_eng->io.Dly_out_selval) {
-		PRINTF( option, "%02d:-", p_eng->io.Dly_out_selval); 
+		PRINTF( option, "%02x:-", p_eng->io.Dly_out_selval); 
 	} else {
-		PRINTF( option, "%02d: ", p_eng->io.Dly_out_selval);
+		PRINTF( option, "%02x: ", p_eng->io.Dly_out_selval);
 	}	
 } // End void PrintIO_LineS (MAC_ENGINE *eng, uint8_t option)
 
