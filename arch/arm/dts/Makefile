@@ -683,6 +683,9 @@ dtb-$(CONFIG_TARGET_EVB_AST2600) += \
 dtb-$(CONFIG_TARGET_FPGA_AST2600) += \
 	ast2600-fpga.dtb
 
+dtb-$(CONFIG_TARGET_NCSI_AST2600) += \
+	ast2600-ncsi.dtb
+
 dtb-$(CONFIG_ARCH_STI) += stih410-b2260.dtb
 
 dtb-$(CONFIG_TARGET_STM32MP1) += \
