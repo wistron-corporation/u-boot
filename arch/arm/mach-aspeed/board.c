@@ -52,6 +52,31 @@ void lowlevel_init(void)
 }
 #endif
 
+void reset_eth_phy_ic(void)
+{
+#ifdef ASPEED_HW_STRAP2
+	u32 strap2 = readl(ASPEED_HW_STRAP2);
+
+	if(0 == (strap2 & BIT(0))) {
+		/* RMII daughter card workaround : reset PHY via GPIO F2/F3 */
+		debug("reset RMII3 PHY chip manually");
+		writel(BIT(10), 0x1e780024);
+		writel(~BIT(10) & readl(0x1e780020), 0x1e780020);
+		udelay(100);
+		writel(BIT(10) | readl(0x1e780020), 0x1e780020);
+	}
+
+	if(0 == (strap2 & BIT(1))) {
+		/* RMII daughter card workaround : reset PHY via GPIO F2/F3 */
+		debug("reset RMII4 PHY chip manually");
+		writel(BIT(11), 0x1e780024);
+		writel(~BIT(11) & readl(0x1e780020), 0x1e780020);
+		udelay(100);
+		writel(BIT(11) | readl(0x1e780020), 0x1e780020);
+	}
+#endif	
+}
+
 int board_init(void)
 {
 	struct udevice *dev;
