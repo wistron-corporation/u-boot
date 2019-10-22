@@ -1459,9 +1459,8 @@ int mac_test(int argc, char * const argv[], uint32_t mode)
 	mac_set_addr(&mac_eng);
 	if (mac_eng.arg.ctrl.b.mac_int_loopback)
 		mac_set_interal_loopback(&mac_eng);
-	
-	if (mac_eng.arg.run_mode == MODE_DEDICATED)
-		scu_set_pinmux(&mac_eng);
+
+	scu_set_pinmux(&mac_eng);
 
 	scu_disable_mac(&mac_eng);
 	scu_enable_mac(&mac_eng);
