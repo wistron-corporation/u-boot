@@ -69,37 +69,16 @@
     #define CheckTPktLost
     #define CheckRxBuf
 
-#ifdef CheckRxErr
-  #define Check_ErrMask_RxErr                    0x00040000 //bit18
-#else
-  #define Check_ErrMask_RxErr                    0x00000000
-#endif
-#ifdef CheckCRC
-  #define Check_ErrMask_CRC                      0x00080000 //bit19
-#else
-  #define Check_ErrMask_CRC                      0x00000000
-#endif
-#ifdef CheckFTL
-  #define Check_ErrMask_FTL                      0x00100000 //bit20
-#else
-  #define Check_ErrMask_FTL                      0x00000000
-#endif
-#ifdef CheckRunt
-  #define Check_ErrMask_Runt                     0x00200000 //bit21
-#else
-  #define Check_ErrMask_Runt                     0x00000000
-#endif
-#ifdef CheckOddNibble
-  #define Check_ErrMask_OddNibble                0x00400000 //bit22
-#else
-  #define Check_ErrMask_OddNibble                0x00000000
-#endif
-#ifdef CheckRxFIFOFull
-  #define Check_ErrMask_RxFIFOFull               0x00800000 //bit23
-#else
-  #define Check_ErrMask_RxFIFOFull               0x00000000
-#endif
-#define Check_ErrMask_ALL                        ( Check_ErrMask_RxErr | Check_ErrMask_CRC | Check_ErrMask_FTL | Check_ErrMask_Runt | Check_ErrMask_OddNibble | Check_ErrMask_RxFIFOFull )
 
+/* error mask of the RX descriptor */
+#define RXDES_EM_RXERR			BIT(18)
+#define RXDES_EM_CRC			BIT(19)
+#define RXDES_EM_FTL			BIT(20)
+#define RXDES_EM_RUNT			BIT(21)
+#define RXDES_EM_ODD_NB			BIT(22)
+#define RXDES_EM_FIFO_FULL		BIT(23)
+#define RXDES_EM_ALL                                                           \
+	(RXDES_EM_RXERR | RXDES_EM_CRC | RXDES_EM_FTL | RXDES_EM_RUNT |        \
+	 RXDES_EM_ODD_NB | RXDES_EM_FIFO_FULL)
 
 #endif // SWFUNC_H

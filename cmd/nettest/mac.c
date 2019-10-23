@@ -348,11 +348,11 @@ void get_dummy_delay(MAC_ENGINE *p_eng, int32_t *p_rx_d, int32_t *p_tx_d)
 typedef void (*pfn_get_delay) (MAC_ENGINE *, int32_t *, int32_t *);
 pfn_get_delay get_delay_func_tbl[2][4][3] = {
 	{
-		{get_mac1_rmii_delay, get_dummy_delay, get_dummy_delay},
-		{get_mac2_rmii_delay, get_dummy_delay, get_dummy_delay},
+		{get_mac1_rmii_delay, get_mac1_rmii_delay, get_mac1_rmii_delay},
+		{get_mac2_rmii_delay, get_mac2_rmii_delay, get_mac2_rmii_delay},
 #if defined(CONFIG_ASPEED_AST2600)
-		{get_mac3_rmii_delay, get_dummy_delay, get_dummy_delay},
-		{get_mac4_rmii_delay, get_dummy_delay, get_dummy_delay},
+		{get_mac3_rmii_delay, get_mac3_rmii_delay, get_mac3_rmii_delay},
+		{get_mac4_rmii_delay, get_mac4_rmii_delay, get_mac4_rmii_delay},
 #else
 		{get_dummy_delay, get_dummy_delay, get_dummy_delay},
 		{get_dummy_delay, get_dummy_delay, get_dummy_delay},
@@ -628,11 +628,11 @@ void set_dummy_delay(MAC_ENGINE *p_eng, int32_t rx_d, int32_t tx_d)
 typedef void (*pfn_set_delay) (MAC_ENGINE *, int32_t, int32_t);
 pfn_set_delay set_delay_func_tbl[2][4][3] = {
 	{
-		{set_mac1_rmii_delay, set_dummy_delay, set_dummy_delay},
-		{set_mac2_rmii_delay, set_dummy_delay, set_dummy_delay},
+		{set_mac1_rmii_delay, set_mac1_rmii_delay, set_mac1_rmii_delay},
+		{set_mac2_rmii_delay, set_mac2_rmii_delay, set_mac2_rmii_delay},
 #if defined(CONFIG_ASPEED_AST2600)
-		{set_mac3_rmii_delay, set_dummy_delay, set_dummy_delay},
-		{set_mac4_rmii_delay, set_dummy_delay, set_dummy_delay},
+		{set_mac3_rmii_delay, set_mac3_rmii_delay, set_mac3_rmii_delay},
+		{set_mac4_rmii_delay, set_mac4_rmii_delay, set_mac4_rmii_delay},
 #else
 		{set_dummy_delay, set_dummy_delay, set_dummy_delay},
 		{set_dummy_delay, set_dummy_delay, set_dummy_delay},
@@ -987,7 +987,8 @@ void FPri_RegValue (MAC_ENGINE *eng, uint8_t option)
 void FPri_End (MAC_ENGINE *eng, uint8_t option) 
 {
 	nt_log_func_name();
-	if ((0 == eng->run.is_rgmii) && ( eng->phy.RMIICK_IOMode != 0 ) && eng->run.IO_MrgChk && eng->flg.all_fail ) {
+	if ((0 == eng->run.is_rgmii) && (eng->phy.RMIICK_IOMode != 0) &&
+	    eng->run.IO_MrgChk && eng->flg.all_fail) {
 		if ( eng->arg.ctrl.b.rmii_phy_in == 0 ) {
 			PRINTF( option, "\n\n\n\n\n\n[Info] The PHY's RMII reference clock pin is setting to the OUTPUT mode now.\n" );
 			PRINTF( option, "       Maybe you can run the INPUT mode command \"mactest  %d %d %d %d %d %d %d\".\n\n\n\n", eng->arg.mac_idx, eng->arg.run_speed, (eng->arg.ctrl.w | 0x80), eng->arg.loop_max, eng->arg.test_mode, eng->arg.phy_addr, eng->arg.delay_scan_range );
@@ -996,7 +997,7 @@ void FPri_End (MAC_ENGINE *eng, uint8_t option)
 			PRINTF( option, "\n\n\n\n\n\n[Info] The PHY's RMII reference clock pin is setting to the INPUT mode now.\n" );
 			PRINTF( option, "       Maybe you can run the OUTPUT mode command \"mactest  %d %d %d %d %d %d %d\".\n\n\n\n", eng->arg.mac_idx, eng->arg.run_speed, (eng->arg.ctrl.w & 0x7f), eng->arg.loop_max, eng->arg.test_mode, eng->arg.phy_addr, eng->arg.delay_scan_range );
 		}
-	} // End if ( eng->env.MAC_RMII && ( eng->phy.RMIICK_IOMode != 0 ) && eng->run.IO_MrgChk && eng->flg.all_fail )
+	}
 
 	if (!eng->run.TM_RxDataEn) {
 	} else if (eng->flg.Err_Flag) {
@@ -1088,10 +1089,7 @@ void FPri_End (MAC_ENGINE *eng, uint8_t option)
 	}
 	else {
 		PRINTF( option, "[PHY] Adr:%d ID2:%04x ID3:%04x (%s)\n", eng->phy.Adr, eng->phy.PHY_ID2, eng->phy.PHY_ID3, eng->phy.phy_name);
-	} // End if ( eng->arg.run_mode == MODE_NCSI )
-
-
-	PRINTF( option, "[Ver II] %s\n", version_name );
+	} // End if ( eng->arg.run_mode == MODE_NCSI )	
 } // End void FPri_End (MAC_ENGINE *eng, uint8_t option)
 
 //------------------------------------------------------------
@@ -1628,9 +1626,9 @@ char check_Data (MAC_ENGINE *eng, uint32_t datbase, int32_t number)
 			wp = wp & wp_lst_cur;
 
 		if ( ( rdata & wp ) != ( gdata & wp ) ) {
-			printf("\nError: Adr:%08x[%3d] (%08x) (%08x:%08x) [Des:%d][loop[%d]:%d]\n", adr, ( adr - adr_srt ) / 4, rdata, gdata, wp, number, eng->run.loop_of_cnt, eng->run.loop_cnt );
+			PRINTF( FP_LOG, "\nError: Adr:%08x[%3d] (%08x) (%08x:%08x) [Des:%d][loop[%d]:%d]\n", adr, ( adr - adr_srt ) / 4, rdata, gdata, wp, number, eng->run.loop_of_cnt, eng->run.loop_cnt );
 			for ( index = 0; index < 6; index++ )
-				printf("Rep  : Adr:%08x      (%08x) (%08x:%08x) [Des:%d][loop[%d]:%d]\n", adr, Read_Mem_Dat_DD( adr ), gdata, wp, number, eng->run.loop_of_cnt, eng->run.loop_cnt );
+				PRINTF( FP_LOG, "Rep  : Adr:%08x      (%08x) (%08x:%08x) [Des:%d][loop[%d]:%d]\n", adr, Read_Mem_Dat_DD( adr ), gdata, wp, number, eng->run.loop_of_cnt, eng->run.loop_cnt );
 
 			if (DbgPrn_DumpMACCnt)
 				dump_mac_ROreg(eng);
@@ -1912,45 +1910,45 @@ char check_des_header_Rx (MAC_ENGINE *eng, char *type, uint32_t adr, int32_t des
 	}
   #endif // End CheckRxLen
 
-	if ( eng->dat.RxDes0DW & Check_ErrMask_ALL ) {
+	if ( eng->dat.RxDes0DW & RXDES_EM_ALL ) {
 		eng->dat.RxDes3DW = Read_Mem_Des_DD( adr + 12 );
   #ifdef CheckRxErr
-		if ( eng->dat.RxDes0DW & Check_ErrMask_RxErr ) {
+		if ( eng->dat.RxDes0DW & RXDES_EM_RXERR ) {
 			PRINTF( FP_LOG, "[%sRxDes] Error RxErr        %08x:%08x %08x            [Des:%d][loop[%d]:%d]\n", type, adr, eng->dat.RxDes0DW, eng->dat.RxDes3DW, desnum, eng->run.loop_of_cnt, eng->run.loop_cnt );
 			FindErr_Des( eng, Des_Flag_RxErr );
 		}
   #endif // End CheckRxErr
 
   #ifdef CheckCRC
-		if ( eng->dat.RxDes0DW & Check_ErrMask_CRC ) {
+		if ( eng->dat.RxDes0DW & RXDES_EM_CRC ) {
 			PRINTF( FP_LOG, "[%sRxDes] Error CRC          %08x:%08x %08x            [Des:%d][loop[%d]:%d]\n", type, adr, eng->dat.RxDes0DW, eng->dat.RxDes3DW, desnum, eng->run.loop_of_cnt, eng->run.loop_cnt );
 			FindErr_Des( eng, Des_Flag_CRC );
 		}
   #endif // End CheckCRC
 
   #ifdef CheckFTL
-		if ( eng->dat.RxDes0DW & Check_ErrMask_FTL ) {
+		if ( eng->dat.RxDes0DW & RXDES_EM_FTL ) {
 			PRINTF( FP_LOG, "[%sRxDes] Error FTL          %08x:%08x %08x            [Des:%d][loop[%d]:%d]\n", type, adr, eng->dat.RxDes0DW, eng->dat.RxDes3DW, desnum, eng->run.loop_of_cnt, eng->run.loop_cnt );
 			FindErr_Des( eng, Des_Flag_FTL );
 		}
   #endif // End CheckFTL
 
   #ifdef CheckRunt
-		if ( eng->dat.RxDes0DW & Check_ErrMask_Runt) {
+		if ( eng->dat.RxDes0DW & RXDES_EM_RUNT) {
 			PRINTF( FP_LOG, "[%sRxDes] Error Runt         %08x:%08x %08x            [Des:%d][loop[%d]:%d]\n", type, adr, eng->dat.RxDes0DW, eng->dat.RxDes3DW, desnum, eng->run.loop_of_cnt, eng->run.loop_cnt );
 			FindErr_Des( eng, Des_Flag_Runt );
 		}
   #endif // End CheckRunt
 
   #ifdef CheckOddNibble
-		if ( eng->dat.RxDes0DW & Check_ErrMask_OddNibble ) {
+		if ( eng->dat.RxDes0DW & RXDES_EM_ODD_NB ) {
 			PRINTF( FP_LOG, "[%sRxDes] Odd Nibble         %08x:%08x %08x            [Des:%d][loop[%d]:%d]\n", type, adr, eng->dat.RxDes0DW, eng->dat.RxDes3DW, desnum, eng->run.loop_of_cnt, eng->run.loop_cnt );
 			FindErr_Des( eng, Des_Flag_OddNibble );
 		}
   #endif // End CheckOddNibble
 
   #ifdef CheckRxFIFOFull
-		if ( eng->dat.RxDes0DW & Check_ErrMask_RxFIFOFull ) {
+		if ( eng->dat.RxDes0DW & RXDES_EM_FIFO_FULL ) {
 			PRINTF( FP_LOG, "[%sRxDes] Error Rx FIFO Full %08x:%08x %08x            [Des:%d][loop[%d]:%d]\n", type, adr, eng->dat.RxDes0DW, eng->dat.RxDes3DW, desnum, eng->run.loop_of_cnt, eng->run.loop_cnt );
 			FindErr_Des( eng, Des_Flag_RxFIFOFull );
 		}
@@ -2130,18 +2128,18 @@ void PrintIO_Header (MAC_ENGINE *eng, uint8_t option)
 
 		PRINTF(option, "\n    ");
 		for (rx_d = eng->io.rx_delay_scan.begin; rx_d <= eng->io.rx_delay_scan.end; rx_d += step) {
-			tmp = abs(rx_d) / 10;
+			tmp = (abs(rx_d) >> 4) & 0xf;
 			if (tmp == 0) {
 				PRINTF(option, "0" );
 			} else {
-				PRINTF(option, "%1d", tmp);
+				PRINTF(option, "%1x", tmp);
 			}
 		}
 
 		PRINTF(option, "\n    ");
 		for (rx_d = eng->io.rx_delay_scan.begin;
 		     rx_d <= eng->io.rx_delay_scan.end; rx_d += step) {
-			PRINTF(option, "%1d", (uint32_t)abs(rx_d) % 10);
+			PRINTF(option, "%1x", (uint32_t)abs(rx_d) & 0xf);
 		}
 
 		PRINTF(option, "\n    ");
@@ -2160,9 +2158,9 @@ void PrintIO_Header (MAC_ENGINE *eng, uint8_t option)
 void PrintIO_LineS(MAC_ENGINE *p_eng, uint8_t option)
 {
 	if (p_eng->io.tx_delay_scan.orig == p_eng->io.Dly_out_selval) {
-		PRINTF( option, "%02d:-", p_eng->io.Dly_out_selval); 
+		PRINTF( option, "%02x:-", p_eng->io.Dly_out_selval); 
 	} else {
-		PRINTF( option, "%02d: ", p_eng->io.Dly_out_selval);
+		PRINTF( option, "%02x: ", p_eng->io.Dly_out_selval);
 	}	
 } // End void PrintIO_LineS (MAC_ENGINE *eng, uint8_t option)
 
