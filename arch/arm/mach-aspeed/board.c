@@ -23,6 +23,11 @@
  */
 #define AST_FLASH_ADDR_DETECT_WDT	2
 
+/*
+ * RMII daughtercard workaround
+ */
+//#define ASPEED_RMII_DAUGHTER_CARD
+
 DECLARE_GLOBAL_DATA_PTR;
 
 #if 0
@@ -52,30 +57,37 @@ void lowlevel_init(void)
 }
 #endif
 
-void reset_eth_phy_ic(void)
+#ifdef ASPEED_RMII_DAUGHTER_CARD
+/**
+ * @brief	workaround for RMII daughtercard, reset PHY manually
+ * 
+ * workaround for Aspeed RMII daughtercard, reset Eth PHY by GPO F0 and F2
+ * Where GPO F0 controls the reset signal of RMII PHY 1 and 2.
+ * Where GPO F2 controls the reset signal of RMII PHY 3 and 4.
+*/
+void reset_eth_phy(void)
 {
-#ifdef ASPEED_HW_STRAP2
-	u32 strap2 = readl(ASPEED_HW_STRAP2);
+#define GRP_F		8
+#define PHY_RESET_MASK  (BIT(GRP_F + 0) | BIT(GRP_F + 2))	
 
-	if(0 == (strap2 & BIT(0))) {
-		/* RMII daughter card workaround : reset PHY via GPIO F2/F3 */
-		debug("reset RMII3 PHY chip manually");
-		writel(BIT(10), 0x1e780024);
-		writel(~BIT(10) & readl(0x1e780020), 0x1e780020);
-		udelay(100);
-		writel(BIT(10) | readl(0x1e780020), 0x1e780020);
-	}
+	u32 value = readl(0x1e780020);
+	u32 direction = readl(0x1e780024);
 
-	if(0 == (strap2 & BIT(1))) {
-		/* RMII daughter card workaround : reset PHY via GPIO F2/F3 */
-		debug("reset RMII4 PHY chip manually");
-		writel(BIT(11), 0x1e780024);
-		writel(~BIT(11) & readl(0x1e780020), 0x1e780020);
-		udelay(100);
-		writel(BIT(11) | readl(0x1e780020), 0x1e780020);
-	}
-#endif	
+	debug("RMII workaround: reset PHY manually\n");
+
+	direction |= PHY_RESET_MASK;
+	value &= ~PHY_RESET_MASK;
+	writel(direction, 0x1e780024);
+	writel(value, 0x1e780020);
+	while((readl(0x1e780020) & PHY_RESET_MASK) != 0);
+
+	udelay(1000);
+
+	value |= PHY_RESET_MASK;
+	writel(value, 0x1e780020);
+	while((readl(0x1e780020) & PHY_RESET_MASK) != PHY_RESET_MASK);
 }
+#endif
 
 int board_init(void)
 {
@@ -85,6 +97,9 @@ int board_init(void)
 
 	gd->bd->bi_boot_params = CONFIG_SYS_SDRAM_BASE + 0x100;
 
+#ifdef ASPEED_RMII_DAUGHTER_CARD
+	reset_eth_phy();
+#endif	
 	/*
 	 * Loop over all MISC uclass drivers to call the comphy code
 	 * and init all CP110 devices enabled in the DT
