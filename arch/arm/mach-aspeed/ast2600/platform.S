@@ -68,8 +68,8 @@
 	movw	r0, #0xF080
 	movt	r0, #0x2FA
 #else
-	movw 	r0, #0x2340
-	movt	r0, #0x430E
+	movw 	r0, #0x32c0
+	movt	r0, #0x4013
 #endif
 	mcr	p15, 0, r0, c14, c0, 0	@; update CNTFRQ
 .endm
@@ -144,7 +144,7 @@ do_primary_core_setup:
 	str	r1, [r0]
 
 	ldr	r0, =AST_SCU_HPLL_PARAM
-	movw	r1, #0x4087
+	movw	r1, #0x4080
 	movt	r1, #0x1000
 	str	r1, [r0]
 
