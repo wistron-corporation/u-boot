@@ -674,17 +674,12 @@ dtb-$(CONFIG_ARCH_BCM63158) += \
 dtb-$(CONFIG_ARCH_BCM6858) += \
 	bcm968580xref.dtb
 
-dtb-$(CONFIG_TARGET_EVB_AST2500) += \
+dtb-$(CONFIG_ARCH_ASPEED) += \
+	ast2600-evb.dtb \
+	ast2600-tacoma.dtb \
+	ast2600-fpga.dtb \
+	ast2600-ncsi.dtb \
 	ast2500-evb.dtb
-
-dtb-$(CONFIG_TARGET_EVB_AST2600) += \
-	ast2600-evb.dtb
-
-dtb-$(CONFIG_TARGET_FPGA_AST2600) += \
-	ast2600-fpga.dtb
-
-dtb-$(CONFIG_TARGET_NCSI_AST2600) += \
-	ast2600-ncsi.dtb
 
 dtb-$(CONFIG_ARCH_STI) += stih410-b2260.dtb
 
