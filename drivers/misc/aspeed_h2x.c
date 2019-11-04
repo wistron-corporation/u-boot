@@ -19,7 +19,7 @@
 
 #define PCIE_STATUS_OF_TX		GENMASK(25, 24)
 #define	PCIE_RC_TX_COMPLETE		0
-#define	PCIE_RC_L_TX_COMPLETE	BIT(24)		
+#define	PCIE_RC_L_TX_COMPLETE	BIT(24)
 #define	PCIE_RC_H_TX_COMPLETE	BIT(25)
 
 #define PCIE_TRIGGER_TX			BIT(0)
@@ -55,11 +55,57 @@ struct aspeed_h2x_priv {
 
 static u8 txTag = 0;
 
+extern void aspeed_pcie_workaround() 
+{
+	u32 timeout = 0;
+	u32 bdf_offset;
+	u32 type = 0;
+	int rx_done_fail = 0;
+//	int i = 0;
+printk("aspeed_pcie_workaround \n");
+	writel(BIT(4) | readl(0x1e7700c0), 0x1e7700c0);
+
+
+	writel(0x74000001, 0x1e770010);
+	writel(0x00400050, 0x1e770014);
+	writel(0x0, 0x1e770018);
+	writel(0x0, 0x1e77001c);
+
+	writel(0x1a, 0x1e770020);
+
+	//trigger tx
+	writel(PCIE_TRIGGER_TX, 0x1e770024);
+
+	//wait tx idle
+	while(!(readl(0x1e770024) & BIT(31))) {
+		timeout++;
+		if(timeout > 10000) {
+			printf("wr time out \n");
+			return;
+		}
+	};
+
+	//write clr tx idle
+	writel(1, 0x1e770008);
+	timeout = 0;
+
+	//check tx status and clr rx done int
+	while(!(readl(0x1e7700c8) & PCIE_RC_RX_DONE_ISR)) {
+		printf("wait wr write for rx done \n");
+		timeout++;
+		if(timeout > 100) {
+			break;
+		}
+	}
+	writel(PCIE_RC_RX_DONE_ISR, 0x1e7700c8);
+}
+
 extern void aspeed_pcie_cfg_read(struct aspeed_h2x_reg *h2x, pci_dev_t bdf, uint offset, ulong *valuep)
 {
 	u32 timeout = 0;
 	u32 bdf_offset;
 	u32 type = 0;
+	int rx_done_fail = 0;
 //	int i = 0;
 
 	//H2X80[4] (unlock) is write-only.
@@ -93,26 +139,9 @@ extern void aspeed_pcie_cfg_read(struct aspeed_h2x_reg *h2x, pci_dev_t bdf, uint
 	//wait tx idle
 	while(!(readl(&h2x->h2x_reg24) & PCIE_TX_IDLE)) {
 		timeout++;
-		if(timeout > 10000) {
+		if(timeout > 1000) {
 			printf("time out b : %d, d : %d, f: %d \n", PCI_BUS(bdf), PCI_DEV(bdf), PCI_FUNC(bdf));
 			*valuep = 0xffffffff;
-
-#if 0
-			printf("=======0x1e770000========\n");
-			for (i = 0; i < 0x40; i++) {
-				if((i % 4) == 0)
-					printf("\n %2x : ", (i * 4));
-
-				printf("%08x ", readl(0x1e770000 + (i * 4)));
-			}
-			printf("\n =======0x1e6ed000========\n");
-			for (i = 0; i < 0x40; i++) {
-				if((i % 4) == 0)
-					printf("\n %2x : ", (i * 4));
-				printf(" %08x ", readl(0x1e6ed000 + (i * 4)));
-			}
-			printf("===============\n");			
-#endif
 			goto out;
 		}
 	};
@@ -120,31 +149,43 @@ extern void aspeed_pcie_cfg_read(struct aspeed_h2x_reg *h2x, pci_dev_t bdf, uint
 	//write clr tx idle
 	writel(1, &h2x->h2x_reg08);
 
+	timeout = 0;
 	//check tx status 
 	switch(readl(&h2x->h2x_reg24) & PCIE_STATUS_OF_TX) {
 		case PCIE_RC_L_TX_COMPLETE:
-			while(!(readl(&h2x->h2x_rc_l_isr) & PCIE_RC_RX_DONE_ISR));
-#if 0
-			if(readl(&h2x->h2x_rc_l_isr) & (PCIE_RC_CPLCA_ISR | PCIE_RC_CPLUR_ISR)) {
-				printf("return ffffffff \n");
-				*valuep = 0xffffffff;
-			} else
-				*valuep = readl(&h2x->h2x_rc_l_rdata);
-#else
-			*valuep = readl(&h2x->h2x_rc_l_rdata);
-#endif
+			while(!(readl(&h2x->h2x_rc_l_isr) & PCIE_RC_RX_DONE_ISR)) {
+				timeout++;
+				if(timeout > 100) {
+					rx_done_fail = 1;
+					*valuep = 0xffffffff;
+					break;
+				}
+			}
+			if(!rx_done_fail) {
+				if(readl(&h2x->h2x_reg94) & BIT(13)) {
+					*valuep = 0xffffffff;
+				} else
+					*valuep = readl(&h2x->h2x_rc_l_rdata);
+			}
+			writel(BIT(4) | readl(&h2x->h2x_reg80), &h2x->h2x_reg80);
 			writel(readl(&h2x->h2x_rc_l_isr), &h2x->h2x_rc_l_isr);
 			break;
 		case PCIE_RC_H_TX_COMPLETE:
-			while(!(readl(&h2x->h2x_rc_h_isr) & PCIE_RC_RX_DONE_ISR));
-#if 0
-			if(readl(&h2x->h2x_rc_h_isr) & (PCIE_RC_CPLCA_ISR | PCIE_RC_CPLUR_ISR))
-				*valuep = 0xffffffff;
-			else
-				*valuep = readl(&h2x->h2x_rc_h_rdata);
-#else
-			*valuep = readl(&h2x->h2x_rc_h_rdata);
-#endif
+			while(!(readl(&h2x->h2x_rc_h_isr) & PCIE_RC_RX_DONE_ISR)) {
+				timeout++;
+				if(timeout > 100) {
+					rx_done_fail = 1;
+					*valuep = 0xffffffff;
+					break;
+				}
+			}
+			if(!rx_done_fail) {
+				if(readl(&h2x->h2x_regD4) & BIT(13)) {
+					*valuep = 0xffffffff;
+				} else			
+					*valuep = readl(&h2x->h2x_rc_h_rdata);
+			}
+			writel(BIT(4) | readl(&h2x->h2x_regC0), &h2x->h2x_regC0);
 			writel(readl(&h2x->h2x_rc_h_isr), &h2x->h2x_rc_h_isr);
 			break;
 		default:	//read rc data
@@ -154,7 +195,6 @@ extern void aspeed_pcie_cfg_read(struct aspeed_h2x_reg *h2x, pci_dev_t bdf, uint
 
 out:
 	txTag++;
-
 }
 
 extern void aspeed_pcie_cfg_write(struct aspeed_h2x_reg *h2x, pci_dev_t bdf, uint offset, ulong value, enum pci_size_t size)
@@ -163,6 +203,7 @@ extern void aspeed_pcie_cfg_write(struct aspeed_h2x_reg *h2x, pci_dev_t bdf, uin
 	u32 type = 0;
 	u32 bdf_offset;
 	u8 byte_en = 0;
+	int rx_done_fail = 0;	
 
 #ifdef PCIE_RC_L
 	writel(BIT(4) | readl(&h2x->h2x_reg80), &h2x->h2x_reg80);
@@ -174,17 +215,17 @@ extern void aspeed_pcie_cfg_write(struct aspeed_h2x_reg *h2x, pci_dev_t bdf, uin
 	case PCI_SIZE_8:
 		switch(offset % 4) {
 			case 0:
-				byte_en = 0x1;		
+				byte_en = 0x1;
 				break;
 			case 1:
 				byte_en = 0x2;
 				break;
 			case 2:
 				byte_en = 0x4;
-				break;	
+				break;
 			case 3:
 				byte_en = 0x8;
-				break;			
+				break;
 		}
 		break;
 	case PCI_SIZE_16:
@@ -229,30 +270,39 @@ extern void aspeed_pcie_cfg_write(struct aspeed_h2x_reg *h2x, pci_dev_t bdf, uin
 	//wait tx idle
 	while(!(readl(&h2x->h2x_reg24) & BIT(31))) {
 		timeout++;
-		if(timeout > 10000) {
-			printf("time out \n");
+		if(timeout > 1000) {
 			goto out;
 		}
 	};
 
 	//write clr tx idle
 	writel(1, &h2x->h2x_reg08);
+	timeout = 0;
 
 	//check tx status and clr rx done int
 	switch(readl(&h2x->h2x_reg24) & PCIE_STATUS_OF_TX) {
 		case PCIE_RC_L_TX_COMPLETE:
-			while(!(readl(&h2x->h2x_rc_l_isr) & PCIE_RC_RX_DONE_ISR));
+			while(!(readl(&h2x->h2x_rc_l_isr) & PCIE_RC_RX_DONE_ISR)) {
+				timeout++;
+				if(timeout > 100) {
+					break;
+				}
+			}
 			writel(PCIE_RC_RX_DONE_ISR, &h2x->h2x_rc_l_isr);
 			break;
 		case PCIE_RC_H_TX_COMPLETE:
-			while(!(readl(&h2x->h2x_rc_h_isr) & PCIE_RC_RX_DONE_ISR));
+			while(!(readl(&h2x->h2x_rc_h_isr) & PCIE_RC_RX_DONE_ISR)) {
+				timeout++;
+				if(timeout > 100) {
+					break;
+				}
+			}
 			writel(PCIE_RC_RX_DONE_ISR, &h2x->h2x_rc_h_isr);
 			break;
 	}
 
 out:
 	txTag++;
-
 }
 
 static int aspeed_h2x_probe(struct udevice *dev)
