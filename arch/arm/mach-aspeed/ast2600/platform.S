@@ -176,10 +176,10 @@ wait_lock:
 	str	r0, [r1]
 #endif
 	/* tune up SPI clock */
-	movw	r0, #0x0600
-	movt	r0, #0x0000
+	movw	r0, #0x0641
+	movt	r0, #0x000B
 	ldr	r1, =AST_FMC_CE0_CTRL
-	str	r1, [r0]
+	str	r0, [r1]
 
 	/* release display port reset */
 	ldr	r0, =AST_SCU_SYSRST_CTRL_CLR
