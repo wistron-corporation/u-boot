@@ -155,17 +155,21 @@ static int pcie_aspeed_probe(struct udevice *dev)
 		pcie->link_sts = 0;
 	}
 
-	//todo use range 
-	/* PCI memory space */
-	pci_set_region(hose->regions + 0, 0x60000000,
-			   0x60000000, 0x10000000, PCI_REGION_MEM);
-
-	pci_set_region(hose->regions + 1,
+	/* System memory space */
+	pci_set_region(hose->regions + 0,
 			   0, 0,
 			   gd->ram_size,
 			   PCI_REGION_MEM | PCI_REGION_SYS_MEMORY);
 
-	hose->region_count = 2;
+	/* PCI memory space */
+	pci_set_region(hose->regions + 1, 0x60000000,
+			   0x60000000, 0x10000000, PCI_REGION_IO);
+
+	/* PCI I/O space */
+	pci_set_region(hose->regions + 2, 0x70000000, 
+			   0x70000000, 0x10000000, PCI_REGION_MEM);
+
+	hose->region_count = 3;
 
 	return 0;
 }
