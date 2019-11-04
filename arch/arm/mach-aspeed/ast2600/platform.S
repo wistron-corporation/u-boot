@@ -176,8 +176,8 @@ wait_lock:
 	str	r0, [r1]
 #endif
 	/* tune up SPI clock */
-	movw	r0, #0x0600
-	movt	r0, #0x0000
+	movw	r0, #0x0641
+	movt	r0, #0x000B
 	ldr	r1, =AST_FMC_CE0_CTRL
 	str	r0, [r1]
 
