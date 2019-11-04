@@ -58,13 +58,8 @@ static u8 txTag = 0;
 extern void aspeed_pcie_workaround() 
 {
 	u32 timeout = 0;
-	u32 bdf_offset;
-	u32 type = 0;
-	int rx_done_fail = 0;
-//	int i = 0;
-printk("aspeed_pcie_workaround \n");
-	writel(BIT(4) | readl(0x1e7700c0), 0x1e7700c0);
 
+	writel(BIT(4) | readl(0x1e7700c0), 0x1e7700c0);
 
 	writel(0x74000001, 0x1e770010);
 	writel(0x00400050, 0x1e770014);
@@ -79,8 +74,7 @@ printk("aspeed_pcie_workaround \n");
 	//wait tx idle
 	while(!(readl(0x1e770024) & BIT(31))) {
 		timeout++;
-		if(timeout > 10000) {
-			printf("wr time out \n");
+		if(timeout > 1000) {
 			return;
 		}
 	};
@@ -91,7 +85,6 @@ printk("aspeed_pcie_workaround \n");
 
 	//check tx status and clr rx done int
 	while(!(readl(0x1e7700c8) & PCIE_RC_RX_DONE_ISR)) {
-		printf("wait wr write for rx done \n");
 		timeout++;
 		if(timeout > 100) {
 			break;
@@ -203,7 +196,6 @@ extern void aspeed_pcie_cfg_write(struct aspeed_h2x_reg *h2x, pci_dev_t bdf, uin
 	u32 type = 0;
 	u32 bdf_offset;
 	u8 byte_en = 0;
-	int rx_done_fail = 0;	
 
 #ifdef PCIE_RC_L
 	writel(BIT(4) | readl(&h2x->h2x_reg80), &h2x->h2x_reg80);
