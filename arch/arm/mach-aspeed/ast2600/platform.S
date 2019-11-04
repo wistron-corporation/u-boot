@@ -179,7 +179,7 @@ wait_lock:
 	movw	r0, #0x0600
 	movt	r0, #0x0000
 	ldr	r1, =AST_FMC_CE0_CTRL
-	str	r1, [r0]
+	str	r0, [r1]
 
 	/* release display port reset */
 	ldr	r0, =AST_SCU_SYSRST_CTRL_CLR
