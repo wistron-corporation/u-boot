@@ -692,6 +692,12 @@ config CMD_FDC
 	help
 	  The 'fdtboot' command allows booting an image from a floppy disk.
 
+config CMD_FSI
+	bool "fsi - use FSI master"
+	depends on ASPEED_FSI
+	help
+	 The 'fsi' command allows use of the FSI master present in ASPEED SoCs
+
 config CMD_FLASH
 	bool "flinfo, erase, protect"
 	default y

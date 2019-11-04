@@ -981,6 +981,33 @@ static ulong ast2600_enable_extemmcclk(struct ast2600_scu *scu)
 	return 0;
 }
 
+#define SCU_CLKSTOP_FSICLK 30
+
+static ulong ast2600_enable_fsiclk(struct ast2600_scu *scu)
+{
+	u32 reset_bit;
+	u32 clkstop_bit;
+
+	reset_bit = BIT(ASPEED_RESET_FSI % 32);
+	clkstop_bit = BIT(SCU_CLKSTOP_FSICLK);
+
+	/* The FSI clock is shared between masters. If it's already on
+	 * don't touch it, as that will reset the existing master. */
+	if (!(readl(&scu->clk_stop_ctrl2) & clkstop_bit)) {
+		debug("%s: already running, not touching it\n", __func__);
+		return 0;
+	}
+
+	writel(reset_bit, &scu->sysreset_ctrl2);
+	udelay(100);
+	//enable clk
+	writel(clkstop_bit, &scu->clk_stop_clr_ctrl2);
+	mdelay(10);
+	writel(reset_bit, &scu->sysreset_clr_ctrl2);
+
+	return 0;
+}
+
 static int ast2600_clk_enable(struct clk *clk)
 {
 	struct ast2600_clk_priv *priv = dev_get_priv(clk->dev);
@@ -1009,6 +1036,9 @@ static int ast2600_clk_enable(struct clk *clk)
 			break;
 		case ASPEED_CLK_GATE_EMMCEXTCLK:
 			ast2600_enable_extemmcclk(priv->scu);
+			break;
+		case ASPEED_CLK_GATE_FSICLK:
+			ast2600_enable_fsiclk(priv->scu);
 			break;
 		default:
 			pr_debug("can't enable clk \n");
