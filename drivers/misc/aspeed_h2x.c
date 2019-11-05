@@ -86,9 +86,10 @@ extern void aspeed_pcie_workaround()
 	//check tx status and clr rx done int
 	while(!(readl(0x1e7700c8) & PCIE_RC_RX_DONE_ISR)) {
 		timeout++;
-		if(timeout > 100) {
+		if(timeout > 10) {
 			break;
 		}
+		mdelay(1);
 	}
 	writel(PCIE_RC_RX_DONE_ISR, 0x1e7700c8);
 }
@@ -148,11 +149,12 @@ extern void aspeed_pcie_cfg_read(struct aspeed_h2x_reg *h2x, pci_dev_t bdf, uint
 		case PCIE_RC_L_TX_COMPLETE:
 			while(!(readl(&h2x->h2x_rc_l_isr) & PCIE_RC_RX_DONE_ISR)) {
 				timeout++;
-				if(timeout > 100) {
+				if(timeout > 10) {
 					rx_done_fail = 1;
 					*valuep = 0xffffffff;
 					break;
 				}
+				mdelay(1);
 			}
 			if(!rx_done_fail) {
 				if(readl(&h2x->h2x_reg94) & BIT(13)) {
@@ -166,11 +168,12 @@ extern void aspeed_pcie_cfg_read(struct aspeed_h2x_reg *h2x, pci_dev_t bdf, uint
 		case PCIE_RC_H_TX_COMPLETE:
 			while(!(readl(&h2x->h2x_rc_h_isr) & PCIE_RC_RX_DONE_ISR)) {
 				timeout++;
-				if(timeout > 100) {
+				if(timeout > 10) {
 					rx_done_fail = 1;
 					*valuep = 0xffffffff;
 					break;
 				}
+				mdelay(1);
 			}
 			if(!rx_done_fail) {
 				if(readl(&h2x->h2x_regD4) & BIT(13)) {
@@ -276,18 +279,20 @@ extern void aspeed_pcie_cfg_write(struct aspeed_h2x_reg *h2x, pci_dev_t bdf, uin
 		case PCIE_RC_L_TX_COMPLETE:
 			while(!(readl(&h2x->h2x_rc_l_isr) & PCIE_RC_RX_DONE_ISR)) {
 				timeout++;
-				if(timeout > 100) {
+				if(timeout > 10) {
 					break;
 				}
+				mdelay(1);
 			}
 			writel(PCIE_RC_RX_DONE_ISR, &h2x->h2x_rc_l_isr);
 			break;
 		case PCIE_RC_H_TX_COMPLETE:
 			while(!(readl(&h2x->h2x_rc_h_isr) & PCIE_RC_RX_DONE_ISR)) {
 				timeout++;
-				if(timeout > 100) {
+				if(timeout > 10) {
 					break;
 				}
+				mdelay(1);
 			}
 			writel(PCIE_RC_RX_DONE_ISR, &h2x->h2x_rc_h_isr);
 			break;
