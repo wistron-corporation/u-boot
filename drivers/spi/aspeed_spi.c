@@ -593,6 +593,7 @@ static int aspeed_spi_write_reg(struct aspeed_spi_priv *priv,
 	aspeed_spi_write_to_ahb(flash->ahb_base, write_buf, len);
 	aspeed_spi_stop_user(priv, flash);
 
+	debug("=== write opcode [%x] ==== \n", opcode);
 	switch(opcode) {
 		case SPINOR_OP_EN4B:
 			writel(readl(&priv->regs->ctrl) | BIT(flash->cs), &priv->regs->ctrl);
@@ -614,6 +615,9 @@ static void aspeed_spi_send_cmd_addr(struct aspeed_spi_priv *priv,
 
 	/* First, send the opcode */
 	aspeed_spi_write_to_ahb(flash->ahb_base, &cmdbuf[0], 1);
+
+	if(flash->iomode == CE_CTRL_IO_QUAD_ADDR_DATA)
+		writel(flash->ce_ctrl_user | flash->iomode, &priv->regs->ce_ctrl[flash->cs]);
 
 	/*
 	 * The controller is configured for 4BYTE address mode. Fix
@@ -664,16 +668,13 @@ static ssize_t aspeed_spi_write_user(struct aspeed_spi_priv *priv,
 {
 	aspeed_spi_start_user(priv, flash);
 
-	if(flash->iomode == CE_CTRL_IO_QPI_DATA)
-		writel(flash->ce_ctrl_user | flash->iomode, &priv->regs->ce_ctrl[flash->cs]);
-	
 	/* cmd buffer = cmd + addr : normally cmd is use signle mode*/
 	aspeed_spi_send_cmd_addr(priv, flash, cmdbuf, cmdlen);
 
 	/* data will use io mode */
 	if(flash->iomode == CE_CTRL_IO_QUAD_DATA)
 		writel(flash->ce_ctrl_user | flash->iomode, &priv->regs->ce_ctrl[flash->cs]);
-	
+
 	aspeed_spi_write_to_ahb(flash->ahb_base, write_buf, len);
 
 	aspeed_spi_stop_user(priv, flash);
@@ -872,15 +873,20 @@ static int aspeed_spi_flash_init(struct aspeed_spi_priv *priv,
 	else
 		read_hclk = aspeed_spi_hclk_divisor(priv, slave->speed);
 
-	if (slave->mode & (SPI_RX_DUAL | SPI_TX_DUAL)) {
-		debug("CS%u: setting dual data mode\n", flash->cs);
-		flash->iomode = CE_CTRL_IO_DUAL_DATA;
-		flash->spi->read_opcode = SPINOR_OP_READ_1_1_2;
-	} else if (slave->mode & (SPI_RX_QUAD | SPI_TX_QUAD)) {
-		flash->iomode = CE_CTRL_IO_QUAD_DATA;
-		flash->spi->read_opcode = SPINOR_OP_READ_1_4_4;
-	} else {
-		debug("normal read \n");
+	switch(flash->spi->read_opcode) {
+		case SPINOR_OP_READ_1_1_2:
+		case SPINOR_OP_READ_1_1_2_4B:
+			flash->iomode = CE_CTRL_IO_DUAL_DATA;
+			break;
+		case SPINOR_OP_READ_1_1_4:
+		case SPINOR_OP_READ_1_1_4_4B:
+			flash->iomode = CE_CTRL_IO_QUAD_DATA;
+			break;
+		case SPINOR_OP_READ_1_4_4:
+		case SPINOR_OP_READ_1_4_4_4B:
+			flash->iomode = CE_CTRL_IO_QUAD_ADDR_DATA;
+			printf("need modify dummy for 3 bytes");
+			break;
 	}
 
 	if(priv->new_ver) {
