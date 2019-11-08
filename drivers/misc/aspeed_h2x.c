@@ -37,7 +37,6 @@
 #define PCIE_RC_ENABLE			BIT(0)
 
 /* reg 0x88, 0xC8 : RC ISR */
-
 #define PCIE_RC_CPLCA_ISR		BIT(6)
 #define PCIE_RC_CPLUR_ISR		BIT(5)
 #define PCIE_RC_RX_DONE_ISR		BIT(4)
@@ -59,7 +58,11 @@ extern void aspeed_pcie_workaround()
 {
 	u32 timeout = 0;
 
+#ifdef PCIE_RC_L
+	writel(BIT(4) | readl(0x1e770080), 0x1e770080);
+#else
 	writel(BIT(4) | readl(0x1e7700c0), 0x1e7700c0);
+#endif
 
 	writel(0x74000001, 0x1e770010);
 	writel(0x00400050, 0x1e770014);
@@ -84,6 +87,16 @@ extern void aspeed_pcie_workaround()
 	timeout = 0;
 
 	//check tx status and clr rx done int
+#ifdef PCIE_RC_L
+	while(!(readl(0x1e770088) & PCIE_RC_RX_DONE_ISR)) {
+		timeout++;
+		if(timeout > 10) {
+			break;
+		}
+		mdelay(1);
+	}
+	writel(PCIE_RC_RX_DONE_ISR, 0x1e770088);
+#else
 	while(!(readl(0x1e7700c8) & PCIE_RC_RX_DONE_ISR)) {
 		timeout++;
 		if(timeout > 10) {
@@ -92,6 +105,7 @@ extern void aspeed_pcie_workaround()
 		mdelay(1);
 	}
 	writel(PCIE_RC_RX_DONE_ISR, 0x1e7700c8);
+#endif
 }
 
 extern void aspeed_pcie_cfg_read(struct aspeed_h2x_reg *h2x, pci_dev_t bdf, uint offset, ulong *valuep)
@@ -272,8 +286,8 @@ extern void aspeed_pcie_cfg_write(struct aspeed_h2x_reg *h2x, pci_dev_t bdf, uin
 
 	//write clr tx idle
 	writel(1, &h2x->h2x_reg08);
-	timeout = 0;
 
+	timeout = 0;
 	//check tx status and clr rx done int
 	switch(readl(&h2x->h2x_reg24) & PCIE_STATUS_OF_TX) {
 		case PCIE_RC_L_TX_COMPLETE:

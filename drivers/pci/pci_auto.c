@@ -262,9 +262,9 @@ void dm_pciauto_postscan_setup_bridge(struct udevice *dev, int sub_bus)
 	/* Configure bus number registers */
 	dm_pci_write_config8(dev, PCI_SUBORDINATE_BUS, sub_bus - ctlr->seq);
 
-	//for ast2600 0x1a03 0x1150 for pcie gen 2 config
+	//ast2600 0x1a03 0x1150 pcie re-train for gen 2 config
 	if((pplat->vendor == 0x1a03) && (pplat->device == 0x1150)) 
-		dm_pci_write_config32(dev, 0x90, 0x60);
+		dm_pci_write_config8(dev, 0x90, 0x20);
 
 	if (pci_mem) {
 		/* Round memory allocator to 1MB boundary */
