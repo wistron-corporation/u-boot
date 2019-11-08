@@ -153,8 +153,6 @@ struct dram_info {
 	ulong clock_rate;
 };
 
-static ast2600_phy_retrain = 0;
-
 static void ast2600_sdramphy_kick_training(struct dram_info *info)
 {
 #if !defined(CONFIG_FPGA_ASPEED) && !defined(CONFIG_ASPEED_PALLADIUM)
@@ -233,11 +231,12 @@ static void ast2600_sdramphy_init(u32 *p_tbl, struct dram_info *info)
 #endif        
 }
 
-static void ast2600_sdramphy_show_status(struct dram_info *info)
+static int ast2600_sdramphy_check_status(struct dram_info *info)
 {
 #if !defined(CONFIG_FPGA_ASPEED) && !defined(CONFIG_ASPEED_PALLADIUM)
         u32 value, tmp;
         u32 reg_base = (u32)info->phy_status;
+	int need_retrain = 0;
 	
 	debug("\nSDRAM PHY training report:\n");
 	/* training status */
@@ -258,12 +257,16 @@ static void ast2600_sdramphy_show_status(struct dram_info *info)
 
 	/* read eye window */
         value = readl(reg_base + 0x68);
+	if (0 == (value & GENMASK(7, 0))) {
+		need_retrain = 1;
+	}
+
 	debug("rO_DDRPHY_reg offset 0x68 = 0x%08x\n", value);
 	debug("  rising edge of read data eye training pass window\n");
 	tmp = (((value & GENMASK(7, 0)) >> 0) * 100) / 255;
 	debug("    B0:%d%%\n", tmp);
 	tmp = (((value & GENMASK(15, 8)) >> 8) * 100) / 255;
-        debug("    B1:%d%%\n", tmp);
+        debug("    B1:%d%%\n", tmp);	
 
 	value = readl(reg_base + 0xC8);
 	debug("rO_DDRPHY_reg offset 0xC8 = 0x%08x\n", value);
@@ -275,6 +278,10 @@ static void ast2600_sdramphy_show_status(struct dram_info *info)
 
         /* write eye window */
         value = readl(reg_base + 0x7c);
+	if (0 == (value & GENMASK(7, 0))) {
+		need_retrain = 1;
+	}
+
 	debug("rO_DDRPHY_reg offset 0x7C = 0x%08x\n", value);
 	debug("  rising edge of write data eye training pass window\n");
 	tmp = (((value & GENMASK(7, 0)) >> 0) * 100) / 255;
@@ -299,17 +306,26 @@ static void ast2600_sdramphy_show_status(struct dram_info *info)
 
         /* gate train */
 	value = readl(reg_base + 0x50);
-	printf("rO_DDRPHY_reg offset 0x50 = 0x%08x\n", value);
-	printf("  gate training pass window\n");
-	tmp = (((value & GENMASK(7, 0)) >> 0) * 100) / 255;
-	printf("    module 0: %d.%03d\n", (value >> 8) & 0xff, tmp);        
-        tmp = (((value & GENMASK(23, 16)) >> 0) * 100) / 255;
-	printf("    module 1: %d.%03d\n", (value >> 24) & 0xff, tmp);                
-
+	if ((0 == (value & GENMASK(15, 0))) ||
+	    (0 == (value & GENMASK(31, 16)))) {
+		need_retrain = 1;
+	}
+#if 0		
 	if (((value >> 24) & 0xff) < 3)
-		ast2600_phy_retrain = 1;
+		need_retrain = 1;
 	else
-		ast2600_phy_retrain = 0;		
+		need_retrain = 0;		
+#endif
+	debug("rO_DDRPHY_reg offset 0x50 = 0x%08x\n", value);
+	debug("  gate training pass window\n");
+	tmp = (((value & GENMASK(7, 0)) >> 0) * 100) / 255;
+	debug("    module 0: %d.%03d\n", (value >> 8) & 0xff, tmp);        
+        tmp = (((value & GENMASK(23, 16)) >> 0) * 100) / 255;
+	debug("    module 1: %d.%03d\n", (value >> 24) & 0xff, tmp);
+
+	return need_retrain;
+#else
+	return 0;	
 #endif              
 }
 
@@ -862,10 +878,10 @@ L_ast2600_sdramphy_train:
 	} while(reg == 0);
 #endif
 
-	ast2600_sdramphy_show_status(priv);
-
-	if (ast2600_phy_retrain)
+	if (0 != ast2600_sdramphy_check_status(priv)) {
+		printf("DDR4 PHY training fail, retrain\n");
 		goto L_ast2600_sdramphy_train;
+	}
 
 	ast2600_sdrammc_calc_size(priv);
 
