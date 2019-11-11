@@ -153,13 +153,13 @@ static struct aspeed_sig_desc mac4_link[] = {
 };
 
 static struct aspeed_sig_desc rmii1[] = {
-	{ 0x400, GENMASK(0, 3), 0	},
-	{ 0x400, GENMASK(6, 11), 0	},
+	{ 0x400, GENMASK(3, 0), 0	},
+	{ 0x400, GENMASK(11, 6), 0	},
 };
 
 static struct aspeed_sig_desc rmii2[] = {
-	{ 0x400, GENMASK(12, 15), 0	},
-	{ 0x400, GENMASK(18, 23), 0	},
+	{ 0x400, GENMASK(15, 12), 0	},
+	{ 0x400, GENMASK(23, 18), 0	},
 };
 
 static struct aspeed_sig_desc rmii3[] = {
@@ -168,11 +168,11 @@ static struct aspeed_sig_desc rmii3[] = {
 };
 
 static struct aspeed_sig_desc rmii4[] = {
-	{ 0x410, GENMASK(2, 7), 1	},
-	{ 0x410, GENMASK(28, 31), 1	},
+	{ 0x410, GENMASK(7, 2), 1	},
+	{ 0x410, GENMASK(31, 28), 1	},
 	{ 0x414, GENMASK(7, 2), 1	},
 	{ 0x4B0, GENMASK(28, 31), 0	},
-	{ 0x4B4, GENMASK(2, 7), 0	},
+	{ 0x4B4, GENMASK(7, 2), 0	},
 };
 
 static struct aspeed_sig_desc mdio1_link[] = {
