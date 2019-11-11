@@ -152,6 +152,29 @@ static struct aspeed_sig_desc mac4_link[] = {
 	{ 0x470, BIT(7), 1		},
 };
 
+static struct aspeed_sig_desc rmii1[] = {
+	{ 0x400, GENMASK(3, 0), 0	},
+	{ 0x400, GENMASK(11, 6), 0	},
+};
+
+static struct aspeed_sig_desc rmii2[] = {
+	{ 0x400, GENMASK(15, 12), 0	},
+	{ 0x400, GENMASK(23, 18), 0	},
+};
+
+static struct aspeed_sig_desc rmii3[] = {
+	{ 0x410, GENMASK(27, 22), 0	},
+	{ 0x410, GENMASK(19, 16), 0	},
+};
+
+static struct aspeed_sig_desc rmii4[] = {
+	{ 0x410, GENMASK(7, 2), 1	},
+	{ 0x410, GENMASK(31, 28), 1	},
+	{ 0x414, GENMASK(7, 2), 1	},
+	{ 0x4B0, GENMASK(28, 31), 0	},
+	{ 0x4B4, GENMASK(7, 2), 0	},
+};
+
 static struct aspeed_sig_desc mdio1_link[] = {
 	{ 0x430, BIT(17) | BIT(16), 0	},
 };
@@ -255,6 +278,10 @@ static const struct aspeed_group_config ast2600_groups[] = {
 	{ "MAC2LINK", ARRAY_SIZE(mac2_link), mac2_link },
 	{ "MAC3LINK", ARRAY_SIZE(mac3_link), mac3_link },
 	{ "MAC4LINK", ARRAY_SIZE(mac4_link), mac4_link },
+	{ "RMII1", ARRAY_SIZE(rmii1), rmii1 },
+	{ "RMII2", ARRAY_SIZE(rmii2), rmii2 },
+	{ "RMII3", ARRAY_SIZE(rmii3), rmii3 },
+	{ "RMII4", ARRAY_SIZE(rmii4), rmii4 },
 	{ "MDIO1", ARRAY_SIZE(mdio1_link), mdio1_link },
 	{ "MDIO2", ARRAY_SIZE(mdio2_link), mdio2_link },
 	{ "MDIO3", ARRAY_SIZE(mdio3_link), mdio3_link },

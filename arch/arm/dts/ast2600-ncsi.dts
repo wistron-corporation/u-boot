@@ -86,7 +86,7 @@
 	phy-mode = "NC-SI";
 	use-ncsi;
 	pinctrl-names = "default";
-	pinctrl-0 = <&pinctrl_mac3link_default>;
+	pinctrl-0 = <&pinctrl_rmii3_default>;
 };
 
 &mac3 {
@@ -95,7 +95,7 @@
 	phy-mode = "NC-SI";
 	use-ncsi;
 	pinctrl-names = "default";
-	pinctrl-0 = <&pinctrl_mac4link_default>;
+	pinctrl-0 = <&pinctrl_rmii4_default>;
 };
 
 &fmc {

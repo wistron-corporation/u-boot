@@ -1329,6 +1329,26 @@
 		groups = "MDIO4";
 	};
 
+        pinctrl_rmii1_default: rmii1_default {
+                function = "RMII1";
+                groups = "RMII1";
+        };
+
+        pinctrl_rmii2_default: rmii2_default {
+                function = "RMII2";
+                groups = "RMII2";
+        };
+
+        pinctrl_rmii3_default: rmii3_default {
+                function = "RMII3";
+                groups = "RMII3";
+        };
+
+        pinctrl_rmii4_default: rmii4_default {
+                function = "RMII4";
+                groups = "RMII4";
+        };
+
 	pinctrl_ncts1_default: ncts1_default {
 		function = "NCTS1";
 		groups = "NCTS1";
