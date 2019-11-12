@@ -65,7 +65,7 @@
 	phy-mode = "rgmii";
 
 	pinctrl-names = "default";
-	pinctrl-0 = <&pinctrl_mac1link_default &pinctrl_mdio1_default>;
+	pinctrl-0 = <&pinctrl_rgmii1_default &pinctrl_mac1link_default &pinctrl_mdio1_default>;
 };
 #endif
 
@@ -74,7 +74,7 @@
 
 	phy-mode = "rgmii";
 	pinctrl-names = "default";
-	pinctrl-0 = <&pinctrl_mac2link_default &pinctrl_mdio2_default>;
+	pinctrl-0 = <&pinctrl_rgmii2_default &pinctrl_mac2link_default &pinctrl_mdio2_default>;
 };
 
 &mac2 {
@@ -82,7 +82,7 @@
 
 	phy-mode = "rgmii";
 	pinctrl-names = "default";
-	pinctrl-0 = <&pinctrl_mac3link_default &pinctrl_mdio3_default>;
+	pinctrl-0 = <&pinctrl_rgmii3_default &pinctrl_mac3link_default &pinctrl_mdio3_default>;
 };
 
 &mac3 {
@@ -90,7 +90,7 @@
 
 	phy-mode = "rgmii";
 	pinctrl-names = "default";
-	pinctrl-0 = <&pinctrl_mac4link_default &pinctrl_mdio4_default>;
+	pinctrl-0 = <&pinctrl_rgmii4_default &pinctrl_mac4link_default &pinctrl_mdio4_default>;
 };
 
 &fmc {

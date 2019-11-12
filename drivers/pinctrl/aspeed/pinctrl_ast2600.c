@@ -121,35 +121,48 @@ static struct aspeed_sig_desc i2c16_link[] = {
 
 
 static struct aspeed_sig_desc mac1_link[] = {
-#ifdef CONFIG_FPGA_ASPEED
 	{ 0x410, BIT(4), 0 },
-#else
-	{ 0x400, GENMASK(11, 0), 0 },
-	{ 0x410, BIT(4), 0 },
+#ifndef CONFIG_FPGA_ASPEED
 	{ 0x470, BIT(4), 1 },
 #endif
 };
 
 static struct aspeed_sig_desc mac2_link[] = {
-	{ 0x400, GENMASK(23, 12), 0 },
 	{ 0x410, BIT(5), 0	},
 	{ 0x470, BIT(5), 1 },
 };
 
-static struct aspeed_sig_desc mac3_link[] = {	
-	{ 0x410, GENMASK(27, 16), 0	},
+static struct aspeed_sig_desc mac3_link[] = {
 	{ 0x410, BIT(6), 0		},
 	{ 0x470, BIT(6), 1      	},
 };
 
 static struct aspeed_sig_desc mac4_link[] = {
+	{ 0x410, BIT(7), 0		},
+	{ 0x470, BIT(7), 1		},
+};
+
+
+static struct aspeed_sig_desc rgmii1[] = {
+#ifndef CONFIG_FPGA_ASPEED
+	{ 0x400, GENMASK(11, 0), 0 },
+#endif
+};
+
+static struct aspeed_sig_desc rgmii2[] = {
+	{ 0x400, GENMASK(23, 12), 0 },
+};
+
+static struct aspeed_sig_desc rgmii3[] = {	
+	{ 0x410, GENMASK(27, 16), 0	},
+};
+
+static struct aspeed_sig_desc rgmii4[] = {
 	{ 0x410, GENMASK(31, 28), 1	},
 	{ 0x4b0, GENMASK(31, 28), 0	},
 	{ 0x474, GENMASK(7, 0), 1	},
 	{ 0x414, GENMASK(7, 0), 1	},
 	{ 0x4b4, GENMASK(7, 0), 0	},
-	{ 0x410, BIT(7), 0		},
-	{ 0x470, BIT(7), 1		},
 };
 
 static struct aspeed_sig_desc rmii1[] = {
@@ -278,6 +291,10 @@ static const struct aspeed_group_config ast2600_groups[] = {
 	{ "MAC2LINK", ARRAY_SIZE(mac2_link), mac2_link },
 	{ "MAC3LINK", ARRAY_SIZE(mac3_link), mac3_link },
 	{ "MAC4LINK", ARRAY_SIZE(mac4_link), mac4_link },
+	{ "RGMII1", ARRAY_SIZE(rgmii1), rgmii1 },
+	{ "RGMII2", ARRAY_SIZE(rgmii2), rgmii2 },
+	{ "RGMII3", ARRAY_SIZE(rgmii3), rgmii3 },
+	{ "RGMII4", ARRAY_SIZE(rgmii4), rgmii4 },
 	{ "RMII1", ARRAY_SIZE(rmii1), rmii1 },
 	{ "RMII2", ARRAY_SIZE(rmii2), rmii2 },
 	{ "RMII3", ARRAY_SIZE(rmii3), rmii3 },

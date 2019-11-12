@@ -1534,6 +1534,16 @@
 		groups = "RGMII2";
 	};
 
+	pinctrl_rgmii3_default: rgmii3_default {
+		function = "RGMII3";
+		groups = "RGMII3";
+	};
+
+	pinctrl_rgmii4_default: rgmii4_default {
+		function = "RGMII4";
+		groups = "RGMII4";
+	};
+
 	pinctrl_rmii1_default: rmii1_default {
 		function = "RMII1";
 		groups = "RMII1";
