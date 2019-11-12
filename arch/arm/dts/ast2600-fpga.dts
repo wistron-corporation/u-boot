@@ -65,7 +65,7 @@
 	phy-mode = "rgmii";
 	phy-handle = <&ethphy1>;
 	pinctrl-names = "default";
-	pinctrl-0 = <&pinctrl_mac1link_default &pinctrl_mdio1_default>;
+	pinctrl-0 = <&pinctrl_rgmii1_default &pinctrl_mac1link_default &pinctrl_mdio1_default>;
 };
 
 &fmc {
