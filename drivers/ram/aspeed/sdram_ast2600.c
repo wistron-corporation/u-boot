@@ -301,8 +301,10 @@ static int ast2600_sdramphy_check_status(struct dram_info *info)
         /* write Vref training result */
         value = readl(reg_base + 0x90);
 	debug("rO_DDRPHY_reg offset 0x90 = 0x%08x\n", value);
+#if 0
 	tmp = (((value & GENMASK(5, 0)) >> 0) * 100) / 127;
         debug("  write Vref training result = %d%%\n", tmp);
+#endif	
 
         /* gate train */
 	value = readl(reg_base + 0x50);
@@ -317,11 +319,13 @@ static int ast2600_sdramphy_check_status(struct dram_info *info)
 		need_retrain = 0;		
 #endif
 	debug("rO_DDRPHY_reg offset 0x50 = 0x%08x\n", value);
+#if 0	
 	debug("  gate training pass window\n");
 	tmp = (((value & GENMASK(7, 0)) >> 0) * 100) / 255;
 	debug("    module 0: %d.%03d\n", (value >> 8) & 0xff, tmp);        
         tmp = (((value & GENMASK(23, 16)) >> 0) * 100) / 255;
 	debug("    module 1: %d.%03d\n", (value >> 24) & 0xff, tmp);
+#endif	
 
 	return need_retrain;
 #else
