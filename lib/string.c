@@ -549,7 +549,7 @@ void * memmove(void * dest,const void *src,size_t count)
 {
 	char *tmp, *s;
 
-#ifdef CONFIG_ASPEED_SPI
+#ifdef CONFIG_ASPEED_SPI_DMA
 	if (dest == src)
 	    return dest;
 
