@@ -83,7 +83,7 @@ ENTRY(relocate_code)
 	beq	relocate_done		/* skip relocation */
 	ldr	r2, =__image_copy_end	/* r2 <- SRC &__image_copy_end */
 
-#ifdef CONFIG_ASPEED_SPI
+#ifdef CONFIG_ASPEED_SPI_DMA
 	sub	r2, r1
 	add	r2, #0x3
 	bic	r2, #0x3
