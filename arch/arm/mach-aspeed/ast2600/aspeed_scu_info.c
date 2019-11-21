@@ -106,24 +106,24 @@ aspeed_security_info(void)
 #define BIT_WDT_ARM(x)	SYS_WDT ## x ## _ARM_RESET
 #define BIT_WDT_SW(x)	SYS_WDT ## x ## _SW_RESET
 
-#define HANDLE_WDTx_RESET(x, event_log) \
+#define HANDLE_WDTx_RESET(x, event_log, event_log_reg) \
 	if (event_log & (BIT_WDT_SOC(x) | BIT_WDT_FULL(x) | BIT_WDT_ARM(x) | BIT_WDT_SW(x))) { \
 		printf("RST : WDT%d ", x); \
 		if (event_log & BIT_WDT_SOC(x)) { \
 			printf("SOC "); \
-			writel(BIT_WDT_SOC(x), ASPEED_SYS_RESET_CTRL); \
+			writel(BIT_WDT_SOC(x), event_log_reg); \
 		} \
 		if (event_log & BIT_WDT_FULL(x)) { \
 			printf("FULL "); \
-			writel(BIT_WDT_FULL(x), ASPEED_SYS_RESET_CTRL); \
+			writel(BIT_WDT_FULL(x), event_log_reg); \
 		} \
 		if (event_log & BIT_WDT_ARM(x)) { \
 			printf("ARM "); \
-			writel(BIT_WDT_ARM(x), ASPEED_SYS_RESET_CTRL); \
+			writel(BIT_WDT_ARM(x), event_log_reg); \
 		} \
 		if (event_log & BIT_WDT_SW(x)) { \
 			printf("SW "); \
-			writel(BIT_WDT_SW(x), ASPEED_SYS_RESET_CTRL); \
+			writel(BIT_WDT_SW(x), event_log_reg); \
 		} \
 		printf("\n"); \
 	} \
@@ -139,14 +139,14 @@ aspeed_sys_reset_info(void)
 		printf("RST : Power On \n");
 		writel(rest, ASPEED_SYS_RESET_CTRL);
 	} else {
-		HANDLE_WDTx_RESET(8, rest3);
-		HANDLE_WDTx_RESET(7, rest3);
-		HANDLE_WDTx_RESET(6, rest3);
-		HANDLE_WDTx_RESET(5, rest3);
-		HANDLE_WDTx_RESET(4, rest);
-		HANDLE_WDTx_RESET(3, rest);
-		HANDLE_WDTx_RESET(2, rest);
-		HANDLE_WDTx_RESET(1, rest);
+		HANDLE_WDTx_RESET(8, rest3, ASPEED_SYS_RESET_CTRL3);
+		HANDLE_WDTx_RESET(7, rest3, ASPEED_SYS_RESET_CTRL3);
+		HANDLE_WDTx_RESET(6, rest3, ASPEED_SYS_RESET_CTRL3);
+		HANDLE_WDTx_RESET(5, rest3, ASPEED_SYS_RESET_CTRL3);
+		HANDLE_WDTx_RESET(4, rest, ASPEED_SYS_RESET_CTRL);
+		HANDLE_WDTx_RESET(3, rest, ASPEED_SYS_RESET_CTRL);
+		HANDLE_WDTx_RESET(2, rest, ASPEED_SYS_RESET_CTRL);
+		HANDLE_WDTx_RESET(1, rest, ASPEED_SYS_RESET_CTRL);
 
 		if (rest & SYS_CM3_EXT_RESET) {
 			printf("RST : SYS_CM3_EXT_RESET \n");
