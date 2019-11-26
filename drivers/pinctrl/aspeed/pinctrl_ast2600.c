@@ -227,11 +227,14 @@ static struct aspeed_sig_desc sdio1_8bit_link[] = {
 
 static struct aspeed_sig_desc emmc_link[] = {
 	{ 0x400, GENMASK(31, 24), 0 },
-#if 0	//8bit emmc	
+};
+
+static struct aspeed_sig_desc emmcg8_link[] = {
+	{ 0x400, GENMASK(31, 24), 0 },
 	{ 0x404, GENMASK(3, 0), 0 },
-	{ 0x500, BIT(3), 1 },
-	{ 0x500, BIT(5), 1 },
-#endif	
+//because it is strap use 0x4 to clear
+	{ 0x504, BIT(3), 0 },
+	{ 0x504, BIT(5), 0 },
 };
 
 static struct aspeed_sig_desc fmcquad_link[] = {
@@ -307,6 +310,7 @@ static const struct aspeed_group_config ast2600_groups[] = {
 	{ "SD1_8bits", ARRAY_SIZE(sdio1_8bit_link), sdio1_8bit_link },
 	{ "SD2", ARRAY_SIZE(sdio2_link), sdio2_link },
 	{ "EMMC", ARRAY_SIZE(emmc_link), emmc_link },
+	{ "EMMCG8", ARRAY_SIZE(emmcg8_link), emmcg8_link },
 	{ "FMCQUAD", ARRAY_SIZE(fmcquad_link), fmcquad_link },
 	{ "SPI1", ARRAY_SIZE(spi1_link), spi1_link },
 	{ "SPI1ABR", ARRAY_SIZE(spi1abr_link), spi1abr_link },

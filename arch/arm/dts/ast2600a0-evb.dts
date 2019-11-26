@@ -183,9 +183,16 @@
 
 &emmc_slot0 {
 	status = "okay";
+
+#if 1
 	bus-width = <4>;
 	pinctrl-names = "default";
 	pinctrl-0 = <&pinctrl_emmc_default>;
+#else
+	bus-width = <8>;
+	pinctrl-names = "default";
+	pinctrl-0 = <&pinctrl_emmcg8_default>;
+#endif
 };
 
 #if 0

@@ -360,24 +360,24 @@
 			};
 
 			emmc: emmc@1e750000 {
-                #interrupt-cells = <1>;
-                compatible = "aspeed,aspeed-emmc-irq", "simple-mfd";
-                reg = <0x1e750000 0x1000>;
-                interrupts = <GIC_SPI 15 IRQ_TYPE_LEVEL_HIGH>;
-                interrupt-controller;
-                clocks = <&scu ASPEED_CLK_GATE_EMMCCLK>, <&scu ASPEED_CLK_GATE_EMMCEXTCLK>;
-                clock-names = "ctrlclk", "extclk";
-                #address-cells = <1>;
-                #size-cells = <1>;
-                ranges = <0x0 0x1e750000 0x1000>;
+				#interrupt-cells = <1>;
+				compatible = "aspeed,aspeed-emmc-irq", "simple-mfd";
+				reg = <0x1e750000 0x1000>;
+				interrupts = <GIC_SPI 15 IRQ_TYPE_LEVEL_HIGH>;
+				interrupt-controller;
+				clocks = <&scu ASPEED_CLK_GATE_EMMCCLK>, <&scu ASPEED_CLK_GATE_EMMCEXTCLK>;
+				clock-names = "ctrlclk", "extclk";
+				#address-cells = <1>;
+				#size-cells = <1>;
+				ranges = <0x0 0x1e750000 0x1000>;
 
-                emmc_slot0: emmc_slot0@100 {
-                        compatible = "aspeed,emmc-ast2600";
-                        reg = <0x100 0x100>;
-                        interrupts = <0>;
-                        interrupt-parent = <&emmc>;
-                        clocks = <&scu ASPEED_CLK_EMMC>;
-						status = "disabled";
+				emmc_slot0: emmc_slot0@100 {
+					compatible = "aspeed,emmc-ast2600";
+					reg = <0x100 0x100>;
+					interrupts = <0>;
+					interrupt-parent = <&emmc>;
+					clocks = <&scu ASPEED_CLK_EMMC>;
+					status = "disabled";
 				};
 			};
 
@@ -1665,9 +1665,14 @@
 	};
 
 	pinctrl_emmc_default: emmc_default {
-                function = "EMMC";
-                groups = "EMMC";
-        };
+		function = "EMMC";
+		groups = "EMMC";
+	};
+
+	pinctrl_emmcg8_default: emmcg8_default {
+		function = "EMMCG8";
+		groups = "EMMCG8";
+	};
 
 	pinctrl_sda1_default: sda1_default {
 		function = "SDA1";
