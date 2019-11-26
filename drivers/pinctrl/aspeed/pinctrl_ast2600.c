@@ -145,19 +145,23 @@ static struct aspeed_sig_desc mac4_link[] = {
 
 static struct aspeed_sig_desc rgmii1[] = {
 #ifndef CONFIG_FPGA_ASPEED
-	{ 0x400, GENMASK(11, 0), 0 },
+	{ 0x500, BIT(6), 0         	},
+	{ 0x400, GENMASK(11, 0), 0 	},
 #endif
 };
 
 static struct aspeed_sig_desc rgmii2[] = {
-	{ 0x400, GENMASK(23, 12), 0 },
+	{ 0x500, BIT(7), 0		},
+	{ 0x400, GENMASK(23, 12), 0 	},
 };
 
 static struct aspeed_sig_desc rgmii3[] = {	
+	{ 0x510, BIT(0), 0         },
 	{ 0x410, GENMASK(27, 16), 0	},
 };
 
 static struct aspeed_sig_desc rgmii4[] = {
+	{ 0x510, BIT(1), 0         },
 	{ 0x410, GENMASK(31, 28), 1	},
 	{ 0x4b0, GENMASK(31, 28), 0	},
 	{ 0x474, GENMASK(7, 0), 1	},
@@ -166,21 +170,25 @@ static struct aspeed_sig_desc rgmii4[] = {
 };
 
 static struct aspeed_sig_desc rmii1[] = {
+	{ 0x504, BIT(6), 0         	},
 	{ 0x400, GENMASK(3, 0), 0	},
 	{ 0x400, GENMASK(11, 6), 0	},
 };
 
 static struct aspeed_sig_desc rmii2[] = {
+	{ 0x504, BIT(7), 0         	},
 	{ 0x400, GENMASK(15, 12), 0	},
 	{ 0x400, GENMASK(23, 18), 0	},
 };
 
 static struct aspeed_sig_desc rmii3[] = {
+	{ 0x514, BIT(0), 0         	},
 	{ 0x410, GENMASK(27, 22), 0	},
 	{ 0x410, GENMASK(19, 16), 0	},
 };
 
 static struct aspeed_sig_desc rmii4[] = {
+	{ 0x514, BIT(1), 0         	},
 	{ 0x410, GENMASK(7, 2), 1	},
 	{ 0x410, GENMASK(31, 28), 1	},
 	{ 0x414, GENMASK(7, 2), 1	},
