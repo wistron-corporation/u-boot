@@ -49,9 +49,6 @@
 /*
  * Miscellaneous configurable options
  */
-#define CONFIG_BOOTCOMMAND		"bootm 200a0000"
-#define CONFIG_ENV_OVERWRITE
-
 #define CONFIG_SYS_BOOTM_LEN 		(0x800000 * 2)
 
 #define CONFIG_EXTRA_ENV_SETTINGS \
@@ -62,5 +59,4 @@
  * Ethernet related
  */
 #define PHY_ANEG_TIMEOUT		800
-#define CONFIG_PHY_GIGE
 #endif	/* __ASPEED_COMMON_CONFIG_H */
