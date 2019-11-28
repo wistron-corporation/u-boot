@@ -23,9 +23,6 @@
 #define CONFIG_SETUP_MEMORY_TAGS
 #define CONFIG_INITRD_TAG
 
-/* Enable cache controller */
-#define CONFIG_SYS_DCACHE_OFF
-
 #define CONFIG_SYS_SDRAM_BASE		ASPEED_DRAM_BASE
 
 #ifdef CONFIG_PRE_CON_BUF_SZ

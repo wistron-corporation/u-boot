@@ -298,7 +298,9 @@ static int ftgmac100_start(struct udevice *dev)
 	struct ftgmac100 *ftgmac100 = priv->iobase;
 	struct phy_device *phydev = priv->phydev;
 	unsigned int maccr;
+	unsigned int dblac;
 	ulong start, end;
+	size_t sz_txdes, sz_rxdes;
 	int ret;
 	int i;
 
@@ -347,6 +349,19 @@ static int ftgmac100_start(struct udevice *dev)
 
 	/* config receive buffer size register */
 	writel(FTGMAC100_RBSR_SIZE(FTGMAC100_RBSR_DEFAULT), &ftgmac100->rbsr);
+
+	/* config TX/RX descriptor size */
+	sz_txdes = sizeof(struct ftgmac100_txdes);
+	sz_rxdes = sizeof(struct ftgmac100_rxdes);
+	if ((sz_txdes & 0xF) || (sz_rxdes & 0xF)) {
+		dev_err(phydev->dev, "Descriptor size must be 16 bytes aligned\n");
+		return -1;
+	}
+	dblac = ftgmac100->dblac;
+	dblac &= ~(0xFF << 12);
+	dblac |= ((sz_txdes >> 3) << 16);
+	dblac |= ((sz_txdes >> 3) << 12);
+	writel(dblac, &ftgmac100->dblac);
 
 	/* enable transmitter, receiver */
 	maccr = FTGMAC100_MACCR_TXMAC_EN |
