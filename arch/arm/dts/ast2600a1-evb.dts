@@ -19,6 +19,9 @@
 		ethernet1 = &mac1;
 		ethernet2 = &mac2;
 		ethernet3 = &mac3;
+		mmc0 = &emmc_slot0;
+		mmc1 = &sdhci_slot0;
+		mmc2 = &sdhci_slot1;
 	};
 
 	cpus {
@@ -188,7 +191,6 @@
 	pinctrl-0 = <&pinctrl_emmc_default>;
 };
 
-#if 0
 &sdhci_slot0 {
 	status = "okay";
 	bus-width = <4>;
@@ -206,7 +208,6 @@
 	pinctrl-names = "default";
 	pinctrl-0 = <&pinctrl_sd2_default>;
 };
-#endif
 
 &i2c4 {
 	status = "okay";
