@@ -182,10 +182,10 @@
 				status = "disabled";
 			};
 			flash@2 {
-                reg = < 1 >;
-                compatible = "jedec,spi-nor";
-                status = "disabled";
-            };
+				reg = < 2 >;
+				ompatible = "jedec,spi-nor";
+				status = "disabled";
+			};
 		};
 
 		edac: sdram@1e6e0000 {
