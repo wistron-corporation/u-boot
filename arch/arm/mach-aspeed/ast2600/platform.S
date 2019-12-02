@@ -44,6 +44,7 @@
 #define AST_SCU_HW_STRAP1	(AST_SCU_BASE + 0x500)
 #define AST_SCU_CA7_PARITY_CHK	(AST_SCU_BASE + 0x820)
 #define AST_SCU_CA7_PARITY_CLR	(AST_SCU_BASE + 0x824)
+#define AST_SCU_MMIO_DEC_SET	(AST_SCU_BASE + 0xC24)
 
 #define AST_FMC_BASE		(0x1E620000)
 #define AST_FMC_CE0_CTRL	(AST_FMC_BASE + 0x010)
@@ -158,6 +159,17 @@ wait_lock:
 	beq	wait_lock
 
 0:
+	/* release display port reset */
+	ldr	r0, =AST_SCU_SYSRST_CTRL_CLR
+	movw	r1, #0x0000
+	movt	r1, #0x3000
+	str	r1, [r0]
+
+	/* MMIO decode setting */
+	ldr	r0, =AST_SCU_MMIO_DEC_SET
+	mov	r1, #0x2000
+	str	r1, [r0]
+
 	/* enable cache & SRAM parity check */
 	mov	r0, #0
 	ldr	r1, =AST_SCU_CA7_PARITY_CLR
@@ -180,12 +192,6 @@ wait_lock:
 	movt	r0, #0x203B
 	ldr	r1, =AST_FMC_CE0_CTRL
 	str	r0, [r1]
-
-	/* release display port reset */
-	ldr	r0, =AST_SCU_SYSRST_CTRL_CLR
-	movw	r1, #0x0000
-	movt	r1, #0x3000
-	str	r1, [r0]
 
 	/* relocate mailbox insn. for cpuN polling SMP go signal */
 	adrl	r0, mailbox_insn
