@@ -1,4 +1,5 @@
 CONFIG_ARM=y
+CONFIG_SYS_DCACHE_OFF=y
 CONFIG_SYS_CONFIG_NAME="evb_ast2600a1_spl"
 CONFIG_SPL_LDSCRIPT="arch/$(ARCH)/mach-aspeed/ast2600/u-boot-spl.lds"
 CONFIG_ARCH_ASPEED=y
