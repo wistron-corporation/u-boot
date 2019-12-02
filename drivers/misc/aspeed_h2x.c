@@ -54,7 +54,7 @@ struct aspeed_h2x_priv {
 
 static u8 txTag = 0;
 
-extern void aspeed_pcie_workaround() 
+extern void aspeed_pcie_workaround(void) 
 {
 	u32 timeout = 0;
 
