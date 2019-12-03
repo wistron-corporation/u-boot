@@ -254,8 +254,8 @@ struct otpconf_info a0_conf_info[] = {
 	{ 2, 0,  16, OTP_REG_VALUE, "Vender ID : 0x%x" },
 	{ 2, 16, 16, OTP_REG_VALUE, "Key Revision : 0x%x" },
 	{ 3, 0,  16, OTP_REG_VALUE, "Secure boot header offset : 0x%x" },
-	{ 4, 0,  8,  OTP_REG_VALID_BIT, "Keys valid  : %d" },
-	{ 4, 16, 8,  OTP_REG_VALID_BIT, "Keys retire  : %d" },
+	{ 4, 0,  8,  OTP_REG_VALID_BIT, "Keys valid  : %s" },
+	{ 4, 16, 8,  OTP_REG_VALID_BIT, "Keys retire  : %s" },
 	{ 5, 0,  32, OTP_REG_VALUE, "User define data, random number low : 0x%x" },
 	{ 6, 0,  32, OTP_REG_VALUE, "User define data, random number high : 0x%x" },
 	{ 7, 0,  1,  0, "Force enable PCI bus to AHB bus bridge" },
@@ -551,8 +551,9 @@ static int otp_print_conf_image(uint32_t *OTPCFG)
 	uint32_t otp_value;
 	uint32_t otp_keep;
 	int fail = 0;
-	int valid_bit = 0;
+	char valid_bit[20];
 	int i;
+	int j;
 
 	printf("DW    BIT        Value       Description\n");
 	printf("__________________________________________________________________________\n");
@@ -595,13 +596,17 @@ static int otp_print_conf_image(uint32_t *OTPCFG)
 				printf("\n");
 			} else if (a0_conf_info[i].value == OTP_REG_VALID_BIT) {
 				if (otp_value != 0) {
-					for (i = 0; i < 7; i++) {
-						if (otp_value == (1 << i)) {
-							valid_bit = i + 1;
+					for (j = 0; j < 7; j++) {
+						if (otp_value == (1 << j)) {
+							valid_bit[j * 2] = '1';
+						} else {
+							valid_bit[j * 2] = '0';
 						}
+						valid_bit[j * 2 + 1] = ' ';
 					}
+					valid_bit[15] = 0;
 				} else {
-					valid_bit = 0;
+					strcpy(valid_bit, "0 0 0 0 0 0 0 0\0");
 				}
 				printf(a0_conf_info[i].information, valid_bit);
 				printf("\n");
@@ -624,8 +629,9 @@ static int otp_print_conf_info(int input_offset)
 	uint32_t dw_offset;
 	uint32_t bit_offset;
 	uint32_t otp_value;
-	int valid_bit = 0;
+	char valid_bit[20];
 	int i;
+	int j;
 
 	for (i = 0; i < 12; i++)
 		otp_read_config(i, &OTPCFG[i]);
@@ -664,13 +670,17 @@ static int otp_print_conf_info(int input_offset)
 			printf("\n");
 		} else if (a0_conf_info[i].value == OTP_REG_VALID_BIT) {
 			if (otp_value != 0) {
-				for (i = 0; i < 7; i++) {
-					if (otp_value == (1 << i)) {
-						valid_bit = i + 1;
+				for (j = 0; j < 7; j++) {
+					if (otp_value == (1 << j)) {
+						valid_bit[j * 2] = '1';
+					} else {
+						valid_bit[j * 2] = '0';
 					}
+					valid_bit[j * 2 + 1] = ' ';
 				}
+				valid_bit[15] = 0;
 			} else {
-				valid_bit = 0;
+				strcpy(valid_bit, "0 0 0 0 0 0 0 0\0");
 			}
 			printf(a0_conf_info[i].information, valid_bit);
 			printf("\n");
