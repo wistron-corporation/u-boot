@@ -778,8 +778,20 @@ static void ast2600_sdrammc_common_init(struct ast2600_sdrammc_regs *regs)
 static void ast2600_sdrammc_ecc_enable(struct dram_info *info)
 {
 	struct ast2600_sdrammc_regs *regs = info->regs;
+	size_t conf_size;
 	u32 reg;
+	
+	conf_size = CONFIG_ASPEED_ECC_SIZE * SDRAM_SIZE_1MB;
+	if (conf_size > info->info.size) {
+		printf("warning: ECC configured %dMB but actual size is %dMB\n",
+		       CONFIG_ASPEED_ECC_SIZE,
+		       info->info.size / SDRAM_SIZE_1MB);
+		conf_size = info->info.size;
+	} else if (conf_size == 0) {
+		conf_size = info->info.size;
+	}
 
+	info->info.size = (((conf_size / 9) * 8) >> 20) << 20;
 	writel(((info->info.size >> 20) - 1) << 20, &regs->ecc_range_ctrl);
 	reg = readl(&regs->config) |
 	      (SDRAM_CONF_ECC_EN | SDRAM_CONF_ECC_AUTO_SCRUBBING);
@@ -793,11 +805,6 @@ static void ast2600_sdrammc_ecc_enable(struct dram_info *info)
 	writel(0, &regs->ecc_test_ctrl);
 	writel(BIT(31), &regs->intr_ctrl);
 	writel(0, &regs->intr_ctrl);
-
-	/* reported size is updated */
-	info->info.size -= (CONFIG_ASPEED_VIDEO_SIZE + CONFIG_ASPEED_CRT_SIZE) *
-			   SDRAM_SIZE_1MB;
-	info->info.size = (info->info.size / 9) * 8;
 	printf("ECC enable, ");
 }
 #endif
