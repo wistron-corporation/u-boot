@@ -1002,8 +1002,6 @@ void FPri_End (MAC_ENGINE *eng, uint8_t option)
 	if (!eng->run.TM_RxDataEn) {
 	} else if (eng->flg.Err_Flag) {
 		PRINTF(option, "                    \n----> fail !!!\n");
-	} else {
-		PRINTF(option, "                    \n----> All Pass !!!\n");
 	}
 
 	//------------------------------
