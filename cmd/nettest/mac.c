@@ -1742,10 +1742,10 @@ void setup_rxdes (MAC_ENGINE *eng, uint32_t desadr, uint32_t bufbase) {
 	desval = RDES_IniVal;
 	if ( eng->run.TM_RxDataEn ) {
 		for ( des_num = 0; des_num < eng->dat.Des_Num; des_num++ ) {
-			Write_Mem_Des_DD( desadr + 0x04, 0      );
-			Write_Mem_Des_DD( desadr + 0x08, 0      );
-			Write_Mem_Des_DD( desadr + 0x0C, bufadr );
-			Write_Mem_Des_DD( desadr       , desval );
+			Write_Mem_Des_DD(desadr + 0x04, 0     );
+			Write_Mem_Des_DD(desadr + 0x08, 0     );
+			Write_Mem_Des_DD(desadr + 0x0C, bufadr);
+			Write_Mem_Des_DD(desadr + 0x00, desval);
 
 			if ( DbgPrn_BufAdr )
 				printf("[loop[%d]:%4d][des:%4d][setup_rxdes] %08x [%08x]\n", eng->run.loop_of_cnt, eng->run.loop_cnt, des_num, desadr, bufadr);
@@ -1884,10 +1884,12 @@ char check_des_header_Rx (MAC_ENGINE *eng, char *type, uint32_t adr, int32_t des
 	while (HWOwnRx(eng->dat.RxDes0DW)) {
 		// we will run again, if transfer has not been completed.
 		if (eng->run.TM_TxDataEn && (++timeout > eng->run.timeout_th)) {
+#if 0			
 			printf("[%sRxDesOwn] Address %08x = %08x "
 			       "[Des:%d][loop[%d]:%d]\n",
 			       type, adr, eng->dat.RxDes0DW, desnum,
 			       eng->run.loop_of_cnt, eng->run.loop_cnt);
+#endif			       
 			return (FindErr_Des(eng, Des_Flag_RxOwnTimeOut));
 		}
 
@@ -1988,7 +1990,7 @@ char check_des (MAC_ENGINE *eng, uint32_t bufnum, int checkpoint) {
 	H_tx_desadr = eng->run.tdes_base;
 
 #ifdef Delay_DES
-	DELAY( Delay_DES );
+	DELAY(Delay_DES);
 #endif
 
 	for ( desnum = 0; desnum < eng->dat.Des_Num; desnum++ ) {
@@ -2047,7 +2049,7 @@ char check_des (MAC_ENGINE *eng, uint32_t bufnum, int checkpoint) {
 		if ( eng->run.TM_RxDataEn && check_des_header_Rx( eng, "", H_rx_desadr, desnum ) ) {
 			eng->flg.CheckDesFail_DesNum = desnum;
 
-			return(1);
+			return(2);
 		}
 
 #ifndef SelectSimpleDes
@@ -2173,8 +2175,10 @@ void PrintIO_Line(MAC_ENGINE *p_eng, uint8_t option)
 			PRINTF(option, "O");
 		}
 	} else {
-		if (p_eng->io.result) {
+		if (1 == p_eng->io.result) {
 			PRINTF(option, "x");
+		} else if (2 == p_eng->io.result) {
+			PRINTF(option, "?");
 		} else {
 			PRINTF(option, "o");
 		}
@@ -2217,7 +2221,7 @@ char TestingLoop (MAC_ENGINE *eng, uint32_t loop_checknum)
 	looplast = 0;
 
 
-	setup_des( eng, 0 );
+	setup_des(eng, 0);
 
 	if ( eng->run.TM_WaitStart ) {
 		printf("Press any key to start...\n");
@@ -2264,7 +2268,7 @@ char TestingLoop (MAC_ENGINE *eng, uint32_t loop_checknum)
 			if (DbgPrn_DumpMACCnt)
 				dump_mac_ROreg(eng);
 
-			return(1);
+			return(2);
 		}
 
 		//[Check Buf]--------------------
@@ -2287,7 +2291,7 @@ char TestingLoop (MAC_ENGINE *eng, uint32_t loop_checknum)
 #endif
 
 #ifdef CheckRxBuf
-				if ( check_buf( eng, ( eng->run.loop_max % loop_checknum ) ) )
+				if (check_buf( eng, ( eng->run.loop_max % loop_checknum)))
 					return(1);
 #endif
 			} // End if ( checkprd )
