@@ -1895,8 +1895,9 @@ char check_des_header_Rx (MAC_ENGINE *eng, char *type, uint32_t adr, int32_t des
 			       "[Des:%d][loop[%d]:%d]\n",
 			       type, adr, eng->dat.RxDes0DW, desnum,
 			       eng->run.loop_of_cnt, eng->run.loop_cnt);
-#endif			       
-			return (FindErr_Des(eng, Des_Flag_RxOwnTimeOut));
+#endif
+			FindErr_Des(eng, Des_Flag_RxOwnTimeOut);
+			return (2);
 		}
 
   #ifdef Delay_ChkRxOwn
@@ -1982,6 +1983,7 @@ char check_des (MAC_ENGINE *eng, uint32_t bufnum, int checkpoint)
 	uint32_t      dly_cnt = 0;
 	uint32_t      dly_max = Delay_CntMaxIncVal;
 #endif
+	int ret;
 
 	nt_log_func_name();
 
@@ -2048,15 +2050,20 @@ char check_des (MAC_ENGINE *eng, uint32_t bufnum, int checkpoint)
 			       checkpoint);
 
 		// Check the description of Tx and Rx
-		if (eng->run.TM_TxDataEn &&
-		    check_des_header_Tx(eng, "", H_tx_desadr, desnum)) {
-			eng->flg.CheckDesFail_DesNum = desnum;
-			return (2);
+		if (eng->run.TM_TxDataEn) {
+			ret = check_des_header_Tx(eng, "", H_tx_desadr, desnum);
+			if (ret) {
+				eng->flg.CheckDesFail_DesNum = desnum;
+				return ret;
+			}
 		}
-		if (eng->run.TM_RxDataEn &&
-		    check_des_header_Rx(eng, "", H_rx_desadr, desnum)) {
-			eng->flg.CheckDesFail_DesNum = desnum;
-			return (2);
+		if (eng->run.TM_RxDataEn) {
+			ret = check_des_header_Rx(eng, "", H_rx_desadr, desnum);
+			if (ret) {
+				eng->flg.CheckDesFail_DesNum = desnum;
+				return ret;
+				
+			}
 		}
 
 #ifndef SelectSimpleDes
@@ -2217,6 +2224,7 @@ char TestingLoop (MAC_ENGINE *eng, uint32_t loop_checknum)
 	char       checkprd;
 	char       looplast;
 	char       checken;
+	int ret;
 
 	nt_log_func_name();
 
@@ -2263,10 +2271,10 @@ char TestingLoop (MAC_ENGINE *eng, uint32_t loop_checknum)
 		eng->dat.DMA_Base_Rx =
 		    ZeroCopy_OFFSET + GET_DMA_BASE(eng, eng->run.loop_cnt + 1);
 		//[Check DES]--------------------
-		if (check_des(eng, eng->run.loop_cnt, checken)) {
+		if (ret = check_des(eng, eng->run.loop_cnt, checken)) {
 			//descriptor error
-#ifdef CheckRxBuf
 			eng->dat.Des_Num = eng->flg.CheckDesFail_DesNum + 1;
+#ifdef CheckRxBuf
 			if (checkprd)
 				check_buf(eng, loop_checknum);
 			else
@@ -2277,7 +2285,7 @@ char TestingLoop (MAC_ENGINE *eng, uint32_t loop_checknum)
 			if (DbgPrn_DumpMACCnt)
 				dump_mac_ROreg(eng);
 
-			return(2);
+			return ret;
 		}
 
 		//[Check Buf]--------------------
