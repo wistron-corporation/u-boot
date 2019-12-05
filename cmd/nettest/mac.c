@@ -1562,7 +1562,7 @@ char check_Data (MAC_ENGINE *eng, uint32_t datbase, int32_t number)
 
 	nt_log_func_name();
 
-	if ( eng->arg.ctrl.b.single_packet )
+	if (eng->arg.ctrl.b.single_packet)
 		number_dat = 0;
 	else
 		number_dat = number;
@@ -1653,7 +1653,8 @@ char check_Data (MAC_ENGINE *eng, uint32_t datbase, int32_t number)
 } // End char check_Data (MAC_ENGINE *eng, uint32_t datbase, int32_t number)
 
 //------------------------------------------------------------
-char check_buf (MAC_ENGINE *eng, int loopcnt) {
+char check_buf (MAC_ENGINE *eng, int loopcnt) 
+{
 	int32_t       des_num;
 	uint32_t      desadr;
 	uint32_t      datbase;
@@ -1731,7 +1732,8 @@ void setup_txdes (MAC_ENGINE *eng, uint32_t desadr, uint32_t bufbase)
 }
 
 //------------------------------------------------------------
-void setup_rxdes (MAC_ENGINE *eng, uint32_t desadr, uint32_t bufbase) {
+void setup_rxdes (MAC_ENGINE *eng, uint32_t desadr, uint32_t bufbase) 
+{
 	uint32_t      bufadr;
 	uint32_t      desval;
 	int32_t       des_num;
@@ -1964,7 +1966,8 @@ char check_des_header_Rx (MAC_ENGINE *eng, char *type, uint32_t adr, int32_t des
 } // End char check_des_header_Rx (MAC_ENGINE *eng, char *type, uint32_t adr, int32_t desnum)
 
 //------------------------------------------------------------
-char check_des (MAC_ENGINE *eng, uint32_t bufnum, int checkpoint) {
+char check_des (MAC_ENGINE *eng, uint32_t bufnum, int checkpoint) 
+{
 	int32_t       desnum;
 	int8_t       desnum_last;
 	uint32_t      H_rx_desadr;
@@ -1983,8 +1986,9 @@ char check_des (MAC_ENGINE *eng, uint32_t bufnum, int checkpoint) {
 	mac_reg_write(eng, 0x18, 0x00000000); // Tx Poll
 
 #ifndef SelectSimpleDes
-	H_tx_bufadr = AT_MEMRW_BUF( eng->dat.DMA_Base_Tx );//base of the descriptor
-	H_rx_bufadr = AT_MEMRW_BUF( eng->dat.DMA_Base_Rx );//base of the descriptor
+	/* base of the descriptors */
+	H_tx_bufadr = AT_MEMRW_BUF(eng->dat.DMA_Base_Tx);
+	H_rx_bufadr = AT_MEMRW_BUF(eng->dat.DMA_Base_Rx);
 #endif
 	H_rx_desadr = eng->run.rdes_base;
 	H_tx_desadr = eng->run.tdes_base;
@@ -1993,8 +1997,8 @@ char check_des (MAC_ENGINE *eng, uint32_t bufnum, int checkpoint) {
 	DELAY(Delay_DES);
 #endif
 
-	for ( desnum = 0; desnum < eng->dat.Des_Num; desnum++ ) {
-		desnum_last = ( desnum == ( eng->dat.Des_Num - 1 ) ) ? 1 : 0;
+	for (desnum = 0; desnum < eng->dat.Des_Num; desnum++) {
+		desnum_last = (desnum == (eng->dat.Des_Num - 1)) ? 1 : 0;
 		if ( DbgPrn_BufAdr ) {
 			if ( checkpoint )
 				printf("[loop[%d]:%4d][des:%4d][check_des  ] %08x %08x [%08x %08x]\n", eng->run.loop_of_cnt, eng->run.loop_cnt, desnum, ( H_tx_desadr ), ( H_rx_desadr ), Read_Mem_Des_DD( H_tx_desadr + 12 ), Read_Mem_Des_DD( H_rx_desadr + 12 ) );
@@ -2053,7 +2057,7 @@ char check_des (MAC_ENGINE *eng, uint32_t bufnum, int checkpoint) {
 		}
 
 #ifndef SelectSimpleDes
-		if ( !checkpoint ) {
+		if (!checkpoint) {
 			// Setting buffer address to description of Tx and Rx on next stage
 			if ( eng->run.TM_RxDataEn ) {
 				Write_Mem_Des_DD( H_rx_desadr + 0x0C, H_rx_bufadr );
@@ -2258,10 +2262,10 @@ char TestingLoop (MAC_ENGINE *eng, uint32_t loop_checknum)
 			//descriptor error
 #ifdef CheckRxBuf
 			eng->dat.Des_Num = eng->flg.CheckDesFail_DesNum + 1;
-			if ( checkprd )
-				check_buf( eng, loop_checknum );
+			if (checkprd)
+				check_buf(eng, loop_checknum);
 			else
-				check_buf( eng, ( eng->run.loop_max % loop_checknum ) );
+				check_buf(eng, (eng->run.loop_max % loop_checknum));
 			eng->dat.Des_Num = eng->dat.Des_Num_Org;
 #endif
 
@@ -2272,33 +2276,32 @@ char TestingLoop (MAC_ENGINE *eng, uint32_t loop_checknum)
 		}
 
 		//[Check Buf]--------------------
-		if ( eng->run.TM_RxDataEn && checken ) {
-			if ( checkprd ) {
+		if (eng->run.TM_RxDataEn && checken) {
+			if (checkprd) {
 #ifdef Enable_ShowBW  
 				printf("[run loop:%3d] BandWidth: %7.2f Mbps, %6.2f sec\n", loop_checknum, ((double)loop_checknum * (double)eng->dat.Total_frame_len * 8.0) / ((double)eng->timeused * 1000000.0), eng->timeused);
 				PRINTF( FP_LOG, "[run loop:%3d] BandWidth: %7.2f Mbps, %6.2f sec\n", loop_checknum, ((double)loop_checknum * (double)eng->dat.Total_frame_len * 8.0) / ((double)eng->timeused * 1000000.0), eng->timeused );  
 #endif
 
 #ifdef CheckRxBuf
-				if ( check_buf( eng, loop_checknum ) )
+				if (check_buf(eng, loop_checknum))
 					return(1);
 #endif
-			}
-			else {
+			} else {
 #ifdef Enable_ShowBW  
 				printf("[run loop:%3d] BandWidth: %7.2f Mbps, %6.2f sec\n", (eng->run.loop_max % loop_checknum), ((double)(eng->run.loop_max % loop_checknum) * (double)eng->dat.Total_frame_len * 8.0) / ((double)eng->timeused * 1000000.0), eng->timeused);
 				PRINTF( FP_LOG, "[run loop:%3d] BandWidth: %7.2f Mbps, %6.2f sec\n", (eng->run.loop_max % loop_checknum), ((double)(eng->run.loop_max % loop_checknum) * (double)eng->dat.Total_frame_len * 8.0) / ((double)eng->timeused * 1000000.0), eng->timeused );  
 #endif
 
 #ifdef CheckRxBuf
-				if (check_buf( eng, ( eng->run.loop_max % loop_checknum)))
+				if (check_buf(eng, (eng->run.loop_max % loop_checknum)))
 					return(1);
 #endif
 			} // End if ( checkprd )
 
 #ifndef SelectSimpleDes
-			if ( !looplast )
-				setup_des_loop( eng, eng->run.loop_cnt );
+			if (!looplast)
+				setup_des_loop(eng, eng->run.loop_cnt);
 #endif
 
 #ifdef Enable_ShowBW
@@ -2307,8 +2310,8 @@ char TestingLoop (MAC_ENGINE *eng, uint32_t loop_checknum)
 		} // End if ( eng->run.TM_RxDataEn && checken )
 
 #ifdef SelectSimpleDes
-		if ( !looplast )
-			setup_des_loop( eng, eng->run.loop_cnt );
+		if (!looplast)
+			setup_des_loop(eng, eng->run.loop_cnt);
 #endif
 
 		if ( eng->arg.loop_inf )
