@@ -2047,13 +2047,12 @@ char check_des (MAC_ENGINE *eng, uint32_t bufnum, int checkpoint)
 		if (eng->run.TM_TxDataEn &&
 		    check_des_header_Tx(eng, "", H_tx_desadr, desnum)) {
 			eng->flg.CheckDesFail_DesNum = desnum;
-
-			return (1);
+			return (2);
 		}
-		if ( eng->run.TM_RxDataEn && check_des_header_Rx( eng, "", H_rx_desadr, desnum ) ) {
+		if (eng->run.TM_RxDataEn &&
+		    check_des_header_Rx(eng, "", H_rx_desadr, desnum)) {
 			eng->flg.CheckDesFail_DesNum = desnum;
-
-			return(2);
+			return (2);
 		}
 
 #ifndef SelectSimpleDes
@@ -2113,9 +2112,9 @@ void PrintIO_Header (MAC_ENGINE *eng, uint8_t option)
 		}
 	}
 
-	if      ( eng->run.speed_sel[ 0 ] ) { PRINTF( option, "[1G  ]========================================>\n" ); }
-	else if ( eng->run.speed_sel[ 1 ] ) { PRINTF( option, "[100M]========================================>\n" ); }
-	else                                { PRINTF( option, "[10M ]========================================>\n" ); }
+	if      ( eng->run.speed_sel[ 0 ] ) { PRINTF( option, "\n[1G  ]========================================>\n" ); }
+	else if ( eng->run.speed_sel[ 1 ] ) { PRINTF( option, "\n[100M]========================================>\n" ); }
+	else                                { PRINTF( option, "\n[10M ]========================================>\n" ); }
 
 	if ( !(option == FP_LOG) ) {
 		step = eng->io.rx_delay_scan.step;
@@ -2173,8 +2172,10 @@ void PrintIO_Line(MAC_ENGINE *p_eng, uint8_t option)
 {
 	if ((p_eng->io.Dly_in_selval == p_eng->io.rx_delay_scan.orig) && 
 	    (p_eng->io.Dly_out_selval == p_eng->io.tx_delay_scan.orig)) {
-		if (p_eng->io.result) {
+		if (1 == p_eng->io.result) {
 			PRINTF(option, "X");
+		} else if (2 == p_eng->io.result) {
+			PRINTF(option, "*");
 		} else {
 			PRINTF(option, "O");
 		}
@@ -2182,7 +2183,7 @@ void PrintIO_Line(MAC_ENGINE *p_eng, uint8_t option)
 		if (1 == p_eng->io.result) {
 			PRINTF(option, "x");
 		} else if (2 == p_eng->io.result) {
-			PRINTF(option, "?");
+			PRINTF(option, ".");
 		} else {
 			PRINTF(option, "o");
 		}
