@@ -23,9 +23,6 @@
 #define CONFIG_SETUP_MEMORY_TAGS
 #define CONFIG_INITRD_TAG
 
-/* Enable cache controller */
-#define CONFIG_SYS_DCACHE_OFF
-
 #define CONFIG_SYS_SDRAM_BASE		ASPEED_DRAM_BASE
 
 #ifdef CONFIG_PRE_CON_BUF_SZ
@@ -41,6 +38,7 @@
 #define CONFIG_SYS_INIT_SP_ADDR \
 	(SYS_INIT_RAM_END - GENERATED_GBL_DATA_SIZE)
 
+#define CONFIG_SYS_BOOTMAPSZ		(256 * 1024 * 1024)
 #define CONFIG_SYS_MALLOC_LEN		(32 << 20)
 
 /*
@@ -51,17 +49,14 @@
 /*
  * Miscellaneous configurable options
  */
-#define CONFIG_BOOTCOMMAND		"bootm 20080000 20400000 20070000"
-#define CONFIG_ENV_OVERWRITE
+#define CONFIG_SYS_BOOTM_LEN 		(0x800000 * 2)
 
 #define CONFIG_EXTRA_ENV_SETTINGS \
 	"verify=yes\0"	\
-	"spi_dma=yes\0" \
 	""
 
 /*
  * Ethernet related
  */
 #define PHY_ANEG_TIMEOUT		800
-#define CONFIG_PHY_GIGE
 #endif	/* __ASPEED_COMMON_CONFIG_H */

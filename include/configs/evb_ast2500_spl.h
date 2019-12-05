@@ -1,9 +1,6 @@
 /* SPDX-License-Identifier: GPL-2.0+ */
 /*
- * Copyright (C) 2012-2020  ASPEED Technology Inc.
- * Ryan Chen <ryan_chen@aspeedtech.com>
- *
- * Copyright 2016 Google Inc
+ * Copyright (C) ASPEED Technology Inc.
  */
 
 #ifndef __CONFIG_H
@@ -15,8 +12,6 @@
 #undef CONFIG_BOOTCOMMAND
 #endif
 
-#define CONFIG_BOOTCOMMAND			"bootm 20090000 20400000 20080000"
-
 #define CONFIG_SYS_MEMTEST_START	(CONFIG_SYS_SDRAM_BASE + 0x300000)
 #define CONFIG_SYS_MEMTEST_END		(CONFIG_SYS_MEMTEST_START + 0x5000000)
 
@@ -26,12 +21,8 @@
 #define CONFIG_SYS_LOAD_ADDR		0x83000000
 
 /* Environment */
-#define CONFIG_ENV_SIZE				0x10000
-#ifdef CONFIG_CMD_NETTEST
-#define CONFIG_ENV_OFFSET			0x7f0000
-#else
-#define CONFIG_ENV_OFFSET			0x70000
-#endif
+#define CONFIG_ENV_SIZE			0x10000
+#define CONFIG_ENV_OFFSET		0x90000
 #define CONFIG_ENV_SECT_SIZE		(4 << 10)
 
 /* SPL */

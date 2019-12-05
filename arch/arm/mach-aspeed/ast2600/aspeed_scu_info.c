@@ -12,23 +12,9 @@
 extern int
 aspeed_get_mac_phy_interface(u8 num)
 {
-#if 1
-	u32 strap1;
-	u32 strap2;
-	/* force MAC1/2/3/4 run on RGMII mode */
-	writel(GENMASK(7, 6), ASPEED_HW_STRAP1);
-	writel(GENMASK(1, 0), ASPEED_HW_STRAP2);
-	
-	strap1 = readl(ASPEED_HW_STRAP1);
-#ifdef ASPEED_HW_STRAP2
-	strap2 = readl(ASPEED_HW_STRAP2);
-#endif
-#else	
 	u32 strap1 = readl(ASPEED_HW_STRAP1);
 #ifdef ASPEED_HW_STRAP2
 	u32 strap2 = readl(ASPEED_HW_STRAP2);
-#endif
-
 #endif
 	switch(num) {
 		case 0:
@@ -73,124 +59,94 @@ aspeed_security_info(void)
 }	
 
 /*	ASPEED_SYS_RESET_CTRL	: System reset contrl/status register*/
-#define SYS_WDT4_SW_RESET		BIT(31)
-#define SYS_WDT4_ARM_RESET		BIT(30)
-#define SYS_WDT4_FULL_RESET		BIT(29)
-#define SYS_WDT4_SOC_RESET		BIT(28)
-#define SYS_WDT3_SW_RESET		BIT(27)
-#define SYS_WDT3_ARM_RESET		BIT(26)
-#define SYS_WDT3_FULL_RESET		BIT(25)
-#define SYS_WDT3_SOC_RESET		BIT(24)
-#define SYS_WDT2_SW_RESET		BIT(23)
-#define SYS_WDT2_ARM_RESET		BIT(22)
-#define SYS_WDT2_FULL_RESET		BIT(21)
-#define SYS_WDT2_SOC_RESET		BIT(20)
-#define SYS_WDT1_SW_RESET		BIT(19)
-#define SYS_WDT1_ARM_RESET		BIT(18)
-#define SYS_WDT1_FULL_RESET		BIT(17)
-#define SYS_WDT1_SOC_RESET		BIT(16)
+#define SYS_WDT8_SW_RESET	BIT(15)
+#define SYS_WDT8_ARM_RESET	BIT(14)
+#define SYS_WDT8_FULL_RESET	BIT(13)
+#define SYS_WDT8_SOC_RESET	BIT(12)
+#define SYS_WDT7_SW_RESET	BIT(11)
+#define SYS_WDT7_ARM_RESET	BIT(10)
+#define SYS_WDT7_FULL_RESET	BIT(9)
+#define SYS_WDT7_SOC_RESET	BIT(8)
+#define SYS_WDT6_SW_RESET	BIT(7)
+#define SYS_WDT6_ARM_RESET	BIT(6)
+#define SYS_WDT6_FULL_RESET	BIT(5)
+#define SYS_WDT6_SOC_RESET	BIT(4)
+#define SYS_WDT5_SW_RESET	BIT(3)
+#define SYS_WDT5_ARM_RESET	BIT(2)
+#define SYS_WDT5_FULL_RESET	BIT(1)
+#define SYS_WDT5_SOC_RESET	BIT(0)
 
-#define SYS_CM3_EXT_RESET		BIT(6)
-#define SYS_PCI2_RESET			BIT(5)
-#define SYS_PCI1_RESET			BIT(4)
-#define SYS_DRAM_ECC_RESET		BIT(3)
-#define SYS_FLASH_ABR_RESET		BIT(2)
-#define SYS_EXT_RESET			BIT(1)
-#define SYS_PWR_RESET_FLAG		BIT(0)
+#define SYS_WDT4_SW_RESET	BIT(31)
+#define SYS_WDT4_ARM_RESET	BIT(30)
+#define SYS_WDT4_FULL_RESET	BIT(29)
+#define SYS_WDT4_SOC_RESET	BIT(28)
+#define SYS_WDT3_SW_RESET	BIT(27)
+#define SYS_WDT3_ARM_RESET	BIT(26)
+#define SYS_WDT3_FULL_RESET	BIT(25)
+#define SYS_WDT3_SOC_RESET	BIT(24)
+#define SYS_WDT2_SW_RESET	BIT(23)
+#define SYS_WDT2_ARM_RESET	BIT(22)
+#define SYS_WDT2_FULL_RESET	BIT(21)
+#define SYS_WDT2_SOC_RESET	BIT(20)
+#define SYS_WDT1_SW_RESET	BIT(19)
+#define SYS_WDT1_ARM_RESET	BIT(18)
+#define SYS_WDT1_FULL_RESET	BIT(17)
+#define SYS_WDT1_SOC_RESET	BIT(16)
+
+#define SYS_CM3_EXT_RESET	BIT(6)
+#define SYS_PCI2_RESET		BIT(5)
+#define SYS_PCI1_RESET		BIT(4)
+#define SYS_DRAM_ECC_RESET	BIT(3)
+#define SYS_FLASH_ABR_RESET	BIT(2)
+#define SYS_EXT_RESET		BIT(1)
+#define SYS_PWR_RESET_FLAG	BIT(0)
+
+#define BIT_WDT_SOC(x)	SYS_WDT ## x ## _SOC_RESET
+#define BIT_WDT_FULL(x)	SYS_WDT ## x ## _FULL_RESET
+#define BIT_WDT_ARM(x)	SYS_WDT ## x ## _ARM_RESET
+#define BIT_WDT_SW(x)	SYS_WDT ## x ## _SW_RESET
+
+#define HANDLE_WDTx_RESET(x, event_log, event_log_reg) \
+	if (event_log & (BIT_WDT_SOC(x) | BIT_WDT_FULL(x) | BIT_WDT_ARM(x) | BIT_WDT_SW(x))) { \
+		printf("RST : WDT%d ", x); \
+		if (event_log & BIT_WDT_SOC(x)) { \
+			printf("SOC "); \
+			writel(BIT_WDT_SOC(x), event_log_reg); \
+		} \
+		if (event_log & BIT_WDT_FULL(x)) { \
+			printf("FULL "); \
+			writel(BIT_WDT_FULL(x), event_log_reg); \
+		} \
+		if (event_log & BIT_WDT_ARM(x)) { \
+			printf("ARM "); \
+			writel(BIT_WDT_ARM(x), event_log_reg); \
+		} \
+		if (event_log & BIT_WDT_SW(x)) { \
+			printf("SW "); \
+			writel(BIT_WDT_SW(x), event_log_reg); \
+		} \
+		printf("\n"); \
+	} \
+	(void)(x)
 
 extern void 
 aspeed_sys_reset_info(void)
 {
 	u32 rest = readl(ASPEED_SYS_RESET_CTRL);
+	u32 rest3 = readl(ASPEED_SYS_RESET_CTRL3);
 
 	if (rest & SYS_PWR_RESET_FLAG) {
 		printf("RST : Power On \n");
 		writel(rest, ASPEED_SYS_RESET_CTRL);
 	} else {
-
-		if (rest & (SYS_WDT4_SOC_RESET | SYS_WDT4_FULL_RESET | SYS_WDT4_ARM_RESET | SYS_WDT4_SW_RESET)) {
-			printf("RST : WDT4 ");
-			if(rest & SYS_WDT4_FULL_RESET) {
-				printf("FULL ");
-				writel(SYS_WDT4_FULL_RESET, ASPEED_SYS_RESET_CTRL);
-			}
-			if(rest & SYS_WDT4_SOC_RESET) {
-				printf("SOC ");
-				writel(SYS_WDT4_SOC_RESET, ASPEED_SYS_RESET_CTRL);
-			}
-			if(rest & SYS_WDT4_ARM_RESET) {
-				printf("ARM ");
-				writel(SYS_WDT4_ARM_RESET, ASPEED_SYS_RESET_CTRL);
-			}
-			if(rest & SYS_WDT4_SW_RESET) {
-				printf("SW ");
-				writel(SYS_WDT4_SW_RESET, ASPEED_SYS_RESET_CTRL);
-			}
-			printf("\n");
-		}
-
-		if (rest & (SYS_WDT3_SOC_RESET | SYS_WDT3_FULL_RESET | SYS_WDT3_ARM_RESET | SYS_WDT3_SW_RESET)) {
-			printf("RST : WDT3 ");
-			if(rest & SYS_WDT3_FULL_RESET) {
-				printf("FULL ");
-				writel(SYS_WDT3_FULL_RESET, ASPEED_SYS_RESET_CTRL);
-			}
-			if(rest & SYS_WDT3_SOC_RESET) {
-				printf("SOC ");
-				writel(SYS_WDT3_SOC_RESET, ASPEED_SYS_RESET_CTRL);
-			}
-			if(rest & SYS_WDT3_ARM_RESET) {
-				printf("ARM ");
-				writel(SYS_WDT3_ARM_RESET, ASPEED_SYS_RESET_CTRL);
-			}
-			if(rest & SYS_WDT3_SW_RESET) {
-				printf("SW ");
-				writel(SYS_WDT3_SW_RESET, ASPEED_SYS_RESET_CTRL);
-			}
-			printf("\n");
-		}
-
-		if (rest & (SYS_WDT2_SOC_RESET | SYS_WDT2_FULL_RESET | SYS_WDT2_ARM_RESET | SYS_WDT2_SW_RESET)) {
-			printf("RST : WDT2 ");
-			if(rest & SYS_WDT2_FULL_RESET) {
-				printf("FULL ");
-				writel(SYS_WDT2_FULL_RESET, ASPEED_SYS_RESET_CTRL);
-			}
-			if(rest & SYS_WDT2_SOC_RESET) {
-				printf("SOC ");
-				writel(SYS_WDT2_SOC_RESET, ASPEED_SYS_RESET_CTRL);
-			}
-			if(rest & SYS_WDT2_ARM_RESET) {
-				printf("ARM ");
-				writel(SYS_WDT2_ARM_RESET, ASPEED_SYS_RESET_CTRL);
-			}
-			if(rest & SYS_WDT2_SW_RESET) {
-				printf("SW ");
-				writel(SYS_WDT2_SW_RESET, ASPEED_SYS_RESET_CTRL);
-			}
-			printf("\n");
-		}
-
-		if (rest & (SYS_WDT1_SOC_RESET | SYS_WDT1_FULL_RESET | SYS_WDT1_ARM_RESET | SYS_WDT1_SW_RESET)) {
-			printf("RST : WDT1 ");
-			if(rest & SYS_WDT1_FULL_RESET) {
-				printf("FULL ");
-				writel(SYS_WDT1_FULL_RESET, ASPEED_SYS_RESET_CTRL);
-			}
-			if(rest & SYS_WDT1_SOC_RESET) {
-				printf("SOC ");
-				writel(SYS_WDT1_SOC_RESET, ASPEED_SYS_RESET_CTRL);
-			}
-			if(rest & SYS_WDT1_ARM_RESET) {
-				printf("ARM ");
-				writel(SYS_WDT1_ARM_RESET, ASPEED_SYS_RESET_CTRL);
-			}
-			if(rest & SYS_WDT1_SW_RESET) {
-				printf("SW ");
-				writel(SYS_WDT1_SW_RESET, ASPEED_SYS_RESET_CTRL);
-			}
-			printf("\n");
-		}
+		HANDLE_WDTx_RESET(8, rest3, ASPEED_SYS_RESET_CTRL3);
+		HANDLE_WDTx_RESET(7, rest3, ASPEED_SYS_RESET_CTRL3);
+		HANDLE_WDTx_RESET(6, rest3, ASPEED_SYS_RESET_CTRL3);
+		HANDLE_WDTx_RESET(5, rest3, ASPEED_SYS_RESET_CTRL3);
+		HANDLE_WDTx_RESET(4, rest, ASPEED_SYS_RESET_CTRL);
+		HANDLE_WDTx_RESET(3, rest, ASPEED_SYS_RESET_CTRL);
+		HANDLE_WDTx_RESET(2, rest, ASPEED_SYS_RESET_CTRL);
+		HANDLE_WDTx_RESET(1, rest, ASPEED_SYS_RESET_CTRL);
 
 		if (rest & SYS_CM3_EXT_RESET) {
 			printf("RST : SYS_CM3_EXT_RESET \n");
@@ -241,26 +197,36 @@ aspeed_who_init_dram(void)
 extern void
 aspeed_2nd_wdt_mode(void)
 {
-	if(readl(ASPEED_HW_STRAP2) & BIT(11))
-		printf("2nd Boot : Enable\n");
+	if(readl(ASPEED_HW_STRAP2) & BIT(11)) {
+		printf("2nd Boot : Enable, ");
+		if(readl(ASPEED_HW_STRAP2) & BIT(12))
+			printf("Single SPI ");
+		else
+			printf("Dual SPI ");
+		printf(": %s", readl(0x1e620064) & BIT(4) ? "Alternate":"Primary");
+
+		if(readl(ASPEED_HW_STRAP2) & GENMASK(15, 13)) {
+			printf(", bspi_size : %ld MB\n", BIT((readl(ASPEED_HW_STRAP2) >> 13) & 0x7));
+		} else
+			printf("\n");
+	}
+
+	if(readl(ASPEED_HW_STRAP2) & BIT(22)) {
+		printf("SPI aux control : Enable");
+		//gpioY6 : BSPI_ABR 
+		if (readl(0x1e7801e0) & BIT(6))
+			printf(", Force Alt boot ");
+
+		//gpioY7 : BSPI_WP_N
+		printf(", BSPI_WP : %s \n", readl(0x1e7801e0) & BIT(7) ? "Disable":"Enable");
+	}
 }
 
 extern void
 aspeed_spi_strap_mode(void)
 {
-	int four_byte_addr = 0;
-	int addr_auto_detect = 0;
 	if(readl(ASPEED_HW_STRAP2) & BIT(10))
-		addr_auto_detect = 0;
-	else
-		addr_auto_detect = 1;
-
-	if(!addr_auto_detect) {
-		if(four_byte_addr)
-			printf("SPI 4 byte mode address strap\n");
-		else
-			printf("SPI 3 byte mode address strap\n");
-	}
+		printf("SPI : 3/4 byte mode auto detection \n");
 }
 
 extern void

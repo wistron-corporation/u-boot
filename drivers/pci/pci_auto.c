@@ -17,6 +17,10 @@
 #define CONFIG_SYS_PCI_CACHE_LINE_SIZE	8
 #endif
 
+#ifdef CONFIG_ARCH_ASPEED
+void aspeed_pcie_workaround(void);
+#endif
+
 void dm_pciauto_setup_device(struct udevice *dev, int bars_num,
 			     struct pci_region *mem,
 			     struct pci_region *prefetch, struct pci_region *io,
@@ -32,6 +36,10 @@ void dm_pciauto_setup_device(struct udevice *dev, int bars_num,
 	struct pci_region *bar_res = NULL;
 	int found_mem64 = 0;
 	u16 class;
+
+#ifdef CONFIG_ARCH_ASPEED
+	aspeed_pcie_workaround();
+#endif
 
 	dm_pci_read_config16(dev, PCI_COMMAND, &cmdstat);
 	cmdstat = (cmdstat & ~(PCI_COMMAND_IO | PCI_COMMAND_MEMORY)) |
@@ -117,10 +125,9 @@ void dm_pciauto_setup_device(struct udevice *dev, int bars_num,
 				dm_pci_write_config32(dev, bar, 0x00000000);
 #endif
 			}
+			cmdstat |= (bar_response & PCI_BASE_ADDRESS_SPACE) ?
+				PCI_COMMAND_IO : PCI_COMMAND_MEMORY;
 		}
-
-		cmdstat |= (bar_response & PCI_BASE_ADDRESS_SPACE) ?
-			PCI_COMMAND_IO : PCI_COMMAND_MEMORY;
 
 		debug("\n");
 
@@ -252,6 +259,7 @@ void dm_pciauto_postscan_setup_bridge(struct udevice *dev, int sub_bus)
 	struct pci_region *pci_io;
 	struct udevice *ctlr = pci_get_controller(dev);
 	struct pci_controller *ctlr_hose = dev_get_uclass_priv(ctlr);
+	struct pci_child_platdata *pplat = dev_get_parent_platdata(dev);
 
 	pci_mem = ctlr_hose->pci_mem;
 	pci_prefetch = ctlr_hose->pci_prefetch;
@@ -259,6 +267,10 @@ void dm_pciauto_postscan_setup_bridge(struct udevice *dev, int sub_bus)
 
 	/* Configure bus number registers */
 	dm_pci_write_config8(dev, PCI_SUBORDINATE_BUS, sub_bus - ctlr->seq);
+
+	//ast2600 0x1a03 0x1150 pcie re-train for gen 2 config
+	if((pplat->vendor == 0x1a03) && (pplat->device == 0x1150)) 
+		dm_pci_write_config8(dev, 0x90, 0x20);
 
 	if (pci_mem) {
 		/* Round memory allocator to 1MB boundary */

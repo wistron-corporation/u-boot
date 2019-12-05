@@ -7,7 +7,7 @@
 
 /* keys for unlocking HW */
 #define SDRAM_UNLOCK_KEY		0xFC600309
-#define SDRAM_VIDEO_UNLOCK_KEY		0x0044000B
+#define SDRAM_VIDEO_UNLOCK_KEY		0x00440003
 
 /* Fixed priority DRAM Requests mask */
 #define REQ_PRI_VGA_HW_CURSOR_R         0
@@ -71,7 +71,7 @@
 	  REQ_PRI_XDMA1_RW | REQ_PRI_2D_ENGINE_DATA_RW)
 
 #define MCR50_RESET_ALL_INTR		BIT(31)
-
+#define SDRAM_CONF_ECC_AUTO_SCRUBBING	BIT(9)
 #define SDRAM_CONF_SCRAMBLE		BIT(8)
 #define SDRAM_CONF_ECC_EN		BIT(7)
 #define SDRAM_CONF_DUALX8		BIT(5)

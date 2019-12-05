@@ -1,5 +1,6 @@
 #ifndef __H2X_ASPEED_H_INCLUDED
 #define __H2X_ASPEED_H_INCLUDED
+#include <pci.h>
 
 struct aspeed_h2x_reg {
 	u32 h2x_reg00;
@@ -36,8 +37,8 @@ struct aspeed_h2x_reg {
 	u32 h2x_reg7C;
 	u32 h2x_reg80;
 	u32 h2x_reg84;
-	u32 h2x_reg88;
-	u32 h2x_reg8C;
+	u32 h2x_rc_l_isr;
+	u32 h2x_rc_l_rdata;
 	u32 h2x_reg90;
 	u32 h2x_reg94;
 	u32 h2x_reg98;
@@ -52,8 +53,8 @@ struct aspeed_h2x_reg {
 	u32 h2x_regBC;
 	u32 h2x_regC0;
 	u32 h2x_regC4;
-	u32 h2x_regC8;
-	u32 h2x_regCC;
+	u32 h2x_rc_h_isr;
+	u32 h2x_rc_h_rdata;
 	u32 h2x_regD0;
 	u32 h2x_regD4;
 	u32 h2x_regD8;
@@ -68,7 +69,7 @@ struct aspeed_h2x_reg {
 	u32 h2x_regFC;
 };
 
-extern void aspeed_pcie_cfg_read(struct aspeed_h2x_reg *h2x, u8 type, u32 bdf_offset, ulong *value);
-extern void aspeed_pcie_cfg_write(struct aspeed_h2x_reg *h2x, u8 type, u8 byte_en, u32 bdf_offset, u32 data);
+extern void aspeed_pcie_cfg_read(struct aspeed_h2x_reg *h2x, pci_dev_t bdf, uint offset, ulong *valuep);
+extern void aspeed_pcie_cfg_write(struct aspeed_h2x_reg *h2x, pci_dev_t bdf, uint offset, ulong value, enum pci_size_t size);
 
 #endif

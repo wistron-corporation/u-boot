@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: GPL-2.0
+// SPDX-License-Identifier: GPL-2.0
 /*
- * (C) Copyright 2016 Google, Inc
+ * Copyright (C) ASPEED Technology Inc.
+ * Chia-Wei Wang <chiawei_wang@aspeedtech.com>
  */
 
 #include <common.h>
@@ -14,13 +16,12 @@
 static int ast_sysreset_request(struct udevice *dev, enum sysreset_t type)
 {
 	struct udevice *wdt;
-	u32 reset_mode;
 	int ret = uclass_first_device(UCLASS_WDT, &wdt);
 
 	if (ret)
 		return ret;
 
-	ret = wdt_expire_now(wdt, reset_mode);
+	ret = wdt_expire_now(wdt, 0);
 	if (ret) {
 		debug("Sysreset failed: %d", ret);
 		return ret;

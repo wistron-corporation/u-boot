@@ -23,6 +23,11 @@
  */
 #define AST_FLASH_ADDR_DETECT_WDT	2
 
+/*
+ * RMII daughtercard workaround
+ */
+//#define ASPEED_RMII_DAUGHTER_CARD
+
 DECLARE_GLOBAL_DATA_PTR;
 
 #if 0
@@ -52,14 +57,64 @@ void lowlevel_init(void)
 }
 #endif
 
+#ifdef ASPEED_RMII_DAUGHTER_CARD
+/**
+ * @brief	workaround for RMII daughtercard, reset PHY manually
+ * 
+ * workaround for Aspeed RMII daughtercard, reset Eth PHY by GPO F0 and F2
+ * Where GPO F0 controls the reset signal of RMII PHY 1 and 2.
+ * Where GPO F2 controls the reset signal of RMII PHY 3 and 4.
+*/
+void reset_eth_phy(void)
+{
+#define GRP_F		8
+#define PHY_RESET_MASK  (BIT(GRP_F + 0) | BIT(GRP_F + 2))	
+
+	u32 value = readl(0x1e780020);
+	u32 direction = readl(0x1e780024);
+
+	debug("RMII workaround: reset PHY manually\n");
+
+	direction |= PHY_RESET_MASK;
+	value &= ~PHY_RESET_MASK;
+	writel(direction, 0x1e780024);
+	writel(value, 0x1e780020);
+	while((readl(0x1e780020) & PHY_RESET_MASK) != 0);
+
+	udelay(1000);
+
+	value |= PHY_RESET_MASK;
+	writel(value, 0x1e780020);
+	while((readl(0x1e780020) & PHY_RESET_MASK) != PHY_RESET_MASK);
+}
+#endif
+
 int board_init(void)
 {
 	struct udevice *dev;
+	int i;
+	int ret;
 
 	gd->bd->bi_boot_params = CONFIG_SYS_SDRAM_BASE + 0x100;
 
-	uclass_first_device_check(UCLASS_MISC, &dev);
-#if 0	
+#ifdef ASPEED_RMII_DAUGHTER_CARD
+	reset_eth_phy();
+#endif	
+	/*
+	 * Loop over all MISC uclass drivers to call the comphy code
+	 * and init all CP110 devices enabled in the DT
+	 */
+	i = 0;
+	while (1) {
+		/* Call the comphy code via the MISC uclass driver */
+		ret = uclass_get_device(UCLASS_MISC, i++, &dev);
+
+		/* We're done, once no further CP110 device is found */
+		if (ret)
+			break;
+	}
+
+#if 0
 	if (!dev) 
 		printf("No MISC found.\n");
 #endif
@@ -87,3 +142,14 @@ int dram_init(void)
 	gd->ram_size = ram.size;
 	return 0;
 }
+
+int arch_early_init_r(void)
+{
+#ifdef CONFIG_DM_PCI
+	/* Trigger PCIe devices detection */
+	pci_init();
+#endif
+
+	return 0;
+}
+

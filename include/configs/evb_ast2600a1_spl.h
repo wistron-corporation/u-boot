@@ -1,9 +1,7 @@
 /* SPDX-License-Identifier: GPL-2.0+ */
 /*
- * Copyright (C) 2012-2020  ASPEED Technology Inc.
- * Ryan Chen <ryan_chen@aspeedtech.com>
+ * Copyright (C) ASPEED Technology Inc.
  *
- * Copyright 2016 Google Inc
  */
 
 #ifndef __CONFIG_H
@@ -21,13 +19,7 @@
 
 /* Environment */
 #define CONFIG_ENV_SIZE			0x10000
-
-#ifdef CONFIG_CMD_NETTEST
-#define CONFIG_ENV_OFFSET		0x7f0000
-#else
-#define CONFIG_ENV_OFFSET		0x80000
-#endif
-
+#define CONFIG_ENV_OFFSET		0x90000
 #define CONFIG_ENV_SECT_SIZE		(4 << 10)
 
 #ifdef CONFIG_SPL_TINY

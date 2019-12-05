@@ -83,11 +83,20 @@ ENTRY(relocate_code)
 	beq	relocate_done		/* skip relocation */
 	ldr	r2, =__image_copy_end	/* r2 <- SRC &__image_copy_end */
 
+#ifdef CONFIG_ASPEED_SPI_DMA
+	sub	r2, r1
+	add	r2, #0x3
+	bic	r2, #0x3
+	mov	r5, lr
+	bl	aspeed_spi_fastcpy
+	mov	lr, r5
+#else
 copy_loop:
 	ldmia	r1!, {r10-r11}		/* copy from source address [r1]    */
 	stmia	r0!, {r10-r11}		/* copy to   target address [r0]    */
 	cmp	r1, r2			/* until source end address [r2]    */
 	blo	copy_loop
+#endif
 
 	/*
 	 * fix .rel.dyn relocations

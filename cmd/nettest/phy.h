@@ -15,12 +15,10 @@
 //
 // Define
 //
-#define Enable_SearchPHYID             //[ON] (Search vlid PHY ID)
-#ifndef PHY_SPECIAL
-#define Enable_CheckZeroPHYID          //[ON] (Check PHY ID with value 0)
-#endif
+#define ENABLE_SCAN_PHY_ID             //[ON] (Search vlid PHY ID)
+#define ENABLE_CHK_ZERO_PHY_ID          //[ON] (Check PHY ID with value 0)
 
-#ifdef Enable_CheckZeroPHYID
+#ifdef ENABLE_CHK_ZERO_PHY_ID
   #define PHY_IS_VALID( dat )      ( ( (dat & 0xffff) != 0xffff ) && ( ( dat & 0xffff ) != 0x0 ) )
 #else
   #define PHY_IS_VALID( dat )      ( ( dat & 0xffff) != 0xffff )
