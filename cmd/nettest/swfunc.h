@@ -68,6 +68,7 @@
 //    #define CheckNPTxbufUNAVA
     #define CheckTPktLost
     #define CheckRxBuf
+    //#define CHECK_RX_DATA
 
 
 /* error mask of the RX descriptor */

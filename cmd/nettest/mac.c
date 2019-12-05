@@ -1663,11 +1663,15 @@ char check_buf (MAC_ENGINE *eng, int loopcnt)
 
 	desadr = eng->run.rdes_base + (16 * eng->dat.Des_Num) - 4;
 	for (des_num = eng->dat.Des_Num - 1; des_num >= 0; des_num--) {
+#ifdef CHECK_RX_DATA
 		datbase = AT_BUF_MEMRW(Read_Mem_Des_DD(desadr) & 0xfffffffc);
 		if (check_Data(eng, datbase, des_num)) {
 			check_int(eng, "");
 			return (1);
 		}
+		if (check_int(eng, ""))
+			return 1;
+#endif
 		desadr -= 16;
 	}
 	if (check_int(eng, ""))
