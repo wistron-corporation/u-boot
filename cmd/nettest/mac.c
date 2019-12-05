@@ -1981,9 +1981,9 @@ char check_des (MAC_ENGINE *eng, uint32_t bufnum, int checkpoint)
 
 	nt_log_func_name();
 
-	// Fire the engine to send and recvice
-	mac_reg_write(eng, 0x1c, 0x00000000); // Rx Poll
-	mac_reg_write(eng, 0x18, 0x00000000); // Tx Poll
+	/* Fire the engine to send and recvice */
+	mac_reg_write(eng, 0x1c, 0x00000001); // Rx Poll
+	mac_reg_write(eng, 0x18, 0x00000001); // Tx Poll
 
 #ifndef SelectSimpleDes
 	/* base of the descriptors */
@@ -2067,7 +2067,7 @@ char check_des (MAC_ENGINE *eng, uint32_t bufnum, int checkpoint)
 					Write_Mem_Des_DD( H_rx_desadr, RDES_IniVal );
 
 				readl(H_rx_desadr);
-				mac_reg_write( eng, 0x1c, 0x00000000 ); //Rx Poll
+				mac_reg_write(eng, 0x1c, 0x00000000); //Rx Poll
 				H_rx_bufadr += DMA_PakSize;
 			}
 			if ( eng->run.TM_TxDataEn ) {
@@ -2078,7 +2078,7 @@ char check_des (MAC_ENGINE *eng, uint32_t bufnum, int checkpoint)
 					Write_Mem_Des_DD( H_tx_desadr, TDES_IniVal );
 				
 				readl(H_tx_desadr);
-				mac_reg_write( eng, 0x18, 0x00000000 ); //Tx Poll
+				mac_reg_write(eng, 0x18, 0x00000000); //Tx Poll
 				H_tx_bufadr += DMA_PakSize;
 			}
 		}
