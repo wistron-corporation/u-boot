@@ -1058,7 +1058,6 @@ struct clk_ops ast2600_clk_ops = {
 static int ast2600_clk_probe(struct udevice *dev)
 {
 	struct ast2600_clk_priv *priv = dev_get_priv(dev);
-	int i;
 	u32 uart_clk_source;
 
 	priv->scu = devfdt_get_addr_ptr(dev);
@@ -1069,28 +1068,10 @@ static int ast2600_clk_probe(struct udevice *dev)
 					    0x0);
 
 	if(uart_clk_source) {
-		for(i = 0; i < 13; i++) {
-			if(BIT(i) & uart_clk_source) {
-				switch(i) {
-					case 0:
-					case 1:
-					case 2:
-					case 3:
-					case 5:
-						writel(BIT(i), &priv->scu->clk_sel4);
-						break;
-					case 6:
-					case 7:
-					case 8:
-					case 9:
-					case 10:
-					case 11:
-					case 12:
-						writel(BIT(i), &priv->scu->clk_sel5);
-						break;
-				}
-			}
-		}
+		if(uart_clk_source & GENMASK(5, 0))
+			setbits_le32(&priv->scu->clk_sel4, uart_clk_source & GENMASK(5, 0));
+		if(uart_clk_source & GENMASK(12, 6))
+			setbits_le32(&priv->scu->clk_sel5, uart_clk_source & GENMASK(12, 6));
 	}
 
 	return 0;
