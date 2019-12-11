@@ -1064,7 +1064,7 @@ static int ast2600_clk_probe(struct udevice *dev)
 	if (IS_ERR(priv->scu))
 		return PTR_ERR(priv->scu);
 
-	uart_clk_source = dev_read_u32_default(dev, "uart-source",
+	uart_clk_source = dev_read_u32_default(dev, "uart-clk-source",
 					    0x0);
 
 	if(uart_clk_source) {
