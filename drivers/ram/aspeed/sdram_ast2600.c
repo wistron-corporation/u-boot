@@ -332,7 +332,7 @@ static int ast2600_sdramphy_check_status(struct dram_info *info)
 	return 0;	
 #endif              
 }
-
+#ifndef CONFIG_ASPEED_BYPASS_SELFTEST
 #define MC_TEST_PATTERN_N 8
 static u32 as2600_sdrammc_test_pattern[MC_TEST_PATTERN_N] = {
     0xcc33cc33, 0xff00ff00, 0xaa55aa55, 0x88778877,
@@ -426,7 +426,7 @@ static int ast2600_sdrammc_test(struct dram_info *info)
 	       target_cnt);
 	return fail_cnt;
 }
-
+#endif
 /**
  * scu500[14:13]
  * 	2b'00: VGA memory size = 8MB
@@ -896,10 +896,12 @@ L_ast2600_sdramphy_train:
 
 	ast2600_sdrammc_calc_size(priv);
 
+#ifndef CONFIG_ASPEED_BYPASS_SELFTEST
         if (0 != ast2600_sdrammc_test(priv)) {
 		printf("%s: DDR4 init fail\n", __func__);
 		return -EINVAL;
 	}
+#endif	
 
 #ifdef CONFIG_ASPEED_ECC
 	ast2600_sdrammc_ecc_enable(priv);

@@ -39,6 +39,12 @@ config ASPEED_PALLADIUM
 	  This provides configurations specific for Aspeed Palladium SDRAM
 	  model
 
+config ASPEED_BYPASS_SELFTEST
+	bool "bypass self test during DRAM initialization"
+	default n
+	help
+	 Say Y here to bypass DRAM self test to speed up the boot time
+
 config ASPEED_ECC
 	bool "aspeed SDRAM error correcting code"
 	depends on DM && OF_CONTROL && ARCH_ASPEED
