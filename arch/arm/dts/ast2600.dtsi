@@ -183,7 +183,7 @@
 			};
 			flash@2 {
 				reg = < 2 >;
-				ompatible = "jedec,spi-nor";
+				compatible = "jedec,spi-nor";
 				status = "disabled";
 			};
 		};
@@ -304,20 +304,28 @@
 				reg-io-width = <4>;
 			};
 
-			pcie_bridge0: pcie_bridge@0x1e6ed000 {
+			pcie_bridge0: pcie@1e6ed000 {
 				compatible = "aspeed,ast2600-pcie";
+				#address-cells = <3>;
+				#size-cells = <2>;
 				reg = <0x1e6ed000 0x100>;
-				ranges = <0x60000000 0 0 0x60000000 0x1 0 1 0>;
+				ranges = <0x81000000 0x0 0x0 0x0 0x0 0x10000   /* downstream I/O */
+						0x82000000 0x0 0x60000000 0x60000000 0x0 0x10000000>; /* non-prefetchable memory */
+				device_type = "pci";
 				bus-range = <0x00 0xff>;
 				resets = <&rst ASPEED_RESET_PCIE_DEV_OEN>, <&rst ASPEED_RESET_PCIE_DEV_O>;
 
 				status = "disabled";
 			};
 
-			pcie_bridge1: pcie_bridge@0x1e6ed200 {
+			pcie_bridge1: pcie@1e6ed200 {
 				compatible = "aspeed,ast2600-pcie";
+				#address-cells = <3>;
+				#size-cells = <2>;
 				reg = <0x1e6ed200 0x100>;
-				ranges = <0x70000000 0 0 0x70000000 0x1 0 1 0>;
+				ranges = <0x81000000 0x0 0x0 0x10000 0x00 0x10000   /* downstream I/O */
+						0x82000000 0x0 0x70000000 0x70000000 0x0 0x10000000>; /* non-prefetchable memory */
+				device_type = "pci";
 				bus-range = <0x00 0xff>;
 				resets = <&rst ASPEED_RESET_PCIE_RC_OEN>, <&rst ASPEED_RESET_PCIE_RC_O>;
 				pinctrl-names = "default";
