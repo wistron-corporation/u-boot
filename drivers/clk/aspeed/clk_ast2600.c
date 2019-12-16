@@ -1008,6 +1008,43 @@ static ulong ast2600_enable_fsiclk(struct ast2600_scu *scu)
 	return 0;
 }
 
+static ulong ast2600_enable_usbahclk(struct ast2600_scu *scu)
+{
+	u32 reset_bit;
+	u32 clkstop_bit;
+
+	reset_bit = BIT(ASPEED_RESET_EHCI_P1);
+	clkstop_bit = BIT(14);
+
+	writel(reset_bit, &scu->sysreset_ctrl1);
+		udelay(100);
+	//enable phy clk
+	writel(clkstop_bit, &scu->clk_stop_ctrl1);
+	mdelay(20);
+	writel(reset_bit, &scu->sysreset_clr_ctrl1);
+
+	return 0;
+}
+
+static ulong ast2600_enable_usbbhclk(struct ast2600_scu *scu)
+{
+	u32 reset_bit;
+	u32 clkstop_bit;
+
+	reset_bit = BIT(ASPEED_RESET_EHCI_P2);
+	clkstop_bit = BIT(7);
+
+	writel(reset_bit, &scu->sysreset_ctrl1);
+			udelay(100);
+	//enable phy clk
+	writel(clkstop_bit, &scu->clk_stop_clr_ctrl1);
+	mdelay(20);
+
+	writel(reset_bit, &scu->sysreset_clr_ctrl1);
+
+	return 0;
+}
+
 static int ast2600_clk_enable(struct clk *clk)
 {
 	struct ast2600_clk_priv *priv = dev_get_priv(clk->dev);
@@ -1039,6 +1076,12 @@ static int ast2600_clk_enable(struct clk *clk)
 			break;
 		case ASPEED_CLK_GATE_FSICLK:
 			ast2600_enable_fsiclk(priv->scu);
+			break;
+		case ASPEED_CLK_GATE_USBPORT1CLK:
+			ast2600_enable_usbahclk(priv->scu);
+			break;
+		case ASPEED_CLK_GATE_USBPORT2CLK:
+			ast2600_enable_usbbhclk(priv->scu);
 			break;
 		default:
 			pr_debug("can't enable clk \n");
