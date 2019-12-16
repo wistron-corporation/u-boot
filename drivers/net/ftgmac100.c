@@ -537,6 +537,7 @@ static int ftgmac100_ofdata_to_platdata(struct udevice *dev)
 	struct eth_pdata *pdata = dev_get_platdata(dev);
 	struct ftgmac100_data *priv = dev_get_priv(dev);
 	const char *phy_mode;
+	int offset = 0;
 
 	pdata->iobase = devfdt_get_addr(dev);
 	pdata->phy_interface = -1;
@@ -547,6 +548,14 @@ static int ftgmac100_ofdata_to_platdata(struct udevice *dev)
 	if (pdata->phy_interface == -1) {
 		dev_err(dev, "Invalid PHY interface '%s'\n", phy_mode);
 		return -EINVAL;
+	}
+
+	offset = fdtdec_lookup_phandle(gd->fdt_blob, dev_of_offset(dev),
+				       "phy-handle");
+	if (offset > 0) {
+		priv->phy_addr = fdtdec_get_int(gd->fdt_blob, offset, "reg", -1);
+	} else {
+		priv->phy_addr = 0;
 	}
 
 	pdata->max_speed = dev_read_u32_default(dev, "max-speed", 0);
@@ -582,7 +591,6 @@ static int ftgmac100_probe(struct udevice *dev)
 	priv->iobase = (struct ftgmac100 *)pdata->iobase;
 	priv->phy_mode = pdata->phy_interface;
 	priv->max_speed = pdata->max_speed;
-	priv->phy_addr = 0;
 
 	ret = clk_enable_bulk(&priv->clks);
 	if (ret)
