@@ -297,6 +297,17 @@ static struct aspeed_sig_desc fsi2[] = {
 	{ 0xd48, GENMASK(23, 22), 0 },
 };
 
+static struct aspeed_sig_desc usb2ah_link[] = {
+	{ 0x440, BIT(24), 1 },
+	{ 0x440, BIT(25), 0 },
+};
+
+static struct aspeed_sig_desc usb2bh_link[] = {
+	{ 0x440, BIT(28), 1 },
+	{ 0x440, BIT(29), 0 },
+
+};
+
 static const struct aspeed_group_config ast2600_groups[] = {
 	{ "MAC1LINK", ARRAY_SIZE(mac1_link), mac1_link },
 	{ "MAC2LINK", ARRAY_SIZE(mac2_link), mac2_link },
@@ -348,6 +359,8 @@ static const struct aspeed_group_config ast2600_groups[] = {
 	{ "PCIERC", ARRAY_SIZE(pcie_rc_reset_link), pcie_rc_reset_link },
 	{ "FSI1", ARRAY_SIZE(fsi1), fsi1 },
 	{ "FSI2", ARRAY_SIZE(fsi2), fsi2 },
+	{ "USB2AH", ARRAY_SIZE(usb2ah_link), usb2ah_link },
+	{ "USB2BH", ARRAY_SIZE(usb2bh_link), usb2bh_link },	
 };
 
 static int ast2600_pinctrl_get_groups_count(struct udevice *dev)
