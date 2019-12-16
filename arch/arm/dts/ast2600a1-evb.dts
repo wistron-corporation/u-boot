@@ -61,36 +61,53 @@
 
 &mdio {
 	status = "okay";
+	#address-cells = <1>;
+	#size-cells = <0>;
+	ethphy1: ethernet-phy@1 {
+		reg = <0>;
+	};
+
+	ethphy2: ethernet-phy@2 {
+		reg = <0>;
+	};
+
+	ethphy3: ethernet-phy@3 {
+		reg = <0>;
+	};
+
+	ethphy4: ethernet-phy@4 {
+		reg = <0>;
+	};
 };
 
 &mac1 {
 	status = "okay";
 	phy-mode = "rgmii";
-
+	phy-handle = <&ethphy1>;
 	pinctrl-names = "default";
 	pinctrl-0 = <&pinctrl_rgmii1_default &pinctrl_mac1link_default &pinctrl_mdio1_default>;
 };
 
 &mac2 {
 	status = "okay";
-
 	phy-mode = "rgmii";
+	phy-handle = <&ethphy2>;
 	pinctrl-names = "default";
 	pinctrl-0 = <&pinctrl_rgmii2_default &pinctrl_mac2link_default &pinctrl_mdio2_default>;
 };
 
 &mac3 {
 	status = "okay";
-
 	phy-mode = "rgmii";
+	phy-handle = <&ethphy3>;
 	pinctrl-names = "default";
 	pinctrl-0 = <&pinctrl_rgmii3_default &pinctrl_mac3link_default &pinctrl_mdio3_default>;
 };
 
 &mac4 {
 	status = "okay";
-
 	phy-mode = "rgmii";
+	phy-handle = <&ethphy4>;
 	pinctrl-names = "default";
 	pinctrl-0 = <&pinctrl_rgmii4_default &pinctrl_mac4link_default &pinctrl_mdio4_default>;
 };
