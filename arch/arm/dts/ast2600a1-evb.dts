@@ -16,9 +16,10 @@
 		spi0 = &fmc;
 		spi1 = &spi1;
 		spi2 = &spi2;
-		ethernet1 = &mac1;
-		ethernet2 = &mac2;
-		ethernet3 = &mac3;
+		ethernet0 = &mac1;
+		ethernet1 = &mac2;
+		ethernet2 = &mac3;
+		ethernet3 = &mac4;
 		mmc0 = &emmc_slot0;
 		mmc1 = &sdhci_slot0;
 		mmc2 = &sdhci_slot1;
@@ -62,22 +63,12 @@
 	status = "okay";
 };
 
-#if 0
-&mac0 {
+&mac1 {
 	status = "okay";
 	phy-mode = "rgmii";
 
 	pinctrl-names = "default";
 	pinctrl-0 = <&pinctrl_rgmii1_default &pinctrl_mac1link_default &pinctrl_mdio1_default>;
-};
-#endif
-
-&mac1 {
-	status = "okay";
-
-	phy-mode = "rgmii";
-	pinctrl-names = "default";
-	pinctrl-0 = <&pinctrl_rgmii2_default &pinctrl_mac2link_default &pinctrl_mdio2_default>;
 };
 
 &mac2 {
@@ -85,10 +76,18 @@
 
 	phy-mode = "rgmii";
 	pinctrl-names = "default";
-	pinctrl-0 = <&pinctrl_rgmii3_default &pinctrl_mac3link_default &pinctrl_mdio3_default>;
+	pinctrl-0 = <&pinctrl_rgmii2_default &pinctrl_mac2link_default &pinctrl_mdio2_default>;
 };
 
 &mac3 {
+	status = "okay";
+
+	phy-mode = "rgmii";
+	pinctrl-names = "default";
+	pinctrl-0 = <&pinctrl_rgmii3_default &pinctrl_mac3link_default &pinctrl_mdio3_default>;
+};
+
+&mac4 {
 	status = "okay";
 
 	phy-mode = "rgmii";

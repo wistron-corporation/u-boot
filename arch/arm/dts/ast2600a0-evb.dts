@@ -19,9 +19,10 @@
 		spi0 = &fmc;
 		spi1 = &spi1;
 		spi2 = &spi2;
-		ethernet1 = &mac1;
-		ethernet2 = &mac2;
-		ethernet3 = &mac3;
+
+		ethernet0 = &mac2;
+		ethernet1 = &mac3;
+		ethernet2 = &mac4;
 	};
 
 	cpus {
@@ -63,7 +64,7 @@
 };
 
 #if 0
-&mac0 {
+&mac1 {
 	status = "okay";
 	phy-mode = "rgmii";
 
@@ -72,7 +73,7 @@
 };
 #endif
 
-&mac1 {
+&mac2 {
 	status = "okay";
 
 	phy-mode = "rgmii";
@@ -80,7 +81,7 @@
 	pinctrl-0 = <&pinctrl_rgmii2_default &pinctrl_mac2link_default &pinctrl_mdio2_default>;
 };
 
-&mac2 {
+&mac3 {
 	status = "okay";
 
 	phy-mode = "rgmii";
@@ -88,7 +89,7 @@
 	pinctrl-0 = <&pinctrl_rgmii3_default &pinctrl_mac3link_default &pinctrl_mdio3_default>;
 };
 
-&mac3 {
+&mac4 {
 	status = "okay";
 
 	phy-mode = "rgmii";
