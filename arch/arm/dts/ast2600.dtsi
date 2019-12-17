@@ -234,7 +234,7 @@
 #endif
 			status = "disabled";
 		};
-		
+
 		mac3: ftgmac@1e690000 {
 			compatible = "aspeed,ast2600-mac", "faraday,ftgmac100";
 			reg = <0x1e690000 0x180>, <0x1e650018 0x4>;
@@ -245,6 +245,26 @@
 #if 0
 			phy-handle = <&phy0>;
 #endif
+			status = "disabled";
+		};
+
+		ehci0: usb@1e6a1000 {
+			compatible = "aspeed,aspeed-ehci", "usb-ehci";
+			reg = <0x1e6a1000 0x100>;
+			interrupts = <GIC_SPI 5 IRQ_TYPE_LEVEL_HIGH>;
+			clocks = <&scu ASPEED_CLK_GATE_USBPORT1CLK>;
+			pinctrl-names = "default";
+			pinctrl-0 = <&pinctrl_usb2ah_default>;
+			status = "disabled";
+		};
+
+		ehci1: usb@1e6a3000 {
+			compatible = "aspeed,aspeed-ehci", "usb-ehci";
+			reg = <0x1e6a3000 0x100>;
+			interrupts = <GIC_SPI 9 IRQ_TYPE_LEVEL_HIGH>;
+			clocks = <&scu ASPEED_CLK_GATE_USBPORT2CLK>;
+			pinctrl-names = "default";
+			pinctrl-0 = <&pinctrl_usb2bh_default>;
 			status = "disabled";
 		};
 
@@ -314,7 +334,7 @@
 				device_type = "pci";
 				bus-range = <0x00 0xff>;
 				resets = <&rst ASPEED_RESET_PCIE_DEV_OEN>, <&rst ASPEED_RESET_PCIE_DEV_O>;
-
+				cfg-handle = <&pcie_cfg0>;
 				status = "disabled";
 			};
 
@@ -328,6 +348,7 @@
 				device_type = "pci";
 				bus-range = <0x00 0xff>;
 				resets = <&rst ASPEED_RESET_PCIE_RC_OEN>, <&rst ASPEED_RESET_PCIE_RC_O>;
+				cfg-handle = <&pcie_cfg1>;
 				pinctrl-names = "default";
 				pinctrl-0 = <&pinctrl_pcierc_default>;
 
@@ -390,11 +411,25 @@
 			};
 
 			h2x: h2x@1e770000 {
-				compatible = "aspeed,ast2600-h2x";
-				reg = <0x1e770000 0x100>;
-				interrupts = <GIC_SPI 29 IRQ_TYPE_LEVEL_HIGH>;
-				resets = <&rst ASPEED_RESET_H2X>;
-				status = "disabled";
+			compatible = "aspeed,ast2600-h2x";
+			reg = <0x1e770000 0x100>;
+			interrupts = <GIC_SPI 29 IRQ_TYPE_LEVEL_HIGH>;
+			resets = <&rst ASPEED_RESET_H2X>;
+			#address-cells = <1>;
+			#size-cells = <1>;
+			ranges = <0x0 0x1e770000 0x100>;
+
+			status = "disabled";
+
+				pcie_cfg0: cfg0@80 {
+					reg = <0x80 0x80>;
+					compatible = "aspeed,ast2600-pcie-cfg";
+				};
+
+				pcie_cfg1: cfg1@C0 {
+					compatible = "aspeed,ast2600-pcie-cfg";
+					reg = <0xC0 0x80>;
+				};
 			};
 
 			gpio0: gpio@1e780000 {
