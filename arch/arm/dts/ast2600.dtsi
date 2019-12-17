@@ -324,8 +324,11 @@
 						0x82000000 0x0 0x60000000 0x60000000 0x0 0x10000000>; /* non-prefetchable memory */
 				device_type = "pci";
 				bus-range = <0x00 0xff>;
-				resets = <&rst ASPEED_RESET_PCIE_DEV_OEN>, <&rst ASPEED_RESET_PCIE_DEV_O>;
+				resets = <&rst ASPEED_RESET_PCIE_DEV_O>;
 				cfg-handle = <&pcie_cfg0>;
+				pinctrl-names = "default";
+                                pinctrl-0 = <&pinctrl_pcie0rc_default>;
+
 				status = "disabled";
 			};
 
@@ -338,10 +341,10 @@
 						0x82000000 0x0 0x70000000 0x70000000 0x0 0x10000000>; /* non-prefetchable memory */
 				device_type = "pci";
 				bus-range = <0x00 0xff>;
-				resets = <&rst ASPEED_RESET_PCIE_RC_OEN>, <&rst ASPEED_RESET_PCIE_RC_O>;
+				resets = <&rst ASPEED_RESET_PCIE_RC_O>;
 				cfg-handle = <&pcie_cfg1>;
 				pinctrl-names = "default";
-				pinctrl-0 = <&pinctrl_pcierc_default>;
+				pinctrl-0 = <&pinctrl_pcie1rc_default>;
 
 				status = "disabled";
 			};
@@ -1923,8 +1926,13 @@
 		groups = "WDTRST2";
 	};
 
-	pinctrl_pcierc_default: pcierc_default {
-		function = "PCIERC";
-		groups = "PCIERC";
+	pinctrl_pcie0rc_default: pcie0rc_default {
+                function = "PCIE0RC";
+                groups = "PCIE0RC";
+        };
+
+	pinctrl_pcie1rc_default: pcie1rc_default {
+		function = "PCIE1RC";
+		groups = "PCIE1RC";
         };
 };
