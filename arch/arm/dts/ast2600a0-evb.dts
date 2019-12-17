@@ -109,7 +109,7 @@
 &mac3 {
 	status = "okay";
 	phy-mode = "rgmii";
-	phy-handle = <&ethphy2>;
+	phy-handle = <&ethphy4>;
 	pinctrl-names = "default";
 	pinctrl-0 = <&pinctrl_rgmii4_default &pinctrl_mac4link_default &pinctrl_mdio4_default>;	
 };
