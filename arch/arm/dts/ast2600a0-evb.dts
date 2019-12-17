@@ -270,6 +270,11 @@
 };
 
 #if 0
+&pcie_bridge0 {
+	status = "okay";
+};
+#endif
+
 &pcie_bridge1 {
 	status = "okay";
 };
@@ -277,7 +282,6 @@
 &h2x {
 	status = "okay";
 };
-#endif
 
 #if 0
 &fsim0 {
@@ -288,3 +292,7 @@
 	status = "okay";
 };
 #endif
+
+&ehci1 {
+	status = "okay";
+};

@@ -17,10 +17,6 @@
 #define CONFIG_SYS_PCI_CACHE_LINE_SIZE	8
 #endif
 
-#ifdef CONFIG_ARCH_ASPEED
-void aspeed_pcie_workaround(void);
-#endif
-
 void dm_pciauto_setup_device(struct udevice *dev, int bars_num,
 			     struct pci_region *mem,
 			     struct pci_region *prefetch, struct pci_region *io,
@@ -36,10 +32,6 @@ void dm_pciauto_setup_device(struct udevice *dev, int bars_num,
 	struct pci_region *bar_res = NULL;
 	int found_mem64 = 0;
 	u16 class;
-
-#ifdef CONFIG_ARCH_ASPEED
-	aspeed_pcie_workaround();
-#endif
 
 	dm_pci_read_config16(dev, PCI_COMMAND, &cmdstat);
 	cmdstat = (cmdstat & ~(PCI_COMMAND_IO | PCI_COMMAND_MEMORY)) |
