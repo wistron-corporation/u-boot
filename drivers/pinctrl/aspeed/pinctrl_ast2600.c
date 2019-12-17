@@ -285,10 +285,6 @@ static struct aspeed_sig_desc spi2quad_link[] = {
 	{ 0x434, GENMASK(31, 30), 0 },
 };
 
-static struct aspeed_sig_desc pcie_rc_reset_link[] = {
-	{ 0x500, BIT(24), 0 },
-};
-
 static struct aspeed_sig_desc fsi1[] = {
 	{ 0xd48, GENMASK(21, 20), 0 },
 };
@@ -305,7 +301,15 @@ static struct aspeed_sig_desc usb2ah_link[] = {
 static struct aspeed_sig_desc usb2bh_link[] = {
 	{ 0x440, BIT(28), 1 },
 	{ 0x440, BIT(29), 0 },
+};
 
+static struct aspeed_sig_desc pcie0rc_link[] = {
+	{ 0x40, BIT(21), 0 },	
+};
+
+static struct aspeed_sig_desc pcie1rc_link[] = {
+	{ 0x40, BIT(19), 0 },
+	{ 0x500, BIT(24), 0 },	//dedicate rc reset
 };
 
 static const struct aspeed_group_config ast2600_groups[] = {
@@ -356,11 +360,12 @@ static const struct aspeed_group_config ast2600_groups[] = {
 	{ "I2C14", ARRAY_SIZE(i2c14_link), i2c14_link },
 	{ "I2C15", ARRAY_SIZE(i2c15_link), i2c15_link },
 	{ "I2C16", ARRAY_SIZE(i2c16_link), i2c16_link },
-	{ "PCIERC", ARRAY_SIZE(pcie_rc_reset_link), pcie_rc_reset_link },
 	{ "FSI1", ARRAY_SIZE(fsi1), fsi1 },
 	{ "FSI2", ARRAY_SIZE(fsi2), fsi2 },
 	{ "USB2AH", ARRAY_SIZE(usb2ah_link), usb2ah_link },
-	{ "USB2BH", ARRAY_SIZE(usb2bh_link), usb2bh_link },	
+	{ "USB2BH", ARRAY_SIZE(usb2bh_link), usb2bh_link },
+	{ "PCIE0RC", ARRAY_SIZE(pcie0rc_link), pcie0rc_link },
+	{ "PCIE1RC", ARRAY_SIZE(pcie1rc_link), pcie1rc_link },	
 };
 
 static int ast2600_pinctrl_get_groups_count(struct udevice *dev)
