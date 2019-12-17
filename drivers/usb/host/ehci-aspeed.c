@@ -16,6 +16,22 @@ struct ehci_aspeed_priv {
 	struct ehci_ctrl ehci;
 };
 
+static void aspeed_ehci_powerup_fixup(struct ehci_ctrl *ctrl,
+				     uint32_t *status_reg, uint32_t *reg)
+{
+	mdelay(50);
+	/* This is to avoid PORT_ENABLE bit to be cleared in "ehci-hcd.c". */
+	*reg |= EHCI_PS_PE;
+
+	/* For EHCI_PS_CSC to be cleared in ehci_hcd.c */
+	if (ehci_readl(status_reg) & EHCI_PS_CSC)
+		*reg |= EHCI_PS_CSC;
+}
+
+static const struct ehci_ops aspeed_ehci_ops = {
+	.powerup_fixup		= aspeed_ehci_powerup_fixup,
+};
+
 static int ehci_aspeed_probe(struct udevice *dev)
 {
 	struct ehci_hccr *hccr;
@@ -49,7 +65,7 @@ static int ehci_aspeed_probe(struct udevice *dev)
 	(u32)hccr, (u32)hcor,
 	(u32)HC_LENGTH(ehci_readl(&hccr->cr_capbase)));
 
-	return ehci_register(dev, hccr, hcor, NULL, 0, USB_INIT_HOST);
+	return ehci_register(dev, hccr, hcor, &aspeed_ehci_ops, 0, USB_INIT_HOST);
 }
 
 static const struct udevice_id ehci_usb_ids[] = {
