@@ -20,11 +20,6 @@
 /* Memory Info */
 #define CONFIG_SYS_LOAD_ADDR		0x83000000
 
-/* Environment */
-#define CONFIG_ENV_SIZE			0x10000
-#define CONFIG_ENV_OFFSET		0x90000
-#define CONFIG_ENV_SECT_SIZE		(4 << 10)
-
 /* SPL */
 #define CONFIG_SPL_TEXT_BASE		0x00000000
 #define CONFIG_SPL_MAX_SIZE			0x00010000

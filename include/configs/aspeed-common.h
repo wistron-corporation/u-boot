@@ -55,6 +55,11 @@
 	"verify=yes\0"	\
 	""
 
+/* Environment */
+#define CONFIG_ENV_SIZE			0x10000
+#define CONFIG_ENV_OFFSET		0xF0000
+#define CONFIG_ENV_SECT_SIZE	(4 << 10)
+
 /*
  * Ethernet related
  */
