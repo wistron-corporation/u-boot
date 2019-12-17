@@ -14,7 +14,7 @@
 
 	aliases {
 		spi0 = &fmc;
-		ethernet0 = &mac1;
+		ethernet0 = &mac0;
 	};
 
 	cpus {
@@ -60,7 +60,7 @@
 	};	
 };
 
-&mac1 {
+&mac0 {
 	status = "okay";
 	phy-mode = "rgmii";
 	phy-handle = <&ethphy1>;
