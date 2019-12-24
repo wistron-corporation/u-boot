@@ -16,6 +16,12 @@ config ASPEED_DDR4_800
 	help
 	  select DDR4 target data rate at 800M
 
+config ASPEED_DDR4_1333
+	bool "DDR4 targets at 1333Mbps"
+	depends on DM && OF_CONTROL && ARCH_ASPEED
+	help
+	  select DDR4 target data rate at 1333M
+
 config ASPEED_DDR4_1600
 	bool "DDR4 targets at 1600Mbps"
 	depends on DM && OF_CONTROL && ARCH_ASPEED
@@ -43,7 +49,7 @@ config ASPEED_BYPASS_SELFTEST
 	bool "bypass self test during DRAM initialization"
 	default n
 	help
-	 Say Y here to bypass DRAM self test to speed up the boot time
+	  Say Y here to bypass DRAM self test to speed up the boot time
 
 config ASPEED_ECC
 	bool "aspeed SDRAM error correcting code"
@@ -58,10 +64,10 @@ config ASPEED_ECC_SIZE
 	depends on ASPEED_ECC
 	default 0
 	help
-		SDRAM size with the error correcting code enabled. The unit is 
-		in Megabytes.  Noted that only the 8/9 of the configured size 
-		can be used by the system.  The remaining 1/9 will be used by 
-		the ECC engine.  If the size is set to 0, the sdram driver will 
-		calculate the SDRAM size and set the whole range be ECC enabled.
+	  SDRAM size with the error correcting code enabled. The unit is 
+	  in Megabytes.  Noted that only the 8/9 of the configured size 
+	  can be used by the system.  The remaining 1/9 will be used by 
+	  the ECC engine.  If the size is set to 0, the sdram driver will 
+	  calculate the SDRAM size and set the whole range be ECC enabled.
 endif
 endif
