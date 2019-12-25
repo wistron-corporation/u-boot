@@ -42,6 +42,7 @@
 #define AST_SCU_HPLL_PARAM	(AST_SCU_BASE + 0x200)
 #define AST_SCU_HPLL_PARAM_EXT	(AST_SCU_BASE + 0x204)
 #define AST_SCU_HW_STRAP1	(AST_SCU_BASE + 0x500)
+#define AST_SCU_HW_STRAP2	(AST_SCU_BASE + 0x510)
 #define AST_SCU_CA7_PARITY_CHK	(AST_SCU_BASE + 0x820)
 #define AST_SCU_CA7_PARITY_CLR	(AST_SCU_BASE + 0x824)
 #define AST_SCU_MMIO_DEC_SET	(AST_SCU_BASE + 0xC24)
@@ -50,6 +51,9 @@
 #define AST_FMC_CE0_CTRL	(AST_FMC_BASE + 0x010)
 #define AST_FMC_WDT1_CTRL_MODE	(AST_FMC_BASE + 0x060)
 #define AST_FMC_WDT2_CTRL_MODE	(AST_FMC_BASE + 0x064)
+
+#define AST_GPIO_BASE		(0x1E780000)
+#define AST_GPIOYZ_DATA_VALUE	(AST_GPIO_BASE + 0x1E0)
 
 /* Revision ID */
 #define REV_ID_AST2600A0	0x05000303
@@ -158,7 +162,22 @@ wait_lock:
 	tst	r1, #0x80000000
 	beq	wait_lock
 
+	b 1f
+
 0:
+	/* LPC/eSPI mode selection for AST2600 A1 */
+	ldr	r0, =AST_GPIOYZ_DATA_VALUE
+	ldr	r0, [r0]
+	tst	r0, #0x1000
+	beq	1f
+
+	/* switch to LPC mode if GPIOZ[4]=1 */
+	ldr	r0, =AST_SCU_HW_STRAP2
+	ldr	r1, [r0]
+	orr	r1, #0x40
+	str	r1, [r0]
+
+1:
 	/* release display port reset */
 	ldr	r0, =AST_SCU_SYSRST_CTRL_CLR
 	movw	r1, #0x0000
