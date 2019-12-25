@@ -45,6 +45,12 @@ config TARGET_FPGA_AST2600
 	  This is mainly for internal development. Note that
 	  most implementation is co-code with EVB-AST2600.
 
+config TARGET_SLT_AST2600
+	bool "SLT-AST2600"
+	depends on ASPEED_AST2600
+	help
+	  SLT-AST2600 is Aspeed SLT board for AST2600 chip.
+
 endchoice
 
 source "board/aspeed/evb_ast2600a0/Kconfig"
@@ -52,5 +58,6 @@ source "board/aspeed/evb_ast2600a1/Kconfig"
 source "board/aspeed/ncsi_ast2600a0/Kconfig"
 source "board/aspeed/ncsi_ast2600a1/Kconfig"
 source "board/aspeed/fpga_ast2600/Kconfig"
+source "board/aspeed/slt_ast2600/Kconfig"
 
 endif
