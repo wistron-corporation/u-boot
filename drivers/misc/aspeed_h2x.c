@@ -130,7 +130,7 @@ extern void aspeed_pcie_cfg_read(void *rc_offset, pci_dev_t bdf, uint offset, ul
 	while(!(readl(&h2x_priv->h2x->h2x_reg24) & PCIE_TX_IDLE)) {
 		timeout++;
 		if(timeout > 1000) {
-			printf("time out b : %d, d : %d, f: %d \n", PCI_BUS(bdf), PCI_DEV(bdf), PCI_FUNC(bdf));
+//			printf("time out b : %d, d : %d, f: %d \n", PCI_BUS(bdf), PCI_DEV(bdf), PCI_FUNC(bdf));
 			*valuep = 0xffffffff;
 			goto out;
 		}
