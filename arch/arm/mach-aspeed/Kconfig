@@ -36,6 +36,19 @@ config ASPEED_AST2600
 	  which is enabled by support of LPC and eSPI peripherals.
 endchoice
 
+config SECURE_BOOT
+	bool "Support Aspeed seucre boot feature"
+	depends on SPL && ASPEED_AST2600
+	help
+	  This option enables the support for secure boot.
+
+config SECURE_BOOT_TEXT_BASE
+	hex "Secure boot text base"
+	depends on SECURE_BOOT
+	help
+	  The address in memory where the secure boot verification
+	  on U-Boot image will be performed.
+
 source "arch/arm/mach-aspeed/ast2500/Kconfig"
 source "arch/arm/mach-aspeed/ast2600/Kconfig"
 
