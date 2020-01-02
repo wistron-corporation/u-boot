@@ -13,6 +13,7 @@ DECLARE_GLOBAL_DATA_PTR;
 #define AST_GPIOABCD_DRCTN	(AST_GPIO_BASE + 0x004)
 #define AST_GPIOEFGH_DRCTN	(AST_GPIO_BASE + 0x024)
 #define AST_GPIOMNOP_DRCTN	(AST_GPIO_BASE + 0x07C)
+#define AST_GPIOQRST_DRCTN	(AST_GPIO_BASE + 0x084)
 #define AST_GPIOUVWX_DRCTN	(AST_GPIO_BASE + 0x08C)
 #define AST_GPIOYZ_DRCTN	(AST_GPIO_BASE + 0x1E4)
 
@@ -39,6 +40,28 @@ int board_init(void)
 		if (ret)
 			break;
 	}
+
+	/*
+	 * in FT/SLT board, 4 MDIO channels are all connected to a single PHY
+	 * chip.  So only one MDIO channel can access the PHY chip at a time and
+	 * the pins of the channels that are not under testing will be set to 
+	 * GPIO input.  So simply the test program in Linux kernel, we configure
+	 * GPIO setting here.
+	 * 
+	 * GPIOS[1:0] -> MDC1 & MDIO1
+	 * GPIOB[5:4] -> MDC2 & MDIO2
+	 * GPIOA[1:0] -> MDC3 & MDIO3
+	 * GPIOA[3:2] -> MDC4 & MDIO4
+	*/
+	/* GPIOS[1:0] */
+	direction = readl(AST_GPIOQRST_DRCTN);
+	direction &= ~GENMASK(17, 16);
+	writel(direction, AST_GPIOQRST_DRCTN);
+
+	/* GPIOA[3:0] and GPIOB[5:4] */
+	direction = readl(AST_GPIOABCD_DRCTN);
+	direction &= ~(GENMASK(3, 0) | GENMASK(13, 12));
+	writel(direction, AST_GPIOABCD_DRCTN);
 
 	/* 
 	 * set 32 GPIO ouput pins for ATE report 
