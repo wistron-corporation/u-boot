@@ -44,6 +44,12 @@ u32 spl_boot_device(void)
 
 struct image_header *spl_get_load_buffer(ssize_t offset, size_t size)
 {
+#ifdef CONFIG_SECURE_BOOT
+	void *dst = (void*)CONFIG_SYS_UBOOT_START;
+	void *src = (void*)CONFIG_SYS_TEXT_BASE;
+	u32 count = CONFIG_SYS_MONITOR_LEN;
+	memmove(dst, src, count);
+#endif
     return (struct image_header *)(CONFIG_SYS_TEXT_BASE);
 }
 
