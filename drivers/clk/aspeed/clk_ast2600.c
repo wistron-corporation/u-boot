@@ -600,7 +600,6 @@ static u32 ast2600_configure_mac12_clk(struct ast2600_scu *scu)
 
 static u32 ast2600_configure_mac34_clk(struct ast2600_scu *scu)
 {
-	ast2600_configure_mac12_clk(scu);
 
 	/*
 	 * scu350[31]   RGMII 125M source: 0 = from IO pin
@@ -817,30 +816,6 @@ static u32 ast2600_configure_mac(struct ast2600_scu *scu, int index)
 {
 	u32 reset_bit;
 	u32 clkstop_bit;
-
-	/* check board level setup */
-	u32 mac_1_2_cfg = readl(&scu->hwstrap1) & GENMASK(7, 6);
-	u32 mac_3_4_cfg = readl(&scu->hwstrap2) & GENMASK(1, 0);
-
-	if ((mac_1_2_cfg == 0) && (mac_3_4_cfg != 0)) {
-		/**
-		 * HW limitation:
-		 * impossible to set MAC 3/4 = RGMII when MAC 1/2 = RMII
-		*/
-		printf("%s: unsupported configuration\n", __func__);
-		return -EINVAL;
-	} else if (mac_1_2_cfg | mac_3_4_cfg) {
-		/* setup RGMII clock */
-		ast2600_init_rgmii_clk(scu, &rgmii_clk_defconfig);
-	} else {
-		/* setup RMII clock */
-		ast2600_init_rmii_clk(scu, &rmii_clk_defconfig);
-	}
-
-	if (index < 3)
-		ast2600_configure_mac12_clk(scu);
-	else
-		ast2600_configure_mac34_clk(scu);
 
 	switch (index) {
 	case 1:
@@ -1116,6 +1091,12 @@ static int ast2600_clk_probe(struct udevice *dev)
 		if(uart_clk_source & GENMASK(12, 6))
 			setbits_le32(&priv->scu->clk_sel5, uart_clk_source & GENMASK(12, 6));
 	}
+
+	
+	ast2600_init_rgmii_clk(priv->scu, &rgmii_clk_defconfig);	
+	ast2600_init_rmii_clk(priv->scu, &rmii_clk_defconfig);
+	ast2600_configure_mac12_clk(priv->scu);
+	ast2600_configure_mac34_clk(priv->scu);
 
 	return 0;
 }
