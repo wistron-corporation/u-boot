@@ -12,8 +12,9 @@
 
 DECLARE_GLOBAL_DATA_PTR;
 
-#define AST_BOOTMODE_SPI  0
-#define AST_BOOTMODE_EMMC 1
+#define AST_BOOTMODE_SPI	0
+#define AST_BOOTMODE_EMMC	1
+#define AST_BOOTMODE_UART	2
 
 u32 aspeed_bootmode(void);
 
@@ -30,12 +31,12 @@ void board_init_f(ulong dummy)
 u32 spl_boot_device(void)
 {
 	switch(aspeed_bootmode()) {
-#ifdef CONFIG_SPL_MMC_SUPPORT
 		case AST_BOOTMODE_EMMC:
 			return BOOT_DEVICE_MMC1;
-#endif
 		case AST_BOOTMODE_SPI:
 			return BOOT_DEVICE_RAM;
+		case AST_BOOTMODE_UART:
+			return BOOT_DEVICE_UART;
 		default:
 			break;
 	}
