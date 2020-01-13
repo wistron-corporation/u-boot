@@ -14,7 +14,6 @@ int print_cpuinfo(void)
 {
 	aspeed_print_soc_id();
 	aspeed_print_sysrst_info();
-	aspeed_print_sysrst_info();
 	aspeed_print_security_info();
 	aspeed_print_2nd_wdt_mode();
 	aspeed_print_spi_strap_mode();
