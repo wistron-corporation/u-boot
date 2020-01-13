@@ -73,8 +73,16 @@
 	movw	r0, #0xF080
 	movt	r0, #0x2FA
 #else
-	movw 	r0, #0x32c0
-	movt	r0, #0x4013
+	ldr	r0, =AST_SCU_REV_ID
+	ldr	r0, [r0]
+
+	ldr	r1, =REV_ID_AST2600A0
+	cmp	r0, r1
+
+	movweq 	r0, #0x32C0
+	movteq	r0, #0x4013
+	movwne	r0, #0x8C00
+	movtne	r0, #0x4786
 #endif
 	mcr	p15, 0, r0, c14, c0, 0	@; update CNTFRQ
 .endm
