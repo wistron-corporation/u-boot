@@ -194,7 +194,7 @@ wait_lock:
 	ldr	r1, =AST_SCU_CA7_PARITY_CLR
 	str	r0, [r1]
 
-	mov	r0, #0x11
+	mov	r0, #0x1
 	ldr	r1, =AST_SCU_CA7_PARITY_CHK
 	str	r0, [r1]
 
