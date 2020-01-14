@@ -9,6 +9,7 @@
 
 #include <asm/io.h>
 #include <asm/spl.h>
+#include <asm/arch/aspeed_verify.h>
 
 DECLARE_GLOBAL_DATA_PTR;
 
@@ -50,6 +51,9 @@ struct image_header *spl_get_load_buffer(ssize_t offset, size_t size)
 	void *src = (void*)CONFIG_SYS_TEXT_BASE;
 	u32 count = CONFIG_SYS_MONITOR_LEN;
 	memmove(dst, src, count);
+	if (aspeed_bl2_verify(dst, CONFIG_SPL_TEXT_BASE) != 0)
+		hang();
+	
 #endif
     return (struct image_header *)(CONFIG_SYS_TEXT_BASE);
 }
