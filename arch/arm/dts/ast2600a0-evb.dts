@@ -80,15 +80,6 @@
 	};
 };
 
-#if 0
-&mac0 {
-	status = "okay";
-	phy-mode = "rgmii";
-	phy-handle = <&ethphy1>;
-	pinctrl-names = "default";
-	pinctrl-0 = <&pinctrl_rgmii1_default &pinctrl_mac1link_default &pinctrl_mdio1_default>;
-};
-#endif
 
 &mac1 {
 	status = "okay";
@@ -137,11 +128,11 @@
 	};
 
 	flash@2 {
-        compatible = "spi-flash", "sst,w25q256";
-        status = "okay";
-        spi-max-frequency = <50000000>;
-        spi-tx-bus-width = <4>;
-        spi-rx-bus-width = <4>;
+		compatible = "spi-flash", "sst,w25q256";
+		status = "okay";
+		spi-max-frequency = <50000000>;
+		spi-tx-bus-width = <4>;
+		spi-rx-bus-width = <4>;
 	};
 };
 
