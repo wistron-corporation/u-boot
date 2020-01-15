@@ -33,11 +33,13 @@ static int aspeed_sdhci_probe(struct udevice *dev)
 	struct mmc_uclass_priv *upriv = dev_get_uclass_priv(dev);
 	struct aspeed_sdhci_plat *plat = dev_get_platdata(dev);
 	struct aspeed_sdhci_priv *prv = dev_get_priv(dev);
-	int node = dev_of_offset(dev);
 	struct sdhci_host *host = prv->host;
 	unsigned long clock;
 	struct clk clk;
 	int ret;
+#ifndef CONFIG_SPL_BUILD
+	int node = dev_of_offset(dev);
+#endif
 
 	ret = clk_get_by_index(dev, 0, &clk);
 	if (ret < 0) {
