@@ -165,12 +165,12 @@ struct dram_info {
 static void ast2600_sdramphy_kick_training(struct dram_info *info)
 {
 #if !defined(CONFIG_FPGA_ASPEED) && !defined(CONFIG_ASPEED_PALLADIUM)
-        struct ast2600_sdrammc_regs *regs = info->regs;
-        u32 volatile data;
-	
-        writel(SDRAM_PHYCTRL0_NRST, &regs->phy_ctrl[0]);
-	udelay(5);
-        writel(SDRAM_PHYCTRL0_NRST | SDRAM_PHYCTRL0_INIT, &regs->phy_ctrl[0]);
+	struct ast2600_sdrammc_regs *regs = info->regs;
+	u32 volatile data;
+
+	writel(SDRAM_PHYCTRL0_NRST, &regs->phy_ctrl[0]);
+	udelaay(5);
+	writel(SDRAM_PHYCTRL0_NRST | SDRAM_PHYCTRL0_INIT, &regs->phy_ctrl[0]);
 	udelay(1000);
 
 	while (1) {
@@ -187,7 +187,7 @@ static void ast2600_sdramphy_kick_training(struct dram_info *info)
 			break;
 		}
 	}
-#endif	
+#endif
 #endif
 }
 
