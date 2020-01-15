@@ -169,7 +169,7 @@ static void ast2600_sdramphy_kick_training(struct dram_info *info)
 	u32 volatile data;
 
 	writel(SDRAM_PHYCTRL0_NRST, &regs->phy_ctrl[0]);
-	udelaay(5);
+	udelay(5);
 	writel(SDRAM_PHYCTRL0_NRST | SDRAM_PHYCTRL0_INIT, &regs->phy_ctrl[0]);
 	udelay(1000);
 
