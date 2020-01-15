@@ -56,6 +56,9 @@
 	""
 
 /* Environment */
+#ifdef CONFIG_ASPEED_PALLADIUM
+#define CONFIG_ENV_IS_NOWHERE
+#endif
 #define CONFIG_ENV_SIZE			0x10000
 #define CONFIG_ENV_OFFSET		0xF0000
 #define CONFIG_ENV_SECT_SIZE	(4 << 10)
