@@ -231,7 +231,10 @@ static int aspeed_gpio_get_value(struct udevice *dev, unsigned offset)
 	struct aspeed_gpio_priv *priv = dev_get_priv(dev);
 	const struct aspeed_gpio_bank *bank = to_bank(offset);
 
-	return !!(readl(bank_reg(priv, bank, reg_val)) & GPIO_BIT(offset));
+	if(readl(bank_reg(priv, bank, reg_val)) & GPIO_BIT(offset))
+		return 1;
+	else
+		return 0;
 }
 
 static int aspeed_gpio_set_value(struct udevice *dev, unsigned offset,
