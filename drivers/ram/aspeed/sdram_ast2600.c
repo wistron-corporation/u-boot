@@ -438,7 +438,7 @@ static int ast2600_sdrammc_test(struct dram_info *info)
 #endif
 /**
  * scu500[14:13]
- * 	2b'00: VGA memory size = 8MB
+ * 	2b'00: VGA memory size = 16MB
  * 	2b'01: VGA memory size = 16MB
  * 	2b'10: VGA memory size = 32MB
  * 	2b'11: VGA memory size = 64MB
@@ -457,6 +457,8 @@ static size_t ast2600_sdrammc_get_vga_mem_size(struct dram_info *info)
 	vga_hwconf =
 	    (readl(info->scu + AST_SCU_HW_STRAP) & SCU_HWSTRAP_VGAMEM_MASK) >>
 	    SCU_HWSTRAP_VGAMEM_SHIFT;	
+
+	vga_hwconf = (vga_hwconf == 0) ? 1 : vga_hwconf;
 
 	clrsetbits_le32(&info->regs->config, SDRAM_CONF_VGA_SIZE_MASK,
 			((vga_hwconf << SDRAM_CONF_VGA_SIZE_SHIFT) &
