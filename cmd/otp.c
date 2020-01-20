@@ -125,7 +125,7 @@ struct otpstrap_info a0_strap_info[] = {
 	{ 2, 1, 1, "Enable Boot from debug SPI" },
 	{ 3, 1, 0, "Enable ARM CM3" },
 	{ 3, 1, 1, "Disable ARM CM3" },
-	{ 4, 1, 0, "No VGA BISO ROM, VGA BIOS is merged in the system BIOS" },
+	{ 4, 1, 0, "No VGA BIOS ROM, VGA BIOS is merged in the system BIOS" },
 	{ 4, 1, 1, "Enable dedicated VGA BIOS ROM" },
 	{ 5, 1, 0, "MAC 1 : RMII/NCSI" },
 	{ 5, 1, 1, "MAC 1 : RGMII" },
@@ -246,7 +246,7 @@ struct otpconf_info a0_conf_info[] = {
 	{ 0, 7,  1,  0, "Secure Boot Mode: 1" },
 	{ 0, 7,  1,  1, "Secure Boot Mode: 2" },
 	{ 0, 8,  2,  0, "Single cell mode (recommended)" },
-	{ 0, 8,  2,  1, "Differnetial mode" },
+	{ 0, 8,  2,  1, "Differential mode" },
 	{ 0, 8,  2,  2, "Differential-redundant mode" },
 	{ 0, 10, 2,  0, "RSA mode : RSA1024" },
 	{ 0, 10, 2,  1, "RSA mode : RSA2048" },
@@ -548,7 +548,7 @@ static void otp_prog_dw(uint32_t value, uint32_t keep, uint32_t prog_address)
 }
 
 
-static void otp_strp_status(struct otpstrap_status *otpstrap)
+static void otp_strap_status(struct otpstrap_status *otpstrap)
 {
 	uint32_t OTPSTRAP_RAW[2];
 	int i, j;
@@ -822,7 +822,7 @@ static int otp_print_strap_info(int view)
 	uint32_t otp_value;
 	uint32_t otp_protect;
 
-	otp_strp_status(strap_status);
+	otp_strap_status(strap_status);
 
 	if (view) {
 		// printf("BIT(hex) Value  Option         Protect   Description\n");
@@ -1103,7 +1103,7 @@ static int otp_strap_image_confirm(uint32_t *buf)
 	int skip = -1;
 	struct otpstrap_status otpstrap[64];
 
-	otp_strp_status(otpstrap);
+	otp_strap_status(otpstrap);
 	for (i = 0; i < 64; i++) {
 		if (i < 32) {
 			bit = (buf[0] >> i) & 0x1;
@@ -1162,7 +1162,7 @@ static int otp_print_strap(int start, int count)
 	if ((start + count) < 0 || (start + count) > 64)
 		return OTP_USAGE;
 
-	otp_strp_status(otpstrap);
+	otp_strap_status(otpstrap);
 
 	printf("BIT(hex)  Value  Option           Status\n");
 	printf("___________________________________________________________________________\n");
@@ -1202,7 +1202,7 @@ static int otp_prog_strap(uint32_t *buf)
 	struct otpstrap_status otpstrap[64];
 
 	printf("Read OTP Strap Region:\n");
-	otp_strp_status(otpstrap);
+	otp_strap_status(otpstrap);
 
 	printf("Check writable...\n");
 	if (otp_strap_image_confirm(buf) == OTP_FAILURE) {
@@ -1591,7 +1591,7 @@ static int do_otp_prog_bit(int mode, int otp_dw_offset, int bit_offset, int valu
 		printf("Program OTPDATA%X[%X] to 1\n", otp_dw_offset, bit_offset);
 		break;
 	case OTP_REGION_STRAP:
-		otp_strp_status(otpstrap);
+		otp_strap_status(otpstrap);
 		otp_print_strap(bit_offset, 1);
 		if (bit_offset < 32) {
 			strap_buf[0] = value << bit_offset;
