@@ -35,6 +35,12 @@ DECLARE_GLOBAL_DATA_PTR;
 
 #define OTP_PROG_SKIP			1
 
+#define OTP_KEY_TYPE_RSA		1
+#define OTP_KEY_TYPE_AES		2
+#define OTP_KEY_TYPE_VAULT		3
+#define OTP_KEY_TYPE_HMAC		4
+
+
 #define OTP_REG_RESERVED		-1
 #define OTP_REG_VALUE			-2
 #define OTP_REG_VALID_BIT		-3
@@ -74,6 +80,23 @@ struct otpconf_info {
 	char information[80];
 };
 
+struct otpkey_type {
+	int value;
+	int key_type;
+	int need_id;
+	char information[110];
+};
+
+struct otp_info_cb {
+	int version;
+	struct otpstrap_info *strap_info;
+	int strap_info_len;
+	struct otpconf_info *conf_info;
+	int conf_info_len;
+	struct otpkey_type *key_info;
+	int key_info_len;
+};
+
 void printProgress(int numerator, int denominator, char *format, ...)
 {
 	int val = numerator * 100 / denominator;
@@ -90,6 +113,8 @@ void printProgress(int numerator, int denominator, char *format, ...)
 	if (numerator == denominator)
 		printf("\n");
 }
+
+static struct otp_info_cb info_cb;
 
 struct otpstrap_info a0_strap_info[] = {
 	{ 0, 1, 0, "Disable secure boot" },
@@ -202,6 +227,7 @@ struct otpstrap_info a0_strap_info[] = {
 	{ 62, 1, 1, "Enable dedicate GPIO strap pins" },
 	{ 63, 1, OTP_REG_RESERVED, "" }
 };
+
 struct otpconf_info a0_conf_info[] = {
 	{ 0, 0,  1,  0, "Enable Secure Region programming" },
 	{ 0, 0,  1,  1, "Disable Secure Region programming" },
@@ -286,6 +312,35 @@ struct otpconf_info a0_conf_info[] = {
 	{ 10, 0, 32, OTP_REG_VALUE, "Manifest ID low : 0x%x" },
 	{ 11, 0, 32, OTP_REG_VALUE, "Manifest ID high : 0x%x" }
 };
+
+struct otpkey_type a0_key_type[] = {
+	{0, OTP_KEY_TYPE_AES,   0, "AES-256 as OEM platform key for image encryption/decryption"},
+	{1, OTP_KEY_TYPE_VAULT, 0, "AES-256 as secret vault key"},
+	{4, OTP_KEY_TYPE_HMAC,  1, "HMAC as encrypted OEM HMAC keys in Mode 1"},
+	{8, OTP_KEY_TYPE_RSA,   1, "RSA-public as OEM DSS public keys in Mode 2"},
+	{9, OTP_KEY_TYPE_RSA,   0, "RSA-public as SOC public key"},
+	{10, OTP_KEY_TYPE_RSA,  0, "RSA-public as AES key decryption key"},
+	{13, OTP_KEY_TYPE_RSA,  0, "RSA-private as SOC private key"},
+	{14, OTP_KEY_TYPE_RSA,  0, "RSA-private as AES key decryption key"},
+};
+
+struct otpkey_type a1_key_type[] = {
+	{1, OTP_KEY_TYPE_VAULT, 0, "AES-256 as secret vault key"},
+	{2, OTP_KEY_TYPE_AES,   1, "AES-256 as OEM platform key for image encryption/decryption in Mode 2 or AES-256 as OEM DSS keys for Mode GCM"},
+	{8, OTP_KEY_TYPE_RSA,   1, "RSA-public as OEM DSS public keys in Mode 2"},
+	{10, OTP_KEY_TYPE_RSA,  0, "RSA-public as AES key decryption key"},
+	{14, OTP_KEY_TYPE_RSA,  0, "RSA-private as AES key decryption key"},
+};
+
+static uint32_t chip_version(void)
+{
+	uint32_t rev_id;
+
+	rev_id = (readl(0x1e6e2004) >> 16) & 0xff ;
+
+	return rev_id;
+}
+
 static void otp_read_data(uint32_t offset, uint32_t *data)
 {
 	writel(offset, 0x1e6f2010); //Read address
@@ -852,8 +907,11 @@ static void buf_print(char *buf, int len)
 static int otp_print_data_info(uint32_t *buf)
 {
 	int key_id, key_offset, last, key_type, key_length, exp_length;
+	struct otpkey_type *key_info_array = info_cb.key_info;
+	struct otpkey_type key_info;
 	char *byte_buf;
 	int i = 0, len = 0;
+	int j;
 	byte_buf = (char *)buf;
 	while (1) {
 		key_id = buf[i] & 0x7;
@@ -862,38 +920,19 @@ static int otp_print_data_info(uint32_t *buf)
 		key_type = (buf[i] >> 14) & 0xf;
 		key_length = (buf[i] >> 18) & 0x3;
 		exp_length = (buf[i] >> 20) & 0xfff;
+
+		for (j = 0; j < info_cb.key_info_len; j++) {
+			if (key_type == key_info_array[j].value) {
+				key_info = key_info_array[j];
+				break;
+			}
+		}
+
 		printf("\nKey[%d]:\n", i);
 		printf("Key Type: ");
-		switch (key_type) {
-		case 0:
-			printf("AES-256 as OEM platform key for image encryption/decryption\n");
-			break;
-		case 1:
-			printf("AES-256 as secret vault key\n");
-			break;
-		case 4:
-			printf("HMAC as encrypted OEM HMAC keys in Mode 1\n");
-			break;
-		case 8:
-			printf("RSA-public as OEM DSS public keys in Mode 2\n");
-			break;
-		case 9:
-			printf("RSA-public as SOC public key\n");
-			break;
-		case 10:
-			printf("RSA-public as AES key decryption key\n");
-			break;
-		case 13:
-			printf("RSA-private as SOC private key\n");
-			break;
-		case 14:
-			printf("RSA-private as AES key decryption key\n");
-			break;
-		default:
-			printf("key_type error: %x\n", key_type);
-			return -1;
-		}
-		if (key_type == 4) {
+		printf("%s\n", key_info.information);
+
+		if (key_info.key_type == OTP_KEY_TYPE_HMAC) {
 			printf("HMAC SHA Type: ");
 			switch (key_length) {
 			case 0:
@@ -909,7 +948,7 @@ static int otp_print_data_info(uint32_t *buf)
 				printf("HMAC(SHA512)\n");
 				break;
 			}
-		} else if (key_type != 0 && key_type != 1) {
+		} else if (key_info.key_type == OTP_KEY_TYPE_RSA) {
 			printf("RSA SHA Type: ");
 			switch (key_length) {
 			case 0:
@@ -931,18 +970,33 @@ static int otp_print_data_info(uint32_t *buf)
 			}
 			printf("RSA exponent bit length: %d\n", exp_length);
 		}
-		if (key_type == 4 || key_type == 8)
+		if (key_info.need_id)
 			printf("Key Number ID: %d\n", key_id);
 		printf("Key Value:\n");
-		if (key_type == 4) {
+		if (key_info.key_type == OTP_KEY_TYPE_HMAC) {
 			buf_print(&byte_buf[key_offset], 0x40);
-		} else if (key_type == 0 || key_type == 1) {
+		} else if (key_info.key_type == OTP_KEY_TYPE_AES) {
 			printf("AES Key:\n");
 			buf_print(&byte_buf[key_offset], 0x20);
-			printf("AES IV:\n");
-			buf_print(&byte_buf[key_offset + 0x20], 0x10);
+			if (info_cb.version == 0) {
+				printf("AES IV:\n");
+				buf_print(&byte_buf[key_offset + 0x20], 0x10);
+			}
 
-		} else {
+		} else if (key_info.key_type == OTP_KEY_TYPE_VAULT) {
+			if (info_cb.version == 0) {
+				printf("AES Key:\n");
+				buf_print(&byte_buf[key_offset], 0x20);
+				printf("AES IV:\n");
+				buf_print(&byte_buf[key_offset + 0x20], 0x10);
+			} else if (info_cb.version == 1) {
+				printf("AES Key 1:\n");
+				buf_print(&byte_buf[key_offset], 0x20);
+				printf("AES Key 2:\n");
+				buf_print(&byte_buf[key_offset + 0x20], 0x20);
+			}
+
+		} else if (key_info.key_type == OTP_KEY_TYPE_RSA) {
 			printf("RSA mod:\n");
 			buf_print(&byte_buf[key_offset], len / 2);
 			printf("RSA exp:\n");
@@ -1390,6 +1444,7 @@ static int do_otp_prog(int addr, int byte_size, int nconfirm)
 {
 	int ret;
 	int mode = 0;
+	int image_version = 0;
 	uint32_t *buf;
 	uint32_t *data_region = NULL;
 	uint32_t *conf_region = NULL;
@@ -1398,6 +1453,12 @@ static int do_otp_prog(int addr, int byte_size, int nconfirm)
 	buf = map_physmem(addr, byte_size, MAP_WRBACK);
 	if (!buf) {
 		puts("Failed to map physical memory\n");
+		return OTP_FAILURE;
+	}
+
+	image_version = buf[0] & 0x3;
+	if (image_version != info_cb.version) {
+		puts("Version is not match\n");
 		return OTP_FAILURE;
 	}
 
@@ -1826,6 +1887,7 @@ static int do_otpprotect(cmd_tbl_t *cmdtp, int flag, int argc, char *const argv[
 	return CMD_RET_FAILURE;
 
 }
+
 static cmd_tbl_t cmd_otp[] = {
 	U_BOOT_CMD_MKENT(read, 4, 0, do_otpread, "", ""),
 	U_BOOT_CMD_MKENT(info, 3, 0, do_otpinfo, "", ""),
@@ -1849,6 +1911,24 @@ static int do_ast_otp(cmd_tbl_t *cmdtp, int flag, int argc, char *const argv[])
 		return CMD_RET_USAGE;
 	if (flag == CMD_FLAG_REPEAT && !cmd_is_repeatable(cp))
 		return CMD_RET_SUCCESS;
+
+	if (chip_version() == 0) {
+		info_cb.version = 0;
+		info_cb.conf_info = a0_conf_info;
+		info_cb.conf_info_len = ARRAY_SIZE(a0_conf_info);
+		info_cb.strap_info = a0_strap_info;
+		info_cb.strap_info_len = ARRAY_SIZE(a0_strap_info);
+		info_cb.key_info = a0_key_type;
+		info_cb.key_info_len = ARRAY_SIZE(a0_key_type);
+	} else if (chip_version() == 1) {
+		info_cb.version = 1;
+		info_cb.conf_info = a0_conf_info;
+		info_cb.conf_info_len = ARRAY_SIZE(a0_conf_info);
+		info_cb.strap_info = a0_strap_info;
+		info_cb.strap_info_len = ARRAY_SIZE(a0_strap_info);
+		info_cb.key_info = a1_key_type;
+		info_cb.key_info_len = ARRAY_SIZE(a1_key_type);
+	}
 
 	return cp->cmd(cmdtp, flag, argc, argv);
 }
