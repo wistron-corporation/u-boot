@@ -1239,6 +1239,7 @@ uint32_t test_start(MAC_ENGINE *p_eng, PHY_ENGINE *p_phy_eng)
 	for (speed = 0; speed < 3; speed++) {
 		p_eng->flg.print_en = 1;
 		p_eng->run.speed_idx = speed;
+		mac_set_scan_boundary(p_eng);
 		if (0 == p_eng->run.speed_sel[speed]) {
 			continue;
 		}
