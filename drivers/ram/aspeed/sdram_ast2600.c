@@ -760,7 +760,7 @@ static void ast2600_sdrammc_common_init(struct ast2600_sdrammc_regs *regs)
         writel(0x07FFFFFF, &regs->ecc_range_ctrl);
 
         writel(0, &regs->ecc_test_ctrl);
-        writel(0, &regs->test_addr);
+        writel(0x80000001, &regs->test_addr);
         writel(0, &regs->test_fail_dq_bit);
         writel(0, &regs->test_init_val);
 
@@ -809,7 +809,7 @@ static void ast2600_sdrammc_ecc_enable(struct dram_info *info)
 	writel(reg, &regs->config);
 
 	writel(0, &regs->test_init_val);
-	writel(0, &regs->test_addr);
+	writel(0x80000001, &regs->test_addr);
 	writel(0x221, &regs->ecc_test_ctrl);
 	while (0 == (readl(&regs->ecc_test_ctrl) & BIT(12)))
 		;
