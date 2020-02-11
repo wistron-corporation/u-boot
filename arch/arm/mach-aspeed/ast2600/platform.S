@@ -240,17 +240,16 @@ wait_lock:
 	ldr	r1, =AST_FMC_CE0_CTRL
 	str	r0, [r1]
 
-	/* disable UART-based SoC Debug Interface */
-	/* UART5 */
+	/* disable UART-based SoC Debug Interface UART5 and P2A bridge*/
 	ldr     r0, =AST_SCU_DEBUG_CTRL
 	ldr     r1, [r0]
-	orr     r1, #0x02
+	orr     r1, #0x03
 	str     r1, [r0]
 	
-	/* UART1 */
+	/* disable UART-based SoC Debug Interface UART1 and LPC2AHB bridge */
 	ldr     r0, =AST_SCU_DEBUG_CTRL2
 	ldr     r1, [r0]
-	orr     r1, #0x08
+	orr     r1, #0x0A
 	str     r1, [r0]
 
 	/* relocate mailbox insn. for cpuN polling SMP go signal */
