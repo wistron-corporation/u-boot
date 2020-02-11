@@ -39,6 +39,8 @@
 #define AST_SCU_REV_ID			(AST_SCU_BASE + 0x014)
 #define AST_SCU_SYSRST_CTRL		(AST_SCU_BASE + 0x040)
 #define AST_SCU_SYSRST_CTRL_CLR		(AST_SCU_BASE + 0x044)
+#define AST_SCU_DEBUG_CTRL              (AST_SCU_BASE + 0x0C8)
+#define AST_SCU_DEBUG_CTRL2             (AST_SCU_BASE + 0x0D8)
 #define AST_SCU_HPLL_PARAM		(AST_SCU_BASE + 0x200)
 #define AST_SCU_HPLL_PARAM_EXT		(AST_SCU_BASE + 0x204)
 #define AST_SCU_HW_STRAP1		(AST_SCU_BASE + 0x500)
@@ -237,6 +239,19 @@ wait_lock:
 	movt	r0, #0x203B
 	ldr	r1, =AST_FMC_CE0_CTRL
 	str	r0, [r1]
+
+	/* disable UART-based SoC Debug Interface */
+	/* UART5 */
+	ldr     r0, =AST_SCU_DEBUG_CTRL
+	ldr     r1, [r0]
+	orr     r1, #0x02
+	str     r1, [r0]
+	
+	/* UART1 */
+	ldr     r0, =AST_SCU_DEBUG_CTRL2
+	ldr     r1, [r0]
+	orr     r1, #0x08
+	str     r1, [r0]
 
 	/* relocate mailbox insn. for cpuN polling SMP go signal */
 	adrl	r0, mailbox_insn
