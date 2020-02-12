@@ -94,7 +94,7 @@ static int pcie_aspeed_probe(struct udevice *dev)
 {
 	void *fdt = (void *)gd->fdt_blob;
 
-	struct reset_ctl reset_ctl0;
+	struct reset_ctl reset_ctl0, reset_ctl1;
 	struct pcie_aspeed *pcie = dev_get_priv(dev);
 //	struct udevice *ctrl = pci_get_controller(dev);
 //	struct pci_controller *host = dev_get_uclass_priv(ctrl);
@@ -108,7 +108,14 @@ static int pcie_aspeed_probe(struct udevice *dev)
 		return ret;
 	}
 
+	ret = reset_get_by_index(dev, 0, &reset_ctl1);
+	if (ret) {
+		printf("%s(): Failed to get reset signal\n", __func__);
+		return ret;
+	}
+
 	reset_assert(&reset_ctl0);
+	reset_assert(&reset_ctl1);
 	mdelay(100);
 	reset_deassert(&reset_ctl0);
 

@@ -19,10 +19,10 @@
 		spi0 = &fmc;
 		spi1 = &spi1;
 		spi2 = &spi2;
-
-		ethernet0 = &mac1;
-		ethernet1 = &mac2;
-		ethernet2 = &mac3;
+		ethernet0 = &mac0;
+		ethernet1 = &mac1;
+		ethernet2 = &mac2;
+		ethernet3 = &mac3;
 	};
 
 	cpus {
@@ -80,7 +80,6 @@
 	};
 };
 
-#if 0
 &mac0 {
 	status = "okay";
 	phy-mode = "rgmii";
@@ -88,7 +87,6 @@
 	pinctrl-names = "default";
 	pinctrl-0 = <&pinctrl_rgmii1_default &pinctrl_mac1link_default &pinctrl_mdio1_default>;
 };
-#endif
 
 &mac1 {
 	status = "okay";
@@ -137,11 +135,11 @@
 	};
 
 	flash@2 {
-        compatible = "spi-flash", "sst,w25q256";
-        status = "okay";
-        spi-max-frequency = <50000000>;
-        spi-tx-bus-width = <4>;
-        spi-rx-bus-width = <4>;
+		compatible = "spi-flash", "sst,w25q256";
+		status = "okay";
+		spi-max-frequency = <50000000>;
+		spi-tx-bus-width = <4>;
+		spi-rx-bus-width = <4>;
 	};
 };
 
@@ -204,16 +202,9 @@
 
 &emmc_slot0 {
 	status = "okay";
-
-#if 1
 	bus-width = <4>;
 	pinctrl-names = "default";
 	pinctrl-0 = <&pinctrl_emmc_default>;
-#else
-	bus-width = <8>;
-	pinctrl-names = "default";
-	pinctrl-0 = <&pinctrl_emmcg8_default>;
-#endif
 };
 
 &sdhci_slot0 {
@@ -268,12 +259,6 @@
 	pinctrl-names = "default";
 	pinctrl-0 = <&pinctrl_i2c9_default>;
 };
-
-#if 0
-&pcie_bridge0 {
-	status = "okay";
-};
-#endif
 
 &pcie_bridge1 {
 	status = "okay";

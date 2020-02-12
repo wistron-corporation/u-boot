@@ -42,7 +42,7 @@ u32 spl_boot_device(void)
 			break;
 	}
 	return BOOT_DEVICE_NONE;
- }
+}
 
 struct image_header *spl_get_load_buffer(ssize_t offset, size_t size)
 {
@@ -51,12 +51,22 @@ struct image_header *spl_get_load_buffer(ssize_t offset, size_t size)
 	void *src = (void*)CONFIG_SYS_TEXT_BASE;
 	u32 count = CONFIG_SYS_MONITOR_LEN;
 	memmove(dst, src, count);
-	if (aspeed_bl2_verify(dst, CONFIG_SPL_TEXT_BASE) != 0)
-		hang();
-	
 #endif
     return (struct image_header *)(CONFIG_SYS_TEXT_BASE);
 }
+
+#ifdef CONFIG_SECURE_BOOT
+void __noreturn jump_to_image_no_args(struct spl_image_info *spl_image)
+{
+	typedef void __noreturn (*image_entry_noargs_t)(void);
+
+	image_entry_noargs_t image_entry =
+		(image_entry_noargs_t)spl_image->entry_point;
+	if (aspeed_bl2_verify((void*)spl_image->entry_point, CONFIG_SPL_TEXT_BASE) != 0)
+		hang();
+	image_entry();
+}
+#endif
 
 #ifdef CONFIG_SPL_MMC_SUPPORT
 u32 spl_boot_mode(const u32 boot_device)
