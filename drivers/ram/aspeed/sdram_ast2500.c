@@ -337,9 +337,6 @@ static int ast2500_sdrammc_init_ddr4(struct dram_info *info)
 		     SDRAM_PCR_AUTOPWRDN_EN | SDRAM_PCR_ODT_AUTO_ON);
 
 	ast2500_sdrammc_calc_size(info);
-#ifdef CONFIG_ASPEED_ECC
-	ast2500_sdrammc_ecc_enable(info);
-#endif
 
 	setbits_le32(&info->regs->config, SDRAM_CONF_CACHE_INIT_EN);
 	while (!(readl(&info->regs->config) & SDRAM_CONF_CACHE_INIT_DONE))
@@ -348,6 +345,9 @@ static int ast2500_sdrammc_init_ddr4(struct dram_info *info)
 
 	writel(SDRAM_MISC_DDR4_TREFRESH, &info->regs->misc_control);
 
+#ifdef CONFIG_ASPEED_ECC
+	ast2500_sdrammc_ecc_enable(info);
+#endif
 	/* Enable all requests except video & display */
 	writel(SDRAM_REQ_USB20_EHCI1
 	       | SDRAM_REQ_USB20_EHCI2
@@ -412,6 +412,15 @@ static int ast2500_sdrammc_probe(struct udevice *dev)
 	if (readl(&priv->scu->vga_handshake[0]) & (0x1 << 6)) {
 		printf("already initialized, ");
 		ast2500_sdrammc_calc_size(priv);
+
+		setbits_le32(&priv->regs->config, SDRAM_CONF_CACHE_INIT_EN);
+		while (
+		    !(readl(&priv->regs->config) & SDRAM_CONF_CACHE_INIT_DONE))
+			;
+		setbits_le32(&priv->regs->config, SDRAM_CONF_CACHE_EN);
+
+		writel(SDRAM_MISC_DDR4_TREFRESH, &priv->regs->misc_control);
+
 #ifdef CONFIG_ASPEED_ECC		
 		ast2500_sdrammc_ecc_enable(priv);
 #endif
