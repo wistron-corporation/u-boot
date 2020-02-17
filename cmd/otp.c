@@ -1844,8 +1844,14 @@ static int do_otp_prog_bit(int mode, int otp_dw_offset, int bit_offset, int valu
 				break;
 			}
 		}
-		if (pass == 0)
+		if (pass == 0) {
+			printf("SUCCESS\n");
 			return OTP_SUCCESS;
+		} else {
+			printf("OTP cannot be programed\n");
+			printf("FAILED\n");
+			return OTP_FAILURE;
+		}
 	}
 
 	return OTP_USAGE;
