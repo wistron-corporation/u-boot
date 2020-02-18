@@ -1983,14 +1983,21 @@ static int do_otppb(cmd_tbl_t *cmdtp, int flag, int argc, char *const argv[])
 	if (mode == OTP_REGION_STRAP) {
 		bit_offset = simple_strtoul(argv[0], NULL, 16);
 		value = simple_strtoul(argv[1], NULL, 16);
-		if (bit_offset >= 64)
+		if (bit_offset >= 64 || (value != 0 && value != 1))
 			return CMD_RET_USAGE;
 	} else {
 		otp_addr = simple_strtoul(argv[0], NULL, 16);
 		bit_offset = simple_strtoul(argv[1], NULL, 16);
 		value = simple_strtoul(argv[2], NULL, 16);
-		if (bit_offset >= 32)
+		if (bit_offset >= 32 || (value != 0 && value != 1))
 			return CMD_RET_USAGE;
+		if (mode == OTP_REGION_DATA) {
+			if (otp_addr >= 200)
+				return CMD_RET_USAGE;
+		}else {
+			if (otp_addr >= 32)
+				return CMD_RET_USAGE;
+		}
 	}
 	if (value != 0 && value != 1)
 		return CMD_RET_USAGE;
