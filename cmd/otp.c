@@ -1774,20 +1774,28 @@ static int do_otp_prog_bit(int mode, int otp_dw_offset, int bit_offset, int valu
 		if (otp_dw_offset % 2 == 0) {
 			otp_read_data(otp_dw_offset, read);
 			otp_bit = (read[0] >> bit_offset) & 0x1;
+
+			if (otp_bit == 1 && value == 0) {
+				printf("OTPDATA%X[%X] = 1\n", otp_dw_offset, bit_offset);
+				printf("OTP is programed, which can't be cleaned\n");
+				return OTP_FAILURE;
+			}
 		} else {
 			otp_read_data(otp_dw_offset - 1, read);
 			otp_bit = (read[1] >> bit_offset) & 0x1;
+
+			if (otp_bit == 0 && value == 1) {
+				printf("OTPDATA%X[%X] = 1\n", otp_dw_offset, bit_offset);
+				printf("OTP is programed, which can't be writen\n");
+				return OTP_FAILURE;
+			}
 		}
 		if (otp_bit == value) {
 			printf("OTPDATA%X[%X] = %d\n", otp_dw_offset, bit_offset, value);
 			printf("No need to program\n");
 			return OTP_SUCCESS;
 		}
-		if (otp_bit == 1 && value == 0) {
-			printf("OTPDATA%X[%X] = 1\n", otp_dw_offset, bit_offset);
-			printf("OTP is programed, which can't be clean\n");
-			return OTP_FAILURE;
-		}
+
 		printf("Program OTPDATA%X[%X] to 1\n", otp_dw_offset, bit_offset);
 		break;
 	case OTP_REGION_STRAP:
