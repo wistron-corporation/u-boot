@@ -180,6 +180,7 @@ obj-$(CONFIG_ARCH_MVEBU) += mvebu/
 
 obj-$(CONFIG_CMD_NETTEST) += nettest/
 obj-$(CONFIG_CMD_DRAMTEST) += dramtest.o
+obj-$(CONFIG_CMD_PECITEST) += peci.o
 
 endif # !CONFIG_SPL_BUILD
 

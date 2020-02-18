@@ -1959,5 +1959,9 @@ config CMD_NETTEST
 config CMD_DRAMTEST
         bool "ASPEED DRAM controller stress test"
         default y	
+
+config CMD_PECITEST
+        bool "ASPEED PECI controller test"
+        default y
 endmenu
 endmenu
