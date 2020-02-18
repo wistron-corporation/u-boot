@@ -1921,7 +1921,7 @@ static int do_otpprog(cmd_tbl_t *cmdtp, int flag, int argc, char *const argv[])
 	int ret;
 
 	if (argc == 4) {
-		if (strcmp(argv[1], "f"))
+		if (strcmp(argv[1], "o"))
 			return CMD_RET_USAGE;
 		addr = simple_strtoul(argv[2], NULL, 16);
 		byte_size = simple_strtoul(argv[3], NULL, 16);
@@ -1973,7 +1973,7 @@ static int do_otppb(cmd_tbl_t *cmdtp, int flag, int argc, char *const argv[])
 	argc--;
 	argv++;
 
-	if (!strcmp(argv[0], "f")) {
+	if (!strcmp(argv[0], "o")) {
 		nconfirm = 1;
 		/* Drop the force option */
 		argc--;
@@ -2076,7 +2076,7 @@ static int do_otpprotect(cmd_tbl_t *cmdtp, int flag, int argc, char *const argv[
 	if (argc != 3 && argc != 2)
 		return CMD_RET_USAGE;
 
-	if (!strcmp(argv[0], "f")) {
+	if (!strcmp(argv[0], "o")) {
 		input = simple_strtoul(argv[2], NULL, 16);
 	} else {
 		input = simple_strtoul(argv[1], NULL, 16);
@@ -2174,9 +2174,9 @@ U_BOOT_CMD(
 	"otp read strap <strap_bit_offset> <bit_count>\n"
 	"otp info strap [v]\n"
 	"otp info conf [otp_dw_offset]\n"
-	"otp prog [f] <addr> <byte_size>\n"
-	"otp pb conf|data [f] <otp_dw_offset> <bit_offset> <value>\n"
-	"otp pb strap [f] <bit_offset> <value>\n"
-	"otp protect [f] <bit_offset>\n"
+	"otp prog [o] <addr> <byte_size>\n"
+	"otp pb conf|data [o] <otp_dw_offset> <bit_offset> <value>\n"
+	"otp pb strap [o] <bit_offset> <value>\n"
+	"otp protect [o] <bit_offset>\n"
 	"otp cmp <addr> <otp_dw_offset>\n"
 );
