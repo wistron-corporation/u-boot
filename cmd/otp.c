@@ -636,17 +636,30 @@ static void otp_prog(uint32_t otp_addr, uint32_t prog_bit)
 
 static int verify_bit(uint32_t otp_addr, int bit_offset, int value)
 {
-	int ret;
+	uint32_t ret[2];
 
-	writel(otp_addr, 0x1e6f2010); //Read address
+	if (otp_addr % 2 == 0)
+		writel(otp_addr, 0x1e6f2010); //Read address
+	else
+		writel(otp_addr - 1, 0x1e6f2010); //Read address
+
 	writel(0x23b1e361, 0x1e6f2004); //trigger read
 	udelay(2);
-	ret = readl(0x1e6f2020);
+	ret[0] = readl(0x1e6f2020);
+	ret[1] = readl(0x1e6f2024);
 	// printf("verify_bit = %x\n", ret);
-	if (((ret >> bit_offset) & 1) == value)
-		return 0;
-	else
-		return -1;
+	if (otp_addr % 2 == 0) {
+		if (((ret[0] >> bit_offset) & 1) == value)
+			return 0;
+		else
+			return -1;
+	} else {
+		if (((ret[1] >> bit_offset) & 1) == value)
+			return 0;
+		else
+			return -1;
+	}
+
 }
 
 static uint32_t verify_dw(uint32_t otp_addr, uint32_t *value, uint32_t *keep, uint32_t *compare, int size)
