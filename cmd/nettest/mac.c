@@ -1016,10 +1016,10 @@ void FPri_End (MAC_ENGINE *eng, uint8_t option)
 	//[Warning] IO Strength
 	//------------------------------
 #ifdef CONFIG_ASPEED_AST2600
-	if (eng->io.init_done && (eng->io.mac34_drv_reg.value.w != 0xa)) {
+	if (eng->io.init_done && (eng->io.mac34_drv_reg.value.w != 0xf)) {
 		PRINTF(option,
 		       "\n[Warning] [%08X] 0x%08x is not the suggestion value "
-		       "0xa.\n",
+		       "0xf.\n",
 		       eng->io.mac34_drv_reg.addr,
 		       eng->io.mac34_drv_reg.value.w);
 #else
