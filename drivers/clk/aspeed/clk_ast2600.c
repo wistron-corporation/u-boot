@@ -624,7 +624,7 @@ static u32 ast2600_configure_mac34_clk(struct ast2600_scu *scu)
 	 * scu458[1:0] : MAC3 driving strength
 	 */
 	clrsetbits_le32(&scu->pinmux_ctrl16, GENMASK(3, 0),
-			(0x2 << 2) | (0x2 << 0));	
+			(0x3 << 2) | (0x3 << 0));	
 
 	return 0;
 }
