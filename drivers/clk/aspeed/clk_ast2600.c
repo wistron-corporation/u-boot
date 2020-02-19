@@ -18,11 +18,11 @@
 #define RGMII_TXCLK_ODLY	8
 #define RMII_RXCLK_IDLY		2
 
-#define MAC_DEF_DELAY_1G	0x0041b410
+#define MAC_DEF_DELAY_1G	0x0041b75d
 #define MAC_DEF_DELAY_100M	0x00417410
 #define MAC_DEF_DELAY_10M	0x00417410
 
-#define MAC34_DEF_DELAY_1G	0x00104208
+#define MAC34_DEF_DELAY_1G	0x0010438a
 #define MAC34_DEF_DELAY_100M	0x00104208
 #define MAC34_DEF_DELAY_10M	0x00104208
 
@@ -562,28 +562,6 @@ static ulong ast2600_clk_set_rate(struct clk *clk, ulong rate)
 
 static u32 ast2600_configure_mac12_clk(struct ast2600_scu *scu)
 {
-#if 0	
-	struct ast2600_pll_desc epll;
-
-	epll.in = AST2600_CLK_IN;
-	epll.out = 1000000000;
-	if (false == ast2600_search_clock_config(&epll)) {
-		printf(
-		    "error!! unable to find valid ETHNET MAC clock setting\n");
-		debug("%s: epll cfg = 0x%08x 0x%08x\n", __func__,
-		      epll.cfg.reg.w, epll.cfg.ext_reg);
-		debug("%s: epll cfg = %02x %02x %02x\n", __func__,
-		      epll.cfg.reg.b.m, epll.cfg.reg.b.n, epll.cfg.reg.b.p);
-		return 0;
-	}
-	ast2600_configure_pll(scu, &(epll.cfg), ASPEED_CLK_EPLL);
-
-	/* select MAC#1 and MAC#2 clock source = EPLL / 8 */
-	clksel = readl(&scu->clk_sel2);
-	clksel &= ~BIT(23);
-	clksel |= 0x7 << 20;
-	writel(clksel, &scu->clk_sel2);
-#endif
 	/* scu340[25:0]: 1G default delay */
 	clrsetbits_le32(&scu->mac12_clk_delay, GENMASK(25, 0),
 			MAC_DEF_DELAY_1G);
