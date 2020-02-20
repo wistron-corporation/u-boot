@@ -48,6 +48,17 @@ DECLARE_GLOBAL_DATA_PTR;
 #define PBSTR "||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||"
 #define PBWIDTH 60
 
+#define OTP_BASE		0x1e6f2000
+#define OTP_PROTECT_KEY		OTP_BASE
+#define OTP_COMMAND		OTP_BASE + 0x4
+#define OTP_TIMING		OTP_BASE + 0x8
+#define OTP_ADDR		OTP_BASE + 0x10
+#define OTP_STATUS		OTP_BASE + 0x14
+#define OTP_COMPARE_1		OTP_BASE + 0x20
+#define OTP_COMPARE_2		OTP_BASE + 0x24
+#define OTP_COMPARE_3		OTP_BASE + 0x28
+#define OTP_COMPARE_4		OTP_BASE + 0x2c
+
 struct otpstrap_status {
 	int value;
 	int option_array[7];
@@ -537,13 +548,22 @@ static uint32_t chip_version(void)
 	return rev_id;
 }
 
+static void wait_complete(void)
+{
+	int reg;
+
+	do {
+		reg = readl(OTP_STATUS);
+	} while ((reg & 0x6) != 0x6);
+}
+
 static void otp_read_data(uint32_t offset, uint32_t *data)
 {
-	writel(offset, 0x1e6f2010); //Read address
-	writel(0x23b1e361, 0x1e6f2004); //trigger read
-	udelay(2);
-	data[0] = readl(0x1e6f2020);
-	data[1] = readl(0x1e6f2024);
+	writel(offset, OTP_ADDR); //Read address
+	writel(0x23b1e361, OTP_COMMAND); //trigger read
+	wait_complete();
+	data[0] = readl(OTP_COMPARE_1);
+	data[1] = readl(OTP_COMPARE_2);
 }
 
 static void otp_read_config(uint32_t offset, uint32_t *data)
@@ -554,10 +574,10 @@ static void otp_read_config(uint32_t offset, uint32_t *data)
 	config_offset |= (offset / 8) * 0x200;
 	config_offset |= (offset % 8) * 0x2;
 
-	writel(config_offset, 0x1e6f2010);  //Read address
-	writel(0x23b1e361, 0x1e6f2004); //trigger read
-	udelay(2);
-	data[0] = readl(0x1e6f2020);
+	writel(config_offset, OTP_ADDR);  //Read address
+	writel(0x23b1e361, OTP_COMMAND); //trigger read
+	wait_complete();
+	data[0] = readl(OTP_COMPARE_1);
 }
 
 static int otp_print_config(uint32_t offset, int dw_count)
@@ -604,14 +624,14 @@ static int otp_compare(uint32_t otp_addr, uint32_t addr)
 	printf("%08X\n", buf[1]);
 	printf("%08X\n", buf[2]);
 	printf("%08X\n", buf[3]);
-	writel(otp_addr, 0x1e6f2010); //Compare address
-	writel(buf[0], 0x1e6f2020); //Compare data 1
-	writel(buf[1], 0x1e6f2024); //Compare data 2
-	writel(buf[2], 0x1e6f2028); //Compare data 3
-	writel(buf[3], 0x1e6f202c); //Compare data 4
-	writel(0x23b1e363, 0x1e6f2004); //Compare command
-	udelay(10);
-	ret = readl(0x1e6f2014); //Compare command
+	writel(otp_addr, OTP_ADDR); //Compare address
+	writel(buf[0], OTP_COMPARE_1); //Compare data 1
+	writel(buf[1], OTP_COMPARE_2); //Compare data 2
+	writel(buf[2], OTP_COMPARE_3); //Compare data 3
+	writel(buf[3], OTP_COMPARE_4); //Compare data 4
+	writel(0x23b1e363, OTP_COMMAND); //Compare command
+	wait_complete();
+	ret = readl(OTP_STATUS); //Compare command
 	if (ret & 0x1)
 		return 0;
 	else
@@ -620,18 +640,18 @@ static int otp_compare(uint32_t otp_addr, uint32_t addr)
 
 static void otp_write(uint32_t otp_addr, uint32_t data)
 {
-	writel(otp_addr, 0x1e6f2010); //write address
-	writel(data, 0x1e6f2020); //write data
-	writel(0x23b1e362, 0x1e6f2004); //write command
-	udelay(100);
+	writel(otp_addr, OTP_ADDR); //write address
+	writel(data, OTP_COMPARE_1); //write data
+	writel(0x23b1e362, OTP_COMMAND); //write command
+	wait_complete();
 }
 
 static void otp_prog(uint32_t otp_addr, uint32_t prog_bit)
 {
-	writel(otp_addr, 0x1e6f2010); //write address
-	writel(prog_bit, 0x1e6f2020); //write data
-	writel(0x23b1e364, 0x1e6f2004); //write command
-	udelay(85);
+	writel(otp_addr, OTP_ADDR); //write address
+	writel(prog_bit, OTP_COMPARE_1); //write data
+	writel(0x23b1e364, OTP_COMMAND); //write command
+	wait_complete();
 }
 
 static int verify_bit(uint32_t otp_addr, int bit_offset, int value)
@@ -639,14 +659,14 @@ static int verify_bit(uint32_t otp_addr, int bit_offset, int value)
 	uint32_t ret[2];
 
 	if (otp_addr % 2 == 0)
-		writel(otp_addr, 0x1e6f2010); //Read address
+		writel(otp_addr, OTP_ADDR); //Read address
 	else
-		writel(otp_addr - 1, 0x1e6f2010); //Read address
+		writel(otp_addr - 1, OTP_ADDR); //Read address
 
-	writel(0x23b1e361, 0x1e6f2004); //trigger read
-	udelay(2);
-	ret[0] = readl(0x1e6f2020);
-	ret[1] = readl(0x1e6f2024);
+	writel(0x23b1e361, OTP_COMMAND); //trigger read
+	wait_complete();
+	ret[0] = readl(OTP_COMPARE_1);
+	ret[1] = readl(OTP_COMPARE_2);
 	// printf("verify_bit = %x\n", ret);
 	if (otp_addr % 2 == 0) {
 		if (((ret[0] >> bit_offset) & 1) == value)
@@ -669,13 +689,13 @@ static uint32_t verify_dw(uint32_t otp_addr, uint32_t *value, uint32_t *keep, ui
 	otp_addr &= ~(1 << 15);
 
 	if (otp_addr % 2 == 0)
-		writel(otp_addr, 0x1e6f2010); //Read address
+		writel(otp_addr, OTP_ADDR); //Read address
 	else
-		writel(otp_addr - 1, 0x1e6f2010); //Read address
-	writel(0x23b1e361, 0x1e6f2004); //trigger read
-	udelay(2);
-	ret[0] = readl(0x1e6f2020);
-	ret[1] = readl(0x1e6f2024);
+		writel(otp_addr - 1, OTP_ADDR); //Read address
+	writel(0x23b1e361, OTP_COMMAND); //trigger read
+	wait_complete();
+	ret[0] = readl(OTP_COMPARE_1);
+	ret[1] = readl(OTP_COMPARE_2);
 	if (size == 1) {
 		if (otp_addr % 2 == 0) {
 			// printf("check %x : %x = %x\n", otp_addr, ret[0], value[0]);
@@ -723,13 +743,14 @@ static void otp_soak(int soak)
 		otp_write(0x3000, 0x4021); // Write MRA
 		otp_write(0x5000, 0x1027); // Write MRB
 		otp_write(0x1000, 0x4820); // Write MR
-		writel(0x041930d4, 0x1e602008); //soak program
+		writel(0x041930d4, OTP_TIMING); //soak program
 	} else {
 		otp_write(0x3000, 0x4061); // Write MRA
 		otp_write(0x5000, 0x302f); // Write MRB
 		otp_write(0x1000, 0x4020); // Write MR
-		writel(0x04190760, 0x1e602008); //normal program
+		writel(0x04190760, OTP_TIMING); //normal program
 	}
+	wait_complete();
 }
 
 static void otp_prog_dw(uint32_t value, uint32_t keep, uint32_t prog_address)
@@ -1895,13 +1916,13 @@ static int do_otpread(cmd_tbl_t *cmdtp, int flag, int argc, char *const argv[])
 
 
 	if (!strcmp(argv[1], "conf")) {
-		writel(OTP_PASSWD, 0x1e6f2000); //password
+		writel(OTP_PASSWD, OTP_PROTECT_KEY); //password
 		ret = otp_print_config(offset, count);
 	} else if (!strcmp(argv[1], "data")) {
-		writel(OTP_PASSWD, 0x1e6f2000); //password
+		writel(OTP_PASSWD, OTP_PROTECT_KEY); //password
 		ret = otp_print_data(offset, count);
 	} else if (!strcmp(argv[1], "strap")) {
-		writel(OTP_PASSWD, 0x1e6f2000); //password
+		writel(OTP_PASSWD, OTP_PROTECT_KEY); //password
 		ret = otp_print_strap(offset, count);
 	} else {
 		return CMD_RET_USAGE;
@@ -1925,12 +1946,12 @@ static int do_otpprog(cmd_tbl_t *cmdtp, int flag, int argc, char *const argv[])
 			return CMD_RET_USAGE;
 		addr = simple_strtoul(argv[2], NULL, 16);
 		byte_size = simple_strtoul(argv[3], NULL, 16);
-		writel(OTP_PASSWD, 0x1e6f2000); //password
+		writel(OTP_PASSWD, OTP_PROTECT_KEY); //password
 		ret = do_otp_prog(addr, byte_size, 1);
 	} else if (argc == 3) {
 		addr = simple_strtoul(argv[1], NULL, 16);
 		byte_size = simple_strtoul(argv[2], NULL, 16);
-		writel(OTP_PASSWD, 0x1e6f2000); //password
+		writel(OTP_PASSWD, OTP_PROTECT_KEY); //password
 		ret = do_otp_prog(addr, byte_size, 0);
 	} else {
 		return CMD_RET_USAGE;
@@ -1994,7 +2015,7 @@ static int do_otppb(cmd_tbl_t *cmdtp, int flag, int argc, char *const argv[])
 		if (mode == OTP_REGION_DATA) {
 			if (otp_addr >= 200)
 				return CMD_RET_USAGE;
-		}else {
+		} else {
 			if (otp_addr >= 32)
 				return CMD_RET_USAGE;
 		}
@@ -2002,7 +2023,7 @@ static int do_otppb(cmd_tbl_t *cmdtp, int flag, int argc, char *const argv[])
 	if (value != 0 && value != 1)
 		return CMD_RET_USAGE;
 
-	writel(OTP_PASSWD, 0x1e6f2000); //password
+	writel(OTP_PASSWD, OTP_PROTECT_KEY); //password
 	ret = do_otp_prog_bit(mode, otp_addr, bit_offset, value, nconfirm);
 
 	if (ret == OTP_SUCCESS)
@@ -2021,7 +2042,7 @@ static int do_otpcmp(cmd_tbl_t *cmdtp, int flag, int argc, char *const argv[])
 	if (argc != 3)
 		return CMD_RET_USAGE;
 
-	writel(OTP_PASSWD, 0x1e6f2000); //password
+	writel(OTP_PASSWD, OTP_PROTECT_KEY); //password
 	addr = simple_strtoul(argv[1], NULL, 16);
 	otp_addr = simple_strtoul(argv[2], NULL, 16);
 	if (otp_compare(otp_addr, addr) == 0) {
@@ -2043,7 +2064,7 @@ static int do_otpinfo(cmd_tbl_t *cmdtp, int flag, int argc, char *const argv[])
 
 	if (!strcmp(argv[1], "conf")) {
 
-		writel(OTP_PASSWD, 0x1e6f2000); //password
+		writel(OTP_PASSWD, OTP_PROTECT_KEY); //password
 		if (argc == 3) {
 			input = simple_strtoul(argv[2], NULL, 16);
 			otp_print_conf_info(input);
@@ -2057,7 +2078,7 @@ static int do_otpinfo(cmd_tbl_t *cmdtp, int flag, int argc, char *const argv[])
 			argc--;
 			argv++;
 		}
-		writel(OTP_PASSWD, 0x1e6f2000); //password
+		writel(OTP_PASSWD, OTP_PROTECT_KEY); //password
 		otp_print_strap_info(view);
 	} else {
 		return CMD_RET_USAGE;
