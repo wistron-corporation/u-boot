@@ -2013,10 +2013,10 @@ static int do_otppb(cmd_tbl_t *cmdtp, int flag, int argc, char *const argv[])
 		if (bit_offset >= 32 || (value != 0 && value != 1))
 			return CMD_RET_USAGE;
 		if (mode == OTP_REGION_DATA) {
-			if (otp_addr >= 200)
+			if (otp_addr >= 0x800)
 				return CMD_RET_USAGE;
 		} else {
-			if (otp_addr >= 32)
+			if (otp_addr >= 0x20)
 				return CMD_RET_USAGE;
 		}
 	}
