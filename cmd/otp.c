@@ -48,6 +48,17 @@ DECLARE_GLOBAL_DATA_PTR;
 #define PBSTR "||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||"
 #define PBWIDTH 60
 
+#define OTP_BASE		0x1e6f2000
+#define OTP_PROTECT_KEY		OTP_BASE
+#define OTP_COMMAND		OTP_BASE + 0x4
+#define OTP_TIMING		OTP_BASE + 0x8
+#define OTP_ADDR		OTP_BASE + 0x10
+#define OTP_STATUS		OTP_BASE + 0x14
+#define OTP_COMPARE_1		OTP_BASE + 0x20
+#define OTP_COMPARE_2		OTP_BASE + 0x24
+#define OTP_COMPARE_3		OTP_BASE + 0x28
+#define OTP_COMPARE_4		OTP_BASE + 0x2c
+
 struct otpstrap_status {
 	int value;
 	int option_array[7];
@@ -537,13 +548,22 @@ static uint32_t chip_version(void)
 	return rev_id;
 }
 
+static void wait_complete(void)
+{
+	int reg;
+
+	do {
+		reg = readl(OTP_STATUS);
+	} while ((reg & 0x6) != 0x6);
+}
+
 static void otp_read_data(uint32_t offset, uint32_t *data)
 {
-	writel(offset, 0x1e6f2010); //Read address
-	writel(0x23b1e361, 0x1e6f2004); //trigger read
-	udelay(2);
-	data[0] = readl(0x1e6f2020);
-	data[1] = readl(0x1e6f2024);
+	writel(offset, OTP_ADDR); //Read address
+	writel(0x23b1e361, OTP_COMMAND); //trigger read
+	wait_complete();
+	data[0] = readl(OTP_COMPARE_1);
+	data[1] = readl(OTP_COMPARE_2);
 }
 
 static void otp_read_config(uint32_t offset, uint32_t *data)
@@ -554,10 +574,10 @@ static void otp_read_config(uint32_t offset, uint32_t *data)
 	config_offset |= (offset / 8) * 0x200;
 	config_offset |= (offset % 8) * 0x2;
 
-	writel(config_offset, 0x1e6f2010);  //Read address
-	writel(0x23b1e361, 0x1e6f2004); //trigger read
-	udelay(2);
-	data[0] = readl(0x1e6f2020);
+	writel(config_offset, OTP_ADDR);  //Read address
+	writel(0x23b1e361, OTP_COMMAND); //trigger read
+	wait_complete();
+	data[0] = readl(OTP_COMPARE_1);
 }
 
 static int otp_print_config(uint32_t offset, int dw_count)
@@ -604,14 +624,14 @@ static int otp_compare(uint32_t otp_addr, uint32_t addr)
 	printf("%08X\n", buf[1]);
 	printf("%08X\n", buf[2]);
 	printf("%08X\n", buf[3]);
-	writel(otp_addr, 0x1e6f2010); //Compare address
-	writel(buf[0], 0x1e6f2020); //Compare data 1
-	writel(buf[1], 0x1e6f2024); //Compare data 2
-	writel(buf[2], 0x1e6f2028); //Compare data 3
-	writel(buf[3], 0x1e6f202c); //Compare data 4
-	writel(0x23b1e363, 0x1e6f2004); //Compare command
-	udelay(10);
-	ret = readl(0x1e6f2014); //Compare command
+	writel(otp_addr, OTP_ADDR); //Compare address
+	writel(buf[0], OTP_COMPARE_1); //Compare data 1
+	writel(buf[1], OTP_COMPARE_2); //Compare data 2
+	writel(buf[2], OTP_COMPARE_3); //Compare data 3
+	writel(buf[3], OTP_COMPARE_4); //Compare data 4
+	writel(0x23b1e363, OTP_COMMAND); //Compare command
+	wait_complete();
+	ret = readl(OTP_STATUS); //Compare command
 	if (ret & 0x1)
 		return 0;
 	else
@@ -620,33 +640,46 @@ static int otp_compare(uint32_t otp_addr, uint32_t addr)
 
 static void otp_write(uint32_t otp_addr, uint32_t data)
 {
-	writel(otp_addr, 0x1e6f2010); //write address
-	writel(data, 0x1e6f2020); //write data
-	writel(0x23b1e362, 0x1e6f2004); //write command
-	udelay(100);
+	writel(otp_addr, OTP_ADDR); //write address
+	writel(data, OTP_COMPARE_1); //write data
+	writel(0x23b1e362, OTP_COMMAND); //write command
+	wait_complete();
 }
 
 static void otp_prog(uint32_t otp_addr, uint32_t prog_bit)
 {
-	writel(otp_addr, 0x1e6f2010); //write address
-	writel(prog_bit, 0x1e6f2020); //write data
-	writel(0x23b1e364, 0x1e6f2004); //write command
-	udelay(85);
+	writel(otp_addr, OTP_ADDR); //write address
+	writel(prog_bit, OTP_COMPARE_1); //write data
+	writel(0x23b1e364, OTP_COMMAND); //write command
+	wait_complete();
 }
 
 static int verify_bit(uint32_t otp_addr, int bit_offset, int value)
 {
-	int ret;
+	uint32_t ret[2];
 
-	writel(otp_addr, 0x1e6f2010); //Read address
-	writel(0x23b1e361, 0x1e6f2004); //trigger read
-	udelay(2);
-	ret = readl(0x1e6f2020);
-	// printf("verify_bit = %x\n", ret);
-	if (((ret >> bit_offset) & 1) == value)
-		return 0;
+	if (otp_addr % 2 == 0)
+		writel(otp_addr, OTP_ADDR); //Read address
 	else
-		return -1;
+		writel(otp_addr - 1, OTP_ADDR); //Read address
+
+	writel(0x23b1e361, OTP_COMMAND); //trigger read
+	wait_complete();
+	ret[0] = readl(OTP_COMPARE_1);
+	ret[1] = readl(OTP_COMPARE_2);
+	// printf("verify_bit = %x\n", ret);
+	if (otp_addr % 2 == 0) {
+		if (((ret[0] >> bit_offset) & 1) == value)
+			return 0;
+		else
+			return -1;
+	} else {
+		if (((ret[1] >> bit_offset) & 1) == value)
+			return 0;
+		else
+			return -1;
+	}
+
 }
 
 static uint32_t verify_dw(uint32_t otp_addr, uint32_t *value, uint32_t *keep, uint32_t *compare, int size)
@@ -656,13 +689,13 @@ static uint32_t verify_dw(uint32_t otp_addr, uint32_t *value, uint32_t *keep, ui
 	otp_addr &= ~(1 << 15);
 
 	if (otp_addr % 2 == 0)
-		writel(otp_addr, 0x1e6f2010); //Read address
+		writel(otp_addr, OTP_ADDR); //Read address
 	else
-		writel(otp_addr - 1, 0x1e6f2010); //Read address
-	writel(0x23b1e361, 0x1e6f2004); //trigger read
-	udelay(2);
-	ret[0] = readl(0x1e6f2020);
-	ret[1] = readl(0x1e6f2024);
+		writel(otp_addr - 1, OTP_ADDR); //Read address
+	writel(0x23b1e361, OTP_COMMAND); //trigger read
+	wait_complete();
+	ret[0] = readl(OTP_COMPARE_1);
+	ret[1] = readl(OTP_COMPARE_2);
 	if (size == 1) {
 		if (otp_addr % 2 == 0) {
 			// printf("check %x : %x = %x\n", otp_addr, ret[0], value[0]);
@@ -706,17 +739,27 @@ static uint32_t verify_dw(uint32_t otp_addr, uint32_t *value, uint32_t *keep, ui
 
 static void otp_soak(int soak)
 {
-	if (soak) {
+	switch (soak) {
+	case 0: //default
+		otp_write(0x3000, 0x0); // Write MRA
+		otp_write(0x5000, 0x0); // Write MRB
+		otp_write(0x1000, 0x0); // Write MR
+		break;
+	case 1: //normal program
+		otp_write(0x3000, 0x4021); // Write MRA
+		otp_write(0x5000, 0x302f); // Write MRB
+		otp_write(0x1000, 0x4020); // Write MR
+		writel(0x04190760, OTP_TIMING);
+		break;
+	case 2: //soak program
 		otp_write(0x3000, 0x4021); // Write MRA
 		otp_write(0x5000, 0x1027); // Write MRB
 		otp_write(0x1000, 0x4820); // Write MR
-		writel(0x041930d4, 0x1e602008); //soak program
-	} else {
-		otp_write(0x3000, 0x4061); // Write MRA
-		otp_write(0x5000, 0x302f); // Write MRB
-		otp_write(0x1000, 0x4020); // Write MR
-		writel(0x04190760, 0x1e602008); //normal program
+		writel(0x041930d4, OTP_TIMING);
+		break;
 	}
+
+	wait_complete();
 }
 
 static void otp_prog_dw(uint32_t value, uint32_t keep, uint32_t prog_address)
@@ -1213,7 +1256,6 @@ static int otp_prog_conf(uint32_t *buf)
 {
 	int i, k;
 	int pass = 0;
-	int soak = 0;
 	uint32_t prog_address;
 	uint32_t data[12];
 	uint32_t compare[2];
@@ -1262,22 +1304,23 @@ static int otp_prog_conf(uint32_t *buf)
 			printProgress(i + 1, 12, "[%03X]=%08X HIT", prog_address, buf[i]);
 			continue;
 		}
-		if (soak) {
-			soak = 0;
-			otp_soak(0);
-		}
+
 		printProgress(i + 1, 12, "[%03X]=%08X    ", prog_address, buf[i]);
 
+		otp_soak(1);
 		otp_prog_dw(buf[i], buf_keep[i], prog_address);
 
 		pass = 0;
 		for (k = 0; k < RETRY; k++) {
 			if (verify_dw(prog_address, &buf[i], &buf_keep[i], compare, 1) != 0) {
-				if (soak == 0) {
-					soak = 1;
-					otp_soak(1);
-				}
+				otp_soak(2);
 				otp_prog_dw(compare[0], prog_address, 1);
+				if (verify_dw(prog_address, &buf[i], &buf_keep[i], compare, 1) != 0) {
+					otp_soak(1);
+				} else {
+					pass = 1;
+					break;
+				}
 			} else {
 				pass = 1;
 				break;
@@ -1285,6 +1328,7 @@ static int otp_prog_conf(uint32_t *buf)
 		}
 	}
 
+	otp_soak(0);
 	if (!pass)
 		return OTP_FAILURE;
 
@@ -1398,7 +1442,6 @@ static int otp_prog_strap(uint32_t *buf)
 	int bit, pbit, kbit, offset;
 	int fail = 0;
 	int pass = 0;
-	int soak = 0;
 	struct otpstrap_status otpstrap[64];
 
 	printf("Read OTP Strap Region:\n");
@@ -1410,7 +1453,6 @@ static int otp_prog_strap(uint32_t *buf)
 		return OTP_FAILURE;
 	}
 
-	otp_soak(0);
 	for (i = 0; i < 64; i++) {
 		printProgress(i + 1, 64, "");
 		prog_address = 0x800;
@@ -1447,25 +1489,25 @@ static int otp_prog_strap(uint32_t *buf)
 			continue;
 		}
 
-		if (soak) {
-			soak = 0;
-			otp_soak(0);
-		}
 
+		otp_soak(1);
 		otp_prog(prog_address, prog_bit);
 
 		pass = 0;
-
 		for (j = 0; j < RETRY; j++) {
-			if (verify_bit(prog_address, offset, 1) == 0) {
+			if (verify_bit(prog_address, offset, 1) != 0) {
+				otp_soak(2);
+				otp_prog(prog_address, prog_bit);
+				if (verify_bit(prog_address, offset, 1) != 0) {
+					otp_soak(1);
+				} else {
+					pass = 1;
+					break;
+				}
+			} else {
 				pass = 1;
 				break;
 			}
-			if (soak == 0) {
-				soak = 1;
-				otp_soak(1);
-			}
-			otp_prog(prog_address, prog_bit);
 		}
 		if (!pass)
 			return OTP_FAILURE;
@@ -1479,31 +1521,30 @@ static int otp_prog_strap(uint32_t *buf)
 			prog_address |= 0x60e;
 
 
-		if (soak) {
-			soak = 0;
-			otp_soak(0);
-		}
-
+		otp_soak(1);
 		otp_prog(prog_address, prog_bit);
 
 		pass = 0;
-
 		for (j = 0; j < RETRY; j++) {
-
-			if (verify_bit(prog_address, offset, 1) == 0) {
+			if (verify_bit(prog_address, offset, 1) != 0) {
+				otp_soak(2);
+				otp_prog(prog_address, prog_bit);
+				if (verify_bit(prog_address, offset, 1) != 0) {
+					otp_soak(1);
+				} else {
+					pass = 1;
+					break;
+				}
+			} else {
 				pass = 1;
 				break;
 			}
-			if (soak == 0) {
-				soak = 1;
-				otp_soak(1);
-			}
-			otp_prog(prog_address, prog_bit);
 		}
 		if (!pass)
 			return OTP_FAILURE;
 
 	}
+	otp_soak(0);
 	if (fail == 1)
 		return OTP_FAILURE;
 	else
@@ -1511,11 +1552,9 @@ static int otp_prog_strap(uint32_t *buf)
 
 }
 
-static void otp_prog_bit(uint32_t value, uint32_t prog_address, uint32_t bit_offset, int soak)
+static void otp_prog_bit(uint32_t value, uint32_t prog_address, uint32_t bit_offset)
 {
 	int prog_bit;
-
-	otp_soak(soak);
 
 	if (prog_address % 2 == 0) {
 		if (value)
@@ -1536,7 +1575,6 @@ static int otp_prog_data(uint32_t *buf)
 {
 	int i, k;
 	int pass;
-	int soak = 0;
 	uint32_t prog_address;
 	uint32_t data[2048];
 	uint32_t compare[2];
@@ -1598,10 +1636,8 @@ static int otp_prog_data(uint32_t *buf)
 			printProgress(i + 2, 2048, "[%03X]=%08X HIT;[%03X]=%08X HIT", prog_address, buf[i], prog_address + 1, buf[i + 1]);
 			continue;
 		}
-		if (soak) {
-			soak = 0;
-			otp_soak(0);
-		}
+
+		otp_soak(1);
 		if (data1_masked == buf1_masked) {
 			printProgress(i + 2, 2048, "[%03X]=%08X    ;[%03X]=%08X HIT", prog_address, buf[i], prog_address + 1, buf[i + 1]);
 			otp_prog_dw(buf[i], buf_keep[i], prog_address);
@@ -1617,15 +1653,18 @@ static int otp_prog_data(uint32_t *buf)
 		pass = 0;
 		for (k = 0; k < RETRY; k++) {
 			if (verify_dw(prog_address, &buf[i], &buf_keep[i], compare, 2) != 0) {
-				if (soak == 0) {
-					soak = 1;
-					otp_soak(1);
-				}
+				otp_soak(2);
 				if (compare[0] != 0) {
 					otp_prog_dw(compare[0], buf_keep[i], prog_address);
 				}
 				if (compare[1] != ~0) {
 					otp_prog_dw(compare[1], buf_keep[i], prog_address + 1);
+				}
+				if (verify_dw(prog_address, &buf[i], &buf_keep[i], compare, 2) != 0) {
+					otp_soak(1);
+				} else {
+					pass = 1;
+					break;
 				}
 			} else {
 				pass = 1;
@@ -1633,9 +1672,12 @@ static int otp_prog_data(uint32_t *buf)
 			}
 		}
 
-		if (!pass)
+		if (!pass) {
+			otp_soak(0);
 			return OTP_FAILURE;
+		}
 	}
+	otp_soak(0);
 	return OTP_SUCCESS;
 
 }
@@ -1842,17 +1884,28 @@ static int do_otp_prog_bit(int mode, int otp_dw_offset, int bit_offset, int valu
 		return otp_prog_strap(strap_buf);
 	case OTP_REGION_CONF:
 	case OTP_REGION_DATA:
-		otp_prog_bit(value, prog_address, bit_offset, 0);
-		pass = -1;
+		otp_soak(1);
+		otp_prog_bit(value, prog_address, bit_offset);
+		pass = 0;
+
 		for (i = 0; i < RETRY; i++) {
 			if (verify_bit(prog_address, bit_offset, value) != 0) {
-				otp_prog_bit(value, prog_address, bit_offset, 1);
+				otp_soak(2);
+				otp_prog_bit(value, prog_address, bit_offset);
+				if (verify_bit(prog_address, bit_offset, value) != 0) {
+					otp_soak(1);
+				} else {
+					pass = 1;
+					break;
+				}
 			} else {
-				pass = 0;
+				pass = 1;
 				break;
 			}
 		}
-		if (pass == 0) {
+
+		otp_soak(0);
+		if (pass) {
 			printf("SUCCESS\n");
 			return OTP_SUCCESS;
 		} else {
@@ -1882,13 +1935,13 @@ static int do_otpread(cmd_tbl_t *cmdtp, int flag, int argc, char *const argv[])
 
 
 	if (!strcmp(argv[1], "conf")) {
-		writel(OTP_PASSWD, 0x1e6f2000); //password
+		writel(OTP_PASSWD, OTP_PROTECT_KEY); //password
 		ret = otp_print_config(offset, count);
 	} else if (!strcmp(argv[1], "data")) {
-		writel(OTP_PASSWD, 0x1e6f2000); //password
+		writel(OTP_PASSWD, OTP_PROTECT_KEY); //password
 		ret = otp_print_data(offset, count);
 	} else if (!strcmp(argv[1], "strap")) {
-		writel(OTP_PASSWD, 0x1e6f2000); //password
+		writel(OTP_PASSWD, OTP_PROTECT_KEY); //password
 		ret = otp_print_strap(offset, count);
 	} else {
 		return CMD_RET_USAGE;
@@ -1908,16 +1961,16 @@ static int do_otpprog(cmd_tbl_t *cmdtp, int flag, int argc, char *const argv[])
 	int ret;
 
 	if (argc == 4) {
-		if (strcmp(argv[1], "f"))
+		if (strcmp(argv[1], "o"))
 			return CMD_RET_USAGE;
 		addr = simple_strtoul(argv[2], NULL, 16);
 		byte_size = simple_strtoul(argv[3], NULL, 16);
-		writel(OTP_PASSWD, 0x1e6f2000); //password
+		writel(OTP_PASSWD, OTP_PROTECT_KEY); //password
 		ret = do_otp_prog(addr, byte_size, 1);
 	} else if (argc == 3) {
 		addr = simple_strtoul(argv[1], NULL, 16);
 		byte_size = simple_strtoul(argv[2], NULL, 16);
-		writel(OTP_PASSWD, 0x1e6f2000); //password
+		writel(OTP_PASSWD, OTP_PROTECT_KEY); //password
 		ret = do_otp_prog(addr, byte_size, 0);
 	} else {
 		return CMD_RET_USAGE;
@@ -1960,7 +2013,7 @@ static int do_otppb(cmd_tbl_t *cmdtp, int flag, int argc, char *const argv[])
 	argc--;
 	argv++;
 
-	if (!strcmp(argv[0], "f")) {
+	if (!strcmp(argv[0], "o")) {
 		nconfirm = 1;
 		/* Drop the force option */
 		argc--;
@@ -1970,19 +2023,26 @@ static int do_otppb(cmd_tbl_t *cmdtp, int flag, int argc, char *const argv[])
 	if (mode == OTP_REGION_STRAP) {
 		bit_offset = simple_strtoul(argv[0], NULL, 16);
 		value = simple_strtoul(argv[1], NULL, 16);
-		if (bit_offset >= 64)
+		if (bit_offset >= 64 || (value != 0 && value != 1))
 			return CMD_RET_USAGE;
 	} else {
 		otp_addr = simple_strtoul(argv[0], NULL, 16);
 		bit_offset = simple_strtoul(argv[1], NULL, 16);
 		value = simple_strtoul(argv[2], NULL, 16);
-		if (bit_offset >= 32)
+		if (bit_offset >= 32 || (value != 0 && value != 1))
 			return CMD_RET_USAGE;
+		if (mode == OTP_REGION_DATA) {
+			if (otp_addr >= 0x800)
+				return CMD_RET_USAGE;
+		} else {
+			if (otp_addr >= 0x20)
+				return CMD_RET_USAGE;
+		}
 	}
 	if (value != 0 && value != 1)
 		return CMD_RET_USAGE;
 
-	writel(OTP_PASSWD, 0x1e6f2000); //password
+	writel(OTP_PASSWD, OTP_PROTECT_KEY); //password
 	ret = do_otp_prog_bit(mode, otp_addr, bit_offset, value, nconfirm);
 
 	if (ret == OTP_SUCCESS)
@@ -2001,7 +2061,7 @@ static int do_otpcmp(cmd_tbl_t *cmdtp, int flag, int argc, char *const argv[])
 	if (argc != 3)
 		return CMD_RET_USAGE;
 
-	writel(OTP_PASSWD, 0x1e6f2000); //password
+	writel(OTP_PASSWD, OTP_PROTECT_KEY); //password
 	addr = simple_strtoul(argv[1], NULL, 16);
 	otp_addr = simple_strtoul(argv[2], NULL, 16);
 	if (otp_compare(otp_addr, addr) == 0) {
@@ -2023,7 +2083,7 @@ static int do_otpinfo(cmd_tbl_t *cmdtp, int flag, int argc, char *const argv[])
 
 	if (!strcmp(argv[1], "conf")) {
 
-		writel(OTP_PASSWD, 0x1e6f2000); //password
+		writel(OTP_PASSWD, OTP_PROTECT_KEY); //password
 		if (argc == 3) {
 			input = simple_strtoul(argv[2], NULL, 16);
 			otp_print_conf_info(input);
@@ -2037,7 +2097,7 @@ static int do_otpinfo(cmd_tbl_t *cmdtp, int flag, int argc, char *const argv[])
 			argc--;
 			argv++;
 		}
-		writel(OTP_PASSWD, 0x1e6f2000); //password
+		writel(OTP_PASSWD, OTP_PROTECT_KEY); //password
 		otp_print_strap_info(view);
 	} else {
 		return CMD_RET_USAGE;
@@ -2056,7 +2116,7 @@ static int do_otpprotect(cmd_tbl_t *cmdtp, int flag, int argc, char *const argv[
 	if (argc != 3 && argc != 2)
 		return CMD_RET_USAGE;
 
-	if (!strcmp(argv[0], "f")) {
+	if (!strcmp(argv[0], "o")) {
 		input = simple_strtoul(argv[2], NULL, 16);
 	} else {
 		input = simple_strtoul(argv[1], NULL, 16);
@@ -2082,17 +2142,28 @@ static int do_otpprotect(cmd_tbl_t *cmdtp, int flag, int argc, char *const argv[
 	if (verify_bit(prog_address, bit_offset, 1) == 0) {
 		printf("OTPSTRAP[%d] already protected\n", input);
 	}
-	otp_prog_bit(1, prog_address, bit_offset, 0);
-	pass = -1;
+
+	otp_soak(1);
+	otp_prog_bit(1, prog_address, bit_offset);
+	pass = 0;
+
 	for (i = 0; i < RETRY; i++) {
 		if (verify_bit(prog_address, bit_offset, 1) != 0) {
-			otp_prog_bit(1, prog_address, bit_offset, 1);
+			otp_soak(2);
+			otp_prog_bit(1, prog_address, bit_offset);
+			if (verify_bit(prog_address, bit_offset, 1) != 0) {
+				otp_soak(1);
+			} else {
+				pass = 1;
+				break;
+			}
 		} else {
-			pass = 0;
+			pass = 1;
 			break;
 		}
 	}
-	if (pass == 0) {
+	otp_soak(0);
+	if (pass) {
 		printf("OTPSTRAP[%d] is protected\n", input);
 		return CMD_RET_SUCCESS;
 	}
@@ -2154,9 +2225,9 @@ U_BOOT_CMD(
 	"otp read strap <strap_bit_offset> <bit_count>\n"
 	"otp info strap [v]\n"
 	"otp info conf [otp_dw_offset]\n"
-	"otp prog [f] <addr> <byte_size>\n"
-	"otp pb conf|data [f] <otp_dw_offset> <bit_offset> <value>\n"
-	"otp pb strap [f] <bit_offset> <value>\n"
-	"otp protect [f] <bit_offset>\n"
+	"otp prog [o] <addr> <byte_size>\n"
+	"otp pb conf|data [o] <otp_dw_offset> <bit_offset> <value>\n"
+	"otp pb strap [o] <bit_offset> <value>\n"
+	"otp protect [o] <bit_offset>\n"
 	"otp cmp <addr> <otp_dw_offset>\n"
 );
