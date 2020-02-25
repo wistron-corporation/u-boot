@@ -1386,6 +1386,26 @@
                 groups = "RMII4";
         };
 
+        pinctrl_rmii1rclk_default: rmii1rclk_default {
+                function = "RMII1RCLK";
+                groups = "RMII1RCLK";
+        };
+
+        pinctrl_rmii2rclk_default: rmii2rclk_default {
+                function = "RMII2RCLK";
+                groups = "RMII2RCLK";
+        };
+
+        pinctrl_rmii3rclk_default: rmii3rclk_default {
+                function = "RMII3RCLK";
+                groups = "RMII3RCLK";
+        };
+
+        pinctrl_rmii4rclk_default: rmii4rclk_default {
+                function = "RMII4RCLK";
+                groups = "RMII4RCLK";
+        };
+
 	pinctrl_ncts1_default: ncts1_default {
 		function = "NCTS1";
 		groups = "NCTS1";
