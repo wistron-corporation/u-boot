@@ -85,7 +85,11 @@
 	phy-mode = "NC-SI";
 	use-ncsi;
 	pinctrl-names = "default";
-	pinctrl-0 = <&pinctrl_rmii3_default>;
+#if 0        
+	pinctrl-0 = <&pinctrl_rmii3_default &pinctrl_rmii3rclk_default>;
+#else
+        pinctrl-0 = <&pinctrl_rmii3_default>;
+#endif
 };
 
 &mac3 {
@@ -94,7 +98,11 @@
 	phy-mode = "NC-SI";
 	use-ncsi;
 	pinctrl-names = "default";
-	pinctrl-0 = <&pinctrl_rmii4_default>;
+#if 0        
+	pinctrl-0 = <&pinctrl_rmii4_default &pinctrl_rmii4rclk_default>;
+#else
+        pinctrl-0 = <&pinctrl_rmii4_default>;
+#endif        
 };
 
 &fmc {
