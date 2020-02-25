@@ -241,6 +241,7 @@ wait_lock:
 	ldr	r1, =AST_FMC_CE0_CTRL
 	str	r0, [r1]
 
+#if 0
 	/* disable UART-based SoC Debug Interface UART5 and P2A bridge*/
 	ldr     r0, =AST_SCU_DEBUG_CTRL
 	ldr     r1, [r0]
@@ -252,6 +253,7 @@ wait_lock:
 	ldr     r1, [r0]
 	orr     r1, #0x0A
 	str     r1, [r0]
+#endif
 
 	/* Strongest LADESPID Driving Strngth */
 	ldr	r0, =AST_SCU_MFP_CTRL15
