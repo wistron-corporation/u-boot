@@ -316,7 +316,6 @@ static int aspeed_spi_timing_calibration(struct aspeed_spi_priv *priv)
 	u32 timing_reg;
 	u32 checksum, gold_checksum;
 	int i, hcycle, delay_ns;
-	u32 time;
 
 	/* Use the ctrl setting in aspeed_spi_flash_init() to
 	 * implement calibration process.
