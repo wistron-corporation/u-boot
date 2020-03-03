@@ -1563,13 +1563,13 @@ static int otp_prog_data(uint32_t *buf)
 
 	printf("Read OTP Data:\n");
 
-	for (i = 0; i < 2048 ; i += 2) {
+	for (i = 0; i < 2046 ; i += 2) {
 		otp_read_data(i, &data[i]);
 	}
 
 
 	printf("Check writable...\n");
-	for (i = 0; i < 2048; i++) {
+	for (i = 0; i < 2046; i++) {
 		data0_masked = data[i]  & ~buf_keep[i];
 		buf0_masked  = buf[i] & ~buf_keep[i];
 		if (data0_masked == buf0_masked)
@@ -1599,7 +1599,7 @@ static int otp_prog_data(uint32_t *buf)
 
 	printf("Start Programing...\n");
 
-	for (i = 0; i < 2048; i += 2) {
+	for (i = 0; i < 2046; i += 2) {
 		prog_address = i;
 		data0_masked = data[i]  & ~buf_keep[i];
 		buf0_masked  = buf[i] & ~buf_keep[i];
