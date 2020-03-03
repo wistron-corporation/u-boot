@@ -108,23 +108,6 @@ struct otp_info_cb {
 	int key_info_len;
 };
 
-void printProgress(int numerator, int denominator, char *format, ...)
-{
-	int val = numerator * 100 / denominator;
-	int lpad = numerator * PBWIDTH / denominator;
-	int rpad = PBWIDTH - lpad;
-	char buffer[256];
-	va_list aptr;
-
-	va_start(aptr, format);
-	vsprintf(buffer, format, aptr);
-	va_end(aptr);
-
-	printf("\r%3d%% [%.*s%*s] %s", val, lpad, PBSTR, rpad, "", buffer);
-	if (numerator == denominator)
-		printf("\n");
-}
-
 static struct otp_info_cb info_cb;
 
 static const struct otpstrap_info a0_strap_info[] = {
@@ -1265,9 +1248,7 @@ static int otp_prog_conf(uint32_t *buf)
 
 	printf("Read OTP Config Region:\n");
 
-	printProgress(0, 12, "");
 	for (i = 0; i < 12 ; i ++) {
-		printProgress(i + 1, 12, "");
 		prog_address = 0x800;
 		prog_address |= (i / 8) * 0x200;
 		prog_address |= (i % 8) * 0x2;
@@ -1292,7 +1273,6 @@ static int otp_prog_conf(uint32_t *buf)
 	}
 
 	printf("Start Programing...\n");
-	printProgress(0, 12, "");
 	otp_soak(0);
 	for (i = 0; i < 12; i++) {
 		data_masked = data[i]  & ~buf_keep[i];
@@ -1300,12 +1280,9 @@ static int otp_prog_conf(uint32_t *buf)
 		prog_address = 0x800;
 		prog_address |= (i / 8) * 0x200;
 		prog_address |= (i % 8) * 0x2;
-		if (data_masked == buf_masked) {
-			printProgress(i + 1, 12, "[%03X]=%08X HIT", prog_address, buf[i]);
+		if (data_masked == buf_masked)
 			continue;
-		}
 
-		printProgress(i + 1, 12, "[%03X]=%08X    ", prog_address, buf[i]);
 
 		otp_soak(1);
 		otp_prog_dw(buf[i], buf_keep[i], prog_address);
@@ -1454,7 +1431,6 @@ static int otp_prog_strap(uint32_t *buf)
 	}
 
 	for (i = 0; i < 64; i++) {
-		printProgress(i + 1, 64, "");
 		prog_address = 0x800;
 		if (i < 32) {
 			offset = i;
@@ -1587,9 +1563,7 @@ static int otp_prog_data(uint32_t *buf)
 
 	printf("Read OTP Data:\n");
 
-	printProgress(0, 2048, "");
 	for (i = 0; i < 2048 ; i += 2) {
-		printProgress(i + 2, 2048, "");
 		otp_read_data(i, &data[i]);
 	}
 
@@ -1624,7 +1598,6 @@ static int otp_prog_data(uint32_t *buf)
 	}
 
 	printf("Start Programing...\n");
-	printProgress(0, 2048, "");
 
 	for (i = 0; i < 2048; i += 2) {
 		prog_address = i;
@@ -1633,19 +1606,15 @@ static int otp_prog_data(uint32_t *buf)
 		data1_masked = data[i + 1]  & ~buf_keep[i + 1];
 		buf1_masked  = buf[i + 1] & ~buf_keep[i + 1];
 		if ((data0_masked == buf0_masked) && (data1_masked == buf1_masked)) {
-			printProgress(i + 2, 2048, "[%03X]=%08X HIT;[%03X]=%08X HIT", prog_address, buf[i], prog_address + 1, buf[i + 1]);
 			continue;
 		}
 
 		otp_soak(1);
 		if (data1_masked == buf1_masked) {
-			printProgress(i + 2, 2048, "[%03X]=%08X    ;[%03X]=%08X HIT", prog_address, buf[i], prog_address + 1, buf[i + 1]);
 			otp_prog_dw(buf[i], buf_keep[i], prog_address);
 		} else if (data0_masked == buf0_masked) {
-			printProgress(i + 2, 2048, "[%03X]=%08X HIT;[%03X]=%08X    ", prog_address, buf[i], prog_address + 1, buf[i + 1]);
 			otp_prog_dw(buf[i + 1], buf_keep[i + 1], prog_address + 1);
 		} else {
-			printProgress(i + 2, 2048, "[%03X]=%08X    ;[%03X]=%08X    ", prog_address, buf[i], prog_address + 1, buf[i + 1]);
 			otp_prog_dw(buf[i], buf_keep[i], prog_address);
 			otp_prog_dw(buf[i + 1], buf_keep[i + 1], prog_address + 1);
 		}
