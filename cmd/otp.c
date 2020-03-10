@@ -1846,22 +1846,18 @@ static int do_otp_prog_bit(int mode, int otp_dw_offset, int bit_offset, int valu
 		otp_print_strap(bit_offset, 1);
 		if (bit_offset < 32) {
 			strap_buf[0] = value << bit_offset;
+			strap_buf[1] = 0;
 			strap_buf[2] = ~BIT(bit_offset);
 			strap_buf[3] = ~0;
+			strap_buf[4] = 0;
 			strap_buf[5] = 0;
-			// if (protect)
-			// 	strap_buf[4] = BIT(bit_offset);
-			// else
-			// 	strap_buf[4] = 0;
 		} else {
+			strap_buf[0] = 0;
 			strap_buf[1] = value << (bit_offset - 32);
 			strap_buf[2] = ~0;
 			strap_buf[3] = ~BIT(bit_offset - 32);
 			strap_buf[4] = 0;
-			// if (protect)
-			// 	strap_buf[5] = BIT(bit_offset - 32);
-			// else
-			// 	strap_buf[5] = 0;
+			strap_buf[5] = 0;
 		}
 		ret = otp_strap_image_confirm(strap_buf);
 		if (ret == OTP_FAILURE)
