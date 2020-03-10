@@ -434,6 +434,7 @@
 				gpio-controller;
 				interrupt-controller;
 				gpio-ranges = <&pinctrl 0 0 220>;
+				ngpios = <208>;
 			};
 
 			gpio1: gpio@1e780800 {
@@ -444,6 +445,7 @@
 				gpio-controller;
 				interrupt-controller;
 				gpio-ranges = <&pinctrl 0 0 208>;
+				ngpios = <36>;
 			};
 
 			uart1: serial@1e783000 {
