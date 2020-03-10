@@ -1188,10 +1188,21 @@ static int otp_print_data_info(uint32_t *buf)
 	const struct otpkey_type *key_info_array = info_cb.key_info;
 	struct otpkey_type key_info;
 	char *byte_buf;
+	char empty = 1;
 	int i = 0, len = 0;
 	int j;
 
 	byte_buf = (char *)buf;
+
+	for (i = 0; i < 16; i++) {
+		if (buf[i] != 0) {
+			empty = 0;
+		}
+	}
+	if (empty)
+		return 0;
+
+	i = 0;
 	while (1) {
 		key_id = buf[i] & 0x7;
 		key_offset = buf[i] & 0x1ff8;
