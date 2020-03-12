@@ -816,7 +816,6 @@ static void ast2600_sdrammc_ecc_enable(struct dram_info *info)
 	writel(0, &regs->ecc_test_ctrl);
 	writel(BIT(31), &regs->intr_ctrl);
 	writel(0, &regs->intr_ctrl);
-	printf("ECC enable, ");
 }
 #endif
 

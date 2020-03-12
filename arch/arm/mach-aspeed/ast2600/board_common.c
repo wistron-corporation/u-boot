@@ -110,3 +110,13 @@ int arch_early_init_r(void)
 	return 0;
 }
 
+void board_add_ram_info(int use_default)
+{
+#define MMC_BASE 0x1e6e0000	
+	uint32_t act_size = 256 << (readl(MMC_BASE + 0x04) & 0x3);
+	uint32_t vga_rsvd = 8 << ((readl(MMC_BASE + 0x04) >> 2) & 0x3);
+	uint8_t ecc = (readl(MMC_BASE + 0x04) >> 7) & 0x1;
+
+	printf(" (capacity:%d MiB, VGA:%d MiB), ECC %s", act_size,
+	       vga_rsvd, ecc == 1 ? "on" : "off");
+}

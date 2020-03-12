@@ -612,6 +612,11 @@ config CMD_OTP
         bool "ASPEED otp program"
         default y
 
+config CMD_RNG
+	depends on ASPEED_AST2600
+        bool "ASPEED random number generator"
+        default n
+
 config CMD_ARMFLASH
 	#depends on FLASH_CFI_DRIVER
 	bool "armflash"

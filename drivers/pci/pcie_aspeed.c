@@ -19,6 +19,7 @@ DECLARE_GLOBAL_DATA_PTR;
 #define ASPEED_PCIE_LOCK			0x7C
 #define ASPEED_PCIE_LINK			0xC0
 #define ASPEED_PCIE_INT				0xC4
+#define ASPEED_PCIE_LINK_STS		0xD0
 
 /* 	AST_PCIE_CFG2			0x04		*/
 #define PCIE_CFG_CLASS_CODE(x)	(x << 8)
@@ -32,6 +33,10 @@ DECLARE_GLOBAL_DATA_PTR;
 
 /*	AST_PCIE_LINK			0xC0	*/
 #define PCIE_LINK_STS			BIT(5)
+
+/*  ASPEED_PCIE_LINK_STS	0xD0	*/
+#define PCIE_LINK_5G			BIT(17)
+#define PCIE_LINK_2_5G			BIT(16)
 
 struct pcie_aspeed {
 	void *ctrl_base;
@@ -146,7 +151,11 @@ static int pcie_aspeed_probe(struct udevice *dev)
 
 	/* Don't register host if link is down */
 	if (readl(pcie->ctrl_base + ASPEED_PCIE_LINK) & PCIE_LINK_STS) {
-		printf("PCIE-%d: Link up\n", dev->seq);
+		printf("PCIE-%d: Link up - ", dev->seq);
+		if(readl(pcie->ctrl_base + ASPEED_PCIE_LINK_STS) & PCIE_LINK_5G)
+			printf("5G \n");
+		if(readl(pcie->ctrl_base + ASPEED_PCIE_LINK_STS) & PCIE_LINK_2_5G)
+			printf("2.5G \n");
 		pcie->link_sts = 1;
 	} else {
 		printf("PCIE-%d: Link down\n", dev->seq);
