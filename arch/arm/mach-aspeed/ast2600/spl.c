@@ -18,6 +18,7 @@ DECLARE_GLOBAL_DATA_PTR;
 #define AST_BOOTMODE_UART	2
 
 u32 aspeed_bootmode(void);
+void aspeed_mmc_init(void);
 
 void board_init_f(ulong dummy)
 {
@@ -26,6 +27,7 @@ void board_init_f(ulong dummy)
 	timer_init();
 	preloader_console_init();
 	dram_init();
+	aspeed_mmc_init();
 #endif
 }
 
