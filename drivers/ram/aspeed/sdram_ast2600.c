@@ -213,8 +213,6 @@ static void ast2600_sdramphy_init(u32 *p_tbl, struct dram_info *info)
 	udelay(10);
 	//writel(SDRAM_PHYCTRL0_NRST, &regs->phy_ctrl[0]);
 
-	debug("%s:reg base = 0x%08x, 1st addr = 0x%08x\n", __func__, reg_base,
-               addr);
 
         /* load PHY configuration table into PHY-setting registers */
         while (1) {
