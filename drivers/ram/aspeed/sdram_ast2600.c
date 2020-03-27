@@ -454,9 +454,13 @@ static size_t ast2600_sdrammc_get_vga_mem_size(struct dram_info *info)
 
 	vga_hwconf =
 	    (readl(info->scu + AST_SCU_HW_STRAP) & SCU_HWSTRAP_VGAMEM_MASK) >>
-	    SCU_HWSTRAP_VGAMEM_SHIFT;	
+	    SCU_HWSTRAP_VGAMEM_SHIFT;
 
-	vga_hwconf = (vga_hwconf == 0) ? 1 : vga_hwconf;
+	if (vga_hwconf == 0) {
+		vga_hwconf = 1;
+		writel(vga_hwconf << SCU_HWSTRAP_VGAMEM_SHIFT,
+		       info->scu + AST_SCU_HW_STRAP);
+	}
 
 	clrsetbits_le32(&info->regs->config, SDRAM_CONF_VGA_SIZE_MASK,
 			((vga_hwconf << SDRAM_CONF_VGA_SIZE_SHIFT) &
