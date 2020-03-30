@@ -200,7 +200,12 @@
 	};
 };
 
+&emmc {
+	u-boot,dm-pre-reloc;
+};
+
 &emmc_slot0 {
+	u-boot,dm-pre-reloc;
 	status = "okay";
 	bus-width = <4>;
 	pinctrl-names = "default";

@@ -383,7 +383,6 @@
 			};
 
 			emmc: emmc@1e750000 {
-				//u-boot,dm-pre-reloc;
 				#interrupt-cells = <1>;
 				compatible = "aspeed,aspeed-emmc-irq", "simple-mfd";
 				reg = <0x1e750000 0x1000>;
@@ -396,7 +395,6 @@
 				ranges = <0x0 0x1e750000 0x1000>;
 
 				emmc_slot0: emmc_slot0@100 {
-					//u-boot,dm-pre-reloc;
 					compatible = "aspeed,emmc-ast2600";
 					reg = <0x100 0x100>;
 					interrupts = <0>;
