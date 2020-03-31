@@ -111,12 +111,12 @@ static struct aspeed_sig_desc i2c14_link[] = {
 
 static struct aspeed_sig_desc i2c15_link[] = {
 	{ 0x414, GENMASK(29, 28), 1 },
-	{ 0x4B4, GENMASK(29, 28), 1 },
+	{ 0x4B4, GENMASK(29, 28), 0 },
 };
 
 static struct aspeed_sig_desc i2c16_link[] = {
 	{ 0x414, GENMASK(31, 30), 1 },
-	{ 0x4B4, GENMASK(31, 30), 1 },
+	{ 0x4B4, GENMASK(31, 30), 0 },
 };
 
 

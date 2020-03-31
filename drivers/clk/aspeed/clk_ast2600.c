@@ -863,19 +863,29 @@ static ulong ast2600_enable_sdclk(struct ast2600_scu *scu)
 #define SCU_CLKSTOP_EXTSD 31
 #define SCU_CLK_SD_MASK				(0x7 << 28)
 #define SCU_CLK_SD_DIV(x)			(x << 28)
+#define SCU_CLK_SD_FROM_APLL_CLK	BIT(8)
 
 static ulong ast2600_enable_extsdclk(struct ast2600_scu *scu)
 {
 	u32 clk_sel = readl(&scu->clk_sel4);
-	u32 enableclk_bit;
+	u32 enableclk_bit;	
+	u32 rate = 0;
+	u32 div = 0;
+	int i = 0;
 
 	enableclk_bit = BIT(SCU_CLKSTOP_EXTSD);
 
-	//default use apll for clock source 800/4 = 200 : controller max is 200mhz
+	//ast2600 sd controller max clk is 200Mhz : use apll for clock source 800/4 = 200 : controller max is 200mhz
+	rate = ast2600_get_apll_rate(scu);
+	for(i = 0; i < 8; i++) {
+		div = (i + 1) * 2;
+		if ((rate / div) <= 200000000)
+			break;
+	}
 	clk_sel &= ~SCU_CLK_SD_MASK;
-	clk_sel |= SCU_CLK_SD_DIV(1) | BIT(8);
+	clk_sel |= SCU_CLK_SD_DIV(i) | SCU_CLK_SD_FROM_APLL_CLK;
 	writel(clk_sel, &scu->clk_sel4);
-	
+
 	//enable clk 
 	setbits_le32(&scu->clk_sel4, enableclk_bit);
 	
@@ -904,6 +914,7 @@ static ulong ast2600_enable_emmcclk(struct ast2600_scu *scu)
 #define SCU_CLKSTOP_EXTEMMC 15
 #define SCU_CLK_EMMC_MASK			(0x7 << 12)
 #define SCU_CLK_EMMC_DIV(x)			(x << 12)
+#define SCU_CLK_EMMC_FROM_MPLL_CLK	BIT(11)	//AST2600A1 
 
 static ulong ast2600_enable_extemmcclk(struct ast2600_scu *scu)
 {
@@ -916,8 +927,9 @@ static ulong ast2600_enable_extemmcclk(struct ast2600_scu *scu)
 
 	enableclk_bit = BIT(SCU_CLKSTOP_EXTEMMC);
 
-	if(((revision_id & GENMASK(23, 16)) >> 16) == 0x1) {
-		//use mpll to be clk source
+	//ast2600 eMMC controller max clk is 200Mhz
+	if(((revision_id & GENMASK(23, 16)) >> 16)) {
+		//AST2600A1 ~ : use mpll to be clk source
 		rate = ast2600_get_pll_rate(scu, ASPEED_CLK_MPLL);
 		for(i = 0; i < 8; i++) {
 			div = (i + 1) * 2;
@@ -926,13 +938,11 @@ static ulong ast2600_enable_extemmcclk(struct ast2600_scu *scu)
 		}
 		
 		clk_sel &= ~SCU_CLK_EMMC_MASK;
-		clk_sel |= SCU_CLK_EMMC_DIV(i) | BIT(11);
+		clk_sel |= SCU_CLK_EMMC_DIV(i) | SCU_CLK_EMMC_FROM_MPLL_CLK;
 		writel(clk_sel, &scu->clk_sel1);	
 
 	} else {
-	 	//use hpll to be clk source
-
-		//ast2600 eMMC controller max clk is 200Mhz
+		//AST2600A0 : use hpll to be clk source
 		rate = ast2600_get_pll_rate(scu, ASPEED_CLK_HPLL);
 
 		for(i = 0; i < 8; i++) {
