@@ -786,7 +786,26 @@ static void ast2600_sdrammc_common_init(struct ast2600_sdrammc_regs *regs)
 	writel(DDR4_MR45_MODE, &regs->mr45_mode_setting);
 	writel(DDR4_MR6_MODE, &regs->mr6_mode_setting);
 }
+/*
+ * Update size info according to the ECC HW setting
+ *
+ * Assume SDRAM has been initialized by SPL or the host.  To get the RAM size, we
+ * don't need to calculate the ECC size again but read from MCR04 and derive the
+ * size from its value.
+ */
+static void ast2600_sdrammc_update_size(struct dram_info *info)
+{
+	struct ast2600_sdrammc_regs *regs = info->regs;
+	size_t hw_size;
 
+	if (0 == (readl(&regs->config) & SDRAM_CONF_ECC_SETUP))
+		return;
+
+	hw_size = readl(&regs->ecc_range_ctrl) & GENMASK(30, 20);
+	hw_size += (1 << 20);
+
+	info->info.size = hw_size;
+}
 #ifdef CONFIG_ASPEED_ECC
 static void ast2600_sdrammc_ecc_enable(struct dram_info *info)
 {
@@ -845,9 +864,7 @@ static int ast2600_sdrammc_probe(struct udevice *dev)
 	if (readl(priv->scu + AST_SCU_HANDSHAKE) & SCU_SDRAM_INIT_READY_MASK) {
 		printf("already initialized, ");
 		ast2600_sdrammc_calc_size(priv);
-#ifdef CONFIG_ASPEED_ECC		
-		ast2600_sdrammc_ecc_enable(priv);
-#endif
+		ast2600_sdrammc_update_size(priv);
 		return 0;
 	}
 
