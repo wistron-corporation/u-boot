@@ -806,8 +806,7 @@ static void ast2600_sdrammc_ecc_enable(struct dram_info *info)
 
 	info->info.size = (((conf_size / 9) * 8) >> 20) << 20;
 	writel(((info->info.size >> 20) - 1) << 20, &regs->ecc_range_ctrl);
-	reg = readl(&regs->config) |
-	      (SDRAM_CONF_ECC_EN | SDRAM_CONF_ECC_AUTO_SCRUBBING);
+	reg = readl(&regs->config) | SDRAM_CONF_ECC_SETUP;
 	writel(reg, &regs->config);
 
 	writel(0, &regs->test_init_val);
