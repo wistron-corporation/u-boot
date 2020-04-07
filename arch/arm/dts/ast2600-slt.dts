@@ -200,11 +200,20 @@
 	};
 };
 
+&emmc {
+	timing-phase = <0x700ff>;
+};
+
 &emmc_slot0 {
 	status = "okay";
 	bus-width = <4>;
 	pinctrl-names = "default";
 	pinctrl-0 = <&pinctrl_emmc_default>;
+	sdhci-drive-type = <1>;
+};
+
+&sdhci {
+	timing-phase = <0xc6ffff>;
 };
 
 &sdhci_slot0 {
@@ -214,6 +223,7 @@
 	pwr-sw-gpios = <&gpio0 ASPEED_GPIO(V, 1) GPIO_ACTIVE_HIGH>;
 	pinctrl-names = "default";
 	pinctrl-0 = <&pinctrl_sd1_default>;
+	sdhci-drive-type = <1>;
 };
 
 &sdhci_slot1 {
@@ -223,6 +233,7 @@
 	pwr-sw-gpios = <&gpio0 ASPEED_GPIO(V, 3) GPIO_ACTIVE_HIGH>;
 	pinctrl-names = "default";
 	pinctrl-0 = <&pinctrl_sd2_default>;
+	sdhci-drive-type = <1>;
 };
 
 &i2c4 {
