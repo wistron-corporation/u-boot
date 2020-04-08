@@ -54,7 +54,7 @@ struct image_header *spl_get_load_buffer(ssize_t offset, size_t size)
 	u32 count = CONFIG_SYS_MONITOR_LEN;
 	memmove(dst, src, count);
 #endif
-    return (struct image_header *)(CONFIG_SYS_TEXT_BASE);
+    return (struct image_header *)(CONFIG_SYS_LOAD_ADDR);
 }
 
 #ifdef CONFIG_SECURE_BOOT
@@ -88,9 +88,8 @@ int spl_start_uboot(void)
 #ifdef CONFIG_SPL_LOAD_FIT
 int board_fit_config_name_match(const char *name)
 {
-	/* Just empty function now - can't decide what to choose */
+	/* we always use the default configuration */
 	debug("%s: %s\n", __func__, name);
-
 	return 0;
 }
 #endif
