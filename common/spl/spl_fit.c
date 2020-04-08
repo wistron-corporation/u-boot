@@ -340,54 +340,39 @@ static int spl_fit_image_get_os(const void *fit, int noffset, uint8_t *os)
 #endif
 }
 
-int spl_load_simple_fit(struct spl_image_info *spl_image,
-			struct spl_load_info *info, ulong sector, void *fit)
+/*
+ * Weak default function to allow customizing SPL fit loading for load-only
+ * use cases by allowing to skip the parsing/processing of the FIT contents
+ * (so that this can be done separately in a more customized fashion)
+ */
+__weak bool spl_load_simple_fit_skip_processing(void)
 {
-	int sectors;
-	ulong size;
-	unsigned long count;
-	struct spl_image_info image_info;
-	int node = -1;
-	int images, ret;
-	int base_offset, hsize, align_len = ARCH_DMA_MINALIGN - 1;
+	return false;
+}
+
+/*
+ * Weak default function to allow customizing SPL fit loading at the boadr_init_r
+ * stage
+ */
+__weak int spl_load_simple_fit_processing(struct spl_image_info *spl_image,
+			struct spl_load_info *info, ulong sector, void *fit, int fit_size)
+{
+	int base_offset;
+	int ret, images;
 	int index = 0;
+	int node = -1;
+	struct spl_image_info image_info;
+
+    /* skip further processing if requested to enable load-only use cases */
+	if (spl_load_simple_fit_skip_processing())
+		return 0;
 
 	/*
 	 * For FIT with external data, figure out where the external images
 	 * start. This is the base for the data-offset properties in each
 	 * image.
 	 */
-	size = fdt_totalsize(fit);
-	size = (size + 3) & ~3;
-	size = board_spl_fit_size_align(size);
-	base_offset = (size + 3) & ~3;
-
-	/*
-	 * So far we only have one block of data from the FIT. Read the entire
-	 * thing, including that first block, placing it so it finishes before
-	 * where we will load the image.
-	 *
-	 * Note that we will load the image such that its first byte will be
-	 * at the load address. Since that byte may be part-way through a
-	 * block, we may load the image up to one block before the load
-	 * address. So take account of that here by subtracting an addition
-	 * block length from the FIT start position.
-	 *
-	 * In fact the FIT has its own load address, but we assume it cannot
-	 * be before CONFIG_SYS_TEXT_BASE.
-	 *
-	 * For FIT with data embedded, data is loaded as part of FIT image.
-	 * For FIT with external data, data is not loaded in this step.
-	 */
-	hsize = (size + info->bl_len + align_len) & ~align_len;
-	fit = spl_get_load_buffer(-hsize, hsize);
-	sectors = get_aligned_image_size(info, size, 0);
-	count = info->read(info, sector, sectors, fit);
-	debug("fit read sector %lx, sectors=%d, dst=%p, count=%lu, size=0x%lx\n",
-	      sector, sectors, fit, count, size);
-
-	if (count == 0)
-		return -EIO;
+	base_offset = (fit_size + 3) & ~3;
 
 	/* find the node holding the images information */
 	images = fdt_path_offset(fit, FIT_IMAGES_PATH);
@@ -527,9 +512,57 @@ int spl_load_simple_fit(struct spl_image_info *spl_image,
 
 	spl_image->flags |= SPL_FIT_FOUND;
 
-#ifdef CONFIG_SECURE_BOOT
+	return 0;
+}
+
+int spl_load_simple_fit(struct spl_image_info *spl_image,
+			struct spl_load_info *info, ulong sector, void *fit)
+{
+	int sectors;
+	ulong size;
+	unsigned long count;
+	int ret;
+	int hsize, align_len = ARCH_DMA_MINALIGN - 1;
+
+	/* make FIT size aligned */
+	size = fdt_totalsize(fit);
+	size = (size + 3) & ~3;
+	size = board_spl_fit_size_align(size);
+
+	/*
+	 * So far we only have one block of data from the FIT. Read the entire
+	 * thing, including that first block, placing it so it finishes before
+	 * where we will load the image.
+	 *
+	 * Note that we will load the image such that its first byte will be
+	 * at the load address. Since that byte may be part-way through a
+	 * block, we may load the image up to one block before the load
+	 * address. So take account of that here by subtracting an addition
+	 * block length from the FIT start position.
+	 *
+	 * In fact the FIT has its own load address, but we assume it cannot
+	 * be before CONFIG_SYS_TEXT_BASE.
+	 *
+	 * For FIT with data embedded, data is loaded as part of FIT image.
+	 * For FIT with external data, data is not loaded in this step.
+	 */
+	hsize = (size + info->bl_len + align_len) & ~align_len;
+	fit = spl_get_load_buffer(-hsize, hsize);
+	sectors = get_aligned_image_size(info, size, 0);
+	count = info->read(info, sector, sectors, fit);
+	debug("fit read sector %lx, sectors=%d, dst=%p, count=%lu, size=0x%lx\n",
+	      sector, sectors, fit, count, size);
+
+	if (count == 0)
+		return -EIO;
+
+	ret = spl_load_simple_fit_processing(spl_image, info, sector, fit, size);
+	if (ret) {
+		printf("%s: Error in processing FIT image content\n", __func__);
+		return ret;
+	}
+
 	board_spl_fit_post_load((ulong)fit, size);
-#endif
 
 	return 0;
 }
