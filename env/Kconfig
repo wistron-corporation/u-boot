@@ -655,4 +655,16 @@ config TPL_ENV_IS_IN_FLASH
 
 endif
 
+config ENV_OFFSET
+        hex "Environment offset"
+        depends on ENV_IS_IN_EEPROM || ENV_IS_IN_MMC || ENV_IS_IN_NAND || \
+                    ENV_IS_IN_SPI_FLASH
+        help
+          Offset from the start of the device (or partition)
+
+config ENV_SIZE
+        hex "Environment Size"
+        help
+          Size of the environment storage area
+
 endmenu

@@ -339,7 +339,7 @@ static const struct aspeed_group_config ast2600_groups[] = {
 	{ "RMII2", ARRAY_SIZE(rmii2), rmii2 },
 	{ "RMII3", ARRAY_SIZE(rmii3), rmii3 },
 	{ "RMII4", ARRAY_SIZE(rmii4), rmii4 },
-        { "RMII1RCLK", ARRAY_SIZE(rmii1_rclk_oe), rmii1_rclk_oe },
+	{ "RMII1RCLK", ARRAY_SIZE(rmii1_rclk_oe), rmii1_rclk_oe },
 	{ "RMII2RCLK", ARRAY_SIZE(rmii2_rclk_oe), rmii2_rclk_oe },
 	{ "RMII3RCLK", ARRAY_SIZE(rmii3_rclk_oe), rmii3_rclk_oe },
 	{ "RMII4RCLK", ARRAY_SIZE(rmii4_rclk_oe), rmii4_rclk_oe },

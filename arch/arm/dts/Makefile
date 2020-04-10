@@ -675,13 +675,15 @@ dtb-$(CONFIG_ARCH_BCM6858) += \
 	bcm968580xref.dtb
 
 dtb-$(CONFIG_ARCH_ASPEED) += \
+	ast2500-evb.dtb \
 	ast2600a0-evb.dtb \
-	ast2600a1-evb.dtb \
 	ast2600a0-ncsi.dtb \
+	ast2600a1-evb.dtb \
 	ast2600a1-ncsi.dtb \
 	ast2600-fpga.dtb \
+	ast2600-rainier.dtb \
 	ast2600-slt.dtb \
-	ast2500-evb.dtb
+	ast2600-tacoma.dtb
 
 dtb-$(CONFIG_ARCH_STI) += stih410-b2260.dtb
 
