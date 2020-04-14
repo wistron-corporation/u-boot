@@ -43,7 +43,6 @@
 #define AST_SCU_DEBUG_CTRL2             (AST_SCU_BASE + 0x0D8)
 #define AST_SCU_HPLL_PARAM		(AST_SCU_BASE + 0x200)
 #define AST_SCU_HPLL_PARAM_EXT		(AST_SCU_BASE + 0x204)
-#define AST_SCU_MFP_CTRL15		(AST_SCU_BASE + 0x454)
 #define AST_SCU_HW_STRAP1		(AST_SCU_BASE + 0x500)
 #define AST_SCU_HW_STRAP2		(AST_SCU_BASE + 0x510)
 #define AST_SCU_CA7_CTRL		(AST_SCU_BASE + 0x800)
@@ -254,13 +253,6 @@ wait_lock:
 	orr     r1, #0x0A
 	str     r1, [r0]
 #endif
-
-	/* Strongest LADESPID Driving Strngth */
-	ldr	r0, =AST_SCU_MFP_CTRL15
-	ldr	r1, [r0]
-	mov r2, #0xff00
-	orr r1, r2, lsl #16
-	str	r1, [r0]
 
 	/* relocate mailbox insn. for cpuN polling SMP go signal */
 	adrl	r0, mailbox_insn
