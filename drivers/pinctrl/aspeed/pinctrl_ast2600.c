@@ -322,7 +322,7 @@ static struct aspeed_sig_desc pcie0rc_link[] = {
 };
 
 static struct aspeed_sig_desc pcie1rc_link[] = {
-	{ 0x40, BIT(19), 0 },
+	{ 0x40, BIT(19), 0 },	//SSPRST# output enable 
 	{ 0x500, BIT(24), 0 },	//dedicate rc reset
 };
 
