@@ -1104,6 +1104,10 @@ static int ast2600_clk_probe(struct udevice *dev)
 	ast2600_configure_mac12_clk(priv->scu);
 	ast2600_configure_mac34_clk(priv->scu);
 
+	/* RSA clock = HPLL/3 */
+	setbits_le32(&priv->scu->clk_sel1, BIT(19));
+	setbits_le32(&priv->scu->clk_sel1, BIT(27));
+
 	return 0;
 }
 
