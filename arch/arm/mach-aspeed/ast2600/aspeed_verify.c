@@ -222,6 +222,8 @@ int aspeed_bl2_verify(void *bl2_image, void *bl1_image)
 	info.image_size = *(u32 *)(bl2_image + ASPEED_VERIFY_SIZE);
 	info.sha_mode = ASPEED_VERIFY_SHA(bl1_header);
 	info.verify_mode = ASPEED_VERIFY_MODE(bl1_header);
+	info.digest = NULL;
+	info.rsa_key = NULL;
 	printf("## Starting verify image.\n");
 	switch (info.verify_mode) {
 	case DIGEST_MODE:

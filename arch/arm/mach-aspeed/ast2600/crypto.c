@@ -37,6 +37,7 @@ static int ast_hace_wait_isr(u32 reg, u32 flag, u32 timeout)
  */
 int digest_object(u8 *src, u32 length, u8 *digest, u32 method)
 {
+	READ_ONCE(src[length - 1]);
 	writel((u32)src, ASPEED_HACE_HASH_SRC);
 	writel((u32)digest, ASPEED_HACE_HASH_DIGEST_BUFF);
 	writel(length, ASPEED_HACE_HASH_DATA_LEN);
@@ -133,7 +134,10 @@ int rsa_alg(u8 *data, int data_bytes, u8 *m, int m_bits, u8 *e, int e_bits, u8 *
 
 void enable_crypto()
 {
-	writel((0x1 << 4), 0x1e6e2044);
-	writel((0x1 << 13), 0x1e6e2084);
+	writel((0x1 << 4), 0x1e6e2040);
+	udelay(300);
 	writel((0x1 << 24), 0x1e6e2084);
+	writel((0x1 << 13), 0x1e6e2084);
+	mdelay(30);
+	writel((0x1 << 4), 0x1e6e2044);
 }
