@@ -10,12 +10,22 @@
 #include <asm/arch/aspeed_scu_info.h>
 #include <asm/arch/platform.h>
 
+__attribute__((weak)) void aspeed_print_fmc_aux_ctrl();
+__attribute__((weak)) void aspeed_print_spi1_abr_mode();
+__attribute__((weak)) void aspeed_print_spi1_aux_ctrl();
+
 int print_cpuinfo(void)
 {
 	aspeed_print_soc_id();
 	aspeed_print_sysrst_info();
 	aspeed_print_security_info();
 	aspeed_print_2nd_wdt_mode();
+	if (aspeed_print_fmc_aux_ctrl)
+		aspeed_print_fmc_aux_ctrl();
+	if (aspeed_print_spi1_abr_mode)
+		aspeed_print_spi1_abr_mode();
+	if (aspeed_print_spi1_aux_ctrl)
+		aspeed_print_spi1_aux_ctrl();
 	aspeed_print_spi_strap_mode();
 	aspeed_print_espi_mode();
 	aspeed_print_mac_info();
