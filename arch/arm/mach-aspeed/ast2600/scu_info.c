@@ -251,29 +251,112 @@ void aspeed_print_dram_initializer(void)
 
 void aspeed_print_2nd_wdt_mode(void)
 {
-	if(readl(ASPEED_HW_STRAP2) & BIT(11)) {
-		printf("2nd Boot: Enable, ");
+	printf("FMC 2nd Boot (ABR): ");
+	if (readl(ASPEED_HW_STRAP2) & BIT(11)) {
+		printf("Enable, ");
 		if(readl(ASPEED_HW_STRAP2) & BIT(12))
-			printf("Single SPI ");
+			printf("Single flash, ");
 		else
-			printf("Dual SPI ");
-		printf(": %s", readl(0x1e620064) & BIT(4) ? "Alternate":"Primary");
+			printf("Dual flashes, ");
 
-		if(readl(ASPEED_HW_STRAP2) & GENMASK(15, 13)) {
+		printf("Source : %s", \
+				readl(ASPEED_FMC_WDT2) & BIT(4) ? "Alternate" : "Primary");
+
+		if(readl(ASPEED_HW_STRAP2) & GENMASK(15, 13))
 			printf(", bspi_size : %ld MB\n", BIT((readl(ASPEED_HW_STRAP2) >> 13) & 0x7));
-		} else
+		else
 			printf("\n");
-	}
+	} else
+		printf("Disable\n");
+}
 
+void aspeed_print_fmc_aux_ctrl(void)
+{
+	printf("FMC aux control : ");
 	if(readl(ASPEED_HW_STRAP2) & BIT(22)) {
-		printf("SPI aux control : Enable");
-		//gpioY6 : BSPI_ABR 
-		if (readl(0x1e7801e0) & BIT(6))
+		printf("Enable");
+		/* gpioY6 : BSPI_ABR */
+		if (readl(ASPEED_GPIO_YZ_DATA) & BIT(6))
 			printf(", Force Alt boot ");
 
-		//gpioY7 : BSPI_WP_N
-		printf(", BSPI_WP : %s \n", readl(0x1e7801e0) & BIT(7) ? "Disable":"Enable");
-	}
+		/* gpioY7 : BSPI_WP_N */
+		printf(", BSPI_WP : %s \n", \
+				readl(ASPEED_GPIO_YZ_DATA) & BIT(7) ? "Disable" : "Enable");
+
+		printf("FMC HW CRTM : ");
+		if ((readl(ASPEED_GPIO_YZ_DATA) & BIT(7)) && \
+			(readl(ASPEED_HW_STRAP2) & GENMASK(24, 23)) != 0)
+			printf("Enable, ");
+		else
+			printf("Disable currently, ");
+
+		printf("size: ");
+		if ((readl(ASPEED_HW_STRAP2) & GENMASK(24, 23)) != 0)
+			printf("%ld KB\n", BIT((readl(ASPEED_HW_STRAP2) >> 23) & 0x3) * 128);
+		else
+			printf("0 KB\n");
+	} else
+		printf("Disable\n");
+}
+
+void aspeed_print_spi1_abr_mode(void)
+{
+	printf("SPI1 ABR: ");
+	if(readl(ASPEED_HW_STRAP2) & BIT(16)) {
+		printf("Enable, ");
+		if(readl(ASPEED_SPI1_BOOT_CTRL) & BIT(6))
+			printf("Single flash, ");
+		else
+			printf("Dual flashes, ");
+
+		printf("Source : %s", \
+				readl(ASPEED_SPI1_BOOT_CTRL) & BIT(4) ? "Alternate" : "Primary");
+
+		if(readl(ASPEED_SPI1_BOOT_CTRL) & GENMASK(3, 1))
+			printf(", hspi_size : %ld MB\n", \
+				BIT((readl(ASPEED_SPI1_BOOT_CTRL) >> 1) & 0x7));
+		else
+			printf("\n");
+	} else
+		printf("Disable\n");
+
+	printf("SPI1 select pin: ");
+	if(readl(ASPEED_HW_STRAP2) & BIT(17)) {
+		printf("Enable");
+		/* gpioZ1 : HSPI_ABR */
+		if (readl(ASPEED_GPIO_YZ_DATA) & BIT(9))
+			printf(", Force Alt boot ");
+	} else
+		printf("Disable\n");
+}
+
+void aspeed_print_spi1_aux_ctrl(void)
+{
+	printf("SPI1 aux control : ");
+	if(readl(ASPEED_HW_STRAP2) & BIT(27)) {
+		printf("Enable");
+		/* gpioZ1 : HSPI_ABR */
+		if (readl(ASPEED_GPIO_YZ_DATA) & BIT(9))
+			printf(", Force Alt boot ");
+
+		/* gpioZ2: BSPI_WP_N */
+		printf(", HPI_WP : %s \n", \
+				readl(ASPEED_GPIO_YZ_DATA) & BIT(10) ? "Disable" : "Enable");
+
+		printf("SPI1 HW CRTM : ");
+		if ((readl(ASPEED_GPIO_YZ_DATA) & BIT(10)) && \
+			(readl(ASPEED_HW_STRAP2) & GENMASK(26, 25)) != 0)
+			printf("Enable,  ");
+		else
+			printf("Disable currently, ");
+
+		printf("size: ");
+		if ((readl(ASPEED_HW_STRAP2) & GENMASK(26, 25)) != 0)
+			printf("%ld KB\n", BIT((readl(ASPEED_HW_STRAP2) >> 25) & 0x3) * 128);
+		else
+			printf("0 KB\n");
+	} else
+		printf("Disable\n");
 }
 
 void aspeed_print_spi_strap_mode(void)
