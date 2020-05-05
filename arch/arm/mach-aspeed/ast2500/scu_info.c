@@ -143,9 +143,9 @@ void aspeed_print_sysrst_info(void)
 		printf("RST : WDT2 - 2nd Boot \n");
 		writel(readl(ASPEED_SYS_RESET_CTRL) & ~SYS_WDT2_RESET, ASPEED_SYS_RESET_CTRL);
 		if(readl(0x1e785030) & BIT(1))
-			puts("default boot\n");
+			puts("second boot\n");
 		else
-			puts("second boot\n");		
+			puts("default boot\n");
 	}
 	if (rest & SYS_WDT3_RESET) {
 		printf("RST : WDT3 - Boot\n");
