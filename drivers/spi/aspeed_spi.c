@@ -932,6 +932,9 @@ static int aspeed_spi_flash_init(struct aspeed_spi_priv *priv,
 			CE_CTRL_FREADMODE;
 	}
 
+	if (flash->spi->addr_width == 4)
+		writel(readl(&priv->regs->ctrl) | 0x11 << flash->cs, &priv->regs->ctrl);
+
 	debug("CS%u: USER mode 0x%08x FREAD mode 0x%08x\n", flash->cs,
 	      flash->ce_ctrl_user, flash->ce_ctrl_fread);
 
