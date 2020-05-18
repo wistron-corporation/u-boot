@@ -121,6 +121,14 @@ static struct aspeed_sig_desc sdio2_link[] = {
 	{ 0x90, BIT(1), 0	},
 };
 
+static struct aspeed_sig_desc spi1cs1_link[] = {
+	{ 0x80, BIT(15), 0},
+};
+
+static struct aspeed_sig_desc spi1_link[] = {
+	{ 0x70, BIT(12), 0},
+};
+
 static const struct aspeed_group_config ast2500_groups[] = {
 	{ "MAC1LINK", 1, mac1_link },
 	{ "MAC2LINK", 1, mac2_link },
@@ -140,6 +148,8 @@ static const struct aspeed_group_config ast2500_groups[] = {
 	{ "I2C14", 1, i2c14_link },
 	{ "SD2", 1, sdio2_link },
 	{ "SD1", 1, sdio1_link },
+	{ "SPI1", 1, spi1_link},
+	{ "SPI1CS1", 1, spi1cs1_link},
 };
 
 static int ast2500_pinctrl_get_groups_count(struct udevice *dev)
