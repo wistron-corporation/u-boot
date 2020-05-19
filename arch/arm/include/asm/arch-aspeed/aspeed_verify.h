@@ -25,6 +25,18 @@
 #define ASPEED_VERIFY_SIZE		0x20
 #define ASPEED_VERIFY_SIGN_OFFSET	0x24
 
+#define ASPEED_SECBOOT_MAGIC_STR	"SOCSEC"
+
+struct aspeed_secboot_header {
+	u8 sbh_magic[16];
+	u32 sbh_cot_info;
+	u32 sbh_img_size;
+	u32 sbh_sig_off;
+	u32 sbh_cot_info_off;
+	u64 sbh_rollback_idx;
+	u8 reserved[472];
+} __packed;
+
 struct aspeed_verify_info {
 	u8 rsa_mode;
 	u8 sha_mode;
@@ -37,6 +49,8 @@ struct aspeed_verify_info {
 	u8 *digest;
 	u8 *rsa_key;
 };
+
+extern struct aspeed_secboot_header aspeed_sbh;
 
 extern int aspeed_bl2_verify(void *bl2_image, void *bl1_image);
 

@@ -9,6 +9,8 @@
 #include <linux/kernel.h>
 #include <asm/arch/aspeed_verify.h>
 
+struct aspeed_secboot_header aspeed_sbh;
+
 static int aspeed_digest_verify(struct aspeed_verify_info *info)
 {
 	int digest_length = 64;

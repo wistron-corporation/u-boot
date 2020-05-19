@@ -45,22 +45,12 @@ config ASPEED_PALLADIUM
 	  This is mainly for internal verification and investigation
 	  on HW design. If not sure, say N.
 
-config SECURE_BOOT
+config ASPEED_SECURE_BOOT
 	bool "Support Aspeed secure boot feature"
-	depends on SPL && ASPEED_AST2600
-	select POSITION_INDEPENDENT
+	depends on SPL && ASPEED_AST2600 && POSITION_INDEPENDENT
 	select ENABLE_ARM_SOC_BOOT0_HOOK
-	select FIT_SIGNATURE
 	help
 	  This option enables the support for secure boot.
-
-config SECURE_BOOT_TEXT_BASE
-	hex "Secure boot text base"
-	depends on SECURE_BOOT
-	default 0x90000000
-	help
-	  The address in memory where the secure boot verification
-	  on U-Boot image will be performed.
 
 source "arch/arm/mach-aspeed/ast2500/Kconfig"
 source "arch/arm/mach-aspeed/ast2600/Kconfig"
