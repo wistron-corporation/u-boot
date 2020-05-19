@@ -32,7 +32,7 @@
 /* HICRB Bits */
 #define HICRB_EN80HSGIO (1 << 13)	/* Enable 80hSGIO */
 
-static void port80h_snoop_init(void)
+static void __maybe_unused port80h_snoop_init(void)
 {
 	uint32_t value;
 	/* enable port80h snoop and sgpio */
@@ -55,7 +55,7 @@ static void port80h_snoop_init(void)
 	writel(value, AST_LPC_BASE + HICRB);
 }
 
-static void sgpio_init(void)
+static void __maybe_unused sgpio_init(void)
 {
 #define SGPIO_CLK_DIV(N)	((N) << 16)
 #define SGPIO_BYTES(N)		((N) << 6)

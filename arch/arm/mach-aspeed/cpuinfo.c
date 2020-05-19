@@ -10,10 +10,6 @@
 #include <asm/arch/aspeed_scu_info.h>
 #include <asm/arch/platform.h>
 
-__attribute__((weak)) void aspeed_print_fmc_aux_ctrl();
-__attribute__((weak)) void aspeed_print_spi1_abr_mode();
-__attribute__((weak)) void aspeed_print_spi1_aux_ctrl();
-
 int print_cpuinfo(void)
 {
 	aspeed_print_soc_id();
