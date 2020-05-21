@@ -45,9 +45,6 @@
 #define AST_SCU_HPLL_PARAM_EXT		(AST_SCU_BASE + 0x204)
 #define AST_SCU_HW_STRAP1		(AST_SCU_BASE + 0x500)
 #define AST_SCU_HW_STRAP2		(AST_SCU_BASE + 0x510)
-#define AST_SCU_CA7_CTRL		(AST_SCU_BASE + 0x800)
-#define AST_SCU_CA7_AXI_PREFETCH_START	(AST_SCU_BASE + 0x808)
-#define AST_SCU_CA7_AXI_PREFETCH_END	(AST_SCU_BASE + 0x80C)
 #define AST_SCU_CA7_PARITY_CHK		(AST_SCU_BASE + 0x820)
 #define AST_SCU_CA7_PARITY_CLR		(AST_SCU_BASE + 0x824)
 #define AST_SCU_MMIO_DEC_SET		(AST_SCU_BASE + 0xC24)
@@ -179,20 +176,6 @@ wait_lock:
 	b 1f
 
 0:
-	/* enable AXI prefetch (A1 only) */
-	ldr	r0, =AST_SCU_CA7_AXI_PREFETCH_START
-	ldr r1, =ASPEED_DRAM_BASE
-	str r1, [r0]
-
-	ldr	r0, =AST_SCU_CA7_AXI_PREFETCH_END
-	ldr	r1, =0xFFFFFFFF
-	str r1, [r0]
-
-	ldr	r0, =AST_SCU_CA7_CTRL
-	ldr	r1, [r0]
-	orr	r1, #0x8000
-	str	r1, [r0]
-
 	/* LPC/eSPI mode selection (A1 only) */
 	ldr	r0, =AST_GPIOYZ_DATA_VALUE
 	ldr	r0, [r0]
