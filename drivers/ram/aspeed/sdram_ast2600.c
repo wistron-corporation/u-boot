@@ -30,12 +30,15 @@
 #define AST_SCU_MPLL_EXT	0x224
 #define AST_SCU_FPGA_PLL	0x400
 #define AST_SCU_HW_STRAP	0x500
+#define AST_SCU_EFUSE_DATA	0x594
 
 
 /* bit-field of AST_SCU_HW_STRAP */
 #define SCU_HWSTRAP_VGAMEM_SHIFT	13
 #define SCU_HWSTRAP_VGAMEM_MASK		GENMASK(14, 13)
 
+/* bit-field of AST_SCU_EFUSE_DATA */
+#define SCU_EFUSE_DATA_VGA_DIS_MASK	BIT(14)
 
 /* bit-field of AST_SCU_HANDSHAKE */
 #define SCU_SDRAM_INIT_READY_MASK	BIT(6)
@@ -465,6 +468,10 @@ static size_t ast2600_sdrammc_get_vga_mem_size(struct dram_info *info)
 	clrsetbits_le32(&info->regs->config, SDRAM_CONF_VGA_SIZE_MASK,
 			((vga_hwconf << SDRAM_CONF_VGA_SIZE_SHIFT) &
 			 SDRAM_CONF_VGA_SIZE_MASK));
+
+	/* no need to reserve VGA memory if efuse[VGA disable] is set */
+	if (readl(info->scu + AST_SCU_EFUSE_DATA) & SCU_EFUSE_DATA_VGA_DIS_MASK)
+		return 0;
 
 	return vga_mem_size_base << vga_hwconf;
 }
