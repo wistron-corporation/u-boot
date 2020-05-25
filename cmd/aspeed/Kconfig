@@ -13,4 +13,7 @@ config CMD_PECITEST
         bool "ASPEED PECI controller test"
         default y
 
+config CMD_PLLTEST
+	bool "ASPEED PLL test"
+	default n
 endmenu
