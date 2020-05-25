@@ -184,7 +184,7 @@ static int cal_ast2600_13nm_pll_rate(unsigned long pll_rate, unsigned int pll_id
 
 int do_ast2600_pll_test(struct udevice *scu_dev, unsigned int pll_idx)
 {
-	int ret = 1;
+	int ret = 0;
 	unsigned long pll_rate = 0;
 
 	switch(pll_idx) {
@@ -202,9 +202,10 @@ int do_ast2600_pll_test(struct udevice *scu_dev, unsigned int pll_idx)
 			break;
 		case 4:
 			pll_rate = get_ast2600_pll_rate(scu_dev, ASPEED_CLK_DPLL);
-			if(cal_ast2600_28nm_pll_rate(pll_rate/2, 4))
+			if(cal_ast2600_28nm_pll_rate(pll_rate/2, 4)) {
 				printf("D-PLL : Fail \n");
-			else
+				ret = 1;
+			} else
 				printf("D-PLL : PASS \n");
 			break;
 		case 5:
@@ -216,23 +217,26 @@ int do_ast2600_pll_test(struct udevice *scu_dev, unsigned int pll_idx)
 			break;
 		case 8:
 			pll_rate = get_ast2600_pll_rate(scu_dev, ASPEED_CLK_MPLL);
-			if(cal_ast2600_28nm_pll_rate(pll_rate/2, 8))
+			if(cal_ast2600_28nm_pll_rate(pll_rate/2, 8)) {
 				printf("MCLK : Fail \n");
-			else
+				ret = 1;
+			} else
 				printf("MCLK : PASS \n");
 			break;
 		case 16:
 			pll_rate = get_ast2600_pll_rate(scu_dev, ASPEED_CLK_APLL);
-			if(cal_ast2600_13nm_pll_rate(pll_rate/8, 0))
+			if(cal_ast2600_13nm_pll_rate(pll_rate/8, 0)) {
 				printf("APLL : Fail \n");
-			else
+				ret = 1;
+			} else
 				printf("APLL : PASS \n");
 			break;
 		case 17:
 			pll_rate = get_ast2600_pll_rate(scu_dev, ASPEED_CLK_AHB);
-			if(cal_ast2600_13nm_pll_rate(pll_rate, 1))
+			if(cal_ast2600_13nm_pll_rate(pll_rate, 1)) {
 				printf("HCLK : Fail \n");
-			else
+				ret = 1;
+			} else
 				printf("HCLK : PASS \n");
 			break;
 		case 18:
@@ -247,11 +251,21 @@ int do_ast2600_pll_test(struct udevice *scu_dev, unsigned int pll_idx)
 	return ret;
 }
 
-/* ------------------------------------------------------------------------- */
 int do_aspeed_full_pll_test(struct udevice *scu_dev)
 {
-	printf("do_aspeed_full_pll_test");
+	int i = 0;
+	int ret = 0;
+	for(i = 0; i < 32; i++) {
+		ret += do_ast2600_pll_test(scu_dev, i);
+	}
 
+	printf("**************************************************** \n");
+	if(ret)
+		printf("PLL Test : Fail \n");
+	else
+		printf("PLL Test : Pass \n");
+	printf("**************************************************** \n");
+	
 	return 1;
 }
 
