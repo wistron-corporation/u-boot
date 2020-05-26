@@ -215,6 +215,23 @@ int do_ast2600_pll_test(struct udevice *scu_dev, unsigned int pll_idx)
 			else
 				printf("E-PLL : PASS \n");
 			break;
+		case 6:
+			if(readl(0x1e6ed0c0) & BIT(5)) {
+				switch((readl(0x1e6ed0d0) >> 16) & 0x3) {
+					case 1: //2.5G 125Mhz
+						pll_rate = 125000000;
+						break;
+					case 2:
+						pll_rate = 250000000;
+						break;
+				}
+				if(cal_ast2600_28nm_pll_rate(pll_rate, 6))
+					printf("XPCLK-EP : Fail \n");
+				else
+					printf("XPCLK-EP : PASS \n");
+			} else
+				printf("XPCLK-EP : Fail 0 \n");
+			break;
 		case 8:
 			pll_rate = get_ast2600_pll_rate(scu_dev, ASPEED_CLK_MPLL);
 			if(cal_ast2600_28nm_pll_rate(pll_rate/2, 8)) {
@@ -222,6 +239,14 @@ int do_ast2600_pll_test(struct udevice *scu_dev, unsigned int pll_idx)
 				ret = 1;
 			} else
 				printf("MCLK : PASS \n");
+			break;
+		case 9:
+			pll_rate = get_ast2600_pll_rate(scu_dev, ASPEED_CLK_AHB);
+			if(cal_ast2600_28nm_pll_rate(pll_rate, 9)) {
+				printf("HCLK-28nm : Fail \n");
+				ret = 1;
+			} else
+				printf("HCLK-28nm : PASS \n");
 			break;
 		case 16:
 			pll_rate = get_ast2600_pll_rate(scu_dev, ASPEED_CLK_APLL);
@@ -234,10 +259,10 @@ int do_ast2600_pll_test(struct udevice *scu_dev, unsigned int pll_idx)
 		case 17:
 			pll_rate = get_ast2600_pll_rate(scu_dev, ASPEED_CLK_AHB);
 			if(cal_ast2600_13nm_pll_rate(pll_rate, 1)) {
-				printf("HCLK : Fail \n");
+				printf("HCLK-13nm : Fail \n");
 				ret = 1;
 			} else
-				printf("HCLK : PASS \n");
+				printf("HCLK-13nm : PASS \n");
 			break;
 		case 18:
 			pll_rate = get_ast2600_pll_rate(scu_dev, ASPEED_CLK_APB2);
