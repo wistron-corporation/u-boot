@@ -20,6 +20,7 @@
 #include <mapmem.h>
 #include <asm/io.h>
 #include <linux/compiler.h>
+#include <u-boot/sha256.h>
 
 DECLARE_GLOBAL_DATA_PTR;
 
@@ -59,6 +60,29 @@ DECLARE_GLOBAL_DATA_PTR;
 #define OTP_COMPARE_3		OTP_BASE + 0x28
 #define OTP_COMPARE_4		OTP_BASE + 0x2c
 
+#define OTP_MAGIC		"SOCOTP"
+#define CHECKSUM_LEN		32
+#define OTP_INC_DATA		(1 << 31)
+#define OTP_INC_CONFIG		(1 << 30)
+#define OTP_INC_STRAP		(1 << 29)
+#define OTP_ECC_EN		(1 << 28)
+#define OTP_REGION_SIZE(info)	((info >> 16) & 0xffff)
+#define OTP_REGION_OFFSET(info)	(info & 0xffff)
+#define OTP_IMAGE_SIZE(info)	(info & 0xffff)
+
+#define OTP_AST2600A0		0
+#define OTP_AST2600A1		1
+
+struct otp_header {
+	u8	otp_magic[8];
+	u8	otp_version[8];
+	u32	image_info;
+	u32	data_info;
+	u32	config_info;
+	u32	strap_info;
+	u32	checksum_offset;
+} __attribute__((packed));
+
 struct otpstrap_status {
 	int value;
 	int option_array[7];
@@ -72,7 +96,7 @@ struct otpconf_parse {
 	int bit;
 	int length;
 	int value;
-	int keep;
+	int ignore;
 	char status[80];
 };
 
@@ -106,6 +130,17 @@ struct otp_info_cb {
 	int conf_info_len;
 	const struct otpkey_type *key_info;
 	int key_info_len;
+};
+
+struct otp_image_layout {
+	uint8_t *data;
+	uint8_t *data_ignore;
+	uint8_t *conf;
+	uint8_t *conf_ignore;
+	uint8_t *strap;
+	uint8_t *strap_reg_pro;
+	uint8_t *strap_pro;
+	uint8_t *strap_ignore;
 };
 
 static struct otp_info_cb info_cb;
@@ -669,7 +704,7 @@ static int verify_bit(uint32_t otp_addr, int bit_offset, int value)
 
 }
 
-static uint32_t verify_dw(uint32_t otp_addr, uint32_t *value, uint32_t *keep, uint32_t *compare, int size)
+static uint32_t verify_dw(uint32_t otp_addr, uint32_t *value, uint32_t *ignore, uint32_t *compare, int size)
 {
 	uint32_t ret[2];
 
@@ -686,7 +721,7 @@ static uint32_t verify_dw(uint32_t otp_addr, uint32_t *value, uint32_t *keep, ui
 	if (size == 1) {
 		if (otp_addr % 2 == 0) {
 			// printf("check %x : %x = %x\n", otp_addr, ret[0], value[0]);
-			if ((value[0] & ~keep[0]) == (ret[0] & ~keep[0])) {
+			if ((value[0] & ~ignore[0]) == (ret[0] & ~ignore[0])) {
 				compare[0] = 0;
 				return 0;
 			} else {
@@ -696,7 +731,7 @@ static uint32_t verify_dw(uint32_t otp_addr, uint32_t *value, uint32_t *keep, ui
 
 		} else {
 			// printf("check %x : %x = %x\n", otp_addr, ret[1], value[0]);
-			if ((value[0] & ~keep[0]) == (ret[1] & ~keep[0])) {
+			if ((value[0] & ~ignore[0]) == (ret[1] & ~ignore[0])) {
 				compare[0] = ~0;
 				return 0;
 			} else {
@@ -706,7 +741,7 @@ static uint32_t verify_dw(uint32_t otp_addr, uint32_t *value, uint32_t *keep, ui
 		}
 	} else if (size == 2) {
 		// otp_addr should be even
-		if ((value[0] & ~keep[0]) == (ret[0] & ~keep[0]) && (value[1] & ~keep[1]) == (ret[1] & ~keep[1])) {
+		if ((value[0] & ~ignore[0]) == (ret[0] & ~ignore[0]) && (value[1] & ~ignore[1]) == (ret[1] & ~ignore[1])) {
 			// printf("check[0] %x : %x = %x\n", otp_addr, ret[0], value[0]);
 			// printf("check[1] %x : %x = %x\n", otp_addr, ret[1], value[1]);
 			compare[0] = 0;
@@ -749,12 +784,12 @@ static void otp_soak(int soak)
 	wait_complete();
 }
 
-static void otp_prog_dw(uint32_t value, uint32_t keep, uint32_t prog_address)
+static void otp_prog_dw(uint32_t value, uint32_t ignore, uint32_t prog_address)
 {
 	int j, bit_value, prog_bit;
 
 	for (j = 0; j < 32; j++) {
-		if ((keep >> j) & 0x1)
+		if ((ignore >> j) & 0x1)
 			continue;
 		bit_value = (value >> j) & 0x1;
 		if (prog_address % 2 == 0) {
@@ -875,15 +910,16 @@ static void otp_strap_status(struct otpstrap_status *otpstrap)
 	}
 }
 
-static int otp_print_conf_image(uint32_t *OTPCFG)
+static int otp_print_conf_image(struct otp_image_layout *image_layout)
 {
 	const struct otpconf_info *conf_info = info_cb.conf_info;
-	uint32_t *OTPCFG_KEEP = &OTPCFG[16];
+	uint32_t *OTPCFG = (uint32_t *)image_layout->conf;
+	uint32_t *OTPCFG_IGNORE = (uint32_t *)image_layout->conf_ignore;
 	uint32_t mask;
 	uint32_t dw_offset;
 	uint32_t bit_offset;
 	uint32_t otp_value;
-	uint32_t otp_keep;
+	uint32_t otp_ignore;
 	int fail = 0;
 	char valid_bit[20];
 	int i;
@@ -896,11 +932,11 @@ static int otp_print_conf_image(uint32_t *OTPCFG)
 		bit_offset = conf_info[i].bit_offset;
 		mask = BIT(conf_info[i].length) - 1;
 		otp_value = (OTPCFG[dw_offset] >> bit_offset) & mask;
-		otp_keep = (OTPCFG_KEEP[dw_offset] >> bit_offset) & mask;
+		otp_ignore = (OTPCFG_IGNORE[dw_offset] >> bit_offset) & mask;
 
-		if (otp_keep == mask) {
+		if (otp_ignore == mask) {
 			continue;
-		} else if (otp_keep != 0) {
+		} else if (otp_ignore != 0) {
 			fail = 1;
 		}
 
@@ -921,7 +957,7 @@ static int otp_print_conf_image(uint32_t *OTPCFG)
 		printf("0x%-10x", otp_value);
 
 		if (fail) {
-			printf("Keep mask error\n");
+			printf("Ignore mask error\n");
 		} else {
 			if (conf_info[i].value == OTP_REG_RESERVED) {
 				printf("Reserved\n");
@@ -1026,25 +1062,38 @@ static int otp_print_conf_info(int input_offset)
 	return OTP_SUCCESS;
 }
 
-static int otp_print_strap_image(uint32_t *OTPSTRAP)
+static int otp_print_strap_image(struct otp_image_layout *image_layout, int version)
 {
 	const struct otpstrap_info *strap_info = info_cb.strap_info;
-	uint32_t *OTPSTRAP_PRO = &OTPSTRAP[4];
-	uint32_t *OTPSTRAP_KEEP = &OTPSTRAP[2];
+	uint32_t *OTPSTRAP;
+	uint32_t *OTPSTRAP_REG_PRO;
+	uint32_t *OTPSTRAP_PRO;
+	uint32_t *OTPSTRAP_IGNORE;
 	int i;
 	int fail = 0;
 	uint32_t bit_offset;
 	uint32_t dw_offset;
 	uint32_t mask;
 	uint32_t otp_value;
+	uint32_t otp_reg_protect;
 	uint32_t otp_protect;
-	uint32_t otp_keep;
+	uint32_t otp_ignore;
 
-	printf("BIT(hex)   Value       Protect     Description\n");
-	printf("__________________________________________________________________________________________\n");
+	OTPSTRAP = (uint32_t *)image_layout->strap;
+	OTPSTRAP_PRO = (uint32_t *)image_layout->strap_pro;
+	OTPSTRAP_IGNORE = (uint32_t *)image_layout->strap_ignore;
+	if (version == OTP_AST2600A0) {
+		OTPSTRAP_REG_PRO = NULL;
+		printf("BIT(hex)   Value       Protect     Description\n");
+		printf("__________________________________________________________________________________________\n");
+	} else {
+		OTPSTRAP_REG_PRO = (uint32_t *)image_layout->strap_reg_pro;
+		printf("BIT(hex)   Value       REG_Protect Protect     Description\n");
+		printf("__________________________________________________________________________________________\n");
+	}
 
 	for (i = 0; i < info_cb.strap_info_len; i++) {
-		if (strap_info[i].bit_offset > 32) {
+		if (strap_info[i].bit_offset > 31) {
 			dw_offset = 1;
 			bit_offset = strap_info[i].bit_offset - 32;
 		} else {
@@ -1055,11 +1104,14 @@ static int otp_print_strap_image(uint32_t *OTPSTRAP)
 		mask = BIT(strap_info[i].length) - 1;
 		otp_value = (OTPSTRAP[dw_offset] >> bit_offset) & mask;
 		otp_protect = (OTPSTRAP_PRO[dw_offset] >> bit_offset) & mask;
-		otp_keep = (OTPSTRAP_KEEP[dw_offset] >> bit_offset) & mask;
+		otp_ignore = (OTPSTRAP_IGNORE[dw_offset] >> bit_offset) & mask;
 
-		if (otp_keep == mask) {
+		if (version != OTP_AST2600A0)
+			otp_reg_protect = (OTPSTRAP_REG_PRO[dw_offset] >> bit_offset) & mask;
+
+		if (otp_ignore == mask) {
 			continue;
-		} else if (otp_keep != 0) {
+		} else if (otp_ignore != 0) {
 			fail = 1;
 		}
 
@@ -1075,10 +1127,12 @@ static int otp_print_strap_image(uint32_t *OTPSTRAP)
 			       strap_info[i].bit_offset);
 		}
 		printf("0x%-10x", otp_value);
+		if (version != OTP_AST2600A0)
+			printf("0x%-10x", otp_reg_protect);
 		printf("0x%-10x", otp_protect);
 
 		if (fail) {
-			printf("Keep mask error\n");
+			printf("Ignore mask error\n");
 		} else {
 			if (strap_info[i].value != OTP_REG_RESERVED)
 				printf("%s\n", strap_info[i].information);
@@ -1171,7 +1225,7 @@ static int otp_print_strap_info(int view)
 	return OTP_SUCCESS;
 }
 
-static void buf_print(char *buf, int len)
+static void buf_print(uint8_t *buf, int len)
 {
 	int i;
 	printf("      00 01 02 03 04 05 06 07 08 09 0A 0B 0C 0D 0E 0F\n");
@@ -1186,17 +1240,19 @@ static void buf_print(char *buf, int len)
 	}
 }
 
-static int otp_print_data_info(uint32_t *buf)
+static int otp_print_data_info(struct otp_image_layout *image_layout)
 {
 	int key_id, key_offset, last, key_type, key_length, exp_length;
 	const struct otpkey_type *key_info_array = info_cb.key_info;
 	struct otpkey_type key_info;
-	char *byte_buf;
+	uint32_t *buf;
+	uint8_t *byte_buf;
 	char empty = 1;
 	int i = 0, len = 0;
 	int j;
 
-	byte_buf = (char *)buf;
+	byte_buf = image_layout->data;
+	buf = (uint32_t *)byte_buf;
 
 	for (i = 0; i < 16; i++) {
 		if (buf[i] != 0) {
@@ -1310,7 +1366,7 @@ static int otp_prog_conf(uint32_t *buf)
 	uint32_t prog_address;
 	uint32_t data[16];
 	uint32_t compare[2];
-	uint32_t *buf_keep = &buf[16];
+	uint32_t *buf_ignore = &buf[16];
 	uint32_t data_masked;
 	uint32_t buf_masked;
 
@@ -1325,8 +1381,8 @@ static int otp_prog_conf(uint32_t *buf)
 
 	printf("Check writable...\n");
 	for (i = 0; i < 16; i++) {
-		data_masked = data[i]  & ~buf_keep[i];
-		buf_masked  = buf[i] & ~buf_keep[i];
+		data_masked = data[i]  & ~buf_ignore[i];
+		buf_masked  = buf[i] & ~buf_ignore[i];
 		if (data_masked == buf_masked)
 			continue;
 		if ((data_masked | buf_masked) == buf_masked) {
@@ -1335,7 +1391,7 @@ static int otp_prog_conf(uint32_t *buf)
 			printf("Input image can't program into OTP, please check.\n");
 			printf("OTPCFG[%X] = %x\n", i, data[i]);
 			printf("Input [%X] = %x\n", i, buf[i]);
-			printf("Mask  [%X] = %x\n", i, ~buf_keep[i]);
+			printf("Mask  [%X] = %x\n", i, ~buf_ignore[i]);
 			return OTP_FAILURE;
 		}
 	}
@@ -1343,8 +1399,8 @@ static int otp_prog_conf(uint32_t *buf)
 	printf("Start Programing...\n");
 	otp_soak(0);
 	for (i = 0; i < 16; i++) {
-		data_masked = data[i]  & ~buf_keep[i];
-		buf_masked  = buf[i] & ~buf_keep[i];
+		data_masked = data[i]  & ~buf_ignore[i];
+		buf_masked  = buf[i] & ~buf_ignore[i];
 		prog_address = 0x800;
 		prog_address |= (i / 8) * 0x200;
 		prog_address |= (i % 8) * 0x2;
@@ -1355,14 +1411,14 @@ static int otp_prog_conf(uint32_t *buf)
 
 
 		otp_soak(1);
-		otp_prog_dw(buf[i], buf_keep[i], prog_address);
+		otp_prog_dw(buf[i], buf_ignore[i], prog_address);
 
 		pass = 0;
 		for (k = 0; k < RETRY; k++) {
-			if (verify_dw(prog_address, &buf[i], &buf_keep[i], compare, 1) != 0) {
+			if (verify_dw(prog_address, &buf[i], &buf_ignore[i], compare, 1) != 0) {
 				otp_soak(2);
 				otp_prog_dw(compare[0], prog_address, 1);
-				if (verify_dw(prog_address, &buf[i], &buf_keep[i], compare, 1) != 0) {
+				if (verify_dw(prog_address, &buf[i], &buf_ignore[i], compare, 1) != 0) {
 					otp_soak(1);
 				} else {
 					pass = 1;
@@ -1375,7 +1431,7 @@ static int otp_prog_conf(uint32_t *buf)
 		}
 		if (pass == 0) {
 			printf("address: %08x, data: %08x, buffer: %08x, mask: %08x\n",
-			       i, data[i], buf[i], buf_keep[i]);
+			       i, data[i], buf[i], buf_ignore[i]);
 			break;
 		}
 	}
@@ -1392,7 +1448,7 @@ static int otp_prog_conf(uint32_t *buf)
 static int otp_strap_image_confirm(uint32_t *buf)
 {
 	int i;
-	uint32_t *strap_keep = buf + 2;
+	uint32_t *strap_ignore = buf + 2;
 	uint32_t *strap_protect = buf + 4;
 	int bit, pbit, kbit;
 	int fail = 0;
@@ -1403,11 +1459,11 @@ static int otp_strap_image_confirm(uint32_t *buf)
 	for (i = 0; i < 64; i++) {
 		if (i < 32) {
 			bit = (buf[0] >> i) & 0x1;
-			kbit = (strap_keep[0] >> i) & 0x1;
+			kbit = (strap_ignore[0] >> i) & 0x1;
 			pbit = (strap_protect[0] >> i) & 0x1;
 		} else {
 			bit = (buf[1] >> (i - 32)) & 0x1;
-			kbit = (strap_keep[1] >> (i - 32)) & 0x1;
+			kbit = (strap_ignore[1] >> (i - 32)) & 0x1;
 			pbit = (strap_protect[1] >> (i - 32)) & 0x1;
 		}
 
@@ -1488,7 +1544,7 @@ static int otp_print_strap(int start, int count)
 static int otp_prog_strap(uint32_t *buf)
 {
 	int i, j;
-	uint32_t *strap_keep = buf + 2;
+	uint32_t *strap_ignore = buf + 2;
 	uint32_t *strap_protect = buf + 4;
 	uint32_t prog_bit, prog_address;
 	int bit, pbit, kbit, offset;
@@ -1510,7 +1566,7 @@ static int otp_prog_strap(uint32_t *buf)
 		if (i < 32) {
 			offset = i;
 			bit = (buf[0] >> offset) & 0x1;
-			kbit = (strap_keep[0] >> offset) & 0x1;
+			kbit = (strap_ignore[0] >> offset) & 0x1;
 			pbit = (strap_protect[0] >> offset) & 0x1;
 			prog_address |= ((otpstrap[i].writeable_option * 2 + 16) / 8) * 0x200;
 			prog_address |= ((otpstrap[i].writeable_option * 2 + 16) % 8) * 0x2;
@@ -1518,7 +1574,7 @@ static int otp_prog_strap(uint32_t *buf)
 		} else {
 			offset = (i - 32);
 			bit = (buf[1] >> offset) & 0x1;
-			kbit = (strap_keep[1] >> offset) & 0x1;
+			kbit = (strap_ignore[1] >> offset) & 0x1;
 			pbit = (strap_protect[1] >> offset) & 0x1;
 			prog_address |= ((otpstrap[i].writeable_option * 2 + 17) / 8) * 0x200;
 			prog_address |= ((otpstrap[i].writeable_option * 2 + 17) % 8) * 0x2;
@@ -1627,7 +1683,7 @@ static int otp_prog_data(uint32_t *buf)
 	int i;
 	int ret;
 	uint32_t data[2048];
-	uint32_t *buf_keep = &buf[2048];
+	uint32_t *buf_ignore = &buf[2048];
 
 	uint32_t data_masked;
 	uint32_t buf_masked;
@@ -1638,12 +1694,11 @@ static int otp_prog_data(uint32_t *buf)
 		otp_read_data(i, &data[i]);
 	}
 
-
 	printf("Check writable...\n");
 	// ignore last two dw, the last two dw is used for slt otp write check.
 	for (i = 0; i < 2046; i++) {
-		data_masked = data[i]  & ~buf_keep[i];
-		buf_masked  = buf[i] & ~buf_keep[i];
+		data_masked = data[i]  & ~buf_ignore[i];
+		buf_masked  = buf[i] & ~buf_ignore[i];
 		if (data_masked == buf_masked)
 			continue;
 		if (i % 2 == 0) {
@@ -1653,7 +1708,7 @@ static int otp_prog_data(uint32_t *buf)
 				printf("Input image can't program into OTP, please check.\n");
 				printf("OTP_ADDR[%x] = %x\n", i, data[i]);
 				printf("Input   [%x] = %x\n", i, buf[i]);
-				printf("Mask    [%x] = %x\n", i, ~buf_keep[i]);
+				printf("Mask    [%x] = %x\n", i, ~buf_ignore[i]);
 				return OTP_FAILURE;
 			}
 		} else {
@@ -1663,7 +1718,7 @@ static int otp_prog_data(uint32_t *buf)
 				printf("Input image can't program into OTP, please check.\n");
 				printf("OTP_ADDR[%x] = %x\n", i, data[i]);
 				printf("Input   [%x] = %x\n", i, buf[i]);
-				printf("Mask    [%x] = %x\n", i, ~buf_keep[i]);
+				printf("Mask    [%x] = %x\n", i, ~buf_ignore[i]);
 				return OTP_FAILURE;
 			}
 		}
@@ -1673,19 +1728,19 @@ static int otp_prog_data(uint32_t *buf)
 
 	// programing ecc region first
 	for (i = 1792; i < 2046; i += 2) {
-		ret = otp_prog_verify_2dw(&data[i], &buf[i], &buf_keep[i], i);
+		ret = otp_prog_verify_2dw(&data[i], &buf[i], &buf_ignore[i], i);
 		if (ret != OTP_SUCCESS) {
 			printf("address: %08x, data: %08x %08x, buffer: %08x %08x, mask: %08x %08x\n",
-			       i, data[i], data[i + 1], buf[i], buf[i + 1], buf_keep[i], buf_keep[i + 1]);
+			       i, data[i], data[i + 1], buf[i], buf[i + 1], buf_ignore[i], buf_ignore[i + 1]);
 			return ret;
 		}
 	}
 
 	for (i = 0; i < 1792; i += 2) {
-		ret = otp_prog_verify_2dw(&data[i], &buf[i], &buf_keep[i], i);
+		ret = otp_prog_verify_2dw(&data[i], &buf[i], &buf_ignore[i], i);
 		if (ret != OTP_SUCCESS) {
 			printf("address: %08x, data: %08x %08x, buffer: %08x %08x, mask: %08x %08x\n",
-			       i, data[i], data[i + 1], buf[i], buf[i + 1], buf_keep[i], buf_keep[i + 1]);
+			       i, data[i], data[i + 1], buf[i], buf[i + 1], buf_ignore[i], buf_ignore[i + 1]);
 			return ret;
 		}
 	}
@@ -1694,59 +1749,112 @@ static int otp_prog_data(uint32_t *buf)
 
 }
 
+static int otp_image_verify(uint8_t *src_buf, uint32_t length, uint8_t *digest_buf)
+{
+	sha256_context ctx;
+	u8 digest_ret[CHECKSUM_LEN];
+
+	sha256_starts(&ctx);
+	sha256_update(&ctx, src_buf, length);
+	sha256_finish(&ctx, digest_ret);
+
+	if (!memcmp(digest_buf, digest_ret, CHECKSUM_LEN))
+		return 0;
+	else
+		return -1;
+
+}
+
 static int do_otp_prog(int addr, int byte_size, int nconfirm)
 {
 	int ret;
-	int mode = 0;
 	int image_version = 0;
-	uint32_t *buf;
-	uint32_t *data_region = NULL;
-	uint32_t *conf_region = NULL;
-	uint32_t *strap_region = NULL;
+	struct otp_header *otp_header;
+	struct otp_image_layout image_layout;
+	int image_size;
+	int data_region_size;
+	int config_region_size;
+	int strap_region_size;
+	uint8_t *buf;
+	uint8_t *checksum;
 
-	buf = map_physmem(addr, byte_size, MAP_WRBACK);
-	if (!buf) {
+	otp_header = map_physmem(addr, sizeof(struct otp_header), MAP_WRBACK);
+	if (!otp_header) {
 		puts("Failed to map physical memory\n");
 		return OTP_FAILURE;
 	}
 
-	image_version = buf[0] & 0x3;
+	image_size = OTP_IMAGE_SIZE(otp_header->image_info);
+	unmap_physmem(otp_header, MAP_WRBACK);
+
+	buf = map_physmem(addr, image_size + CHECKSUM_LEN, MAP_WRBACK);
+
+	if (!buf) {
+		puts("Failed to map physical memory\n");
+		return OTP_FAILURE;
+	}
+	otp_header = (struct otp_header *) buf;
+	checksum = buf + otp_header->checksum_offset;
+
+	if (strcmp(OTP_MAGIC, (char *)otp_header->otp_magic) != 0) {
+		puts("Image is invalid\n");
+		return OTP_FAILURE;
+	}
+
+	data_region_size = (int)(OTP_REGION_SIZE(otp_header->data_info) / 2);
+	image_layout.data = buf + OTP_REGION_OFFSET(otp_header->data_info);
+	image_layout.data_ignore = image_layout.data + data_region_size;
+
+	config_region_size = (int)(OTP_REGION_SIZE(otp_header->config_info) / 2);
+	image_layout.conf = buf + OTP_REGION_OFFSET(otp_header->config_info);
+	image_layout.conf_ignore = image_layout.conf + config_region_size;
+
+	image_layout.strap = buf + OTP_REGION_OFFSET(otp_header->strap_info);
+
+	if (!strcmp("A0", (char *)otp_header->otp_version)) {
+		image_version = OTP_AST2600A0;
+		strap_region_size = (int)(OTP_REGION_SIZE(otp_header->strap_info) / 3);
+		image_layout.strap_pro = image_layout.strap + strap_region_size;
+		image_layout.strap_ignore = image_layout.strap + 2 * strap_region_size;
+	} else if (!strcmp("A1", (char *)otp_header->otp_version)) {
+		image_version = OTP_AST2600A1;
+		strap_region_size = (int)(OTP_REGION_SIZE(otp_header->strap_info) / 4);
+		image_layout.strap_reg_pro = image_layout.strap + strap_region_size;
+		image_layout.strap_pro = image_layout.strap + 2 * strap_region_size;
+		image_layout.strap_ignore = image_layout.strap + 3 * strap_region_size;
+	} else {
+		puts("Version is not supported\n");
+		return OTP_FAILURE;
+	}
+
 	if (image_version != info_cb.version) {
 		puts("Version is not match\n");
 		return OTP_FAILURE;
 	}
 
-	if (buf[0] & BIT(29)) {
-		mode |= OTP_REGION_DATA;
-		data_region = &buf[44];
-	}
-	if (buf[0] & BIT(30)) {
-		mode |= OTP_REGION_CONF;
-		conf_region = &buf[12];
-	}
-	if (buf[0] & BIT(31)) {
-		mode |= OTP_REGION_STRAP;
-		strap_region = &buf[4];
+	if (otp_image_verify(buf, image_size, checksum)) {
+		puts("checksum is invalid\n");
+		return OTP_FAILURE;
 	}
 
 	if (!nconfirm) {
-		if (mode & OTP_REGION_DATA) {
+		if (otp_header->image_info & OTP_INC_DATA) {
 			printf("\nOTP data region :\n");
-			if (otp_print_data_info(data_region) < 0) {
+			if (otp_print_data_info(&image_layout) < 0) {
 				printf("OTP data error, please check.\n");
 				return OTP_FAILURE;
 			}
 		}
-		if (mode & OTP_REGION_STRAP) {
+		if (otp_header->image_info & OTP_INC_STRAP) {
 			printf("\nOTP strap region :\n");
-			if (otp_print_strap_image(strap_region) < 0) {
+			if (otp_print_strap_image(&image_layout, image_version) < 0) {
 				printf("OTP strap error, please check.\n");
 				return OTP_FAILURE;
 			}
 		}
-		if (mode & OTP_REGION_CONF) {
+		if (otp_header->image_info & OTP_INC_CONFIG) {
 			printf("\nOTP configuration region :\n");
-			if (otp_print_conf_image(conf_region) < 0) {
+			if (otp_print_conf_image(&image_layout) < 0) {
 				printf("OTP config error, please check.\n");
 				return OTP_FAILURE;
 			}
@@ -1759,35 +1867,35 @@ static int do_otp_prog(int addr, int byte_size, int nconfirm)
 		}
 	}
 
-	if (mode & OTP_REGION_DATA) {
-		printf("programing data region ...\n");
-		ret = otp_prog_data(data_region);
-		if (ret != 0) {
-			printf("Error\n");
-			return ret;
-		} else {
-			printf("Done\n");
-		}
-	}
-	if (mode & OTP_REGION_STRAP) {
-		printf("programing strap region ...\n");
-		ret = otp_prog_strap(strap_region);
-		if (ret != 0) {
-			printf("Error\n");
-			return ret;
-		} else {
-			printf("Done\n");
-		}
-	}
-	if (mode & OTP_REGION_CONF) {
-		printf("programing configuration region ...\n");
-		ret = otp_prog_conf(conf_region);
-		if (ret != 0) {
-			printf("Error\n");
-			return ret;
-		}
-		printf("Done\n");
-	}
+	// if (otp_header->image_info & OTP_INC_DATA) {
+	// 	printf("programing data region ...\n");
+	// 	ret = otp_prog_data(data_region);
+	// 	if (ret != 0) {
+	// 		printf("Error\n");
+	// 		return ret;
+	// 	} else {
+	// 		printf("Done\n");
+	// 	}
+	// }
+	// if (mode & OTP_REGION_STRAP) {
+	// 	printf("programing strap region ...\n");
+	// 	ret = otp_prog_strap(strap_region);
+	// 	if (ret != 0) {
+	// 		printf("Error\n");
+	// 		return ret;
+	// 	} else {
+	// 		printf("Done\n");
+	// 	}
+	// }
+	// if (mode & OTP_REGION_CONF) {
+	// 	printf("programing configuration region ...\n");
+	// 	ret = otp_prog_conf(conf_region);
+	// 	if (ret != 0) {
+	// 		printf("Error\n");
+	// 		return ret;
+	// 	}
+	// 	printf("Done\n");
+	// }
 
 	return OTP_SUCCESS;
 }
@@ -2205,16 +2313,16 @@ static int do_ast_otp(cmd_tbl_t *cmdtp, int flag, int argc, char *const argv[])
 	if (flag == CMD_FLAG_REPEAT && !cmd_is_repeatable(cp))
 		return CMD_RET_SUCCESS;
 
-	if (chip_version() == 0) {
-		info_cb.version = 0;
+	if (chip_version() == OTP_AST2600A0) {
+		info_cb.version = OTP_AST2600A0;
 		info_cb.conf_info = a0_conf_info;
 		info_cb.conf_info_len = ARRAY_SIZE(a0_conf_info);
 		info_cb.strap_info = a0_strap_info;
 		info_cb.strap_info_len = ARRAY_SIZE(a0_strap_info);
 		info_cb.key_info = a0_key_type;
 		info_cb.key_info_len = ARRAY_SIZE(a0_key_type);
-	} else if (chip_version() == 1) {
-		info_cb.version = 1;
+	} else if (chip_version() == OTP_AST2600A1) {
+		info_cb.version = OTP_AST2600A1;
 		info_cb.conf_info = a1_conf_info;
 		info_cb.conf_info_len = ARRAY_SIZE(a1_conf_info);
 		info_cb.strap_info = a1_strap_info;
