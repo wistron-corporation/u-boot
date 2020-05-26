@@ -197,6 +197,15 @@ static u32 ast2600_get_hclk(struct ast2600_scu *scu)
 	return (rate / axi_div / ahb_div);
 }
 
+static u32 ast2600_get_bclk_rate(struct ast2600_scu *scu)
+{
+	u32 rate;
+	u32 bclk_sel = (readl(&scu->clk_sel1) >> 20) & 0x7;
+	rate = ast2600_get_pll_rate(scu, ASPEED_CLK_HPLL);
+
+	return (rate /((bclk_sel + 1) * 4));
+}
+
 static u32 ast2600_hpll_pclk1_div_table[] = {
 	4, 8, 12, 16, 20, 24, 28, 32,
 };
@@ -427,6 +436,9 @@ static ulong ast2600_clk_get_rate(struct clk *clk)
 		break;
 	case ASPEED_CLK_GATE_UART5CLK:
 		rate = ast2600_get_uart_clk_rate(priv->scu, 5);
+		break;
+	case ASPEED_CLK_BCLK:
+		rate = ast2600_get_bclk_rate(priv->scu);
 		break;
 	case ASPEED_CLK_SDIO:
 		rate = ast2600_get_sdio_clk_rate(priv->scu);
@@ -1138,6 +1150,7 @@ static struct aspeed_clks aspeed_clk_names[] = {
 	{ ASPEED_CLK_AHB, "hclk" },
 	{ ASPEED_CLK_APB1, "pclk1" },
 	{ ASPEED_CLK_APB2, "pclk2" },
+	{ ASPEED_CLK_BCLK, "bclk" },	
 	{ ASPEED_CLK_UARTX, "uxclk" },
 	{ ASPEED_CLK_HUARTX, "huxclk" },
 };
