@@ -1480,6 +1480,35 @@ static int otp_prog_conf(struct otp_image_layout *image_layout)
 
 }
 
+static int otp_strap_bit_confirm(struct otpstrap_status *otpstrap, int offset, int ibit, int bit, int pbit, int rpbit)
+{
+	if (ibit == 1) {
+		return OTP_SUCCESS;
+	} else {
+		printf("OTPSTRAP[%X]:\n", offset);
+	}
+	if (bit == otpstrap->value) {
+		printf("    The value is same as before, skip it.\n");
+		return OTP_PROG_SKIP;
+	}
+	if (otpstrap->protected == 1) {
+		printf("    This bit is protected and is not writable\n");
+		return OTP_FAILURE;
+	}
+	if (otpstrap->remain_times == 0) {
+		printf("    This bit is no remaining times to write.\n");
+		return OTP_FAILURE;
+	}
+	if (pbit == 1) {
+		printf("    This bit will be protected and become non-writable.\n");
+	}
+	if (rpbit == 1 && info_cb.version != OTP_AST2600A0) {
+		printf("    The relative register will be protected.\n");
+	}
+	printf("    Write 1 to OTPSTRAP[%X] OPTION[%X], that value becomes from %d to %d.\n", offset, otpstrap->writeable_option + 1, otpstrap->value, otpstrap->value ^ 1);
+	return OTP_SUCCESS;
+}
+
 
 static int otp_strap_image_confirm(struct otp_image_layout *image_layout)
 {
@@ -1488,9 +1517,10 @@ static int otp_strap_image_confirm(struct otp_image_layout *image_layout)
 	uint32_t *strap_ignore;
 	uint32_t *strap_reg_protect;
 	uint32_t *strap_pro;
-	int bit, pbit, kbit, rpbit;
+	int bit, pbit, ibit, rpbit;
 	int fail = 0;
 	int skip = -1;
+	int ret;
 	struct otpstrap_status otpstrap[64];
 
 	strap = (uint32_t *)image_layout->strap;
@@ -1502,11 +1532,11 @@ static int otp_strap_image_confirm(struct otp_image_layout *image_layout)
 	for (i = 0; i < 64; i++) {
 		if (i < 32) {
 			bit = (strap[0] >> i) & 0x1;
-			kbit = (strap_ignore[0] >> i) & 0x1;
+			ibit = (strap_ignore[0] >> i) & 0x1;
 			pbit = (strap_pro[0] >> i) & 0x1;
 		} else {
 			bit = (strap[1] >> (i - 32)) & 0x1;
-			kbit = (strap_ignore[1] >> (i - 32)) & 0x1;
+			ibit = (strap_ignore[1] >> (i - 32)) & 0x1;
 			pbit = (strap_pro[1] >> (i - 32)) & 0x1;
 		}
 
@@ -1519,44 +1549,24 @@ static int otp_strap_image_confirm(struct otp_image_layout *image_layout)
 		} else {
 			rpbit = 0;
 		}
-
-		if (kbit == 1) {
-			continue;
-		} else {
-			printf("OTPSTRAP[%X]:\n", i);
-		}
-		if (bit == otpstrap[i].value) {
-			printf("    The value is same as before, skip it.\n");
+		ret = otp_strap_bit_confirm(&otpstrap[i], i, ibit, bit, pbit, rpbit);
+		if (ret == OTP_PROG_SKIP) {
 			if (skip == -1)
 				skip = 1;
 			continue;
 		} else {
-			skip = 0;
+			skip = 1;
 		}
-		if (otpstrap[i].protected == 1) {
-			printf("    This bit is protected and is not writable\n");
+
+		if (ret == OTP_FAILURE)
 			fail = 1;
-			continue;
-		}
-		if (otpstrap[i].remain_times == 0) {
-			printf("    This bit is no remaining times to write.\n");
-			fail = 1;
-			continue;
-		}
-		if (pbit == 1) {
-			printf("    This bit will be protected and become non-writable.\n");
-		}
-		if (rpbit == 1 && info_cb.version != OTP_AST2600A0) {
-			printf("    The relative register will be protected.\n");
-		}
-		printf("    Write 1 to OTPSTRAP[%X] OPTION[%X], that value becomes from %d to %d.\n", i, otpstrap[i].writeable_option + 1, otpstrap[i].value, otpstrap[i].value ^ 1);
 	}
 	if (fail == 1)
 		return OTP_FAILURE;
 	else if (skip == 1)
 		return OTP_PROG_SKIP;
 
-	return 0;
+	return OTP_SUCCESS;
 }
 
 static int otp_print_strap(int start, int count)
@@ -1605,7 +1615,7 @@ static int otp_prog_strap(struct otp_image_layout *image_layout)
 	uint32_t *strap_pro;
 	uint32_t *strap_reg_protect;
 	uint32_t prog_bit, prog_address;
-	int bit, pbit, kbit, offset, rpbit;
+	int bit, pbit, ibit, offset, rpbit;
 	int fail = 0;
 	int pass = 0;
 	struct otpstrap_status otpstrap[64];
@@ -1629,7 +1639,7 @@ static int otp_prog_strap(struct otp_image_layout *image_layout)
 		if (i < 32) {
 			offset = i;
 			bit = (strap[0] >> offset) & 0x1;
-			kbit = (strap_ignore[0] >> offset) & 0x1;
+			ibit = (strap_ignore[0] >> offset) & 0x1;
 			pbit = (strap_pro[0] >> offset) & 0x1;
 			prog_address |= ((otpstrap[i].writeable_option * 2 + 16) / 8) * 0x200;
 			prog_address |= ((otpstrap[i].writeable_option * 2 + 16) % 8) * 0x2;
@@ -1637,7 +1647,7 @@ static int otp_prog_strap(struct otp_image_layout *image_layout)
 		} else {
 			offset = (i - 32);
 			bit = (strap[1] >> offset) & 0x1;
-			kbit = (strap_ignore[1] >> offset) & 0x1;
+			ibit = (strap_ignore[1] >> offset) & 0x1;
 			pbit = (strap_pro[1] >> offset) & 0x1;
 			prog_address |= ((otpstrap[i].writeable_option * 2 + 17) / 8) * 0x200;
 			prog_address |= ((otpstrap[i].writeable_option * 2 + 17) % 8) * 0x2;
@@ -1653,7 +1663,7 @@ static int otp_prog_strap(struct otp_image_layout *image_layout)
 		}
 		prog_bit = ~(0x1 << offset);
 
-		if (kbit == 1) {
+		if (ibit == 1) {
 			continue;
 		}
 		if (bit == otpstrap[i].value) {
