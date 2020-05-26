@@ -446,7 +446,9 @@ static const struct otpconf_info a1_conf_info[] = {
 	{ 0, 12, 2,  1, "SHA mode : SHA256" },
 	{ 0, 12, 2,  2, "SHA mode : SHA384" },
 	{ 0, 12, 2,  3, "SHA mode : SHA512" },
-	{ 0, 14, 2,  OTP_REG_RESERVED, "" },
+	{ 0, 14, 1,  0, "Disable Patch code" },
+	{ 0, 14, 1,  1, "Enable Patch code" },
+	{ 0, 15, 1,  OTP_REG_RESERVED, "" },
 	{ 0, 16, 6,  OTP_REG_VALUE, "Secure Region size (DW): 0x%x" },
 	{ 0, 22, 1,  0, "Secure Region : Writable" },
 	{ 0, 22, 1,  1, "Secure Region : Write Protect" },
@@ -500,7 +502,9 @@ static const struct otpconf_info a1_conf_info[] = {
 	{ 7, 31, 1,  1, "Enable chip security setting" },
 	{ 8, 0,  32, OTP_REG_VALUE, "Redundancy Repair : 0x%x" },
 	{ 10, 0, 32, OTP_REG_VALUE, "Manifest ID low : 0x%x" },
-	{ 11, 0, 32, OTP_REG_VALUE, "Manifest ID high : 0x%x" }
+	{ 11, 0, 32, OTP_REG_VALUE, "Manifest ID high : 0x%x" },
+	{ 14, 0, 11, OTP_REG_VALUE, "Patch code location (DW): 0x%x" },
+	{ 14, 11, 6, OTP_REG_VALUE, "Patch code size (DW): 0x%x" }
 };
 
 static const struct otpkey_type a0_key_type[] = {
@@ -874,7 +878,7 @@ static void otp_strap_status(struct otpstrap_status *otpstrap)
 static int otp_print_conf_image(uint32_t *OTPCFG)
 {
 	const struct otpconf_info *conf_info = info_cb.conf_info;
-	uint32_t *OTPCFG_KEEP = &OTPCFG[12];
+	uint32_t *OTPCFG_KEEP = &OTPCFG[16];
 	uint32_t mask;
 	uint32_t dw_offset;
 	uint32_t bit_offset;
@@ -955,7 +959,7 @@ static int otp_print_conf_image(uint32_t *OTPCFG)
 static int otp_print_conf_info(int input_offset)
 {
 	const struct otpconf_info *conf_info = info_cb.conf_info;
-	uint32_t OTPCFG[12];
+	uint32_t OTPCFG[16];
 	uint32_t mask;
 	uint32_t dw_offset;
 	uint32_t bit_offset;
@@ -964,7 +968,7 @@ static int otp_print_conf_info(int input_offset)
 	int i;
 	int j;
 
-	for (i = 0; i < 12; i++)
+	for (i = 0; i < 16; i++)
 		otp_read_config(i, &OTPCFG[i]);
 
 
@@ -1304,15 +1308,15 @@ static int otp_prog_conf(uint32_t *buf)
 	int i, k;
 	int pass = 0;
 	uint32_t prog_address;
-	uint32_t data[12];
+	uint32_t data[16];
 	uint32_t compare[2];
-	uint32_t *buf_keep = &buf[12];
+	uint32_t *buf_keep = &buf[16];
 	uint32_t data_masked;
 	uint32_t buf_masked;
 
 	printf("Read OTP Config Region:\n");
 
-	for (i = 0; i < 12 ; i ++) {
+	for (i = 0; i < 16 ; i ++) {
 		prog_address = 0x800;
 		prog_address |= (i / 8) * 0x200;
 		prog_address |= (i % 8) * 0x2;
@@ -1320,7 +1324,7 @@ static int otp_prog_conf(uint32_t *buf)
 	}
 
 	printf("Check writable...\n");
-	for (i = 0; i < 12; i++) {
+	for (i = 0; i < 16; i++) {
 		data_masked = data[i]  & ~buf_keep[i];
 		buf_masked  = buf[i] & ~buf_keep[i];
 		if (data_masked == buf_masked)
@@ -1338,14 +1342,16 @@ static int otp_prog_conf(uint32_t *buf)
 
 	printf("Start Programing...\n");
 	otp_soak(0);
-	for (i = 0; i < 12; i++) {
+	for (i = 0; i < 16; i++) {
 		data_masked = data[i]  & ~buf_keep[i];
 		buf_masked  = buf[i] & ~buf_keep[i];
 		prog_address = 0x800;
 		prog_address |= (i / 8) * 0x200;
 		prog_address |= (i % 8) * 0x2;
-		if (data_masked == buf_masked)
+		if (data_masked == buf_masked) {
+			pass = 1;
 			continue;
+		}
 
 
 		otp_soak(1);
@@ -1366,6 +1372,11 @@ static int otp_prog_conf(uint32_t *buf)
 				pass = 1;
 				break;
 			}
+		}
+		if (pass == 0) {
+			printf("address: %08x, data: %08x, buffer: %08x, mask: %08x\n",
+			       i, data[i], buf[i], buf_keep[i]);
+			break;
 		}
 	}
 
@@ -1707,7 +1718,7 @@ static int do_otp_prog(int addr, int byte_size, int nconfirm)
 
 	if (buf[0] & BIT(29)) {
 		mode |= OTP_REGION_DATA;
-		data_region = &buf[36];
+		data_region = &buf[44];
 	}
 	if (buf[0] & BIT(30)) {
 		mode |= OTP_REGION_CONF;
