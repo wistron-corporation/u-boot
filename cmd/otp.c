@@ -1118,12 +1118,11 @@ static int otp_print_strap_image(struct otp_image_layout *image_layout)
 	if (info_cb.version == OTP_AST2600A0) {
 		OTPSTRAP_REG_PRO = NULL;
 		printf("BIT(hex)   Value       Protect     Description\n");
-		printf("__________________________________________________________________________________________\n");
 	} else {
 		OTPSTRAP_REG_PRO = (uint32_t *)image_layout->strap_reg_pro;
-		printf("BIT(hex)   Value       REG_Protect Protect     Description\n");
-		printf("__________________________________________________________________________________________\n");
+		printf("BIT(hex)   Value       Reg_Protect Protect     Description\n");
 	}
+	printf("__________________________________________________________________________________________\n");
 
 	for (i = 0; i < info_cb.strap_info_len; i++) {
 		if (strap_info[i].bit_offset > 31) {
@@ -1572,6 +1571,7 @@ static int otp_strap_image_confirm(struct otp_image_layout *image_layout)
 static int otp_print_strap(int start, int count)
 {
 	int i, j;
+	int remains;
 	struct otpstrap_status otpstrap[64];
 
 	if (start < 0 || start > 64)
@@ -1582,15 +1582,24 @@ static int otp_print_strap(int start, int count)
 
 	otp_strap_status(otpstrap);
 
-	printf("BIT(hex)  Value  Option           Status\n");
-	printf("___________________________________________________________________________\n");
+	if (info_cb.version == OTP_AST2600A0) {
+		remains = 7;
+		printf("BIT(hex)  Value  Option           Status\n");
+	} else {
+		remains = 6;
+		printf("BIT(hex)  Value  Option         Reg_Protect Status\n");
+	}
+	printf("______________________________________________________________________________\n");
 
 	for (i = start; i < start + count; i++) {
 		printf("0x%-8X", i);
 		printf("%-7d", otpstrap[i].value);
-		for (j = 0; j < 7; j++)
+		for (j = 0; j < remains; j++)
 			printf("%d ", otpstrap[i].option_array[j]);
 		printf("   ");
+		if (info_cb.version != OTP_AST2600A0) {
+			printf("%d           ", otpstrap[i].reg_protected);
+		}
 		if (otpstrap[i].protected == 1) {
 			printf("protected and not writable");
 		} else {
@@ -1658,6 +1667,7 @@ static int otp_prog_strap_bit(int bit_offset, int value)
 			break;
 		}
 	}
+	otp_soak(0);
 	if (!pass)
 		return OTP_FAILURE;
 
@@ -1940,7 +1950,7 @@ static int otp_image_verify(uint8_t *src_buf, uint32_t length, uint8_t *digest_b
 
 }
 
-static int do_otp_prog(int addr, int byte_size, int nconfirm)
+static int do_otp_prog(int addr, int nconfirm)
 {
 	int ret;
 	int image_version = 0;
@@ -2230,21 +2240,18 @@ static int do_otpread(cmd_tbl_t *cmdtp, int flag, int argc, char *const argv[])
 static int do_otpprog(cmd_tbl_t *cmdtp, int flag, int argc, char *const argv[])
 {
 	phys_addr_t addr;
-	uint32_t byte_size;
 	int ret;
 
-	if (argc == 4) {
+	if (argc == 3) {
 		if (strcmp(argv[1], "o"))
 			return CMD_RET_USAGE;
 		addr = simple_strtoul(argv[2], NULL, 16);
-		byte_size = simple_strtoul(argv[3], NULL, 16);
 		writel(OTP_PASSWD, OTP_PROTECT_KEY); //password
-		ret = do_otp_prog(addr, byte_size, 1);
-	} else if (argc == 3) {
+		ret = do_otp_prog(addr, 1);
+	} else if (argc == 2) {
 		addr = simple_strtoul(argv[1], NULL, 16);
-		byte_size = simple_strtoul(argv[2], NULL, 16);
 		writel(OTP_PASSWD, OTP_PROTECT_KEY); //password
-		ret = do_otp_prog(addr, byte_size, 0);
+		ret = do_otp_prog(addr, 0);
 	} else {
 		return CMD_RET_USAGE;
 	}
@@ -2449,7 +2456,7 @@ static int do_otpprotect(cmd_tbl_t *cmdtp, int flag, int argc, char *const argv[
 static cmd_tbl_t cmd_otp[] = {
 	U_BOOT_CMD_MKENT(read, 4, 0, do_otpread, "", ""),
 	U_BOOT_CMD_MKENT(info, 3, 0, do_otpinfo, "", ""),
-	U_BOOT_CMD_MKENT(prog, 4, 0, do_otpprog, "", ""),
+	U_BOOT_CMD_MKENT(prog, 3, 0, do_otpprog, "", ""),
 	U_BOOT_CMD_MKENT(pb, 6, 0, do_otppb, "", ""),
 	U_BOOT_CMD_MKENT(protect, 3, 0, do_otpprotect, "", ""),
 	U_BOOT_CMD_MKENT(cmp, 3, 0, do_otpcmp, "", ""),
@@ -2498,7 +2505,7 @@ U_BOOT_CMD(
 	"otp read strap <strap_bit_offset> <bit_count>\n"
 	"otp info strap [v]\n"
 	"otp info conf [otp_dw_offset]\n"
-	"otp prog [o] <addr> <byte_size>\n"
+	"otp prog [o] <addr>\n"
 	"otp pb conf|data [o] <otp_dw_offset> <bit_offset> <value>\n"
 	"otp pb strap [o] <bit_offset> <value>\n"
 	"otp protect [o] <bit_offset>\n"
