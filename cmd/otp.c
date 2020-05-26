@@ -1607,6 +1607,63 @@ static int otp_print_strap(int start, int count)
 	return OTP_SUCCESS;
 }
 
+static int otp_prog_strap_bit(int bit_offset, int value)
+{
+	struct otpstrap_status otpstrap[64];
+	uint32_t prog_bit, prog_address;
+	int offset;
+	int i;
+	int pass;
+	int ret;
+
+
+	otp_strap_status(otpstrap);
+
+	ret = otp_strap_bit_confirm(&otpstrap[bit_offset], bit_offset, 0, value, 0, 0);
+
+	if (ret != OTP_SUCCESS) {
+		return ret;
+	}
+
+	prog_address = 0x800;
+	if (bit_offset < 32) {
+		offset = bit_offset;
+		prog_address |= ((otpstrap[bit_offset].writeable_option * 2 + 16) / 8) * 0x200;
+		prog_address |= ((otpstrap[bit_offset].writeable_option * 2 + 16) % 8) * 0x2;
+
+	} else {
+		offset = (bit_offset - 32);
+		prog_address |= ((otpstrap[bit_offset].writeable_option * 2 + 17) / 8) * 0x200;
+		prog_address |= ((otpstrap[bit_offset].writeable_option * 2 + 17) % 8) * 0x2;
+	}
+
+	prog_bit = ~(0x1 << offset);
+
+	otp_soak(1);
+	otp_prog(prog_address, prog_bit);
+
+	pass = 0;
+	for (i = 0; i < RETRY; i++) {
+		if (verify_bit(prog_address, offset, 1) != 0) {
+			otp_soak(2);
+			otp_prog(prog_address, prog_bit);
+			if (verify_bit(prog_address, offset, 1) != 0) {
+				otp_soak(1);
+			} else {
+				pass = 1;
+				break;
+			}
+		} else {
+			pass = 1;
+			break;
+		}
+	}
+	if (!pass)
+		return OTP_FAILURE;
+
+	return OTP_SUCCESS;
+}
+
 static int otp_prog_strap(struct otp_image_layout *image_layout)
 {
 	int i, j;
@@ -2019,7 +2076,6 @@ static int do_otp_prog(int addr, int byte_size, int nconfirm)
 static int do_otp_prog_bit(int mode, int otp_dw_offset, int bit_offset, int value, int nconfirm)
 {
 	uint32_t read[2];
-	uint32_t strap_buf[6];
 	uint32_t prog_address = 0;
 	struct otpstrap_status otpstrap[64];
 	int otp_bit;
@@ -2077,28 +2133,13 @@ static int do_otp_prog_bit(int mode, int otp_dw_offset, int bit_offset, int valu
 		printf("Program OTPDATA%X[%X] to 1\n", otp_dw_offset, bit_offset);
 		break;
 	case OTP_REGION_STRAP:
-		// otp_strap_status(otpstrap);
-		// otp_print_strap(bit_offset, 1);
-		// if (bit_offset < 32) {
-		// 	strap_buf[0] = value << bit_offset;
-		// 	strap_buf[1] = 0;
-		// 	strap_buf[2] = ~BIT(bit_offset);
-		// 	strap_buf[3] = ~0;
-		// 	strap_buf[4] = 0;
-		// 	strap_buf[5] = 0;
-		// } else {
-		// 	strap_buf[0] = 0;
-		// 	strap_buf[1] = value << (bit_offset - 32);
-		// 	strap_buf[2] = ~0;
-		// 	strap_buf[3] = ~BIT(bit_offset - 32);
-		// 	strap_buf[4] = 0;
-		// 	strap_buf[5] = 0;
-		// }
-		// ret = otp_strap_image_confirm(strap_buf);
-		// if (ret == OTP_FAILURE)
-		// 	return OTP_FAILURE;
-		// else if (ret == OTP_PROG_SKIP)
-		// 	return OTP_SUCCESS;
+		otp_strap_status(otpstrap);
+		otp_print_strap(bit_offset, 1);
+		ret = otp_strap_bit_confirm(&otpstrap[bit_offset], bit_offset, 0, value, 0, 0);
+		if (ret == OTP_FAILURE)
+			return OTP_FAILURE;
+		else if (ret == OTP_PROG_SKIP)
+			return OTP_SUCCESS;
 
 		break;
 	}
@@ -2113,8 +2154,7 @@ static int do_otp_prog_bit(int mode, int otp_dw_offset, int bit_offset, int valu
 
 	switch (mode) {
 	case OTP_REGION_STRAP:
-		// return otp_prog_strap(strap_buf);
-		return OTP_SUCCESS;
+		return otp_prog_strap_bit(bit_offset, value);
 	case OTP_REGION_CONF:
 	case OTP_REGION_DATA:
 		otp_soak(1);
