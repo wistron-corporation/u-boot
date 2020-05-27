@@ -623,10 +623,10 @@ static int aspeed_spi_write_reg(struct aspeed_spi_priv *priv,
 				writel(readl(&priv->regs->soft_rst_cmd_ctrl) | SOFT_RST_CMD_EN,
 						&priv->regs->soft_rst_cmd_ctrl);
 
-			writel(readl(&priv->regs->ctrl) | BIT(flash->cs), &priv->regs->ctrl);
+			writel(readl(&priv->regs->ctrl) | (0x11 << flash->cs), &priv->regs->ctrl);
 			break;
 		case SPINOR_OP_EX4B:
-			writel(readl(&priv->regs->ctrl) & ~BIT(flash->cs), &priv->regs->ctrl);
+			writel(readl(&priv->regs->ctrl) & ~(0x11 << flash->cs), &priv->regs->ctrl);
 			break;
 	}
 	return 0;
