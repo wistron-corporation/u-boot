@@ -117,7 +117,7 @@ static int ast_wdt_stop(struct udevice *dev)
 
 	if(driver_data == WDT_AST2600) {
 		writel(0x030f1ff1, &priv->regs->reset_mask1);
-		writel(0x3fffff1, &priv->regs->reset_mask1);		
+		writel(0x3fffff1, &priv->regs->reset_mask2);
 	} else 
 		writel(WDT_RESET_DEFAULT, &priv->regs->reset_mask1);
 	
