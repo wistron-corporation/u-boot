@@ -36,14 +36,14 @@ u32 spl_boot_device(void)
 {
 	switch (aspeed_bootmode()) {
 	case AST_BOOTMODE_EMMC:
-		return (IS_ENABLED(CONFIG_ASPEED_SECURE_BOOT))?
-				SECBOOT_DEVICE_MMC : BOOT_DEVICE_MMC1;
+		return (IS_ENABLED(CONFIG_ASPEED_SECURE_BOOT)) ?
+		       SECBOOT_DEVICE_MMC : BOOT_DEVICE_MMC1;
 	case AST_BOOTMODE_SPI:
-		return (IS_ENABLED(CONFIG_ASPEED_SECURE_BOOT))?
-				SECBOOT_DEVICE_RAM : BOOT_DEVICE_RAM;
+		return (IS_ENABLED(CONFIG_ASPEED_SECURE_BOOT)) ?
+		       SECBOOT_DEVICE_RAM : BOOT_DEVICE_RAM;
 	case AST_BOOTMODE_UART:
-		return (IS_ENABLED(CONFIG_ASPEED_SECURE_BOOT))?
-				SECBOOT_DEVICE_UART : BOOT_DEVICE_UART;
+		return (IS_ENABLED(CONFIG_ASPEED_SECURE_BOOT)) ?
+		       SECBOOT_DEVICE_UART : BOOT_DEVICE_UART;
 	default:
 		break;
 	}
@@ -68,49 +68,39 @@ int board_fit_config_name_match(const char *name)
 
 struct image_header *spl_get_load_buffer(ssize_t offset, size_t size)
 {
-    return (struct image_header *)(CONFIG_SYS_LOAD_ADDR);
+	return (struct image_header *)(CONFIG_SYS_LOAD_ADDR);
 }
 
-bool spl_load_simple_fit_skip_processing(void)
+static ulong dummy_read(struct spl_load_info *load, ulong sector,
+			ulong count, void *buf)
 {
-	if (!IS_ENABLED(CONFIG_ASPEED_SECURE_BOOT))
-		return false;
-#if 0
-	/*
-	 * Secure Boot verification
-	 *
-	 * Image load address can be obtained through
-	 * spl_get_load_buffer(). i.e. CONFIG_SYS_LOAD_ADDR
-	 */
-	if (VERIFY_FAILED)
-		hang() or return true;
-#endif
-	return false;
-}
-
-static ulong spl_ram_read(struct spl_load_info *load, ulong sector,
-		ulong count, void *buf)
-{
-	memcpy(buf, (void*)sector, count);
 	return count;
 }
 
 static int spl_secboot_ram_load_image(struct spl_image_info *spl_image,
-		struct spl_boot_device *bootdev)
+				      struct spl_boot_device *bootdev)
 {
-	struct aspeed_secboot_header *sb_hdr;
+	struct aspeed_secboot_header sb_hdr;
 	struct image_header *img_hdr;
 	struct spl_load_info load;
+	void *load_buf;
+	uint32_t sb_size;
 
-	sb_hdr = (struct aspeed_secboot_header *)CONFIG_SPL_LOAD_FIT_ADDRESS;
+	sb_size = sizeof(sb_hdr);
+	memcpy(&sb_hdr, (void *)CONFIG_SPL_LOAD_FIT_ADDRESS, sb_size);
 
-	if (strcmp((char *)sb_hdr->sbh_magic, ASPEED_SECBOOT_MAGIC_STR)) {
+	if (strcmp((char *)sb_hdr.sbh_magic, ASPEED_SECBOOT_MAGIC_STR)) {
 		debug("spl: cannot find secure boot header\n");
 		return -EPERM;
 	}
 
-	aspeed_sbh = *sb_hdr;
-	img_hdr = (struct image_header*)(sb_hdr + 1);
+	load_buf = spl_get_load_buffer(0, 0);
+	memcpy(load_buf, (void *)CONFIG_SPL_LOAD_FIT_ADDRESS + sb_size, sb_hdr.sbh_img_size - sb_size + 512);
+
+	if (aspeed_bl2_verify(&sb_hdr, load_buf, CONFIG_SPL_TEXT_BASE) != 0)
+		hang();
+
+	img_hdr = (struct image_header *)load_buf;
 
 	if (!IS_ENABLED(CONFIG_SPL_LOAD_FIT) || image_get_magic(img_hdr) != FDT_MAGIC) {
 		debug("spl: cannot find FIT image\n");
@@ -118,9 +108,9 @@ static int spl_secboot_ram_load_image(struct spl_image_info *spl_image,
 	}
 
 	load.bl_len = 1;
-	load.read = spl_ram_read;
+	load.read = dummy_read;
 
-	return spl_load_simple_fit(spl_image, &load, (ulong)img_hdr, img_hdr);
+	return spl_load_simple_fit(spl_image, &load, 0, load_buf);
 }
 
 SPL_LOAD_IMAGE_METHOD("Secure Boot RAM", 0, SECBOOT_DEVICE_RAM, spl_secboot_ram_load_image);
@@ -130,30 +120,26 @@ u32 spl_boot_mode(const u32 boot_device)
 	return MMCSD_MODE_RAW;
 }
 
-static ulong spl_mmc_read(struct spl_load_info *load, ulong sector,
-		ulong count, void *buf)
-{
-	struct mmc *mmc = load->dev;
-	return blk_dread(mmc_get_blk_desc(mmc), sector, count, buf);
-}
-
 static int spl_secboot_mmc_load_image(struct spl_image_info *spl_image,
-		struct spl_boot_device *bootdev)
+				      struct spl_boot_device *bootdev)
 {
 	int err;
+	u32 sb_size;
 	u32 count;
+	u32 load_sectors;
 
 	struct mmc *mmc = NULL;
 	struct udevice *dev;
 	struct blk_desc *bd;
 
-	struct aspeed_secboot_header *sb_hdr;
+	struct aspeed_secboot_header sb_hdr;
 	u32 sb_hdr_sector;
 
 	struct image_header *img_hdr;
 	u32 img_hdr_sector;
 
 	struct spl_load_info load;
+	void *load_buf;
 
 	err = mmc_initialize(NULL);
 	if (err) {
@@ -182,30 +168,35 @@ static int spl_secboot_mmc_load_image(struct spl_image_info *spl_image,
 	/* currently only RAW sector mode is supported */
 	bd = mmc_get_blk_desc(mmc);
 
+	load_buf = spl_get_load_buffer(0, 0);
 	sb_hdr_sector = CONFIG_SYS_MMCSD_RAW_MODE_U_BOOT_SECTOR;
-	sb_hdr = (void*)spl_get_load_buffer(-sizeof(*sb_hdr), bd->blksz);
 
-	count = blk_dread(bd, sb_hdr_sector, 1, sb_hdr);
+	count = blk_dread(bd, sb_hdr_sector, 1, &sb_hdr);
+	sb_size = sizeof(sb_hdr);
 	if (count == 0) {
 		debug("spl: mmc raw sector read failed\n");
 		return -EIO;
 	}
 
-	if (strcmp((char *)sb_hdr->sbh_magic, ASPEED_SECBOOT_MAGIC_STR)) {
+	if (strcmp((char *)sb_hdr.sbh_magic, ASPEED_SECBOOT_MAGIC_STR)) {
 		debug("spl: cannot find secure boot header\n");
 		return -EPERM;
 	}
 
-	aspeed_sbh = *sb_hdr;
+	img_hdr_sector = sb_hdr_sector + (sizeof(sb_hdr) / mmc->read_bl_len);
 
-	img_hdr_sector = sb_hdr_sector + (sizeof(*sb_hdr) / mmc->read_bl_len);
-	img_hdr = (struct image_header*)spl_get_load_buffer(-sizeof(*img_hdr), bd->blksz);
-
-	count = blk_dread(bd, img_hdr_sector, 1, img_hdr);
+	load_sectors = (sb_hdr.sbh_img_size - sb_size + 512 + mmc->read_bl_len - 1) / mmc->read_bl_len;
+	count = blk_dread(bd, img_hdr_sector, load_sectors, load_buf);
 	if (count == 0) {
 		debug("spl: mmc raw sector read failed\n");
 		return -EIO;
 	}
+
+	if (aspeed_bl2_verify(&sb_hdr, load_buf, CONFIG_SPL_TEXT_BASE) != 0)
+		hang();
+
+	img_hdr = (struct image_header *)load_buf;
+
 
 	if (!IS_ENABLED(CONFIG_SPL_LOAD_FIT) || image_get_magic(img_hdr) != FDT_MAGIC) {
 		debug("spl: cannot find FIT image\n");
@@ -216,9 +207,9 @@ static int spl_secboot_mmc_load_image(struct spl_image_info *spl_image,
 	load.priv = NULL;
 	load.filename = NULL;
 	load.bl_len = mmc->read_bl_len;
-	load.read = spl_mmc_read;
+	load.read = dummy_read;
 
-	return spl_load_simple_fit(spl_image, &load, CONFIG_SYS_MMCSD_RAW_MODE_U_BOOT_SECTOR, img_hdr);
+	return spl_load_simple_fit(spl_image, &load, CONFIG_SYS_MMCSD_RAW_MODE_U_BOOT_SECTOR, load_buf);
 }
 
 SPL_LOAD_IMAGE_METHOD("Secure Boot MMC", 0, SECBOOT_DEVICE_MMC, spl_secboot_mmc_load_image);
@@ -237,11 +228,10 @@ static int getcymodem(void)
 	return -1;
 }
 
-static ulong spl_ymodem_read(struct spl_load_info *load, ulong offset,
+static ulong spl_ymodem_read(struct ymodem_fit_info *info, ulong offset,
 			     ulong size, void *addr)
 {
 	int res, err;
-	struct ymodem_fit_info *info = load->priv;
 	char *buf = info->buf;
 
 	while (info->image_read < offset) {
@@ -271,19 +261,22 @@ static ulong spl_ymodem_read(struct spl_load_info *load, ulong offset,
 }
 
 static int spl_secboot_ymodem_load_image(struct spl_image_info *spl_image,
-				 struct spl_boot_device *bootdev)
+		struct spl_boot_device *bootdev)
 {
+	struct aspeed_secboot_header sb_hdr;
+	struct image_header *img_hdr;
+	struct spl_load_info load;
+	struct ymodem_fit_info ymodem_info;
+	connection_info_t conn_info;
+	char buf[BUF_SIZE];
+	uint32_t sb_size;
+	void *load_buf;
 	ulong size = 0;
 	int err;
 	int res;
 	int ret = 0;
-	connection_info_t conn_info;
-	struct ymodem_fit_info ymodem_info;
-	char buf[BUF_SIZE];
 
-	struct aspeed_secboot_header *sb_hdr;
-	struct image_header *img_hdr;
-	struct spl_load_info load;
+	sb_size = sizeof(sb_hdr);
 
 	conn_info.mode = xyzModem_ymodem;
 	ret = xyzModem_stream_open(&conn_info, &err);
@@ -298,15 +291,19 @@ static int spl_secboot_ymodem_load_image(struct spl_image_info *spl_image,
 		goto end_stream;
 	}
 
-	sb_hdr = (struct aspeed_secboot_header*)buf;
-	if (strcmp((char *)sb_hdr->sbh_magic, ASPEED_SECBOOT_MAGIC_STR)) {
+	sb_hdr = *(struct aspeed_secboot_header *)buf;
+	if (strcmp((char *)sb_hdr.sbh_magic, ASPEED_SECBOOT_MAGIC_STR)) {
 		debug("spl: cannot find secure boot header\n");
 		ret = -EPERM;
 		goto end_stream;
 	}
 
-	aspeed_sbh = *sb_hdr;
-	img_hdr = (struct image_header*)(sb_hdr + 1);
+	ymodem_info.buf = buf;
+	ymodem_info.image_read = BUF_SIZE;
+	load_buf = spl_get_load_buffer(0, 0);
+	spl_ymodem_read(&ymodem_info, sb_size, sb_hdr.sbh_img_size - sb_size + 512, load_buf);
+
+	img_hdr = (struct image_header *)load_buf;
 
 	if (!IS_ENABLED(CONFIG_SPL_LOAD_FIT) || image_get_magic(img_hdr) != FDT_MAGIC) {
 		debug("spl: cannot find FIT image\n");
@@ -314,14 +311,12 @@ static int spl_secboot_ymodem_load_image(struct spl_image_info *spl_image,
 		goto end_stream;
 	}
 
-	load.dev = NULL;
-	load.priv = (void*)&ymodem_info;
-	load.filename = NULL;
+	if (aspeed_bl2_verify(&sb_hdr, load_buf, CONFIG_SPL_TEXT_BASE) != 0)
+		hang();
+
 	load.bl_len = 1;
-	ymodem_info.buf = buf;
-	ymodem_info.image_read = BUF_SIZE;
-	load.read = spl_ymodem_read;
-	ret = spl_load_simple_fit(spl_image, &load, sizeof(*sb_hdr), (void *)buf);
+	load.read = dummy_read;
+	ret = spl_load_simple_fit(spl_image, &load, 0, load_buf);
 	if (ret) {
 		debug("spl: load FIT image failed with error: %d\n", ret);
 		goto end_stream;
@@ -329,7 +324,7 @@ static int spl_secboot_ymodem_load_image(struct spl_image_info *spl_image,
 
 	size = ymodem_info.image_read;
 	while ((res = xyzModem_stream_read(buf, BUF_SIZE, &err)) > 0)
-			size += res;
+		size += res;
 
 end_stream:
 	xyzModem_stream_close(&err);

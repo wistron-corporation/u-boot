@@ -37,6 +37,11 @@ struct aspeed_secboot_header {
 	u8 reserved[472];
 } __packed;
 
+struct aspeed_secboot_info {
+	struct aspeed_secboot_header sb_hdr;
+	u8 signature[512];
+};
+
 struct aspeed_verify_info {
 	u8 rsa_mode;
 	u8 sha_mode;
@@ -48,10 +53,9 @@ struct aspeed_verify_info {
 	u8 *signature;
 	u8 *digest;
 	u8 *rsa_key;
+	struct aspeed_secboot_header *sb_header;
 };
 
-extern struct aspeed_secboot_header aspeed_sbh;
-
-extern int aspeed_bl2_verify(void *bl2_image, void *bl1_image);
+extern int aspeed_bl2_verify(struct aspeed_secboot_header *aspeed_sbh, void *bl2_image, void *bl1_image);
 
 #endif /* #ifndef _ASPEED_VERIFY_H_ */
