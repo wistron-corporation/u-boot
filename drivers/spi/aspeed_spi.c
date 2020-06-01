@@ -501,15 +501,15 @@ static int aspeed_spi_controller_init(struct aspeed_spi_priv *priv)
 					debug("cs0 mem-map : %x \n", (u32)flash->ahb_base);
 					break;
 				case 1:
-					flash->ahb_base = priv->flashes[0].ahb_base + 0x8000000;	//cs0 + 128Mb : use 64MB
+					flash->ahb_base = priv->flashes[0].ahb_base + 0x7100000;	//cs0 + 128Mb : use 64MB
 					debug("cs1 mem-map : %x end %x \n", (u32)flash->ahb_base, (u32)flash->ahb_base + 0x4000000);
-					addr_config = G6_SEGMENT_ADDR_VALUE((u32)flash->ahb_base, (u32)flash->ahb_base + 0x4000000); //add 128Mb
+					addr_config = G6_SEGMENT_ADDR_VALUE((u32)flash->ahb_base, (u32)flash->ahb_base + 0x4000000); //add 512Mb
 					writel(addr_config, &priv->regs->segment_addr[cs]);
 					break;
 				case 2:
 					flash->ahb_base = priv->flashes[0].ahb_base + 0xc000000;	//cs0 + 192Mb : use 64MB
 					debug("cs2 mem-map : %x end %x \n", (u32)flash->ahb_base, (u32)flash->ahb_base + 0x4000000);
-					addr_config = G6_SEGMENT_ADDR_VALUE((u32)flash->ahb_base, (u32)flash->ahb_base + 0x4000000); //add 128Mb
+					addr_config = G6_SEGMENT_ADDR_VALUE((u32)flash->ahb_base, (u32)flash->ahb_base + 0x4000000); //add 512Mb
 					writel(addr_config, &priv->regs->segment_addr[cs]);
 					break;
 			}
@@ -736,10 +736,15 @@ static ssize_t aspeed_spi_read(struct aspeed_spi_priv *priv,
 					      cmdlen - (flash->spi->read_dummy/8));
 
 	/*
-	 * Switch to USER command mode if the AHB window configured
-	 * for the device is too small for the read operation
+	 * Switch to USER command mode:
+	 * - if the AHB window configured for the device is
+	 *   too small for the read operation
+	 * - if read offset is smaller than the decoded start address
+	 *   and the decoded range is not multiple of flash size
 	 */
-	if (offset + len >= flash->ahb_size) {
+	if ((offset + len >= flash->ahb_size) || \
+		(offset < ((int)flash->ahb_base & 0x0FFFFFFF) && \
+		(((int)flash->ahb_base & 0x0FFFFFFF) % flash->spi->size) != 0)) {
 		return aspeed_spi_read_user(priv, flash, cmdlen, cmdbuf,
 					    len, read_buf);
 	}
