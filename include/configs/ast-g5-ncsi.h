@@ -27,5 +27,5 @@
 #define	CONFIG_DRAM_ECC_SIZE		0x10000000
 
 #define CONFIG_HW_WATCHDOG
-
+#define CONFIG_CMD_MII
 #endif	/* __AST_G5_NCSI_CONFIG_H */
